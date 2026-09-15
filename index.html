@@ -857,7 +857,7 @@
     border-color:var(--blue);
     box-shadow:0 0 10px rgba(var(--accent-rgb),0.55), 0 0 28px rgba(var(--accent-rgb),0.3);
   }
-  /* rangée de boutons : « + Add to bag » et « More info » côte à côte */
+  /* rangée de boutons : « + Add to cart » et « More info » côte à côte */
   .preview-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
   .preview-actions .preview-cta{margin-top:0;}
   .preview-cta--secondary{
@@ -1810,6 +1810,9 @@
     color:var(--white-60);
   }
   .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+  /* :focus et non :focus-visible — le focus est posé par le script à
+     l'ouverture de la carte, et il doit se voir tout de suite. */
+  .arena-end-actions .preview-cta:focus{outline:2px solid #fff;outline-offset:2px;}
   .arena-end-actions .preview-cta{
     margin-top:0;
     border-radius:0;
@@ -1892,7 +1895,7 @@
 <button type="button" class="dev-view" id="devView" hidden>📱 Mobile</button>
 <div class="brand">FakeParadise<b>™</b></div>
 <div class="topbar">
-  <button class="cart" id="cartCount">BAG · 0</button>
+  <button class="cart" id="cartCount">CART · 0</button>
   <span class="clock" id="clock"></span>
 </div>
 
@@ -1900,7 +1903,7 @@
 <!-- frère du voile (voir CSS .cart-panel) -->
 <div class="cart-panel glass">
   <div class="cart-header">
-    <h2 data-i18n="cartTitle">Your bag</h2>
+    <h2 data-i18n="cartTitle">Your cart</h2>
     <button class="cart-close" id="cartClose" data-i18n-aria="close" aria-label="Close">✕</button>
   </div>
   <div class="cart-items" id="cartItems"></div>
@@ -1953,7 +1956,7 @@
       </div>
       <div class="preview-desc" id="previewDesc"></div>
       <div class="preview-actions">
-        <button class="preview-cta" id="addBtn">+ Add to bag</button>
+        <button class="preview-cta" id="addBtn">+ Add to cart</button>
         <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
       </div>
     </div>
@@ -1984,7 +1987,7 @@
 <div class="hintbar" id="hintbar">
   <span data-hint="browse"><span class="key">←</span><span class="key">→</span> <span data-label>browse</span></span>
   <span data-hint="select"><span class="key">↑</span><span class="key">↓</span> <span data-label>select</span></span>
-  <span data-hint="enter"><span class="key">⏎</span> <span data-label>add to bag</span></span>
+  <span data-hint="enter"><span class="key">⏎</span> <span data-label>add to cart</span></span>
   <span data-hint="info"><span class="key">I</span> <span data-label>more info</span></span>
   <span data-hint="back" hidden><span class="key wide">esc</span> <span data-label>back</span></span>
 </div>
@@ -2201,7 +2204,7 @@ const LEGAL = [
 <p>${C.brand} peut modifier ses prix à tout moment ; les produits sont facturés au tarif en vigueur au moment de la validation de la commande.</p>
 
 <h3>Article 3 — Commande</h3>
-<p>Le Client sélectionne les articles, les ajoute à son panier (« Bag »), vérifie le contenu et le montant total de sa commande, corrige d'éventuelles erreurs, puis la confirme en procédant au paiement. Cette seconde confirmation vaut acceptation des présentes CGV et engagement ferme d'achat (articles 1127-1 et 1127-2 du Code civil). Un e-mail accusant réception de la commande est adressé au Client sans délai injustifié ; la vente est conclue à cet envoi.</p>
+<p>Le Client sélectionne les articles, les ajoute à son panier (« Cart »), vérifie le contenu et le montant total de sa commande, corrige d'éventuelles erreurs, puis la confirme en procédant au paiement. Cette seconde confirmation vaut acceptation des présentes CGV et engagement ferme d'achat (articles 1127-1 et 1127-2 du Code civil). Un e-mail accusant réception de la commande est adressé au Client sans délai injustifié ; la vente est conclue à cet envoi.</p>
 <p>${C.brand} se réserve le droit de refuser ou d'annuler toute commande en cas de litige antérieur, de suspicion de fraude, d'indisponibilité du produit ou d'erreur manifeste de prix. Les commandes d'un montant supérieur ou égal à 120 € sont archivées pendant dix (10) ans (article L. 213-1 du Code de la consommation) et accessibles sur simple demande.</p>
 
 <h3>Article 4 — Paiement</h3>
@@ -2388,7 +2391,7 @@ cgv: { label:"Terms of sale", title:"Terms and conditions of sale", html:`
 <p>${C.brand} may change its prices at any time; products are invoiced at the price in force when the order is validated.</p>
 
 <h3>Article 3 — Ordering</h3>
-<p>The Customer selects items, adds them to the bag, checks the contents and total amount of the order, corrects any errors, then confirms it by proceeding to payment. This second confirmation constitutes acceptance of these Terms and a firm commitment to purchase (Articles 1127-1 and 1127-2 of the French Civil Code). An e-mail acknowledging receipt of the order is sent to the Customer without undue delay; the sale is concluded when it is sent.</p>
+<p>The Customer selects items, adds them to the cart, checks the contents and total amount of the order, corrects any errors, then confirms it by proceeding to payment. This second confirmation constitutes acceptance of these Terms and a firm commitment to purchase (Articles 1127-1 and 1127-2 of the French Civil Code). An e-mail acknowledging receipt of the order is sent to the Customer without undue delay; the sale is concluded when it is sent.</p>
 <p>${C.brand} reserves the right to refuse or cancel any order in the event of a previous dispute, suspected fraud, unavailability of the product or an obvious pricing error. Orders of €120 or more are archived for ten (10) years (Article L. 213-1 of the French Consumer Code) and can be accessed on request.</p>
 
 <h3>Article 4 — Payment</h3>
@@ -2512,7 +2515,7 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 <tr><td data-label="Processing">Marketing communications (new releases, drops)</td><td data-label="Data">E-mail address</td><td data-label="Legal basis">Consent, which can be withdrawn at any time</td><td data-label="Retention">3 years after last contact or until consent is withdrawn</td></tr>
 </tbody>
 </table>
-<p>The site does not create customer accounts and does not set any trackers (see <a data-legal-link="cookies">Cookies</a>); the contents of your bag are kept in memory only, for the duration of your visit.</p>
+<p>The site does not create customer accounts and does not set any trackers (see <a data-legal-link="cookies">Cookies</a>); the contents of your cart are kept in memory only, for the duration of your visit.</p>
 <h3>Recipients</h3>
 <p>Data is intended for ${C.brand} and, strictly where necessary, for its processors: payment provider (${C.payment}), carriers (${C.shipping.carriers}), hosting provider (${C.host.name}) and, where applicable, e-mailing provider. It is never sold. Some providers may be established outside the European Union; transfers are then governed by appropriate safeguards (adequacy decision or the European Commission's standard contractual clauses).</p>
 <h3>Your rights</h3>
@@ -2545,19 +2548,19 @@ let currentLang = "en";
 
 const STRINGS = {
   en:{
-    bag:"BAG", cartTitle:"Your bag", cartEmpty:"Your bag is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
+    bag:"CART", cartTitle:"Your cart", cartEmpty:"Your cart is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
     checkoutAlert:"Checkout isn't wired up yet — connect this to your payment provider when ready.",
-    add:"+ Add to bag", added:"Added ✓", instagram:"Open Instagram ↗",
+    add:"+ Add to cart", added:"Added ✓", instagram:"Open Instagram ↗",
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
     sizeLabel:"Size", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
     language:"Language", currency:"Currency", sound:"Sound", soundOn:"On", soundOff:"Off",
-    hintBrowse:"browse", hintSelect:"select", hintAdd:"add to bag", hintInstagram:"open Instagram", hintOpen:"open",
+    hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
     play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS", descToggle:"Show details",
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
-    arenaWins:"wins", arenaAsk:"Add it to the bag?", arenaAdd:"Add to bag",
+    arenaWins:"wins", arenaAsk:"Add it to the cart?", arenaAdd:"Go to product",
     arenaBack:"Pick again", arenaQuit:"Close",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
@@ -2578,7 +2581,7 @@ const STRINGS = {
     play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS", descToggle:"Afficher le détail",
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
-    arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Ajouter au panier",
+    arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Voir l'article",
     arenaBack:"Retour au choix", arenaQuit:"Fermer",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
@@ -2983,13 +2986,18 @@ const sfx = (() => {
   // c'est ce qui rend la nappe lumineuse plutôt que mélancolique
   const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]; // do ré mi sol la, sur deux octaves
   let amb = null, ambTimer = 0;
+  /* Niveau de la nappe du menu : 0,126 au lieu de 0,18, soit 30 % de moins
+     (demande du 15 sept. 2026). Un seul gain la porte tout entière — le
+     bourdon et les notes y passent —, donc c'est le seul chiffre à changer,
+     et le retour d'onglet doit viser le même. */
+  const AMB_VOL = 0.126;
   function ambientStart(){
     if (amb || !ctx || !on) return;
     const g = ctx.createGain();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
     lp.connect(g); g.connect(master);
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 5); // entrée en fondu, sur cinq secondes
+    g.gain.linearRampToValueAtTime(AMB_VOL, ctx.currentTime + 5); // entrée en fondu, sur cinq secondes
     const drone = [[65.41, 0.085], [98.00, 0.05]].map(([f, vol], i) => { // do/sol très graves, en retrait sous les notes
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (i ? 1.002 : 1); // léger désaccord : ça respire
       const dg = ctx.createGain(); dg.gain.value = vol;
@@ -3036,7 +3044,7 @@ const sfx = (() => {
     const t = ctx.currentTime;
     amb.g.gain.cancelScheduledValues(t);
     amb.g.gain.setValueAtTime(amb.g.gain.value, t);
-    amb.g.gain.linearRampToValueAtTime(document.hidden ? 0.0001 : 0.18, t + 0.4);
+    amb.g.gain.linearRampToValueAtTime(document.hidden ? 0.0001 : AMB_VOL, t + 0.4);
     if (!document.hidden && !ambTimer) ambientPlan(); // les notes reprennent leur cours
   });
   /* Les navigateurs n'autorisent le son qu'après un geste de l'utilisateur, et
@@ -3326,7 +3334,7 @@ const sfx = (() => {
 })();
 
 /* ---------------- sélecteur de tailles ----------------
-   Fiche produit : survoler « + Add to bag » (ou Entrée, ou un clic/toucher
+   Fiche produit : survoler « + Add to cart » (ou Entrée, ou un clic/toucher
    sur le bouton) ouvre sous la fiche un panneau de tailles XS → 2XL aligné
    sur elle. Un clic sur une taille, ou ←/→ puis Entrée, ajoute l'article
    dans cette taille. Ouvert au clavier ou au clic, il reste affiché jusqu'à
@@ -5267,6 +5275,8 @@ const arena = (() => {
   const fillEls = [0, 1].map(i => document.getElementById('arenaFill' + i));
   const ghostEls = [0, 1].map(i => document.getElementById('arenaGhost' + i));
   const fightBtn = document.getElementById('arenaFight');
+  // les trois boutons de la carte de fin, dans l'ordre où les flèches les parcourent
+  const boutonsFin = ['arenaAdd', 'arenaBack', 'arenaQuit'].map(id => document.getElementById(id));
 
   let scene = null;            // contexte 3D de l'arène, créé au premier duel
   let ouvert = false, enDuel = false;
@@ -6034,6 +6044,9 @@ const arena = (() => {
     fini = true;
     endTitle.textContent = L(picks[vainqueur].it.n) + ' ' + T('arenaWins');
     endBox.hidden = false;
+    // Le premier bouton prend le focus : Entrée agit tout de suite, les
+    // flèches passent aux deux autres (voir touche).
+    boutonsFin[0].focus();
   }
 
   /* ---- enchaînement ---- */
@@ -6212,8 +6225,18 @@ const arena = (() => {
   // tirage au sort, pas un jeu — sauf Entrée pour passer à la fin.
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
+    /* Carte de fin : ←/→ passent d'un bouton à l'autre. Entrée n'est pas
+       traitée ici — le bouton qui a le focus reçoit du navigateur son clic
+       natif, et le doubler déclencherait l'action deux fois. */
+    if (fini){
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+        const n = boutonsFin.length, i = boutonsFin.indexOf(document.activeElement);
+        boutonsFin[(i < 0 ? 0 : i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n].focus();
+      }
+      return true;
+    }
     if (enDuel){
-      if (e.key === 'Enter' && !fini && plan.length){ debut = performance.now() - finMs; }
+      if (e.key === 'Enter' && plan.length){ debut = performance.now() - finMs; }
       return true;
     }
     const col = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
