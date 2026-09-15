@@ -3936,8 +3936,30 @@ const model3d = (() => {
   //      normalisation ni de puissance par pixel. Couleur prémultipliée par
   //      l'opacité (bords anticrénelés propres sur fond transparent, fondu
   //      des lignes de la liste).
-  const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;
-    varying vec2 vUV;varying vec2 vSh;void main(){vUV=aUV;vSh=aSh;gl_Position=uMVP*vec4(aPos,1.0);}`;
+  /* uPS1 : les deux défauts de rendu qui SIGNENT une console de 1995, allumés
+     pour la seule tête de la page Info et à zéro partout ailleurs, donc sans
+     aucun effet sur les vêtements.
+     .xy — la grille d'accrochage des sommets. La console calculait ses
+     coordonnées à l'écran en entiers, sans précision sous-pixel : les sommets
+     sautaient d'un pixel à l'autre au lieu de glisser, et c'est ce frémissement
+     qu'on reconnaît d'abord. On accroche donc en coordonnées normalisées, à la
+     définition d'un mode de la machine (256 × 224).
+     .z — le placage AFFINE. Le matériel ne corrigeait pas la perspective : la
+     texture était interpolée droit en coordonnées d'écran, d'où ce glissement
+     des motifs sur les faces vues de biais. Le rastériseur, lui, interpole
+     toujours en perspective ; on annule sa correction en multipliant les UV par
+     w au sommet pour rediviser au fragment, ce qui laisse exactement
+     l'interpolation linéaire d'écran. À zéro, vW vaut 1 partout et on retrouve
+     le placage correct, au bit près. */
+  const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;uniform vec3 uPS1;
+    varying vec2 vUV;varying vec2 vSh;varying float vW;
+    void main(){
+      vec4 p = uMVP*vec4(aPos,1.0);
+      if (uPS1.x > 0.0) p.xy = floor((p.xy/p.w)*uPS1.xy + 0.5)/uPS1.xy * p.w;
+      float k = mix(1.0, p.w, uPS1.z);
+      vUV = aUV*k; vW = k; vSh = aSh;
+      gl_Position = p;
+    }`;
   /* uTint : couleur imposée au vêtement (voir le module `arena`). rgb donne la
      teinte, a sa part ; (0,0,0,0) partout ailleurs, donc la fiche et la liste
      rendent exactement comme avant. La teinte REMPLACE la texture AVANT
@@ -3947,13 +3969,14 @@ const model3d = (() => {
      est réutilisé sans sa photo. L'ajout, lui, ne monte qu'au carré : il fait
      rayonner la teinte quand elle domine, sans éclaircir un simple reflet. */
   const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;
-    varying vec2 vUV;varying vec2 vSh;
+    varying vec2 vUV;varying vec2 vSh;varying float vW;
     void main(){
-      vec3 base = mix(texture2D(uTex,vUV).rgb, uTint.rgb, uTint.a);
+      vec3 base = mix(texture2D(uTex,vUV/vW).rgb, uTint.rgb, uTint.a);
       vec3 c = base*vSh.x + vSh.y + uTint.rgb*uTint.a*uTint.a*0.30;
       gl_FragColor=vec4(c*uAlpha,uAlpha);
     }`;
   const STRIDE = 7;      // flottants par sommet : position (3), uv (2), éclairage (2)
+  const PS1_GRILLE = [128, 112];   // demi-définition d'un mode 256 × 224 : la grille où les sommets s'accrochent
   const LIGHT = (() => { const l = Math.hypot(0.35, 0.5, 0.8); return [0.35 / l, 0.5 / l, 0.8 / l]; })();
 
   // ---- un contexte WebGL par canvas : la fiche (canvas du cadre) et la liste
@@ -3974,6 +3997,7 @@ const model3d = (() => {
     const uMVP = gl.getUniformLocation(prog, 'uMVP');
     const uTex = gl.getUniformLocation(prog, 'uTex'), uAlpha = gl.getUniformLocation(prog, 'uAlpha');
     const uTint = gl.getUniformLocation(prog, 'uTint'); // teinte de dégât du mini-jeu ; (0,0,0,0) ailleurs
+    const uPS1 = gl.getUniformLocation(prog, 'uPS1');   // grille de sommets et placage affine ; (0,0,0) ailleurs
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
@@ -3982,13 +4006,20 @@ const model3d = (() => {
     function texture(src){
       let t = textures.get(src); if (t) return t;
       let img = src;
-      if (texSize){ const c = document.createElement('canvas'); c.width = texSize; c.height = texSize; c.getContext('2d').drawImage(src, 0, 0, texSize, texSize); img = c; }
+      /* `brut` : la texture part telle quelle, et s'échantillonne au PLUS
+         PROCHE, sans le moindre lissage. La console ne filtrait pas — c'est de
+         là que viennent ses gros texels carrés, et un agrandissement lissé les
+         effacerait juste après qu'on a pris la peine de descendre la
+         définition. Le rééchantillonnage à `texSize` est sauté pour la même
+         raison : il la remonterait. */
+      const brut = !!(src && src.brut), filtre = brut ? gl.NEAREST : gl.LINEAR;
+      if (texSize && !brut){ const c = document.createElement('canvas'); c.width = texSize; c.height = texSize; c.getContext('2d').drawImage(src, 0, 0, texSize, texSize); img = c; }
       t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      if (mip){ gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); }
-      else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filtre);
+      if (mip && !brut){ gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); }
+      else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtre);
       textures.set(src, t); return t;
     }
     function bufs(mesh){
@@ -4015,6 +4046,7 @@ const model3d = (() => {
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
       gl.uniform4f(uTint, tint ? tint[0] : 0, tint ? tint[1] : 0, tint ? tint[2] : 0, tint ? tint[3] : 0);
+      gl.uniform3f(uPS1, a.ps1 ? PS1_GRILLE[0] : 0, a.ps1 ? PS1_GRILLE[1] : 0, a.ps1 ? 1 : 0);
       const b = bufs(a.mesh), S = STRIDE * 4;
       gl.bindBuffer(gl.ARRAY_BUFFER, b.vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, S, 0);
@@ -4378,7 +4410,9 @@ const model3d = (() => {
 
      Repère : hauteur crâne→menton = 1, y de +0,50 à −0,50, z vers le
      spectateur, θ = 0 au milieu du visage, θ = ±π à la nuque. */
-  const TETE_M = 24;     // méridiens. Pair, donc θ = 0 tombe sur une arête : le nez a la sienne
+  const TETE_M = 16;     // méridiens. Pair, donc θ = 0 tombe sur une arête : le nez a la sienne.
+                         // Seize et non vingt-quatre : un personnage entier de 1995 tenait dans
+                         // quatre à cinq cents triangles, sa tête dans une centaine
   /* [ y, demi-largeur, profondeur avant, profondeur arrière ]. Proportions
      d'un crâne adulte : 0,72 de large et 0,78 de profond pour 1 de haut,
      ligne des yeux à mi-hauteur, base du nez aux trois quarts. L'axe de
@@ -4389,18 +4423,15 @@ const model3d = (() => {
      le cou, et c'est le menton, poussé vers l'avant, qui la dessine. */
   const TETE_ANNEAUX = [
     [ 0.500, 0.105, 0.105, 0.125],  // sommet du crâne
-    [ 0.468, 0.205, 0.202, 0.242],
-    [ 0.418, 0.276, 0.260, 0.318],
-    [ 0.338, 0.325, 0.300, 0.378],
-    [ 0.238, 0.352, 0.320, 0.418],
-    [ 0.118, 0.360, 0.331, 0.444],  // temples — le plus large
+    [ 0.430, 0.284, 0.268, 0.328],
+    [ 0.290, 0.340, 0.312, 0.400],
+    [ 0.130, 0.360, 0.331, 0.442],  // tempes — le plus large
     [ 0.010, 0.355, 0.335, 0.450],  // ligne des yeux et des oreilles
-    [-0.100, 0.340, 0.335, 0.434],  // pommettes
-    [-0.200, 0.310, 0.325, 0.400],  // base du nez
-    [-0.300, 0.265, 0.305, 0.354],  // bouche
-    [-0.400, 0.199, 0.270, 0.304],  // angle de la mâchoire
+    [-0.110, 0.338, 0.335, 0.432],  // pommettes
+    [-0.240, 0.296, 0.318, 0.386],  // base du nez
+    [-0.360, 0.228, 0.282, 0.322],  // angle de la mâchoire
     [-0.480, 0.116, 0.196, 0.236],  // menton
-    [-0.600, 0.149, 0.114, 0.214],  // cou (reculé : il part de l'arrière du crâne)
+    [-0.610, 0.150, 0.114, 0.212],  // cou (reculé : il part de l'arrière du crâne)
     [-0.740, 0.172, 0.124, 0.224],  // base du cou
   ];
   const TETE_R = TETE_ANNEAUX.length;
@@ -4521,9 +4552,10 @@ const model3d = (() => {
       const Q = [];
       for (let ti = 0; ti < K; ti++){
         const [y, w, f, b] = C[ti], row = [];
-        for (let mi = 0; mi < MC; mi++) row.push(surfaceTete(y, w, f, b, angC(mi)));
+        for (let mi = 0; mi < MC; mi++) row.push(surfaceCapuche(y, w, f, b, angC(mi)));
         Q.push(row);
       }
+      const noir = (p, ref) => faces.push({ p, uv:[UV, UV, UV], ref });
       // la maille est sautée si son CENTRE tombe dans l'ouverture
       const ouvert = [];
       for (let ti = 0; ti < K - 1; ti++){
@@ -4535,42 +4567,107 @@ const model3d = (() => {
         if (ouvert[ti][mi]) continue;
         const m2 = (mi + 1) % MC, ref = axe((C[ti][0] + C[ti+1][0]) / 2);
         const a = Q[ti][mi], b = Q[ti+1][mi], c = Q[ti+1][m2], d = Q[ti][m2];
-        faces.push({ p:[a, b, c], uv:[UV, UV, UV], ref });
-        faces.push({ p:[a, c, d], uv:[UV, UV, UV], ref });
+        noir([a, b, c], ref); noir([a, c, d], ref);
       }
       // calottes du tissu : le dessus, et la coupe franche du bas
       const milQ = ti => { let x=0, y=0, z=0; for (let mi=0; mi<MC; mi++){ x+=Q[ti][mi][0]; y+=Q[ti][mi][1]; z+=Q[ti][mi][2]; } return [x/MC, y/MC, z/MC]; };
       const qH = milQ(0), qB = milQ(K-1); qH[1] += 0.018;
       for (let mi = 0; mi < MC; mi++){
         const m2 = (mi + 1) % MC;
-        faces.push({ p:[qH, Q[0][mi], Q[0][m2]], uv:[UV, UV, UV], ref: axe(qH[1] - 0.15) });
-        faces.push({ p:[qB, Q[K-1][m2], Q[K-1][mi]], uv:[UV, UV, UV], ref: axe(qB[1] + 0.15) });
+        noir([qH, Q[0][mi], Q[0][m2]], axe(qH[1] - 0.15));
+        noir([qB, Q[K-1][m2], Q[K-1][mi]], axe(qB[1] + 0.15));
       }
-      /* La bordure : l'épaisseur du tissu le long de l'ouverture. Le bord
-         intérieur est le même point ramené de 18 % vers l'axe — juste assez
-         pour passer devant le crâne sans le traverser (le crâne occupe 84 %
-         du rayon de la capuche à hauteur des yeux), et cela recule aussi le
-         bord, comme le ferait un ourlet qui plonge vers le visage.
-         Elle se voit depuis l'INTÉRIEUR de l'ouverture : son repère est donc
-         le symétrique du centre de la face par rapport au centre de
+      /* L'OURLET : le tissu replié en tube tout autour de l'ouverture. Deux
+         bandes par arête de frontière — la surface monte d'abord vers une
+         crête qui DÉBORDE (1,075 du rayon), puis replonge vers l'intérieur
+         (0,80). Sans la crête on n'avait qu'une tranche, et la capuche se
+         lisait comme une coquille d'œuf percée ; c'est ce bourrelet, plus que
+         tout le reste, qui la fait passer pour un vêtement.
+         Ces bandes se voient depuis l'INTÉRIEUR de l'ouverture : leur repère
+         est le symétrique du centre de la face par rapport au centre de
          l'ouverture, ce qui revient à demander que la normale regarde vers ce
          centre-là. */
-      const OC = [0, OUVERTURE.yc, 0.55];
-      const rentre = p => [p[0] * 0.82, p[1], p[2] * 0.82];
-      const bordure = (A, B) => {
-        const a = A, b = B, c = rentre(B), d = rentre(A);
+      const OC = [0, OUVERTURE.yc, 0.62];
+      const ech2 = (p, k) => [p[0] * k, p[1], p[2] * k];
+      const bande = (a, b, c, d) => {
         const gx = (a[0]+b[0]+c[0]+d[0])/4, gy = (a[1]+b[1]+c[1]+d[1])/4, gz = (a[2]+b[2]+c[2]+d[2])/4;
         const ref = [2*gx - OC[0], 2*gy - OC[1], 2*gz - OC[2]];
-        faces.push({ p:[a, b, c], uv:[UV, UV, UV], ref });
-        faces.push({ p:[a, c, d], uv:[UV, UV, UV], ref });
+        noir([a, b, c], ref); noir([a, c, d], ref);
+      };
+      const ourlet = (A, B) => {
+        const cA = ech2(A, OURLET), cB = ech2(B, OURLET);
+        bande(A, B, cB, cA);                                   // la montée sur la crête
+        bande(cA, cB, ech2(B, DEDANS), ech2(A, DEDANS));       // et la retombée vers le visage
       };
       for (let ti = 0; ti < K - 1; ti++) for (let mi = 0; mi < MC; mi++){
         if (!ouvert[ti][mi]) continue;
         const m2 = (mi + 1) % MC, mg = (mi - 1 + MC) % MC;
-        if (!ouvert[ti][mg]) bordure(Q[ti][mi], Q[ti+1][mi]);            // frontière à gauche
-        if (!ouvert[ti][m2]) bordure(Q[ti+1][m2], Q[ti][m2]);            // à droite
-        if (ti === 0 || !ouvert[ti-1][mi]) bordure(Q[ti][m2], Q[ti][mi]); // au-dessus
-        if (ti === K-2 || !ouvert[ti+1][mi]) bordure(Q[ti+1][mi], Q[ti+1][m2]); // au-dessous
+        if (!ouvert[ti][mg]) ourlet(Q[ti][mi], Q[ti+1][mi]);             // frontière à gauche
+        if (!ouvert[ti][m2]) ourlet(Q[ti+1][m2], Q[ti][m2]);             // à droite
+        if (ti === 0 || !ouvert[ti-1][mi]) ourlet(Q[ti][m2], Q[ti][mi]);  // au-dessus
+        if (ti === K-2 || !ouvert[ti+1][mi]) ourlet(Q[ti+1][mi], Q[ti+1][m2]); // au-dessous
+      }
+      /* La DOUBLURE : la même coque, rentrée à 0,80 et retournée. Sans elle on
+         voyait au travers — sous le menton, l'ouverture passe à côté du cou,
+         et l'autre versant de la capuche, vu de l'intérieur, était écarté par
+         le tri des faces arrière : il restait un trou par lequel on voyait le
+         fond de la page. C'est ce qu'a montré un rendu sur fond ROUGE VIF, et
+         c'est la manière de chercher ce genre de défaut : sur un fond sombre,
+         un trou dans un vêtement noir ne se voit pas.
+         Le repère d'orientation est ici pris À L'EXTÉRIEUR (le symétrique du
+         centre de la face par rapport à l'axe), pour que les normales rentrent
+         au lieu de sortir. */
+      const dedansFace = p => {
+        const gx = (p[0][0]+p[1][0]+p[2][0])/3, gy = (p[0][1]+p[1][1]+p[2][1])/3, gz = (p[0][2]+p[1][2]+p[2][2])/3;
+        faces.push({ p, uv:[UV, UV, UV], ref:[2*gx, gy, 2*gz] });
+      };
+      for (let ti = 0; ti < K - 1; ti++) for (let mi = 0; mi < MC; mi++){
+        if (ouvert[ti][mi]) continue;
+        const m2 = (mi + 1) % MC;
+        const a = ech2(Q[ti][mi], DEDANS), b = ech2(Q[ti+1][mi], DEDANS);
+        const c = ech2(Q[ti+1][m2], DEDANS), d = ech2(Q[ti][m2], DEDANS);
+        dedansFace([a, b, c]); dedansFace([a, c, d]);
+      }
+      for (let mi = 0; mi < MC; mi++){
+        const m2 = (mi + 1) % MC;
+        dedansFace([ech2(qH, DEDANS), ech2(Q[0][mi], DEDANS), ech2(Q[0][m2], DEDANS)]);
+        dedansFace([ech2(qB, DEDANS), ech2(Q[K-1][m2], DEDANS), ech2(Q[K-1][mi], DEDANS)]);
+      }
+      // le col, plein et fermé par le haut
+      const L = COL_ANNEAUX, KL = L.length;
+      const S = L.map(([y, w, f, b]) => { const row = []; for (let mi = 0; mi < MC; mi++) row.push(surfaceCapuche(y, w, f, b, angC(mi))); return row; });
+      for (let ti = 0; ti < KL - 1; ti++) for (let mi = 0; mi < MC; mi++){
+        const m2 = (mi + 1) % MC, ref = axe((L[ti][0] + L[ti+1][0]) / 2);
+        noir([S[ti][mi], S[ti+1][mi], S[ti+1][m2]], ref);
+        noir([S[ti][mi], S[ti+1][m2], S[ti][m2]], ref);
+      }
+      const lH = (() => { let x=0, y=0, z=0; for (let mi=0; mi<MC; mi++){ x+=S[0][mi][0]; y+=S[0][mi][1]; z+=S[0][mi][2]; } return [x/MC, y/MC, z/MC]; })();
+      for (let mi = 0; mi < MC; mi++) noir([lH, S[0][mi], S[0][(mi+1)%MC]], axe(lH[1] - 0.15));
+      /* Les CORDONS : deux prismes à quatre pans qui pendent du bord de
+         l'ouverture, embout compris. Quatre pans et non huit — une console de
+         1995 n'aurait pas dépensé plus pour un lacet, et de loin un carré
+         allongé se lit exactement comme un cordon.
+         Ils tombent VERS L'AVANT : accrochés à l'aplomb du tissu, ils
+         disparaissaient dedans, la capuche s'élargissant plus bas qu'eux. */
+      for (const cote of [1, -1]){
+        const D = CORDON, th = D.th * cote;
+        const [ , w0, f0, b0] = anneauCapuche(D.y);
+        const haut = surfaceCapuche(D.y, w0, f0, b0, th);
+        const x0 = haut[0] * OURLET, z0 = haut[2] * OURLET;
+        const x1 = x0 * 1.10, z1 = D.zBas;
+        const le = (y) => { const t = (D.y - y) / (D.y - D.bas); return [x0 + (x1-x0)*t, z0 + (z1-z0)*t]; };
+        const seg = [[D.y, D.r], [D.bas + D.embout, D.r], [D.bas + D.embout, D.embout], [D.bas, D.embout]];
+        const coin = (y, r, i) => { const a = (i / 4) * 2 * Math.PI + Math.PI / 4, [cx, cz] = le(y);
+          return [cx + r * Math.cos(a), y, cz + r * Math.sin(a)]; };
+        for (let s = 0; s < seg.length - 1; s++) for (let i = 0; i < 4; i++){
+          const j = (i + 1) % 4;
+          const a = coin(seg[s][0], seg[s][1], i), b = coin(seg[s+1][0], seg[s+1][1], i);
+          const c = coin(seg[s+1][0], seg[s+1][1], j), d = coin(seg[s][0], seg[s][1], j);
+          const ym = (seg[s][0] + seg[s+1][0]) / 2, [cx, cz] = le(ym);
+          noir([a, b, c], [cx, ym, cz]); noir([a, c, d], [cx, ym, cz]);
+        }
+        const [bx, bz] = le(D.bas);
+        for (let i = 0; i < 4; i++) noir([[bx, D.bas, bz], coin(D.bas, D.embout, (i+1)%4), coin(D.bas, D.embout, i)], [bx, D.bas + 0.1, bz]);
       }
     }
     // à l'échelle, et centré sur la boîte entière — capuche comprise quand il y en a une
@@ -4622,7 +4719,8 @@ const model3d = (() => {
      On obtient une continuité de teinte — cheveux en haut, peau au milieu,
      col en bas — sans recopier le moindre trait reconnaissable : une copie
      miroir du visage collerait un second visage sur la nuque. */
-  const ATLAS_W = 768, ATLAS_H = 384;
+  const ATLAS_W = 768, ATLAS_H = 384;   // atlas de travail : au large, pour que projection et couture ne crénèlent pas
+  const PS1_W = 160, PS1_H = 80;        // ce qui part au GPU. Le visage y tient sur une quarantaine de texels, comme sur la console
   /* [x du milieu du visage, y du sommet du crâne, y du menton] en fractions de
      la photo, plus un ÉTIREMENT horizontal facultatif. Ce quatrième nombre
      existe parce qu'une photo de visage détouré s'arrête aux joues : elle est
@@ -4631,47 +4729,86 @@ const model3d = (() => {
      visage s'élargit visiblement ; mieux vaut alors rétrécir l'ouverture. */
   const CADRE_DEF = [0.50, 0.05, 0.94, 1];
   const ARGILE = [214, 176, 150];         // repli sans photo : une argile chaude, le modelé venant des seules facettes
-  /* ---- la capuche ----
+  /* ---- la capuche de sweat ----
      Elle ne décore pas : elle RÉSOUT. Une photo de face ne dit rien de la
      nuque, du crâne ni du cou, et tout ce que la couture pouvait en faire
      était une continuité de teinte, honnête mais rubanée. La capuche couvre
      exactement ce que la photo ne sait pas : il ne reste à l'air libre que le
      visage, c'est-à-dire la seule chose dont on ait une vraie image.
 
-     Deuxième surface de révolution, plus ample que le crâne, ouverte devant
-     sur un ovale. Les mailles dont le CENTRE tombe dans l'ovale sont sautées —
-     l'ouverture est donc facettée, à gros pans, et c'est voulu : une découpe
-     lisse jurerait avec le reste. Le long de cette frontière court une
-     bordure, l'épaisseur du tissu, sans quoi on verrait la capuche comme une
-     coquille d'œuf sans tranche. */
-  const CAPUCHE_M = 16;   // MOINS de méridiens que le crâne : du tissu n'a pas de traits à porter, et
-                          // à vingt-quatre la capuche redevenait un cylindre lisse — un pan de 22° se voit
+     Ce qui fait qu'on la lit comme une capuche de SWEAT et non comme un capuchon
+     de moine tient à quatre choses, prises sur des planches de couture :
+       — un pan qui monte en pointe vers l'arrière, la capuche relevée ne
+         coiffant pas le crâne mais retombant derrière ;
+       — une COUTURE CENTRALE dans le dos, la pièce du milieu d'une capuche à
+         trois panneaux : c'est elle qui la tient debout au lieu de l'aplatir ;
+       — un OURLET épais tout autour de l'ouverture, le tissu replié en tube,
+         qui déborde franchement de la surface ;
+       — deux CORDONS qui en pendent, avec leurs embouts.
+     Les mailles dont le CENTRE tombe dans l'ovale d'ouverture sont sautées :
+     la découpe est donc facettée, à gros pans, et c'est voulu. */
+  const CAPUCHE_M = 14;   // MOINS de méridiens que le crâne : du tissu n'a pas de traits à porter,
+                          // et au-delà la capuche redevenait un cylindre lisse — un pan de 26° se voit
   const CAPUCHE_ANNEAUX = [
-    [ 0.600, 0.130, 0.020, 0.330],  // le haut, rejeté en arrière : une capuche portée penche vers la nuque
-    [ 0.505, 0.290, 0.215, 0.440],
-    [ 0.360, 0.395, 0.330, 0.520],
-    [ 0.205, 0.436, 0.375, 0.562],
-    [ 0.045, 0.448, 0.392, 0.580],  // le tissu bombe derrière, comme une capuche portée
-    [-0.115, 0.446, 0.390, 0.582],
-    [-0.270, 0.438, 0.378, 0.576],
-    [-0.420, 0.440, 0.364, 0.570],
-    [-0.560, 0.470, 0.352, 0.576],  // sous le menton, le tissu s'écarte
-    [-0.680, 0.560, 0.372, 0.610],  // il retombe sur les épaules
-    [-0.780, 0.700, 0.430, 0.660],  // bas, coupé net
+    [ 0.610, 0.155, 0.090, 0.330],  // le haut, rejeté en arrière : une capuche relevée retombe derrière.
+                                    // Une profondeur avant NULLE écrasait l'anneau contre son centre et la
+                                    // calotte y devenait une fente : il lui faut de quoi rester un anneau
+    [ 0.480, 0.315, 0.235, 0.465],
+    [ 0.320, 0.408, 0.345, 0.540],
+    [ 0.170, 0.440, 0.382, 0.572],
+    [ 0.010, 0.450, 0.392, 0.584],
+    [-0.150, 0.446, 0.388, 0.582],
+    [-0.310, 0.437, 0.376, 0.574],
+    [-0.480, 0.448, 0.360, 0.572],  // sous le menton, le tissu s'écarte
+    [-0.650, 0.555, 0.375, 0.612],  // il retombe sur les épaules
+    [-0.800, 0.730, 0.440, 0.672],  // bas, coupé net
   ];
+  /* Surface du tissu. Elle ne passe PAS par surfaceTete : celle-ci porte le
+     nez, les arcades et le menton, qui se retrouvaient en relief sur la
+     capuche — un tissu n'a pas de traits. Ici, le tour de potier nu, plus la
+     seule couture du dos. */
+  function surfaceCapuche(y, w, f, b, th){
+    const s = Math.sin(th), c = Math.cos(th);
+    let z = c >= 0 ? f * Math.pow(c, 0.85) : -b * Math.pow(-c, 0.85);
+    const dos = Math.PI - Math.abs(th);   // 0 à la nuque
+    z -= 0.034 * gauss(dos, 0, 0.30) * gauss(y, 0.10, 0.55);   // la couture centrale, en arête
+    return [w * s, y, z];
+  }
   /* L'ouverture : une ellipse en (angle, hauteur), large de ±54° au plus fort
      et descendant sous le menton. Le premier essai, à ±35°, ne montrait qu'une
      fente : il faut qu'on voie le visage ENTIER, joues comprises, sinon ce
      n'est plus une capuche mais une meurtrière. Le bord HAUT, lui, descend
      juste au-dessus des sourcils : plus haut, on découvre le front, et avec
      lui tout ce que la photo porte de mieux caché. */
-  const OUVERTURE = { th0: 0.95, yc: -0.205, ry: 0.355 };
+  const OUVERTURE = { th0: 0.95, yc: -0.190, ry: 0.400 };
   const dansOuverture = (th, y) => {
     const a = th / OUVERTURE.th0, b = (y - OUVERTURE.yc) / OUVERTURE.ry;
     return a*a + b*b <= 1;
   };
+  // anneau de capuche interpolé, pour accrocher les cordons à la bonne hauteur
+  function anneauCapuche(y){
+    const C = CAPUCHE_ANNEAUX;
+    for (let i = 0; i < C.length - 1; i++){
+      const y0 = C[i][0], y1 = C[i+1][0];
+      if (y <= y0 && y >= y1){ const t = (y0 - y) / (y0 - y1);
+        return [y, C[i][1] + (C[i+1][1]-C[i][1])*t, C[i][2] + (C[i+1][2]-C[i][2])*t, C[i][3] + (C[i+1][3]-C[i][3])*t]; }
+    }
+    return y > C[0][0] ? C[0].slice() : C[C.length-1].slice();
+  }
+  const OURLET = 1.075;   // crête de l'ourlet, en fraction du rayon : ce qui déborde de la surface
+  const DEDANS = 0.80;    // bord intérieur du tissu : juste assez pour passer devant le crâne (0,84 du rayon)
+  const CORDON = { th: 0.42, y: -0.470, bas: -0.880, zBas: 0.560, r: 0.020, embout: 0.034 };
+  /* Le COL du sweat, sous le menton. Il manquait de toute façon — une capuche
+     ne flotte pas autour d'une tête, elle est cousue à un vêtement — et c'est
+     lui qui bouche le dernier jour : par le bas de l'ouverture, le regard
+     passait à côté du cou, trop mince, et ressortait de l'autre côté. */
+  const COL_ANNEAUX = [
+    [-0.545, 0.190, 0.165, 0.200],
+    [-0.680, 0.270, 0.215, 0.280],
+    [-0.800, 0.345, 0.270, 0.345],
+  ];
   const CAPUCHE_RVB = [34, 34, 40];   // charbon, pas noir : sur du noir pur aucun éclairage ne se lit, et les pans disparaissent
-  const CAPUCHE_UV = [4 / ATLAS_W, 4 / ATLAS_H];  // pastille unie réservée dans un coin de l'atlas (voir atlasTete)
+  const CAPUCHE_UV = [0.5 / PS1_W, 0.5 / PS1_H];  // pastille unie réservée au coin de la petite image (voir atlasTete)
   function atlasTete(photo, cadre){
     const W = ATLAS_W, H = ATLAS_H;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -4755,18 +4892,54 @@ const model3d = (() => {
         }
       }
     }
-    /* La pastille unie de la capuche, dans le coin de l'atlas et posée EN
-       DERNIER — le flou ci-dessus travaille sur tout ce qui n'est pas du
-       visage, il l'aurait délavée. Le coin (u vers la nuque, v au sommet du
-       crâne) est sous le tissu de toute façon, on ne lui vole rien.
-       Un huitième de texel suffirait, mais huit sur huit met les quatre
-       texels lus par le filtre linéaire bien à l'intérieur. */
-    for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++){
-      const k = (j*W+i)*4;
-      o[k] = CAPUCHE_RVB[0]; o[k+1] = CAPUCHE_RVB[1]; o[k+2] = CAPUCHE_RVB[2]; o[k+3] = 255;
-    }
     g.putImageData(out, 0, 0);
-    return cv;
+    /* ---- passage en texture de console ----
+       Tout ce qui précède a été calculé au large (768 × 384) parce que la
+       projection et la couture ont besoin de place pour ne pas crénerer. Ce
+       qui part au GPU, lui, doit être MINUSCULE : sur la machine de 1995, un
+       personnage entier tenait dans une seule image de 64 à 256 pixels de
+       côté, et un visage y occupait une trentaine de texels. C'est cette
+       pauvreté-là qu'on reconnaît, bien plus que le compte de polygones.
+
+       Deux opérations, dans cet ordre. D'abord la RÉDUCTION, avec lissage :
+       on descend proprement, comme le faisait l'infographiste avant de livrer
+       sa planche ; le gros texel carré viendra de l'agrandissement au plus
+       proche, à l'affichage, pas d'une descente sale.
+       Ensuite la QUANTIFICATION en 15 bits — cinq bits par voie, trente-deux
+       niveaux — avec une trame ordonnée 4 × 4. La console tramait en sortie
+       pour cette raison précise : sans trame, un dégradé de peau se casse en
+       larges bandes ; avec, l'œil recompose les teintes manquantes et il
+       reste ce grésillement régulier, autre signature de l'époque. */
+    const CH = 32 / 256;   // pas d'un niveau sur cinq bits
+    const BAYER = [ 0, 8, 2,10, 12, 4,14, 6, 3,11, 1, 9, 15, 7,13, 5];
+    const pc = document.createElement('canvas'); pc.width = PS1_W; pc.height = PS1_H;
+    const pg = pc.getContext('2d', { willReadFrequently:true });
+    pg.imageSmoothingEnabled = true; pg.imageSmoothingQuality = 'high';
+    pg.drawImage(cv, 0, 0, PS1_W, PS1_H);
+    const pix = pg.getImageData(0, 0, PS1_W, PS1_H), q = pix.data;
+    for (let j = 0; j < PS1_H; j++) for (let i = 0; i < PS1_W; i++){
+      // 0,45 et non 1 : la console tramait en SORTIE, à 320 × 240, un texel pour
+      // un pixel. Ici la texture est agrandie cinq fois à l'écran, et une trame
+      // à pleine amplitude devenait un damier bien visible sur le front.
+      const k = (j*PS1_W + i)*4, seuil = (BAYER[(j & 3)*4 + (i & 3)] / 16 - 0.5) * CH * 255 * 0.45;
+      for (let ch = 0; ch < 3; ch++){
+        const v = Math.max(0, Math.min(255, q[k+ch] + seuil));
+        q[k+ch] = Math.round(v / 255 * 31) / 31 * 255;
+      }
+      q[k+3] = 255;
+    }
+    /* La pastille unie de la capuche : posée EN DERNIER et sur la petite
+       image, donc ni délavée par la réduction ni tramée. Un seul texel
+       suffirait puisque rien n'est filtré ; on en met deux sur deux par
+       prudence, et le coin (u vers la nuque, v au sommet du crâne) est sous le
+       tissu de toute façon — on ne lui vole rien. */
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++){
+      const k = (j*PS1_W + i)*4;
+      q[k] = CAPUCHE_RVB[0]; q[k+1] = CAPUCHE_RVB[1]; q[k+2] = CAPUCHE_RVB[2]; q[k+3] = 255;
+    }
+    pg.putImageData(pix, 0, 0);
+    pc.brut = true;        // texture() : aucun lissage, aucun rééchantillonnage
+    return pc;
   }
   // ---- photos, textures étendues (canvas) et maillages en cache (clé : chemin de la photo) ----
   const images = new Map(), meshes = new Map(), altSrc = new Map();
@@ -4896,7 +5069,7 @@ const model3d = (() => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(item.capuche !== false); meshes.set(key, mesh); }
       const tex = atlasTete(photo, item.cadre);
-      const a = { mesh, texF: tex, texB: tex, tourne: true };
+      const a = { mesh, texF: tex, texB: tex, tourne: true, ps1: true };  // ps1 : grille de sommets et placage affine (voir uPS1)
       ready.set(key, a);
       if (list) list.warm(a);
       return a;
