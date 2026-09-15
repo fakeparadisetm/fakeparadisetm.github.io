@@ -2532,6 +2532,23 @@ const sfx = (() => {
     note(t + 0.085, 392, 392, 0.085, 0.34, 'sine', 0.006);
     note(t + 0.085, 196, 196, 0.045, 0.30, 'triangle', 0.01); };
   api.state = () => (ctx ? ctx.state : 'inactif') + (amb ? ' + nappe' : ''); // contrôle : « running + nappe » une fois tout parti
+  /* Contrôle : niveau réellement produit en sortie. C'est la seule façon de
+     distinguer un son qui ne part pas d'un son qui part mais qu'on n'entend
+     pas (volume du système, onglet muet, sortie audio ailleurs). */
+  let analyser = null, levelBuf = null;
+  api.level = () => {
+    if (!ctx) return 0;
+    if (!analyser){
+      // fenêtre large (43 ms à 48 kHz) : un clic de 12 ms ne doit pas passer entre deux relevés
+      analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+      master.connect(analyser);
+      levelBuf = new Float32Array(analyser.fftSize);
+    }
+    analyser.getFloatTimeDomainData(levelBuf);
+    let p = 0;
+    for (let i = 0; i < levelBuf.length; i++){ const a = Math.abs(levelBuf[i]); if (a > p) p = a; }
+    return p;
+  };
   return api;
 })();
 
@@ -4466,16 +4483,41 @@ if (DIAG){
     + 'color:#7fe0a0;font:12px/1.5 Consolas,monospace;padding:10px 12px;border-radius:8px;'
     + 'white-space:pre;pointer-events:none;text-shadow:none;';
   document.body.appendChild(box);
+  // interrupteurs, pour trouver ce qui coûte cher sur SA machine : chaque
+  // touche éteint un élément, on lit les images par seconde juste après
+  const off = { halo: false, etincelles: false, verre: false, ruban: false };
+  const vraiPaint = paintWaves;
+  window.addEventListener('keydown', e => {
+    const k = { '1':'halo', '2':'etincelles', '3':'verre', '4':'ruban' }[e.key];
+    if (!k) return;
+    off[k] = !off[k];
+    document.getElementById('waveCanvasGlow').style.display = off.halo ? 'none' : '';
+    document.getElementById('sparkleCanvas').style.display = off.etincelles ? 'none' : '';
+    document.querySelectorAll('.glass, .preview').forEach(g => g.style.backdropFilter = off.verre ? 'none' : '');
+    paintWaves = off.ruban ? () => {} : vraiPaint;
+    bgWorst = 0;
+  });
+  // le niveau est relevé à chaque image, sans quoi un clic de 12 ms passerait entre deux mesures
+  let crete = 0, creteT = 0;
+  (function echantillonne(){
+    const n = sfx.level();
+    if (n > crete){ crete = n; creteT = performance.now(); }
+    requestAnimationFrame(echantillonne);
+  })();
   setInterval(() => {
     const d = model3d.debug();
+    if (performance.now() - creteT > 1500) crete = sfx.level(); // la crête retombe après une seconde et demie
+    const eteints = Object.keys(off).filter(k => off[k]);
     box.textContent =
       'fond    ' + bgFps + ' img/s   pire ecart ' + bgWorstShown + ' ms\n' +
       'modeles ' + d.fps + ' img/s   ' + d.rows + ' apercus\n' +
-      'son     ' + sfx.state() + '\n' +
+      'son     ' + sfx.state() + '   niveau ' + Math.round(crete * 1000) + '\n' +
       'horloge ' + (sfx.clock || 0).toFixed(1) + ' s   avance ' + Math.round(((sfx.lastAt || 0) - (sfx.clock || 0)) * 1000) + ' ms\n' +
       'joues   clic ' + sfx.plays.tick + '  souffle ' + sfx.plays.move + '  panier ' + sfx.plays.add + '\n' +
-      'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1);
-  }, 500);
+      'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1) + '\n' +
+      'touches 1 halo  2 etincelles  3 verre  4 ruban\n' +
+      'eteints ' + (eteints.length ? eteints.join(', ') : 'aucun');
+  }, 400);
 }
 
 applyMood();          // avant la première image : palette, voiles et halo
