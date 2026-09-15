@@ -461,10 +461,16 @@
     --pad:32px;      /* padding ; repris par la sonde de mesure et la barre du descriptif */
     --reserve:436px; /* hauteur hors visuel : contenu fixe ≈ 240 px + barres haut/bas 160 px + marges 2×18 px */
     position:fixed;
-    right:12vw;              /* rapproché du centre pour la lecture (6vw à l'origine, puis 9) */
+    /* La fiche a grandi d'environ 17 % (demande utilisateur), et elle grandit
+       VERS LA DROITE : son bord gauche reste exactement là où il était — 88vw
+       moins l'ancienne largeur — pour ne pas mordre davantage sur la barre
+       d'icônes, et elle prend sa largeur sur la marge droite, qui ne servait à
+       rien. En 16:9, sous ~1530 px de large, l'ancienne largeur valait déjà
+       34vw : à ces tailles rien ne bouge, il n'y a pas la place. */
+    left:calc(88vw - min(34vw, 520px));
     top:calc(50% - 8px);     /* centré entre l'horloge et la barre d'aide (bas ≈ 16 px plus haut que le haut) */
     transform:translateY(-50%);
-    width:min(34vw,520px);   /* fiche produit : +18 % de large, textes ≈ +15 % ; 34vw ménage la barre d'icônes sous 1530 px */
+    width:min(34vw,610px);   /* 610 = 520 + 17 % ; 34vw ménage la barre d'icônes sous 1530 px */
     z-index:6;
     opacity:0;
     transition:opacity 0.4s ease; /* la taille change pendant la baisse d'opacité, sans animation */
@@ -490,7 +496,7 @@
   /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
      plus grand, contenu centré (marges égales) pour la lecture et la navigation */
   .preview.info-panel{
-    width:min(34vw,500px);
+    width:min(34vw,586px);
     min-height:400px;
     max-height:min(76vh,660px); /* plafonné : au-delà, le texte défile */
     display:flex;
@@ -1295,6 +1301,33 @@
   .legal-hint span{display:flex;align-items:center;gap:6px;}
   .key.wide{width:auto;padding:0 7px;border-radius:9px;}
 
+  /* Fenêtres hautes (en 16:9, à partir de ~2100 px de large) : là seulement, la
+     fiche a de quoi grandir en hauteur, donc les textes suivent la largeur
+     (+10 %). En dessous, la fiche est limitée par la hauteur — elle doit tenir
+     entre l'horloge et la barre d'aide — et grossir les textes volerait la
+     place du visuel : ils gardent leur taille et seule la largeur augmente.
+     Le seuil est à 1180 px et pas plus bas pour que le passage ne se voie pas :
+     au-dessus, le visuel est borné par la largeur (536 px) des deux côtés de la
+     bascule, seuls les textes changent. --reserve monte d'autant que le bloc de
+     texte, puisque c'est lui qui borne le visuel (voir .preview-swatch). */
+  @media (min-height:1180px){
+    .preview{--pad:36px;--reserve:462px;} /* contenu fixe ≈ 267 px + 160 px + 2×18 px */
+    .preview-name{margin-top:24px;font-size:33px;}
+    .preview-price{margin-top:9px;font-size:20px;}
+    .preview-price .was{font-size:17px;}
+    .preview-desc{margin-top:18px;font-size:16.5px;}
+    .preview-cta{margin-top:29px;gap:11px;padding:14px 26px;font-size:15.5px;}
+    .preview-actions{gap:11px;margin-top:29px;}
+    .preview.info-panel{min-height:440px;max-height:min(76vh,720px);}
+    .preview.info-panel .preview-name{font-size:35px;}
+    .preview.info-panel .preview-price{font-size:21px;}
+    .preview.info-panel .preview-desc:not(.preview-desc-probe){font-size:17.5px;margin-top:22px;}
+    .preview.info-panel .preview-actions{margin-top:31px;}
+    .preview.info-panel .preview-cta{font-size:16.5px;padding:15px 29px;}
+    .preview.info-panel .settings-label{font-size:15.5px;}
+    .preview.info-panel .pill{font-size:16.5px;padding:12px 22px;}
+  }
+
   @media (max-height:820px){
     /* fenêtres basses (portable 1080p à 125 %, 1440×900…) : tailles d'origine
        pour que la fiche tienne entre l'horloge et la barre d'aide ; la largeur
@@ -1313,8 +1346,10 @@
   }
 
   @media (max-width:1280px){
-    /* écrans moyens : panneau plus près du bord pour laisser de la place à la barre */
-    .preview{right:7vw;width:min(36vw,480px);}
+    /* écrans moyens : panneau plus près du bord pour laisser de la place à la barre.
+       left:auto rend la main à right — sans quoi le left des grands écrans
+       l'emporterait et cette règle ne ferait plus rien. */
+    .preview{left:auto;right:7vw;width:min(36vw,480px);}
     .preview.info-panel{width:min(36vw,460px);}
   }
 
@@ -2602,8 +2637,11 @@ function placeSizePicker(){
   sizePicker.style.left = r.left + 'px';
   sizePicker.style.width = r.width + 'px';
   // sous la fiche ; si l'écran est trop bas, remonté juste assez pour rester
-  // entier (il passe alors devant la barre d'aide, d'où l'ombre portée)
-  sizePicker.style.top = Math.min(r.bottom + 10, window.innerHeight - sizePicker.offsetHeight - 8) + 'px';
+  // entier (il passe alors devant la barre d'aide, d'où l'ombre portée). Le
+  // max l'empêche de monter par-dessus la fiche : sur un écran juste, il perd
+  // son écart de 10 px et se colle dessous plutôt que de la chevaucher.
+  sizePicker.style.top = Math.max(r.bottom,
+    Math.min(r.bottom + 10, window.innerHeight - sizePicker.offsetHeight - 8)) + 'px';
 }
 function openSizePicker(keyboard){
   const cat = DATA[activeCat];
