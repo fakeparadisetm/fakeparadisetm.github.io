@@ -737,11 +737,11 @@
      bouton de dépliage du descriptif au bout. Deux lignes gagnées, rendues au
      visuel. */
   .preview-head{
-    display:flex;align-items:baseline;gap:12px;
+    display:flex;align-items:baseline;gap:10px;
     margin-top:18px;
   }
   .preview-name{
-    flex:1 1 auto;min-width:0;
+    flex:0 1 auto;min-width:0;
     font-size:24px;
     font-weight:450;
     letter-spacing:0.3px;
@@ -754,6 +754,7 @@
   }
   .preview-price{
     flex:0 0 auto;
+    margin-left:auto;        /* le prix est poussé au bord droit, le + reste collé au nom */
     font-size:24px;          /* exactement le corps du nom, comme demandé */
     color:var(--blue);
     font-weight:550;
@@ -1902,8 +1903,8 @@
            hauteur au lieu de deux, ce qui rend sa place au visuel. -->
       <div class="preview-head">
         <div class="preview-name" id="previewName"></div>
-        <div class="preview-price" id="previewPrice"></div>
         <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
+        <div class="preview-price" id="previewPrice"></div>
       </div>
       <div class="preview-desc" id="previewDesc"></div>
       <div class="preview-actions">
@@ -3345,6 +3346,23 @@ function updateSizeFocus(){
   [...sizePills.children].forEach((p, i) => p.classList.toggle('focus', i === sizeIndex));
 }
 
+
+/* La lueur de bord est posée dans le repère de la FICHE, or la fiche change de
+   hauteur : elle s'ouvre sur sa galerie, le descriptif se déplie, les tailles
+   apparaissent — et chacun de ces mouvements DURE. Placée une seule fois, au
+   début de l'animation, la lueur se retrouvait décalée par rapport à l'icône
+   dès que le panneau n'avait pas la hauteur d'une fiche produit. On la repose
+   donc à la fin de chaque transition de taille, et à l'image suivante après un
+   changement de contenu. */
+function recalerLueur(){ requestAnimationFrame(updateEdgeGlow); }
+['transitionend', 'transitioncancel'].forEach(ev => {
+  previewEl.addEventListener(ev, (e) => {
+    const t = e.target;
+    if (t !== previewEl && t.id !== 'previewInfo' && t.id !== 'sizePicker' && t.id !== 'previewDesc') return;
+    if (!/height|transform/.test(e.propertyName)) return;
+    updateEdgeGlow();
+  });
+});
 /* Vol vers le panier : c'est le MODÈLE 3D qui part, pas la photo. Il tourne sur
    lui-même pendant tout le trajet et rétrécit jusqu'à l'icône du panier.
    Le canvas et son contexte sont créés une seule fois et réutilisés : en créer
@@ -4651,7 +4669,7 @@ function updateEdgeGlow(){
   const p = previewEl.getBoundingClientRect();
   if (!p.width) return eteint();
   const bord = previewEl.clientTop;   // le repère d'un enfant absolu part du bord INTÉRIEUR du verre
-  const panHaut = p.top + 8, panBas = p.bottom - 8; // 8 px : la lueur reste sur la partie droite de l'arête, hors des coins arrondis
+  const panHaut = p.top, panBas = p.bottom;
   let force = 0, haut = 0, bas = 0;
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
@@ -4665,9 +4683,16 @@ function updateEdgeGlow(){
     // La boîte .category tient l'icône ET son libellé : son centre, autour
     // duquel joue l'échelle, est plus bas que celui de l'icône. D'où le calcul
     // complet plutôt qu'un simple g.top + g.icoH / 2.
-    const h1 = Math.max(panHaut, cy + (g.top + g.icoT - cy) * s);
-    const h2 = Math.min(panBas, cy + (g.top + g.icoT + g.icoH - cy) * s);
-    if (h2 <= h1) return;                                   // l'icône est au-dessus ou en dessous de la fiche
+    const h1 = cy + (g.top + g.icoT - cy) * s;
+    const h2 = cy + (g.top + g.icoT + g.icoH - cy) * s;
+    // La lueur épouse l'icône ENTIÈRE, elle n'est plus rognée à la hauteur du
+    // panneau. Sur les panneaux courts (Contact, Réglages, Pièces uniques)
+    // l'icône dépasse par le haut : garder seulement la portion commune
+    // déplaçait le centre de la lueur de 16 px et elle ne semblait plus alignée.
+    // Elle déborde donc un peu au-dessus du coin — ce qui, avec un dégradé
+    // flouté qui s'éteint à ses deux bouts, se lit comme une lumière qui
+    // contourne l'arête. On vérifie seulement que l'icône croise le panneau.
+    if (h2 <= panHaut || h1 >= panBas) return;
     force = Math.min(1, enfoncee); haut = h1; bas = h2;
   });
   if (!force) return eteint();
@@ -4801,6 +4826,7 @@ function fillPreview(){
   if (item !== dernierItem){ dernierItem = item; ficheOuverte = false; descOuvert = false; appliquerDesc(); }
   appliquerFiche();
   requestAnimationFrame(mesurerInfo);   // après la mise en page du nouveau contenu
+  recalerLueur();                       // la hauteur du panneau vient de changer
   if (isInfo) previewEl.classList.remove('desc-open');
 
   const infoBtn = document.getElementById('infoBtn');
