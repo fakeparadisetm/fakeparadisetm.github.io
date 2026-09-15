@@ -432,13 +432,10 @@
     z-index:3;                /* au-dessus des catégories (l'active est à 2), sous les panneaux fixes */
     pointer-events:none;      /* les lignes en dessous gardent survol, clic et info-bulle */
   }
-  /* ligne sélectionnée : halo d'accent derrière l'aperçu (dégradé statique, pas de filtre) */
-  .xmb-item.has-3d.selected::before{
-    content:'';
-    position:absolute;inset:-14px;
-    border-radius:50%;
-    background:radial-gradient(circle, rgba(var(--accent-rgb),0.38), rgba(var(--accent-rgb),0.12) 55%, transparent 72%);
-  }
+  /* Ligne sélectionnée : PLUS de disque derrière l'aperçu (demande du 15 sept.
+     2026). Le halo qui la détache est maintenant peint par le module 3D, à la
+     forme exacte du vêtement (voir drawRows) : un rond dessiné par-dessus le
+     ruban se voyait comme un rond, pas comme une lumière. */
   .xmb-item.has-3d .tag{position:absolute;right:-8px;top:-6px;margin:0;font-size:11px;line-height:1;}
 
   /* ---------- verre (panneaux annexes) ----------
@@ -550,8 +547,14 @@
     justify-content:center;
     text-align:center;
   }
+  /* Le bandeau nom + prix est une RANGÉE sur une fiche produit (le prix à
+     droite, au bord). Sur un panneau texte il n'y a rien à aligner à droite :
+     il devient une colonne centrée, titre puis mention, comme le reste du
+     panneau. Sans cela le titre restait collé à gauche pendant que le texte
+     en dessous, lui, était centré. */
+  .preview.info-panel .preview-head{flex-direction:column;align-items:center;gap:7px;}
   .preview.info-panel .preview-name{white-space:normal;font-size:32px;}
-  .preview.info-panel .preview-price{font-size:19px;}
+  .preview.info-panel .preview-price{font-size:19px;margin-left:0;}
   .preview.info-panel .preview-desc:not(.preview-desc-probe){ /* la sonde garde les métriques produit */
     font-size:16px;
     line-height:1.7;
@@ -633,9 +636,14 @@
        l'image occupe directement la fiche. Sa taille est ce qui reste de la
        hauteur d'écran une fois retirés le descriptif déplié (--desc-h, nul
        quand il est replié), le contenu fixe (--reserve) et, le cas échéant, ce
-       que les tailles n'ont pas pu prendre vers le bas (--squeeze). Replié, le
-       descriptif ne coûte donc rien et le visuel est au plus grand. */
-    width:min(100%, calc(100vh - var(--desc-h,0px) - var(--squeeze,0px) - var(--reserve)));
+       que le descriptif (--squeeze) puis les tailles (--sq-size) n'ont pas pu
+       prendre vers le bas. Replié, le descriptif ne coûte donc rien et le
+       visuel est au plus grand.
+       Deux variables et non une : le descriptif et les tailles se cumulent.
+       Tant qu'ils partageaient --squeeze, ouvrir les tailles effaçait la
+       compensation du descriptif, le visuel regagnait 80 px et la fiche
+       débordait sur la barre d'aide. */
+    width:min(100%, calc(100vh - var(--desc-h,0px) - var(--squeeze,0px) - var(--sq-size,0px) - var(--reserve)));
     aspect-ratio:1/1;
     margin:0 auto;
     display:flex;
@@ -829,38 +837,48 @@
     visibility:hidden;
     pointer-events:none;
   }
+  /* Boutons d'action (Ajouter au panier, Plus d'infos, Instagram, Jouer) :
+     même galet que les pastilles de taille (demande du 15 sept. 2026) — même
+     arrondi complet, même graisse, même transition. Le bouton principal garde
+     la couleur d'accent, comme une pastille choisie (.pill.active) ; le
+     secondaire reste au repos, comme une pastille non choisie. On lit ainsi
+     un seul vocabulaire de boutons dans toute la fiche.
+     Les boutons du mini-jeu, eux, remettent un angle droit et leur biseau
+     16 bits : c'est une autre époque, assumée (voir .arena-pick-actions). */
   .preview-cta{
     margin-top:26px;
     display:inline-flex;
     align-items:center;
     gap:10px;
-    padding:13px 24px;
-    background:rgba(var(--accent-rgb),0.05);
+    padding:12px 24px;
+    background:rgba(var(--accent-rgb),0.15);
     border:1px solid var(--blue);
     color:var(--white);
     font-size:14px;
-    letter-spacing:0.4px;
+    font-weight:550;
+    letter-spacing:0.5px;
     cursor:pointer;
-    border-radius:3px;
-    transition:background 0.25s ease, box-shadow 0.25s ease;
-    box-shadow:0 0 12px rgba(var(--accent-rgb),0.2);
+    border-radius:999px;
+    transition:all 0.25s ease;
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
   }
   .preview-cta:hover{
-    background:rgba(var(--accent-rgb),0.15);
-    box-shadow:0 0 10px rgba(var(--accent-rgb),0.5), 0 0 28px rgba(var(--accent-rgb),0.28);
+    background:rgba(var(--accent-rgb),0.24);
+    border-color:var(--blue);
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.55), 0 0 28px rgba(var(--accent-rgb),0.3);
   }
   /* rangée de boutons : « + Add to bag » et « More info » côte à côte */
   .preview-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
   .preview-actions .preview-cta{margin-top:0;}
   .preview-cta--secondary{
-    background:transparent;
-    border-color:rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.03);
+    border-color:rgba(255,255,255,0.12);
     color:var(--white-60);
     box-shadow:none;
   }
   .preview-cta--secondary:hover{
     background:rgba(255,255,255,0.06);
-    border-color:rgba(255,255,255,0.5);
+    border-color:rgba(255,255,255,0.3);
     color:var(--white);
     box-shadow:none;
   }
@@ -1154,20 +1172,23 @@
     margin-bottom:18px;
   }
   .cart-total .amount{color:var(--blue);text-shadow:0 0 10px rgba(var(--accent-rgb),0.4);}
+  /* Même galet que les pastilles de taille et les boutons de la fiche */
   .cart-checkout{
     width:100%;
     padding:13px;
-    background:rgba(var(--accent-rgb),0.08);
+    background:rgba(var(--accent-rgb),0.15);
     border:1px solid var(--blue);
     color:var(--white);
     font-size:13px;
-    letter-spacing:0.4px;
+    font-weight:550;
+    letter-spacing:0.5px;
     cursor:pointer;
-    border-radius:3px;
-    transition:background 0.25s ease, box-shadow 0.25s ease;
+    border-radius:999px;
+    transition:all 0.25s ease;
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
   }
   .cart-checkout:hover{
-    background:rgba(var(--accent-rgb),0.18);
+    background:rgba(var(--accent-rgb),0.24);
     box-shadow:0 0 24px rgba(var(--accent-rgb),0.3);
   }
 
@@ -2695,8 +2716,14 @@ const DATA = [
          fr:"Deux pièces. Un vainqueur. Zéro réflexion.\nVous hésitez ? Qu'elles se battent."} } },
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
+  // Contact : même forme que les autres panneaux texte — un titre, la mention
+  // en couleur d'accent (à la place du prix), deux lignes, puis le bouton.
+  // Avant, le titre PORTAIT l'adresse et la ligne d'accent la répétait en
+  // entier : deux fois la même chose, et rien qui dise quoi écrire.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
-    panel:{ n:"DM @fakeparadisetm" } },
+    panel:{ n:{en:"Contact", fr:"Contact"},
+      d:{en:"Orders, sizing, custom pieces — or just to say hi.\nDM us on Instagram, we answer within a day.",
+         fr:"Commandes, tailles, pièces sur mesure — ou juste pour dire bonjour.\nÉcrivez-nous en DM sur Instagram, réponse sous 24 heures."} } },
   { name:{en:"Settings", fr:"Réglages"}, icon:"settings icon.png", kind:"settings", items:[] },
   { name:{en:"Shipping Info", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
@@ -3227,6 +3254,20 @@ const sfx = (() => {
       note(t + n[1], n[0] * 1.5, n[0] * 1.5, n[2] * 0.14, 0.11, 'triangle', 0.004, 0.28);
     });
   };
+  /* L'écran de démarrage s'efface : un souffle qui s'ouvre, dans le timbre de
+     la barre horizontale (bruit filtré qui monte au lieu de descendre) et deux
+     harmoniques très en retrait pour lui donner une hauteur. Rien de plus : ce
+     n'est pas une fanfare, c'est le rideau qui se lève sur le menu.
+     Il ne sonnera que si le navigateur autorise déjà le son — sans le moindre
+     geste de l'utilisateur, le moteur audio reste suspendu et audio() rend
+     null. C'est la règle des navigateurs, pas un oubli. */
+  api.boot = () => {
+    const c = audio(); if (!c) return; const t = at();
+    burst(t, { freq: 320, q: 1.0, peak: 0.075, attack: 0.20, decay: 0.42, sweep: 1500, lp: 2600, bell: 0.34 });
+    burst(t + 0.05, { freq: 1200, q: 1.2, peak: 0.020, attack: 0.18, decay: 0.34, sweep: 2600, bell: 0.34 });
+    note(t + 0.02, 392, 392, 0.030, 0.55, 'sine', 0.16, 0.30);
+    note(t + 0.02, 784, 784, 0.012, 0.45, 'sine', 0.16, 0.30);
+  };
   /* Validation d'un article : un petit « toc » tactile, plus court et plus doux
      que le clic de défilement. Deux couches seulement — un grain de bruit qui
      donne le contact, une note brève qui donne le « c'est pris ». Il doit se
@@ -3326,7 +3367,11 @@ function mesurerTailles(){
   const grow = Math.min(besoin, libre);
   previewEl.style.setProperty('--size-h', (besoin - 14) + 'px');
   previewEl.style.setProperty('--grow', grow + 'px');
-  previewEl.style.setProperty('--squeeze', (besoin - grow) + 'px');
+  /* --sq-size et non --squeeze : cette dernière appartient au descriptif, qui
+     peut être déplié en même temps. Les deux se retranchent du visuel, l'une
+     après l'autre ; écrire dans la même variable rendait au visuel la place
+     que le descriptif avait prise, et la fiche recouvrait la barre d'aide. */
+  previewEl.style.setProperty('--sq-size', (besoin - grow) + 'px');
 }
 function openSizePicker(keyboard){
   const cat = DATA[activeCat];
@@ -3353,7 +3398,7 @@ function closeSizePicker(){
   if (sizePicker.contains(document.activeElement)) document.activeElement.blur();
   sizePicker.classList.remove('open');
   previewEl.classList.remove('grown');
-  previewEl.style.setProperty('--squeeze', '0px');
+  previewEl.style.setProperty('--sq-size', '0px'); // le descriptif garde la sienne (--squeeze)
   sizePicker.setAttribute('aria-hidden', 'true');
   sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
 }
@@ -4739,19 +4784,19 @@ function updateEdgeGlow(){
     // complet plutôt qu'un simple g.top + g.icoH / 2.
     const h1 = cy + (g.top + g.icoT - cy) * s;
     const h2 = cy + (g.top + g.icoT + g.icoH - cy) * s;
-    // La lueur épouse l'icône ENTIÈRE, elle n'est plus rognée à la hauteur du
-    // panneau. Sur les panneaux courts (Contact, Réglages, Pièces uniques)
-    // l'icône dépasse par le haut : garder seulement la portion commune
-    // déplaçait le centre de la lueur de 16 px et elle ne semblait plus alignée.
-    // Elle déborde donc un peu au-dessus du coin — ce qui, avec un dégradé
-    // flouté qui s'éteint à ses deux bouts, se lit comme une lumière qui
-    // contourne l'arête.
-    /* « En contact » veut dire vraiment en contact : il faut que les deux tiers
-       au moins de l'icône se trouvent en face du panneau. Une icône qui
-       n'affleure que son coin n'allume plus rien — la lueur, posée sur toute
-       la hauteur de l'icône, aurait alors flotté à côté du panneau. */
+    // La lueur épouse l'icône ENTIÈRE, elle n'est pas rognée à la hauteur du
+    // panneau : rogner déplaçait son centre de 16 px et elle ne semblait plus
+    // alignée. C'est licite puisque, depuis, seule une icône entièrement
+    // couverte l'allume (voir juste en dessous).
+    /* Cachée veut dire ENTIÈREMENT cachée : l'icône doit tenir tout entière
+       dans la hauteur du panneau. Sur les panneaux courts (Contact, Réglages,
+       Livraison, Pièces uniques) elle dépasse par le haut ; le deuxième tiers
+       de sa hauteur restait visible au-dessus du coin, et la lueur — posée sur
+       toute l'icône — semblait s'allumer à côté de rien. Rien n'est caché,
+       donc rien ne s'allume. (Un demi-pixel de marge : les positions viennent
+       d'un calcul flottant.) */
     const commun = Math.min(h2, panBas) - Math.max(h1, panHaut);
-    if (commun < (h2 - h1) * 0.66) return;
+    if (commun < (h2 - h1) - 0.5) return;
     force = Math.min(1, enfoncee); haut = h1; bas = h2;
   });
   if (!force) return eteint();
@@ -4815,8 +4860,11 @@ function ouvrirFiche(anim){
     const row = cat && cat.querySelector('.item-column').children[activeItem];
     if (row) model3d.spin(row);
   }
-  sfx.select();          // validation : un petit toc tactile, à chaque sélection
+  // Validation : un petit toc tactile, mais seulement quand il se passe
+  // quelque chose. Recliquer un article déjà choisi, dont la fiche est déjà
+  // dépliée, ne change rien à l'écran : le son sonnerait à vide.
   if (ficheOuverte) return;
+  sfx.select();
   ficheOuverte = true;
   appliquerFiche();
 }
@@ -4893,7 +4941,7 @@ function fillPreview(){
   infoBtn.hidden = true;
   if (cat.kind === 'contact'){
     priceEl.hidden = false;
-    priceEl.textContent = 'instagram.com/fakeparadisetm';
+    priceEl.textContent = '@fakeparadisetm'; // la poignée, pas l'adresse entière : le bouton s'occupe d'y mener
     addBtn.hidden = false;
     addBtn.textContent = T('instagram');
   } else if (cat.kind === 'info' || cat.kind === 'game'){
@@ -6719,11 +6767,16 @@ function runStartup(){
       document.body.classList.remove('booting');
       layer.classList.add('fade');
       tint.classList.add('fade');
+      /* La console est allumée : le menu apparaît, les touches répondent, et
+         un souffle accompagne le rideau. startupActive tombe ICI et non à la
+         fin du fondu — c'est ce drapeau qui tient aussi bien le clavier que le
+         son (voir sfx.audio), et le son doit partir avec l'image. */
+      startupActive = false;
+      sfx.boot();
       setTimeout(() => {
         layer.remove();
         tint.remove();
         document.body.classList.remove('boot-fade');
-        startupActive = false;
       }, STARTUP.fade);
     }, STARTUP.hold);
   };
