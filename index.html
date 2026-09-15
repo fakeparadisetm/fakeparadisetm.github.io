@@ -4760,6 +4760,28 @@ const arena = (() => {
      couronne de palmes qui retombent, deux noix. Dessiné par une fonction pour
      pouvoir en semer plusieurs de tailles et de penchants différents — quatre
      palmiers identiques et symétriques faisaient décor de théâtre. */
+  /* Éclair : une ligne brisée du haut vers le bas, autour du milieu. Sert à
+     couper l'aperçu en deux et à montrer d'emblée que le décor change d'un
+     duel à l'autre. Les points sont tirés une fois et gardés, sinon la fente
+     et la lumière ne coïncideraient pas. */
+  function pointsEclair(w, h){
+    const pts = [], n = 9;
+    for (let i = 0; i <= n; i++){
+      const t = i / n;
+      const ecart = (i === 0 || i === n) ? 0 : (Math.random() - 0.5) * w * 0.14;
+      pts.push({ x: w * 0.5 + ecart + Math.sin(t * 7) * w * 0.03, y: t * h });
+    }
+    return pts;
+  }
+  function traitEclair(g, pts, ep, c){
+    for (let i = 1; i < pts.length; i++){
+      const a = pts[i - 1], b = pts[i], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
+      for (let k = 0; k <= n; k++){
+        const u = k / n;
+        R(g, a.x + (b.x - a.x) * u - ep / 2, a.y + (b.y - a.y) * u, ep, 2, c);
+      }
+    }
+  }
   function palmier(g, x, solY, ht, pente, c){
     for (let i = 0; i < ht; i++){                      // tronc, incurvé
       const u = i / ht;
@@ -4874,7 +4896,6 @@ const arena = (() => {
       }
       R(g, 0, mer, w, sol - mer, '#2f6f8f');                          // mer
       for (let y = mer + 2; y < sol; y += 4) R(g, 0, y, w, 1, '#3f89a8');
-      R(g, cx - 5, mer, 10, sol - mer, '#7fc8d8');                    // reflet du soleil
       R(g, 0, sol, w, h - sol, '#e0c48c');                            // sable
       R(g, 0, sol, w, 2, '#f2dcae');
       for (let i = 0; i < 70; i++) R(g, (i * 47) % w, sol + 4 + (i * 13) % Math.max(4, h - sol - 4), 1, 1, '#c9a870');
@@ -4891,7 +4912,6 @@ const arena = (() => {
         const off = Math.sin(t / 900 + i) * 8;
         for (let x = -12; x < w; x += 26) R(g, x + off + (i % 2) * 13, y, 9, 1, '#9fd8e8');
       }
-      R(g, w * 0.5 - 5, mer, 10, 2, Math.sin(t / 260) > 0 ? '#bfe8f4' : '#7fc8d8');
     },
   },
   { // GARAGE AU NÉON : béton, rideau métallique, tubes qui clignotent
@@ -4941,21 +4961,13 @@ const arena = (() => {
          Le hasard pur donnait un scintillement régulier, donc faux. */
       const rate = (a, b, c) => Math.sin(t / a) + Math.sin(t / b + 1.7) + Math.sin(t / c + 4.1);
       const f1 = rate(97, 211, 53) < -2.05 ? 0.15 : 0.92 + 0.08 * Math.sin(t / 61);
-      const f2 = rate(143, 79, 307) < -2.2 ? 0.25 : 0.95;
       // rampe du plafond
       R(g, 10, h * 0.075, w - 20, 3, 'rgba(255,220,150,' + f1 + ')');
       R(g, 10, h * 0.075 - 2, w - 20, 2, 'rgba(120,96,60,' + (0.5 + f1 * 0.3) + ')'); // le réflecteur
       [[7, 0.22], [16, 0.11], [30, 0.05]].forEach(b => {
-        g.globalAlpha = b[1] * f1; R(g, 10, h * 0.075 + 3, w - 20, b[0], '#ffb43c');
       });
       g.globalAlpha = 1;
-      // baladeuse murale, à droite
-      R(g, w - 9, h * 0.14, 4, sol - h * 0.28, 'rgba(255,205,120,' + f2 + ')');
-      [[9, 0.20], [20, 0.09]].forEach(b => {
-        g.globalAlpha = b[1] * f2; R(g, w - 9 - b[0], h * 0.14, b[0], sol - h * 0.28, '#ffb43c');
-      });
       g.globalAlpha = 0.11 * f1; R(g, 0, sol, w, h - sol, '#ffb43c');  // la lumière bave sur le béton
-      g.globalAlpha = 0.07 * f2; R(g, w * 0.68, sol, w * 0.32, h - sol, '#ffcf7a');
       g.globalAlpha = 1;
       R(g, w * 0.5 - 4, h * 0.10, 8, 5, f1 > 0.5 ? '#ffeccb' : '#8a7a5c'); // la suspension suit la rampe
     },
@@ -5140,12 +5152,22 @@ const arena = (() => {
         arme = 1;
       }
     }
-    const dernier = plan.length ? plan[plan.length - 1] : null;
-    if (dernier && dernier.to === s && tt >= dernier.choc){ // coup encaissé : éclair rouge et recul
-      const u = Math.min(1, (tt - dernier.choc) / PH.impact);
-      rouge = (1 - u) * (1 - u);
-      dx = -sens * H * 0.06 * Math.sin(u * Math.PI);
-      ang -= sens * 0.2 * (1 - u);
+    /* Le coup encaissé : recul et clignotement rouge, sur CHAQUE attaque.
+       Il ne se déclenchait que sur le dernier coup du plan — plan[longueur-1]
+       au lieu du coup en cours — d'où l'impression que seul le pistolet
+       secouait sa cible. Une fois tombé, le plan est tronqué au coup fatal :
+       le dernier est alors bien celui qu'on veut. Le rouge ne fond pas
+       doucement, il bat : trois éclats qui s'éteignent, c'est ce qui donne le
+       « ça a frappé » du jeu d'arcade. Les effets propres à chaque arme
+       (arme en main, projectile, gerbe d'impact) sont ailleurs, intacts. */
+    const frappe = koT ? plan[plan.length - 1] : e;
+    if (frappe && frappe.to === s && tt >= frappe.choc){
+      const u = Math.min(1, (tt - frappe.choc) / PH.impact);
+      const bat = Math.sin(u * Math.PI * 6.5) > -0.25 ? 1 : 0.15;
+      rouge = (1 - u) * (1 - u) * bat;
+      dx = -sens * H * 0.075 * Math.sin(u * Math.PI);
+      ang -= sens * 0.24 * (1 - u);
+      dy -= H * 0.012 * Math.sin(u * Math.PI);
     }
     if (koT && s === perdant){                    // il part en poussière : le tissu s'efface
       const p = avance(tt, FINALE.poussiere);
@@ -5427,7 +5449,7 @@ const arena = (() => {
      ce sont les PREMIERS articles de la boutique, pas des références figées :
      si ceux-ci disparaissent un jour, l'aperçu prendra simplement les suivants
      au lieu de montrer un produit mort. */
-  const teaser = { box: null, gl: null, scene: null, taille: '', decor: null };
+  const teaser = { scene: null, taille: '', decor: null, fente: null };
   function apercu(){
     const box = document.getElementById('arenaTeaser');
     if (!box) return;
@@ -5444,13 +5466,35 @@ const arena = (() => {
     teaser.taille = cle;
     [bc, gc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
     if (!teaser.scene) teaser.scene = model3d.makeScene(gc);
-    if (!teaser.decor) teaser.decor = DECORS[Math.floor(Math.random() * DECORS.length)];
+    if (!teaser.decor){                                     // deux décors distincts, de part et d'autre de l'éclair
+      const i = Math.floor(Math.random() * DECORS.length);
+      const j = (i + 1 + Math.floor(Math.random() * (DECORS.length - 1))) % DECORS.length;
+      teaser.decor = [DECORS[i], DECORS[j]];
+    }
     const w = r.width, h = r.height, pw = 320, ph = Math.max(80, Math.round(pw * h / w));
-    // 1. décor, au gros pixel comme dans l'arène
+    // 1. décor, au gros pixel comme dans l'arène — mais DEUX décors, fendus par
+    //    un éclair : l'aperçu annonce ainsi que le lieu change d'un duel à
+    //    l'autre. La moitié droite est peinte sous découpe, le long de la même
+    //    ligne brisée que l'éclair, sinon la fente et la lumière ne
+    //    coïncideraient pas.
     const tampon = document.createElement('canvas'); tampon.width = pw; tampon.height = ph;
     const gp = tampon.getContext('2d');
-    teaser.decor.fixe(gp, pw, ph);
-    if (teaser.decor.vif) teaser.decor.vif(gp, pw, ph, 1200);
+    if (!teaser.fente) teaser.fente = pointsEclair(pw, ph);
+    const fente = teaser.fente;
+    teaser.decor[0].fixe(gp, pw, ph);
+    if (teaser.decor[0].vif) teaser.decor[0].vif(gp, pw, ph, 1200);
+    gp.save();
+    gp.beginPath();
+    gp.moveTo(fente[0].x, 0);
+    fente.forEach(p => gp.lineTo(p.x, p.y));
+    gp.lineTo(pw, ph); gp.lineTo(pw, 0);
+    gp.closePath(); gp.clip();
+    teaser.decor[1].fixe(gp, pw, ph);
+    if (teaser.decor[1].vif) teaser.decor[1].vif(gp, pw, ph, 3400);
+    gp.restore();
+    traitEclair(gp, fente, 7, 'rgba(255,240,190,0.22)');   // halo
+    traitEclair(gp, fente, 3, '#ffe9a8');
+    traitEclair(gp, fente, 1, '#ffffff');                  // cœur
     const gb = bc.getContext('2d');
     gb.imageSmoothingEnabled = false;
     gb.clearRect(0, 0, bc.width, bc.height);
