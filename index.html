@@ -2881,6 +2881,37 @@ const sfx = (() => {
     note(t, 1046.5, 1046.5, 0.022, 0.13, 'sine', 0.006);
     note(t + 0.085, 392, 392, 0.085, 0.34, 'sine', 0.006);
     note(t + 0.085, 196, 196, 0.045, 0.30, 'triangle', 0.01); };
+  /* Mini-jeu « Versus » : départ d'attaque et impact. Deux sons courts, faits
+     comme les autres — du bruit filtré et quelques sinus, aucun fichier — avec
+     un timbre par arme, pour qu'on entende laquelle vient de tirer. */
+  api.shot = (arme) => {
+    const c = audio(); if (!c) return; const t = at();
+    if (arme === 'arc'){                        // corde qui claque, puis la flèche qui file
+      burst(t, { freq: 900, q: 6, peak: 0.075, attack: 0.002, decay: 0.05, sweep: 380, lp: 2600 });
+      note(t, 240, 120, 0.045, 0.12, 'triangle', 0.003);
+    } else if (arme === 'pistolet'){            // détonation sèche
+      burst(t, { freq: 2400, q: 0.8, peak: 0.11, attack: 0.001, decay: 0.045, lp: 5200 });
+      note(t, 160, 55, 0.08, 0.11, 'square', 0.001);
+    } else if (arme === 'baton'){               // scintillement qui monte
+      note(t, 520, 1180, 0.045, 0.22, 'sine', 0.01);
+      burst(t, { freq: 3200, q: 1.6, peak: 0.045, attack: 0.02, decay: 0.2, bell: 0.35 });
+    } else if (arme === 'canon'){               // charge, puis départ grave
+      burst(t, { freq: 320, q: 2.2, peak: 0.07, attack: 0.09, decay: 0.16, sweep: 900, soft: true });
+      note(t + 0.06, 90, 45, 0.09, 0.2, 'sawtooth', 0.004);
+    } else {                                    // sceptre : cloche sourde
+      note(t, 330, 300, 0.055, 0.3, 'sine', 0.008, 0.3);
+      note(t, 660, 600, 0.028, 0.22, 'sine', 0.008, 0.3);
+    }
+  };
+  // Impact : un choc grave qui porte le poids du coup, un éclat de bruit pour
+  // le tranchant, une traîne sourde. Le volume suit les dégâts encaissés.
+  api.hit = (degats) => {
+    const c = audio(); if (!c) return; const t = at();
+    const v = 0.6 + Math.min(1, (degats || 30) / 55) * 0.6;
+    note(t, 130, 44, 0.11 * v, 0.17, 'triangle', 0.001);
+    burst(t, { freq: 1500, q: 0.7, peak: 0.07 * v, attack: 0.001, decay: 0.09, lp: 4200 });
+    burst(t + 0.02, { freq: 420, q: 1.1, peak: 0.045 * v, attack: 0.004, decay: 0.16, lp: 1600 });
+  };
   api.state = () => (ctx ? ctx.state : 'inactif') + (amb ? ' + nappe' : ''); // contrôle : « running + nappe » une fois tout parti
   /* Contrôle : niveau réellement produit en sortie. C'est la seule façon de
      distinguer un son qui ne part pas d'un son qui part mais qu'on n'entend
@@ -4632,255 +4663,366 @@ const arena = (() => {
     sfx.tick(true);
   }
 
-  /* ---- écriture du duel ----
-     Le vainqueur est tiré à pile ou face, puis on répartit les dégâts : ceux du
-     vainqueur tombent juste à 100 (K.-O. au dernier coup), ceux du perdant
-     laissent au vainqueur entre 25 et 55 points de vie. Le duel est donc court,
-     décisif, et toujours de la même longueur. */
-  function parts(total, k){ // k parts entières, positives, de somme exacte
-    const w = Array.from({ length: k }, () => 0.55 + Math.random());
-    const s = w.reduce((a, b) => a + b, 0);
-    const r = w.map(x => Math.max(1, Math.round(x / s * total)));
-    let reste = Math.round(total) - r.reduce((a, b) => a + b, 0);
-    for (let i = r.length - 1; reste !== 0 && i >= 0; i--){ // le reste d'arrondi se replace sans jamais passer sous 1
-      const d = Math.max(1 - r[i], reste);
-      r[i] += d; reste -= d;
-    }
-    return r;
-  }
-  // Durées d'un tour, en ms. Dix attaques au total : chaque dizaine de ms comptée
-  // ici se paie treize fois à l'écran, d'où des valeurs serrées (≈ 13 s en tout).
+  /* ---- déroulé du duel ----
+     Les dégâts ne sont PLUS écrits d'avance : chaque coup tire son nombre au
+     moment où il touche, et les fourchettes montent d'un tour à l'autre. Ni le
+     joueur ni le code ne savent qui gagne avant le dernier échange. Trois
+     attaques chacun, six en tout : c'est ce qui tient le duel sous dix
+     secondes. Si personne n'est à zéro au bout, celui qui a le moins de vie
+     perd ; un coup qui descend à zéro arrête tout sur-le-champ. */
   const PH = { intro: 800, wind: 260, impact: 340, rest: 150 };
-  let plan = [], finMs = 0, vainqueur = 0, vie = [100, 100];
+  const DEGATS = [[20, 40], [26, 50], [34, 62]]; // fourchettes par tour, croissantes
+  const TOURS = 3;
+  let plan = [], finMs = 0, vainqueur = -1, vie = [100, 100];
 
   function ecrireDuel(){
-    vainqueur = Math.random() < 0.5 ? 0 : 1;
-    const perdant = 1 - vainqueur;
-    const n = 4 + Math.round(Math.random());          // 4 ou 5 attaques chacun
-    const versPerdant = parts(100, n);
-    const versVainqueur = parts(38 + Math.random() * 34, n); // le vainqueur finit entre 28 % et 62 % de vie : le duel reste serré
+    const premier = Math.random() < 0.5 ? 0 : 1;
     plan = [];
     let t = PH.intro, precedente = -1;
-    for (let i = 0; i < n; i++){
-      // le perdant ouvre : le dernier coup du duel est donc celui du vainqueur
-      [[perdant, versVainqueur[i]], [vainqueur, versPerdant[i]]].forEach(paire => {
-        const from = paire[0], dmg = paire[1];
-        let a = Math.floor(Math.random() * ATTAQUES.length);
-        if (a === precedente) a = (a + 1 + Math.floor(Math.random() * (ATTAQUES.length - 1))) % ATTAQUES.length;
-        precedente = a;
-        const atk = ATTAQUES[a];
-        const tir = t + PH.wind;
-        plan.push({ from: from, to: 1 - from, dmg: dmg, atk: atk, t0: t, tir: tir,
-                    choc: tir + atk.vol, fin: tir + atk.vol + PH.impact + PH.rest });
-        t = tir + atk.vol + PH.impact + PH.rest;
-      });
+    for (let i = 0; i < TOURS * 2; i++){
+      const from = i % 2 === 0 ? premier : 1 - premier;
+      let a = Math.floor(Math.random() * ATTAQUES.length);
+      if (a === precedente) a = (a + 1 + Math.floor(Math.random() * (ATTAQUES.length - 1))) % ATTAQUES.length;
+      precedente = a;
+      const atk = ATTAQUES[a];
+      const tir = t + PH.wind;
+      plan.push({ from: from, to: 1 - from, atk: atk, tour: i >> 1, dmg: 0,
+                  t0: t, tir: tir, choc: tir + atk.vol, fin: tir + atk.vol + PH.impact + PH.rest });
+      t = plan[plan.length - 1].fin;
     }
     finMs = t;
     vie = [100, 100];
+    vainqueur = -1;
   }
 
-  /* ---- attaques : quatre sorts, tirés dans un ordre aléatoire, jamais deux
-     fois de suite le même. `vol` est la durée du trajet ; `trace` dessine le
-     projectile à l'avancement u (0 au départ, 1 à l'arrivée) ; `choc` dessine
-     l'impact à l'avancement v. Tout est peint à la couleur d'ambiance du
-     moment, pour que le duel reste dans la teinte du site. ---- */
-  const TAU2 = Math.PI * 2;
-  let ACC = '120,190,220'; // couleur d'accent, relue à chaque ouverture
-  const lerp = (a, b, u) => a + (b - a) * u;
+  /* ---- décors ----
+     Trois scènes de jeu 16 bits, tirées au sort à chaque duel : une ruelle, une
+     plage, un garage. Elles sont peintes dans un tampon de 320 px de large,
+     agrandi SANS lissage — c'est ce qui donne le gros pixel d'époque, et ça ne
+     coûte presque rien puisque la scène fait 320 px de large au lieu de 1200.
+     La partie fixe n'est peinte qu'une fois par duel ; seuls les détails
+     vivants (néons, vagues, lampadaire) sont repassés à chaque image. Le sol ne
+     défile pas : personne ne se déplace, un sol qui glisse serait un mensonge.
+     Aucune de ces couleurs ne vient de l'ambiance du site : seules la fenêtre et
+     les barres de vie gardent la couleur d'accent. */
+  const PXW = 320;                 // largeur du tampon : tout le décor est dessiné là-dedans
+  const SOL = 0.82;                // ligne de sol, en fraction de la hauteur
+  const TAILLE = 0.50;             // côté du carré de rendu d'un vêtement
+  const FACE = 0.82;               // trois quarts : chacun tourné vers le centre (~47°). Plus bas,
+                                   // la perspective courte de la scène écrase l'angle et ils
+                                   // paraissent de face.
+  let pxH = 180, pxFixe = null, pxBack = null, pxFront = null, decor = null;
+  const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
+  const bandes = (g, w, y0, liste) => liste.forEach(b => R(g, 0, y0 + b[0], w, b[1], b[2]));
 
+  const DECORS = [
+  { // RUELLE SOMBRE : deux murs qui se resserrent, une lampe, une flaque
+    nom: 'ruelle',
+    fixe(g, w, h){
+      const sol = h * SOL, mur = w * 0.21;          // mur du fond entre les deux murs latéraux
+      R(g, 0, 0, w, h, '#0d0b12');
+      bandes(g, w, 0, [[0, h * 0.09, '#161327'], [h * 0.09, h * 0.07, '#1d1830'], [h * 0.16, h * 0.06, '#241d38']]);
+      R(g, w * 0.5 - 9, h * 0.05, 7, 7, '#cfd6e8');                  // lune
+      // mur du fond : briques, fenêtres, quelques-unes allumées
+      R(g, mur, h * 0.20, w - mur * 2, sol - h * 0.20, '#221c2a');
+      for (let y = h * 0.23; y < sol - 6; y += 11) R(g, mur, y, w - mur * 2, 1, '#1a1522');
+      for (let x = mur; x < w - mur; x += 14) R(g, x, h * 0.20, 1, sol - h * 0.20, '#1e1826');
+      for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++){
+        const x = mur + 6 + i * (w - mur * 2 - 12) / 6, y = h * 0.25 + j * h * 0.15;
+        const on = (i * 3 + j) % 5 === 1;
+        R(g, x, y, 11, 15, on ? '#f0c46a' : '#171223');
+        if (on){ R(g, x + 1, y + 1, 9, 6, '#fce7b0'); R(g, x, y + 7, 11, 1, '#0f0c17'); }
+        else R(g, x + 1, y + 1, 4, 6, '#211a2e');
+      }
+      R(g, w * 0.44, sol - 26, 16, 26, '#191426');                    // porte de service
+      R(g, w * 0.44, sol - 26, 16, 2, '#2e2740');
+      R(g, w * 0.57, sol - 4, 4, 4, '#2e2740');
+      // murs latéraux, en fuite : bandes verticales de plus en plus sombres
+      for (let i = 0; i < 7; i++){
+        const t = i / 7, x = t * mur, lg = mur / 7 + 1;
+        const c = ['#1a1524', '#181322', '#161120', '#140f1d', '#120e1a', '#100c17', '#0e0a14'][i];
+        R(g, x, h * 0.20 * t, lg, h - h * 0.20 * t, c);
+        R(g, w - x - lg, h * 0.20 * t, lg, h - h * 0.20 * t, c);
+      }
+      R(g, mur - 1, h * 0.20, 1, sol - h * 0.20, '#332a45');          // arêtes éclairées
+      R(g, w - mur, h * 0.20, 1, sol - h * 0.20, '#332a45');
+      for (let y = h * 0.16; y < sol - 10; y += h * 0.15){            // escalier de secours, à gauche
+        R(g, 2, y, mur - 4, 2, '#2c2438');
+        R(g, 2, y, 2, h * 0.15, '#2c2438');
+        R(g, mur - 6, y, 2, h * 0.15, '#241d30');
+      }
+      R(g, w * 0.055, sol - 26, 36, 26, '#25402c');                   // benne
+      R(g, w * 0.055, sol - 28, 36, 3, '#2f5236');
+      R(g, w * 0.055, sol - 14, 36, 1, '#1b2f20');
+      R(g, w * 0.16, sol - 9, 9, 9, '#1a1a22'); R(g, w * 0.19, sol - 7, 7, 7, '#1a1a22'); // sacs
+      R(g, w * 0.82, sol - h * 0.40, 3, h * 0.40, '#1c1828');         // lampadaire
+      R(g, w * 0.795, sol - h * 0.42, 9, 5, '#3a3350');
+      // sol : bitume, trottoir au pied des murs, bouche d'égout, flaque
+      R(g, 0, sol, w, h - sol, '#17161f');
+      R(g, 0, sol, w, 2, '#262133');
+      R(g, 0, sol + 4, mur * 0.8, 2, '#201c2b'); R(g, w - mur * 0.8, sol + 4, mur * 0.8, 2, '#201c2b');
+      for (let i = 0; i < 40; i++) R(g, (i * 53) % w, sol + 5 + (i * 17) % Math.max(4, h - sol - 6), 1, 1, '#221f2c');
+      R(g, w * 0.62, sol + 14, 14, 6, '#221e2d'); R(g, w * 0.625, sol + 15, 12, 4, '#191622'); // bouche d'égout
+      R(g, w * 0.28, sol + 11, 52, 8, '#1d2436');                     // flaque
+      R(g, w * 0.30, sol + 12, 34, 2, '#26324a');
+    },
+    vif(g, w, h, t){
+      const sol = h * SOL, f = Math.sin(t / 90) > 0.6 ? 0.45 : 1;     // le tube grésille
+      R(g, w * 0.795, sol - h * 0.42, 9, 5, 'rgba(255,214,130,' + f + ')');
+      g.globalAlpha = 0.09 * f;                                       // cône de lumière
+      g.fillStyle = '#ffd68a';
+      g.beginPath(); g.moveTo(w * 0.835, sol - h * 0.42); g.lineTo(w * 0.60, sol + 2); g.lineTo(w * 1.02, sol + 2); g.closePath(); g.fill();
+      g.globalAlpha = 0.16 * f; R(g, w * 0.70, sol, w * 0.26, 3, '#ffd68a'); // reflet au sol
+      g.globalAlpha = 0.5 + 0.5 * Math.sin(t / 700);                  // la flaque frissonne
+      R(g, w * 0.30, sol + 12, 34, 1, '#2e3c58');
+      g.globalAlpha = 1;
+    },
+  },
+  { // PLAGE MIAMI : coucher de soleil en bandes, palmiers, hôtels art déco
+    nom: 'plage',
+    fixe(g, w, h){
+      const sol = h * SOL, mer = sol - h * 0.15;
+      // Le ciel est posé en bandes franches, réparties sur la hauteur dispo :
+      // en absolu, une fenêtre plus haute laissait une bande de vide entre le
+      // dégradé et la mer.
+      const CIEL = ['#2b1b4a', '#5a2a6a', '#8f3570', '#c8456b', '#e86a55', '#f79a4e', '#ffc86a'];
+      R(g, 0, 0, w, mer, CIEL[0]);
+      CIEL.forEach((c, i) => R(g, 0, Math.round(mer * i / CIEL.length), w, Math.ceil(mer / CIEL.length) + 1, c));
+      const cx = w * 0.5, cy = mer - 2, rad = Math.min(30, mer * 0.42);
+      for (let r = rad; r > 0; r--){                                  // soleil, strié comme il se doit
+        const dy = cy - r;
+        if (dy > mer) continue;
+        const dx = Math.sqrt(rad * rad - r * r);
+        R(g, cx - dx, dy, dx * 2, 1, (cy - dy) % 5 < 3 ? '#ffd88a' : '#ff9a5c');
+      }
+      for (let i = 0; i < 9; i++){                                    // front de mer art déco
+        const bw = 12 + (i % 3) * 7, x = 8 + i * (w - 20) / 9, bh = 14 + (i % 4) * 6;
+        R(g, x, mer - bh, bw, bh, i % 2 ? '#f0d4bc' : '#cfe6e0');
+        R(g, x, mer - bh, bw, 2, '#ffffff');
+        for (let k = 2; k < bh - 2; k += 5) R(g, x + 2, mer - bh + k, bw - 4, 2, '#8fb4c4');
+      }
+      R(g, 0, mer, w, sol - mer, '#2f6f8f');                          // mer
+      for (let y = mer + 2; y < sol; y += 4) R(g, 0, y, w, 1, '#3f89a8');
+      R(g, cx - 5, mer, 10, sol - mer, '#7fc8d8');                    // reflet du soleil
+      R(g, 0, sol, w, h - sol, '#e0c48c');                            // sable
+      R(g, 0, sol, w, 2, '#f2dcae');
+      for (let i = 0; i < 70; i++) R(g, (i * 47) % w, sol + 4 + (i * 13) % Math.max(4, h - sol - 4), 1, 1, '#c9a870');
+      [[w * 0.07, 1], [w * 0.93, -1]].forEach(p => {                  // palmiers, en ombre chinoise
+        const x = p[0], s = p[1], ht = Math.min(76, sol * 0.55);
+        R(g, x, sol - ht, 4, ht, '#1d1030');
+        for (let i = 0; i < 6; i++){
+          const a = -0.55 - i * 0.36, L = 24 - i * 2;
+          for (let k = 2; k < L; k++)
+            R(g, x + s * (2 + Math.cos(a) * k * 1.15), sol - ht + Math.abs(Math.sin(a)) * k * 0.7 - 3, 3, 3, '#1d1030');
+        }
+      });
+    },
+    vif(g, w, h, t){
+      const sol = h * SOL, mer = sol - h * 0.15; // même repère que fixe()
+      for (let i = 0; i < 5; i++){                                   // clapot : des tirets qui glissent sur place
+        const y = mer + 4 + i * 4;
+        const off = Math.sin(t / 900 + i) * 8;
+        for (let x = -12; x < w; x += 26) R(g, x + off + (i % 2) * 13, y, 9, 1, '#9fd8e8');
+      }
+      R(g, w * 0.5 - 5, mer, 10, 2, Math.sin(t / 260) > 0 ? '#bfe8f4' : '#7fc8d8');
+    },
+  },
+  { // GARAGE AU NÉON : béton, rideau métallique, tubes qui clignotent
+    nom: 'garage',
+    fixe(g, w, h){
+      const sol = h * SOL;
+      R(g, 0, 0, w, h, '#26272d');
+      R(g, 0, 0, w, h * 0.06, '#1b1c21');                             // poutre du plafond
+      for (let x = 0; x < w; x += 40) R(g, x, h * 0.06, 1, sol - h * 0.06, '#2e2f36'); // joints
+      for (let y = h * 0.12; y < sol; y += h * 0.19) R(g, 0, y, w, 1, '#2e2f36');
+      R(g, w * 0.31, sol - h * 0.50, w * 0.38, h * 0.50, '#33353e');   // rideau métallique
+      for (let y = sol - h * 0.49; y < sol; y += 5) R(g, w * 0.31, y, w * 0.38, 2, '#3c3e49');
+      R(g, w * 0.31, sol - h * 0.52, w * 0.38, 4, '#1e1f25');
+      R(g, w * 0.30, sol - h * 0.52, 2, h * 0.52, '#1e1f25');
+      R(g, w * 0.68, sol - h * 0.52, 2, h * 0.52, '#1e1f25');
+      R(g, w * 0.035, sol - h * 0.20, 44, h * 0.20, '#2b2d34');        // établi
+      R(g, w * 0.035, sol - h * 0.21, 44, 3, '#4a4d58');
+      R(g, w * 0.05, sol - h * 0.16, 12, 9, '#1f2127'); R(g, w * 0.12, sol - h * 0.16, 16, 9, '#1f2127');
+      R(g, w * 0.03, sol - h * 0.42, 48, h * 0.16, '#212228');         // panneau à outils
+      for (let i = 0; i < 6; i++){
+        const x = w * 0.045 + i * 7;
+        R(g, x, sol - h * 0.40, 3, h * 0.07, '#4a4d58');
+        R(g, x - 1, sol - h * 0.40, 5, 3, '#5d616e');
+      }
+      for (let i = 0; i < 3; i++){                                     // pneus empilés
+        R(g, w * 0.855, sol - 11 - i * 10, 32, 9, '#16171b');
+        R(g, w * 0.875, sol - 9 - i * 10, 28, 5, '#212228');
+      }
+      for (let i = 0; i < 2; i++){                                     // bidons
+        R(g, w * 0.76 + i * 13, sol - 24, 11, 24, '#3a3730');
+        R(g, w * 0.76 + i * 13, sol - 24, 11, 3, '#585245');
+        R(g, w * 0.76 + i * 13, sol - 16, 11, 2, '#2b2924');
+      }
+      R(g, w * 0.5 - 1, 0, 2, h * 0.10, '#1b1c21');                    // baladeuse
+      R(g, w * 0.5 - 4, h * 0.10, 8, 5, '#c9ccd4');
+      R(g, 0, sol, w, h - sol, '#34363d');                             // sol béton
+      R(g, 0, sol, w, 2, '#44464f');
+      R(g, 0, sol + h * 0.07, w, 3, '#c8a33a');                        // ligne peinte
+      R(g, w * 0.60, sol + h * 0.11, 28, 5, '#2b2d33');                // tache d'huile
+      R(g, w * 0.18, sol + h * 0.04, 16, 3, '#2b2d33');
+    },
+    vif(g, w, h, t){
+      const sol = h * SOL;
+      const f1 = Math.sin(t / 130) > -0.9 ? 1 : 0.25;                  // le tube du haut hésite
+      const f2 = 0.85 + Math.sin(t / 420) * 0.15;
+      R(g, 8, h * 0.075, w - 16, 3, 'rgba(255,60,160,' + f1 + ')');
+      [[6, 0.20], [14, 0.10], [26, 0.05]].forEach(b => {               // halo en trois paliers
+        g.globalAlpha = b[1] * f1; R(g, 8, h * 0.075 + 3, w - 16, b[0], '#ff3ca0');
+      });
+      g.globalAlpha = 1;
+      R(g, w - 6, h * 0.12, 3, sol - h * 0.24, 'rgba(70,230,255,' + f2 + ')');
+      [[8, 0.18], [18, 0.08]].forEach(b => {
+        g.globalAlpha = b[1] * f2; R(g, w - 6 - b[0], h * 0.12, b[0], sol - h * 0.24, '#46e6ff');
+      });
+      g.globalAlpha = 0.09 * f1; R(g, 0, sol, w, h - sol, '#ff3ca0'); // le néon bave sur le béton
+      g.globalAlpha = 0.07 * f2; R(g, w * 0.7, sol, w * 0.3, h - sol, '#46e6ff');
+      g.globalAlpha = 1;
+      R(g, w * 0.5 - 4, h * 0.10, 8, 5, Math.sin(t / 2000) > -0.95 ? '#e8eaf0' : '#8a8d96'); // la baladeuse cligne
+    },
+  },
+  ];
+
+  /* ---- attaques ----
+     Cinq armes, tirées dans un ordre aléatoire et jamais deux fois de suite la
+     même. Armes, projectiles et impacts sont peints dans le tampon de DEVANT,
+     au même gros pixel que le décor : une arme lisse au milieu d'une scène
+     16 bits jurerait. Chaque attaque a ses couleurs propres — la couleur
+     d'ambiance du site ne sert plus qu'à la fenêtre et aux barres de vie.
+     `main` dessine l'arme (s = +1 si le tireur regarde à droite), `trace` le
+     projectile à l'avancement u, `choc` l'impact à l'avancement v. */
   const ATTAQUES = [
-    { // FLÈCHE : un trait qui monte en cloche et pique sur la cible
-      id: 'fleche', vol: 480,
+    { id: 'arc', vol: 480,
+      main(g, x, y, s, u){
+        for (let i = -8; i <= 8; i++){                       // le bois, cintré
+          const b = Math.sqrt(Math.max(0, 64 - i * i)) * 0.5;
+          R(g, x + s * b, y + i, 2, 1, '#8a5a2b');
+        }
+        const d = 2 + u * 5;                                 // corde tirée pendant l'armement
+        for (let i = -8; i <= 8; i++) R(g, x - s * (d * (1 - Math.abs(i) / 9)), y + i, 1, 1, '#ded6c0');
+        R(g, x - s * d, y - 1, 11, 2, '#cfc6ae');            // flèche encochée
+        R(g, x + s * 5, y - 1, 3, 2, '#f4efe2');
+      },
       trace(g, u, a, b){
-        const cl = h => Math.sin(Math.max(0, Math.min(1, h)) * Math.PI) * H * 0.30;
-        const x = lerp(a.x, b.x, u), y = lerp(a.y, b.y, u) - cl(u);
-        const x2 = lerp(a.x, b.x, u - 0.02), y2 = lerp(a.y, b.y, u - 0.02) - cl(u - 0.02);
-        g.save(); g.translate(x, y); g.rotate(Math.atan2(y - y2, x - x2));
-        g.fillStyle = 'rgba(' + ACC + ',0.35)';                   // sillage
-        g.beginPath(); g.moveTo(-46, 0); g.lineTo(0, -3); g.lineTo(0, 3); g.closePath(); g.fill();
-        g.shadowBlur = 14; g.shadowColor = 'rgba(' + ACC + ',0.9)';
-        g.fillStyle = '#fff';
-        g.beginPath(); g.moveTo(14, 0); g.lineTo(-8, -4.5); g.lineTo(-4, 0); g.lineTo(-8, 4.5); g.closePath(); g.fill();
-        g.restore();
+        const x = a.x + (b.x - a.x) * u, y = a.y + (b.y - a.y) * u - Math.sin(u * Math.PI) * 22;
+        const s = Math.sign(b.x - a.x);
+        R(g, x - s * 7, y, 7, 1, '#8a5a2b');
+        R(g, x, y - 1, 4, 2, '#cfc6ae');
+        R(g, x + s * 3, y - 1, 2, 2, '#f4efe2');
       },
       choc(g, v, p){
-        g.strokeStyle = 'rgba(255,255,255,' + (1 - v) + ')'; g.lineWidth = 2;
-        for (let i = 0; i < 9; i++){
-          const a = i / 9 * TAU2 + v * 2, r = 8 + v * 58;
-          g.beginPath();
-          g.moveTo(p.x + Math.cos(a) * r * 0.55, p.y + Math.sin(a) * r * 0.55);
-          g.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r);
-          g.stroke();
+        for (let i = 0; i < 8; i++){
+          const a = i / 8 * 6.283 + v * 2, r = 2 + v * 16;
+          R(g, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2, 2, v < 0.5 ? '#f4efe2' : '#8a5a2b');
         }
       },
     },
-    { // NUÉE : un essaim de poussières qui s'enroule puis se resserre sur la cible
-      id: 'nuee', vol: 560,
-      trace(g, u, a, b){
-        for (let i = 0; i < 34; i++){
-          const uu = Math.max(0, Math.min(1, u - (i % 7) * 0.035));
-          const t = uu * uu * (3 - 2 * uu);                       // arrivée en douceur : l'essaim se rassemble
-          const ph = i * 1.7 + uu * 9;
-          const spread = (1 - uu) * H * 0.16 * (0.4 + (i % 5) / 5);
-          const x = lerp(a.x, b.x, t) + Math.cos(ph) * spread * 0.5;
-          const y = lerp(a.y, b.y, t) + Math.sin(ph) * spread;
-          g.fillStyle = i % 4 === 0 ? 'rgba(255,255,255,' + (0.85 - uu * 0.2) + ')'
-                                    : 'rgba(' + ACC + ',' + (0.75 - uu * 0.15) + ')';
-          g.beginPath(); g.arc(x, y, 1.4 + (i % 4) * 0.9, 0, TAU2); g.fill();
+    { id: 'pistolet', vol: 260,
+      main(g, x, y, s, u){
+        R(g, x - (s > 0 ? 0 : 12), y - 2, 13, 4, '#3c4048');  // canon
+        R(g, x - (s > 0 ? 0 : 12), y - 2, 13, 1, '#6a7180');  // arête éclairée
+        R(g, x - s * 2 - (s > 0 ? 0 : 3), y + 2, 4, 7, '#2a2d33'); // crosse
+        if (u > 0.9){                                          // éclair de bouche
+          R(g, x + s * 13, y - 3, 6, 6, '#ffe08a');
+          R(g, x + s * 16, y - 1, 5, 2, '#fff7d0');
         }
       },
+      trace(g, u, a, b){
+        const x = a.x + (b.x - a.x) * u, y = a.y + (b.y - a.y) * u;
+        const s = Math.sign(b.x - a.x);
+        R(g, x - s * 14, y, 14, 1, '#ffb020');                 // traînée
+        R(g, x, y - 1, 4, 2, '#fff7c0');
+      },
       choc(g, v, p){
-        g.fillStyle = 'rgba(' + ACC + ',' + (0.5 * (1 - v)) + ')';
-        g.beginPath(); g.arc(p.x, p.y, 10 + v * 70, 0, TAU2); g.fill();
-        for (let i = 0; i < 22; i++){
-          const a = i / 22 * TAU2, r = v * (50 + (i % 5) * 16);
-          g.fillStyle = 'rgba(255,255,255,' + ((1 - v) * 0.9) + ')';
-          g.beginPath(); g.arc(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r * 0.7, 2.2 * (1 - v) + 0.6, 0, TAU2); g.fill();
+        R(g, p.x - 3, p.y - 3, 6, 6, v < 0.4 ? '#fff7c0' : '#ffb020');
+        for (let i = 0; i < 6; i++){
+          const a = i / 6 * 6.283, r = v * 18;
+          R(g, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r * 0.7, 1, 1, '#ffd86a');
         }
       },
     },
-    { // FAISCEAU : une charge qui enfle chez le tireur, puis un rayon net
-      id: 'faisceau', vol: 540,
+    { id: 'baton', vol: 560,
+      main(g, x, y, s, u){
+        R(g, x, y - 12, 2, 22, '#5a4430');                     // hampe
+        R(g, x - 2, y - 16, 6, 6, '#a86bff');                  // gemme
+        R(g, x - 1, y - 15, 2, 2, '#e0c4ff');
+        if (u > 0.4){ g.globalAlpha = (u - 0.4) * 0.6; R(g, x - 6, y - 20, 14, 14, '#a86bff'); g.globalAlpha = 1; }
+      },
       trace(g, u, a, b){
-        if (u < 0.62){                                           // charge
-          const c = u / 0.62, r = 4 + c * 20;
-          g.fillStyle = 'rgba(' + ACC + ',' + (0.25 + c * 0.5) + ')';
-          g.beginPath(); g.arc(a.x, a.y, r * 1.9, 0, TAU2); g.fill();
-          g.fillStyle = 'rgba(255,255,255,' + (0.5 + c * 0.5) + ')';
-          g.beginPath(); g.arc(a.x, a.y, r * 0.55, 0, TAU2); g.fill();
-          for (let i = 0; i < 6; i++){                            // éclats aspirés par la charge
-            const ang = i / 6 * TAU2 + c * 5, d = (1 - c) * 70 + 14;
-            g.fillStyle = 'rgba(' + ACC + ',' + c + ')';
-            g.beginPath(); g.arc(a.x + Math.cos(ang) * d, a.y + Math.sin(ang) * d, 2, 0, TAU2); g.fill();
-          }
-          return;
+        for (let i = 0; i < 16; i++){
+          const uu = Math.max(0, Math.min(1, u - (i % 6) * 0.045));
+          const t = uu * uu * (3 - 2 * uu);                    // l'essaim se resserre en arrivant
+          const ph = i * 1.9 + uu * 8, sp = (1 - uu) * 16 * (0.4 + (i % 4) / 4);
+          R(g, a.x + (b.x - a.x) * t + Math.cos(ph) * sp * 0.5,
+               a.y + (b.y - a.y) * t + Math.sin(ph) * sp, 2, 2, i % 3 ? '#a86bff' : '#e0c4ff');
         }
-        const c = Math.min(1, (u - 0.62) / 0.38 * 1.8);
-        const x = lerp(a.x, b.x, c), y = lerp(a.y, b.y, c);
-        const grad = g.createLinearGradient(a.x, a.y, x, y);
-        grad.addColorStop(0, 'rgba(' + ACC + ',0.15)');
-        grad.addColorStop(0.75, 'rgba(' + ACC + ',0.85)');
-        grad.addColorStop(1, 'rgba(255,255,255,0.95)');
-        g.strokeStyle = grad;
-        g.lineWidth = Math.sin(Math.min(1, c * 1.3) * Math.PI) * 13 + 2;
-        g.lineCap = 'round';
-        g.shadowBlur = 18; g.shadowColor = 'rgba(' + ACC + ',0.8)';
-        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(x, y); g.stroke();
       },
       choc(g, v, p){
-        g.strokeStyle = 'rgba(255,255,255,' + (1 - v) + ')'; g.lineWidth = 3 * (1 - v) + 0.5;
-        g.beginPath(); g.arc(p.x, p.y, 6 + v * 88, 0, TAU2); g.stroke();
-        g.strokeStyle = 'rgba(' + ACC + ',' + ((1 - v) * 0.8) + ')'; g.lineWidth = 8 * (1 - v) + 0.5;
-        g.beginPath(); g.arc(p.x, p.y, 6 + v * 52, 0, TAU2); g.stroke();
+        for (let i = 0; i < 14; i++){
+          const a = i / 14 * 6.283, r = v * 22;
+          R(g, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2, 2, v < 0.5 ? '#e0c4ff' : '#a86bff');
+        }
       },
     },
-    { // ORBE : une sphère lente escortée de satellites, qui détone à l'arrivée
-      id: 'orbe', vol: 600,
+    { id: 'canon', vol: 540,
+      main(g, x, y, s, u){
+        R(g, x - s * 6 - 5, y - 8, 11, 12, '#3a4450');         // bloc d'épaule
+        R(g, x - s * 6 - 5, y - 8, 11, 2, '#68788c');
+        R(g, x - (s > 0 ? 0 : 14), y - 3, 15, 6, '#2f3944');   // tube
+        R(g, x - (s > 0 ? 0 : 14), y - 3, 15, 1, '#5d6c80');
+        if (u > 0.35){                                          // charge qui enfle au bout
+          const c = (u - 0.35) / 0.65, r = 2 + c * 5;
+          R(g, x + s * 15 - r, y - r, r * 2, r * 2, '#58e0ff');
+          R(g, x + s * 15 - 1, y - 1, 3, 3, '#ffffff');
+        }
+      },
       trace(g, u, a, b){
-        const x = lerp(a.x, b.x, u), y = lerp(a.y, b.y, u) - Math.sin(u * Math.PI) * H * 0.10;
-        const pulse = 1 + Math.sin(u * 26) * 0.12;
-        const gr = g.createRadialGradient(x, y, 0, x, y, 26 * pulse);
-        gr.addColorStop(0, 'rgba(255,255,255,0.95)');
-        gr.addColorStop(0.35, 'rgba(' + ACC + ',0.8)');
-        gr.addColorStop(1, 'rgba(' + ACC + ',0)');
-        g.fillStyle = gr;
-        g.beginPath(); g.arc(x, y, 26 * pulse, 0, TAU2); g.fill();
-        for (let i = 0; i < 3; i++){                               // satellites
-          const ang = u * 13 + i / 3 * TAU2;
-          g.fillStyle = 'rgba(255,255,255,0.9)';
-          g.beginPath(); g.arc(x + Math.cos(ang) * 26, y + Math.sin(ang) * 11, 2.6, 0, TAU2); g.fill();
+        if (u < 0.25) return;                                   // le rayon part après la charge
+        const c = Math.min(1, (u - 0.25) / 0.35);
+        const x = a.x + (b.x - a.x) * c, y = a.y + (b.y - a.y) * c;
+        const ep = 2 + Math.sin(Math.min(1, c * 1.4) * Math.PI) * 3;
+        const x0 = Math.min(a.x, x), lg = Math.abs(x - a.x);
+        R(g, x0, a.y - ep / 2, lg, ep, '#58e0ff');
+        R(g, x0, a.y - 1, lg, 2, '#ffffff');
+      },
+      choc(g, v, p){
+        const r = 3 + v * 26;
+        for (let i = 0; i < 18; i++){
+          const a = i / 18 * 6.283;
+          R(g, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 2, 2, v < 0.5 ? '#ffffff' : '#58e0ff');
+        }
+      },
+    },
+    { id: 'sceptre', vol: 600,
+      main(g, x, y, s, u){
+        R(g, x, y - 10, 2, 20, '#8a7a4a');                      // hampe
+        [[0, -16], [-3, -13], [3, -13], [0, -10]].forEach(o => R(g, x + o[0], y + o[1], 3, 3, '#ff5f8a'));
+        R(g, x, y - 13, 2, 2, '#ffd0dd');
+        if (u > 0.5){ g.globalAlpha = (u - 0.5) * 0.7; R(g, x - 7, y - 21, 16, 16, '#ff5f8a'); g.globalAlpha = 1; }
+      },
+      trace(g, u, a, b){
+        const x = a.x + (b.x - a.x) * u, y = a.y + (b.y - a.y) * u - Math.sin(u * Math.PI) * 9;
+        R(g, x - 4, y - 4, 8, 8, '#ff5f8a');
+        R(g, x - 2, y - 2, 4, 4, '#ffd0dd');
+        for (let i = 0; i < 2; i++){                             // satellites
+          const ang = u * 12 + i * 3.14;
+          R(g, x + Math.cos(ang) * 9, y + Math.sin(ang) * 5, 2, 2, '#ffffff');
         }
       },
       choc(g, v, p){
-        const r = v * 104;
-        g.strokeStyle = 'rgba(' + ACC + ',' + (1 - v) + ')'; g.lineWidth = 12 * (1 - v) + 1;
-        g.beginPath(); g.arc(p.x, p.y, r, 0, TAU2); g.stroke();
-        for (let i = 0; i < 14; i++){                              // éclats projetés
-          const a2 = i / 14 * TAU2 + 0.3, d = r * 1.15;
-          g.strokeStyle = 'rgba(255,255,255,' + ((1 - v) * 0.85) + ')'; g.lineWidth = 2;
-          g.beginPath();
-          g.moveTo(p.x + Math.cos(a2) * d * 0.7, p.y + Math.sin(a2) * d * 0.7);
-          g.lineTo(p.x + Math.cos(a2) * d, p.y + Math.sin(a2) * d);
-          g.stroke();
+        const r = v * 28;
+        for (let i = 0; i < 12; i++){
+          const a = i / 12 * 6.283 + 0.26;
+          R(g, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, 3, 3, '#ff5f8a');
+          R(g, p.x + Math.cos(a) * r * 0.6, p.y + Math.sin(a) * r * 0.6, 2, 2, '#ffd0dd');
         }
       },
     },
   ];
-
-  /* ---- décor ----
-     Quatre plans qui glissent à des vitesses différentes : c'est ce décalage
-     qui donne la profondeur. Tout est tracé à la volée, mais en quelques
-     dizaines de points par crête — sans commune mesure avec le ruban du fond,
-     qui, lui, est passé sur la carte graphique. */
-  const SOL = 0.84;        // ligne de sol, en fraction de la hauteur
-  const TAILLE = 0.54;     // côté du carré de rendu d'un vêtement, en fraction de la hauteur
-  const FACE = 0.82;       // trois quarts : chacun tourné vers le centre (~47°). Plus bas,
-                           // la perspective courte de la scène écrasait l'angle et les
-                           // vêtements paraissaient de face.
-
-  function crete(y0, amp, freq, off, fill){
-    bg.beginPath();
-    bg.moveTo(0, H);
-    for (let x = 0; x <= W + 14; x += 14){
-      const y = y0 + Math.sin((x + off) * freq) * amp + Math.sin((x + off) * freq * 2.3 + 1.1) * amp * 0.35;
-      bg.lineTo(x, y);
-    }
-    bg.lineTo(W, H); bg.closePath();
-    bg.fillStyle = fill; bg.fill();
-  }
-  function fond(tt, etats){
-    bg.setTransform(K, 0, 0, K, 0, 0);
-    bg.clearRect(0, 0, W, H);
-    const ciel = bg.createLinearGradient(0, 0, 0, H);
-    ciel.addColorStop(0, 'rgba(3,7,11,1)');
-    ciel.addColorStop(0.62, 'rgba(' + ACC + ',0.10)');
-    ciel.addColorStop(1, 'rgba(' + ACC + ',0.20)');
-    bg.fillStyle = ciel; bg.fillRect(0, 0, W, H);
-    const halo = bg.createRadialGradient(W * 0.5, H * SOL, 0, W * 0.5, H * SOL, W * 0.45);
-    halo.addColorStop(0, 'rgba(' + ACC + ',0.26)');
-    halo.addColorStop(1, 'rgba(' + ACC + ',0)');
-    bg.fillStyle = halo; bg.fillRect(0, 0, W, H);
-    for (let i = 0; i < 26; i++){                 // poussières, plan le plus lointain
-      const x = ((i * 137 + tt * 0.010 * (1 + (i % 3))) % (W + 40)) - 20;
-      const y = (i * 61) % (H * SOL);
-      bg.fillStyle = 'rgba(255,255,255,' + (0.05 + (i % 4) * 0.03) + ')';
-      bg.fillRect(x, y, 1.6, 1.6);
-    }
-    crete(H * 0.60, H * 0.055, 0.0042, tt * 0.006, 'rgba(' + ACC + ',0.13)');
-    crete(H * 0.71, H * 0.045, 0.0071, tt * 0.017, 'rgba(' + ACC + ',0.17)');
-    crete(H * 0.795, H * 0.028, 0.0115, tt * 0.036, 'rgba(3,9,14,0.75)');
-    // Sol : un dégradé qui part de la ligne d'horizon, et des dalles qui fuient
-    // vers le spectateur — elles s'écartent en descendant, le point de fuite
-    // étant sur l'horizon (les faire converger, comme au premier essai, donnait
-    // un entonnoir qui écrasait la scène).
-    const solG = bg.createLinearGradient(0, H * SOL, 0, H);
-    solG.addColorStop(0, 'rgba(' + ACC + ',0.30)');
-    solG.addColorStop(0.4, 'rgba(' + ACC + ',0.10)');
-    solG.addColorStop(1, 'rgba(2,6,10,0.5)');
-    bg.fillStyle = solG;
-    bg.fillRect(0, H * SOL, W, H * (1 - SOL));
-    bg.save();
-    bg.beginPath(); bg.rect(0, H * SOL, W, H * (1 - SOL)); bg.clip();
-    bg.strokeStyle = 'rgba(' + ACC + ',0.10)'; bg.lineWidth = 1;
-    for (let i = 0; i < 18; i++){                 // dalles, le plan le plus rapide
-      const x = ((i * 110 - tt * 0.06) % (W + 220) + W + 220) % (W + 220) - 110;
-      bg.beginPath(); bg.moveTo(x, H * SOL); bg.lineTo(W / 2 + (x - W / 2) * 3.4, H); bg.stroke();
-    }
-    bg.restore();
-    bg.strokeStyle = 'rgba(' + ACC + ',0.5)'; bg.lineWidth = 1.2;
-    bg.beginPath(); bg.moveTo(0, H * SOL); bg.lineTo(W, H * SOL); bg.stroke();
-    // ombres portées : sans elles les vêtements flottent au-dessus du sol
-    if (etats) etats.forEach(e => {
-      const r = e.S * 0.33, y = H * SOL + e.S * 0.01;
-      const om = bg.createRadialGradient(e.cx, y, 0, e.cx, y, r);
-      om.addColorStop(0, 'rgba(0,0,0,0.55)');
-      om.addColorStop(1, 'rgba(0,0,0,0)');
-      bg.fillStyle = om;
-      bg.save(); bg.translate(e.cx, y); bg.scale(1, 0.26); bg.translate(-e.cx, -y);
-      bg.beginPath(); bg.arc(e.cx, y, r, 0, TAU2); bg.fill();
-      bg.restore();
-    });
-  }
 
   /* ---- combattants ----
      Position, balancement, élan de tir et recul : tout se déduit de l'horloge
@@ -4892,20 +5034,22 @@ const arena = (() => {
   function etat(s, tt, fini){
     const S = H * TAILLE;
     const cx = W * (s === 0 ? 0.27 : 0.73);
-    const cy = H * SOL - S * 0.40;   // le bas du carré passe sous la ligne de sol : le vêtement s'y pose
-    const sens = s === 0 ? 1 : -1;                // +1 = vers le centre
+    const cy = H * SOL - S * 0.31;               // le bas du carré passe sous la ligne de sol : le vêtement s'y pose
+    const sens = s === 0 ? 1 : -1;               // +1 = vers le centre
     let dx = 0, dy = Math.sin(tt / 620 + s * 2) * H * 0.012;
     let ang = sens * FACE + Math.sin(tt / 900 + s) * 0.07;
-    let rouge = 0, alpha = 1;
+    let rouge = 0, alpha = 1, arme = 0;
     const e = fini ? null : tourCourant(tt);
     if (e && e.from === s){
       if (tt < e.tir){                            // armement : on se ramasse en arrière
         const u = (tt - e.t0) / PH.wind;
         dx = -sens * H * 0.038 * Math.sin(u * Math.PI);
         ang += sens * 0.24 * Math.sin(u * Math.PI);
-      } else if (tt < e.tir + 170){               // détente vers le centre
-        const u = (tt - e.tir) / 170;
+        arme = u;
+      } else if (tt < e.tir + 220){               // détente vers le centre, l'arme encore en main
+        const u = (tt - e.tir) / 220;
         dx = sens * H * 0.05 * (1 - u) * (1 - u);
+        arme = 1;
       }
     }
     if (e && e.to === s && tt >= e.choc){         // encaissé : rouge et recul
@@ -4917,9 +5061,8 @@ const arena = (() => {
     if (fini && s !== vainqueur){                 // le perdant s'affaisse
       dy += H * 0.03; ang *= 0.6; alpha = 0.45;
     }
-    return { S: S, cx: cx + dx, cy: cy + dy, ang: ang, rouge: rouge, alpha: alpha };
+    return { S: S, cx: cx + dx, cy: cy + dy, ang: ang, rouge: rouge, alpha: alpha, arme: arme, sens: sens };
   }
-
   /* ---- boucle du duel ---- */
   let debut = 0, fini = false, faits = new Set(), nombres = [], secousse = 0;
   function mesurer(){
@@ -4930,6 +5073,19 @@ const arena = (() => {
       const w = Math.round(W * K), h = Math.round(H * K);
       if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
     });
+    // Tampons 16 bits : 320 px de large, hauteur au prorata. Ils ne changent
+    // qu'au redimensionnement, et le décor fixe est alors repeint.
+    pxH = Math.max(90, Math.round(PXW * H / Math.max(1, W)));
+    if (!pxBack){ pxBack = document.createElement('canvas'); pxFront = document.createElement('canvas'); pxFixe = document.createElement('canvas'); }
+    [pxBack, pxFront, pxFixe].forEach(c => { if (c.width !== PXW || c.height !== pxH){ c.width = PXW; c.height = pxH; } });
+    peindreDecorFixe();
+    [bg, fx].forEach(g => { g.imageSmoothingEnabled = false; });
+  }
+  function peindreDecorFixe(){
+    if (!decor || !pxFixe) return;
+    const g = pxFixe.getContext('2d');
+    g.clearRect(0, 0, PXW, pxH);
+    decor.fixe(g, PXW, pxH);
   }
   function majBarres(){
     [0, 1].forEach(s => {
@@ -4938,17 +5094,39 @@ const arena = (() => {
       ghostEls[s].style.transform = 'scaleX(' + v + ')';
     });
   }
+  // du repère écran (pixels CSS) vers celui du tampon 16 bits
+  const versPx = p => ({ x: p.x * PXW / W, y: p.y * pxH / H });
+
   function image(now){
     raf = requestAnimationFrame(image);
     if (!debut) debut = now;
     const tt = now - debut;
     if (!fini && tt >= finMs) terminer();
 
-    // Les deux états sont calculés une seule fois par image : le décor s'en sert
-    // pour les ombres, la scène 3D pour les boîtes, les effets pour viser.
+    // Les deux états sont calculés une seule fois par image : la scène 3D s'en
+    // sert pour les boîtes, les armes et les effets pour viser.
     const st = [etat(0, tt, fini), etat(1, tt, fini)];
-    fond(tt, st);
-    if (scene){                        // vêtements : le contexte 3D dédié
+
+    // 1. décor : la partie fixe recopiée, les détails vivants par-dessus
+    const gb = pxBack.getContext('2d');
+    gb.clearRect(0, 0, PXW, pxH);
+    gb.drawImage(pxFixe, 0, 0);
+    if (decor.vif) decor.vif(gb, PXW, pxH, tt);
+    // ombres portées, dans le tampon du fond : sans elles les vêtements
+    // flottent au-dessus du sol. En gros pixel, comme le reste du décor.
+    st.forEach(e => {
+      const p = versPx({ x: e.cx, y: H * SOL });
+      const rw = Math.max(4, e.S * PXW / W * 0.26);
+      gb.globalAlpha = 0.20; R(gb, p.x - rw * 1.3, p.y - 2, rw * 2.6, 5, '#000000');
+      gb.globalAlpha = 0.38; R(gb, p.x - rw, p.y - 1, rw * 2, 3, '#000000');
+      gb.globalAlpha = 1;
+    });
+    bg.imageSmoothingEnabled = false;
+    bg.clearRect(0, 0, bgC.width, bgC.height);
+    bg.drawImage(pxBack, 0, 0, bgC.width, bgC.height);
+
+    // 2. vêtements, dans le contexte 3D dédié
+    if (scene){
       scene.clear();
       st.forEach((e, s) => {
         scene.draw(picks[s].it, e.ang,
@@ -4957,40 +5135,37 @@ const arena = (() => {
       });
     }
 
-    fx.setTransform(K, 0, 0, K, 0, 0);
-    fx.clearRect(0, 0, W, H);
+    // 3. armes, projectiles et impacts, au même gros pixel que le décor
+    const gf = pxFront.getContext('2d');
+    gf.clearRect(0, 0, PXW, pxH);
     const e = fini ? null : tourCourant(tt);
     if (e){
       const a = st[e.from], b = st[e.to];
-      const dep = { x: a.cx + (e.from === 0 ? a.S * 0.20 : -a.S * 0.20), y: a.cy };
-      const arr = { x: b.cx, y: b.cy };
-      if (tt >= e.tir && tt < e.choc){
-        fx.save(); e.atk.trace(fx, (tt - e.tir) / e.atk.vol, dep, arr); fx.restore();
-      }
-      if (tt >= e.choc && tt < e.choc + PH.impact){
-        const v = (tt - e.choc) / PH.impact;
-        fx.save(); e.atk.choc(fx, v, arr); fx.restore();
-        if (!faits.has(e)){                        // les dégâts ne tombent qu'une fois
-          faits.add(e);
-          vie[e.to] = Math.max(0, vie[e.to] - e.dmg);
-          majBarres();
-          nombres.push({ x: arr.x, y: arr.y - H * 0.10, t0: tt, val: e.dmg });
-          secousse = 11;
-          turnLabel.textContent = '-' + e.dmg;
-          sfx.tick();
-        }
-      }
+      const bouche = versPx({ x: a.cx + a.sens * a.S * 0.26, y: a.cy });
+      const cible = versPx({ x: b.cx, y: b.cy });
+      if (a.arme > 0) e.atk.main(gf, bouche.x, bouche.y, a.sens, a.arme);
+      if (tt >= e.tir && tt < e.choc) e.atk.trace(gf, (tt - e.tir) / e.atk.vol, bouche, cible);
+      if (tt >= e.choc && tt < e.choc + PH.impact) e.atk.choc(gf, (tt - e.choc) / PH.impact, cible);
+      if (tt >= e.tir && !e.tire){ e.tire = true; sfx.shot(e.atk.id); }
+      if (tt >= e.choc && !faits.has(e)) encaisser(e, tt, { x: b.cx, y: b.cy });
     }
-    // dégâts qui montent et s'effacent
+    fx.imageSmoothingEnabled = false;
+    fx.setTransform(1, 0, 0, 1, 0, 0);
+    fx.clearRect(0, 0, fxC.width, fxC.height);
+    fx.drawImage(pxFront, 0, 0, fxC.width, fxC.height);
+
+    // 4. dégâts qui montent et s'effacent — en net, eux, pour rester lisibles
+    fx.setTransform(K, 0, 0, K, 0, 0);
     nombres = nombres.filter(n => tt - n.t0 < 900);
     nombres.forEach(n => {
       const u = (tt - n.t0) / 900;
-      fx.font = '600 ' + Math.round(H * 0.052) + 'px Inter, sans-serif';
+      fx.font = '600 ' + Math.round(H * 0.055) + 'px Inter, sans-serif';
       fx.textAlign = 'center';
-      fx.fillStyle = 'rgba(255,90,90,' + (1 - u) + ')';
-      fx.fillText('-' + n.val, n.x, n.y - u * H * 0.09);
+      fx.fillStyle = 'rgba(255,82,82,' + (1 - u) + ')';
+      fx.fillText('-' + n.val, n.x, n.y - H * 0.10 - u * H * 0.09);
     });
-    // secousse : le décor, les vêtements et les effets bougent ensemble
+
+    // 5. secousse : décor, vêtements et effets bougent ensemble
     if (secousse > 0.4){
       secousse *= 0.86;
       shakeEl.style.transform = 'translate(' + ((Math.random() - 0.5) * secousse).toFixed(2) + 'px,'
@@ -4998,9 +5173,28 @@ const arena = (() => {
     } else if (secousse){ secousse = 0; shakeEl.style.transform = ''; }
   }
 
+  /* Le coup porte : c'est ICI que son nombre est tiré, et pas à l'écriture du
+     duel. Les fourchettes montent d'un tour à l'autre, de sorte qu'un duel se
+     règle presque toujours en trois échanges sans que l'issue soit écrite. */
+  function encaisser(e, tt, pos){
+    faits.add(e);
+    const f = DEGATS[Math.min(DEGATS.length - 1, e.tour)];
+    e.dmg = Math.round(f[0] + Math.random() * (f[1] - f[0]));
+    vie[e.to] = Math.max(0, vie[e.to] - e.dmg);
+    majBarres();
+    nombres.push({ x: pos.x, y: pos.y, t0: tt, val: e.dmg });
+    secousse = 11;
+    turnLabel.textContent = '-' + e.dmg;
+    sfx.hit(e.dmg);
+    if (vie[e.to] <= 0){ vainqueur = e.from; finMs = tt + PH.impact + 420; } // K.-O. : on n'attend pas la suite
+  }
+
   function terminer(){
     fini = true;
-    turnLabel.textContent = 'K.O.';
+    // Personne au tapis au bout des trois échanges : c'est la vie restante qui
+    // tranche, et une égalité parfaite se joue à pile ou face.
+    if (vainqueur < 0) vainqueur = vie[0] === vie[1] ? (Math.random() < 0.5 ? 0 : 1) : (vie[0] > vie[1] ? 0 : 1);
+    turnLabel.textContent = vie[1 - vainqueur] <= 0 ? 'K.O.' : 'VS';
     endTitle.textContent = L(picks[vainqueur].it.n) + ' ' + T('arenaWins');
     endBox.hidden = false;
     sfx.add();
@@ -5009,13 +5203,13 @@ const arena = (() => {
   /* ---- enchaînement ---- */
   function lancer(){
     if (!picks[0] || !picks[1]) return;
-    ACC = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || ACC;
     pickView.hidden = true;
     stage.hidden = false;
     endBox.hidden = true;
     if (!scene) scene = model3d.makeScene(glC);
     if (scene) picks.forEach(p => scene.load(p.it));   // maillages déjà en cache : instantané
     nameEls.forEach((el, s) => { el.textContent = L(picks[s].it.n); });
+    decor = DECORS[Math.floor(Math.random() * DECORS.length)]; // ruelle, plage ou garage
     ecrireDuel();
     majBarres();
     faits = new Set(); nombres = []; secousse = 0; debut = 0; fini = false;
@@ -5037,7 +5231,6 @@ const arena = (() => {
   function ouvrir(){
     if (ouvert) return;
     ouvert = true;
-    ACC = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || ACC;
     construireGrille();
     stage.hidden = true; pickView.hidden = false; endBox.hidden = true;
     overlay.classList.add('open');
