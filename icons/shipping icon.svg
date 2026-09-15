@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icône provisoire « Shipping Info », dessinée dans le style des PNG du dossier
+       (glyphe plein, blanc, angles arrondis). À remplacer par votre propre PNG :
+       il suffit de changer le nom de fichier dans DATA (index.html). -->
+  <mask id="cut">
+    <rect width="512" height="512" fill="#fff"/>
+    <path d="M352 196h52l40 66h-92z" fill="#000"/>
+    <circle cx="120" cy="368" r="22" fill="#000"/>
+    <circle cx="392" cy="368" r="22" fill="#000"/>
+  </mask>
+  <g fill="#fff" mask="url(#cut)">
+    <rect x="20" y="104" width="312" height="236" rx="30"/>
+    <path d="M318 168h92a28 28 0 0 1 23 12l53 80a28 28 0 0 1 5 16v46a18 18 0 0 1-18 18H318z"/>
+    <circle cx="120" cy="368" r="56"/>
+    <circle cx="392" cy="368" r="56"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+# Ce depot sert le site en ligne : tout ce qui n'est pas ignore ici devient
+# accessible publiquement a une adresse. On n'y met donc que le site lui-meme.
+
+# Outils locaux : gestion des produits, lanceurs, serveur de developpement
+admin.html
+admin-server.ps1
+gerer-produits.bat
+gerer-produits.vbs
+start-site.bat
+mobile.html
+.claude/
+gestion.log
+
+# Copies et sauvegardes de travail
+a-publier/
+catalogue.backup.json
+*.bak
+
+# Visuels sources, trop lourds et inutiles au site (les versions web sont dans icons/)
+icons/startup icon.png
+icons/startup icon2.png
+icons/fakeparadise.ico
+
+# Windows
+Thumbs.db
+desktop.ini
