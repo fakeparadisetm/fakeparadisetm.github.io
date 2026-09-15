@@ -440,9 +440,6 @@
     transition:color 0.35s ease;
   }
   .xmb-item.selected .xmb-nom{color:var(--white);}
-  /* pièce verrouillée : pas de lueur d'accent — l'accent dit « choisi », et
-     ce cadenas doit dire « fermé ». Il porte ses propres gris. */
-  .xmb-item.verrou .xmb-ico-glow{display:none;}
   .xmb-ico-glow{
     position:absolute;left:50%;top:50%;margin-top:-6px;
     width:56px;height:56px;
@@ -3078,6 +3075,17 @@ const DEBLOQUE = (() => {
 })();
 // Un article verrouillé tant que son jeu n'est pas gagné (voir la catégorie « Unique Items »)
 const verrouille = (item) => !!(item && item.verrou && !DEBLOQUE.a(item.verrou));
+/* Ce qu'on MONTRE à la place d'un article verrouillé : un cadenas, passé par
+   la même chaîne que les vêtements — détourage, maillage, éclairage cuit — et
+   donc rendu en 3D dans la liste comme dans la fiche, avec le même balancement
+   et le même halo. C'est un objet stable et non un objet recréé à chaque
+   affichage : le module 3D met ses maillages en cache, et un nouvel objet à
+   chaque image lui ferait tout recalculer.
+   La photo est sur fond NOIR, ce qui ne gêne pas : le détourage prend la
+   couleur des quatre coins pour référence, quelle qu'elle soit. */
+const ITEM_VERROU = { n:"???", img:"icons/lock icon 2D.jpg" };
+// ce qu'il faut afficher pour un article : lui-même, ou le cadenas s'il est fermé
+const visuelDe = (item) => verrouille(item) ? ITEM_VERROU : item;
 // Exemplaires déjà au panier pour un article, toutes tailles confondues
 const dejaPris = (item) => cart.reduce((n, l) => n + (l.ref === item ? l.qty : 0), 0);
 // Persistent horizontal "camera" offset for the category strip — only
@@ -4602,24 +4610,23 @@ function build(){
     cat.items.forEach((item, ii) => {
       const row = document.createElement('div');
       row.className = 'xmb-item';
-      if (cat.kind === 'shop' && item.img && model3d.rows3d){
+      // une pièce verrouillée montre un cadenas, passé par la même chaîne 3D
+      const vu = visuelDe(item);
+      if (cat.kind === 'shop' && vu.img && model3d.rows3d){
         // aperçu 3D rotatif à la place du nom, comme les icônes verticales du XMB ; le nom
         // reste dans la fiche et en info-bulle. La ligne n'est qu'une boîte carrée vide : le
         // modèle est dessiné à sa position dans le canvas de la scène (model3d.setRows).
         row.classList.add('has-3d');
-        row.title = L(item.n);
+        row.title = vu === item ? L(item.n) : T('locked'); // le cadenas ne dit pas ce qu'il garde
         if (item.was){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = T('sale'); row.appendChild(t); }
-      } else if (item.icon || verrouille(item)){
-        /* Mini-jeux, et pièce encore verrouillée : une icône à la place du
-           nom, exactement comme un produit montre son aperçu. Le cadenas ne
-           dit pas quelle pièce il garde — c'est la surprise —, donc même
-           l'info-bulle reste muette. */
-        const verrou = verrouille(item);
-        const nom = verrou ? T('locked') : L(item.n);
+      } else if (item.icon){
+        /* Mini-jeux : une icône à la place du nom, comme un produit montre son
+           aperçu — et le nom en petit dessous, deux glyphes abstraits ne se
+           reconnaissant pas d'emblée. */
+        const nom = L(item.n);
         row.classList.add('has-icon');
-        if (verrou) row.classList.add('verrou');
         row.title = nom;
-        const u = encodeURI('icons/' + (verrou ? 'lock icon.svg' : item.icon));
+        const u = encodeURI('icons/' + item.icon);
         row.innerHTML = `<span class="xmb-ico-glow"><i style="--icon:url('${u}')"></i></span>`
                       + `<img class="xmb-ico" src="${u}" alt="">`
                       + `<span class="xmb-nom">${esc(nom)}</span>`;
@@ -5000,7 +5007,7 @@ function render(){
       // Boîtes des aperçus 3D, dans le repère de la barre : le canvas y vit,
       // donc le déplacement horizontal de la barre s'y applique tout seul.
       if (DATA[ci].kind === 'shop') rowBoxes = place.map((p, ii) => p.has3d
-        ? { el: p.row, item: DATA[ci].items[ii], x: g.left + left, y: g.top + g.colTop + p.ty, size: ITEM_CSS * p.s, alpha: p.op }
+        ? { el: p.row, item: visuelDe(DATA[ci].items[ii]), x: g.left + left, y: g.top + g.colTop + p.ty, size: ITEM_CSS * p.s, alpha: p.op }
         : null).filter(Boolean);
     }
   });
@@ -5246,19 +5253,21 @@ function fillPreview(){
   const photo = document.getElementById('previewPhoto');
   const photo2 = document.getElementById('previewPhoto2');
   const initial = document.getElementById('previewInitial');
-  if (item.img){
+  // verrouillé : c'est le cadenas qu'on montre, avec son modèle et ses vues
+  const vu = visuelDe(item);
+  if (vu.img){
     // vues 2D du diaporama : la même copie fraîche que le modèle 3D (revalidée au chargement)
-    const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img); // sans photo de dos : la même des deux côtés
+    const front = encodeURI(vu.img), back = encodeURI(vu.img2 || vu.img); // sans photo de dos : la même des deux côtés
     photo.dataset.for = front; photo2.dataset.for = back;
     model3d.photoURL(front).then(u => { if (photo.dataset.for === front) photo.src = u; }).catch(() => { photo.src = front; });
     model3d.photoURL(back).then(u => { if (photo2.dataset.for === back) photo2.src = u; }).catch(() => { photo2.src = back; });
-    slider.setup(item); // vue 3D d'abord, puis les photos
+    slider.setup(vu); // vue 3D d'abord, puis les photos
   } else {
     slider.setup(null);
     photo.removeAttribute('src');
     photo2.removeAttribute('src');
   }
-  initial.hidden = !!item.img; // l'initiale ne sert qu'aux produits sans photo
+  initial.hidden = !!vu.img; // l'initiale ne sert qu'aux produits sans photo
   initial.textContent = verrou ? '?' : L(item.n)[0];
   document.getElementById('previewName').textContent = verrou ? T('locked') : L(item.n);
   descEl.textContent = verrou ? T('lockedHow') : L(item.d);
