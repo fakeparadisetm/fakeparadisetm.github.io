@@ -2903,7 +2903,20 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    panel:{ n:"FakeParadise™", img:"icons/aboutme3D.webp", depth:"icons/aboutme3D depth map.png", seule3D:true,
+    /* Une tête humaine low poly, CALCULÉE et non tirée d'une photo, qui tourne
+       sur elle-même (voir buildTete).
+       `visage` : une photo de FACE, collée devant par projection droite, le
+       reste de la texture étant cousu à partir de ses bords. Elle doit être
+       recadrée sur la tête seule, sommet du crâne en haut, menton en bas ;
+       `cadre` dit à quelles fractions de l'image ces deux-là tombent, et où
+       passe le milieu du visage — [x du milieu, sommet, menton], par défaut
+       [0,50 0,05 0,94]. Sans `visage`, la tête garde son argile et seules ses
+       facettes la modèlent.
+       PROVISOIRE : l'image en place est une image arrêtée de la vidéo du
+       16 sept. 2026, avec ce qu'elle a de gênant — une main devant la bouche,
+       les yeux baissés. Une vraie photo de face déposée sous le même nom la
+       remplace sans toucher au code. */
+    panel:{ n:"FakeParadise™", tete:true, visage:"icons/visage.webp", seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -4342,6 +4355,302 @@ const model3d = (() => {
     return { data, index: new Uint16Array(front.concat(backI)), nFront: front.length, nBack: backI.length, tris: (front.length + backI.length) / 3, verts: nV, zmin, zmax, relief: !!relief };
   }
 
+
+  /* ---- 3 bis. tête humaine low poly (page Info) ----
+     Le seul modèle du site qui ne vienne pas d'une photo : il est CALCULÉ.
+     Une photo ne donne qu'une silhouette, donc une forme plate qu'on gonfle ;
+     un visage demande un vrai volume — un crâne plus profond que large, une
+     mâchoire qui se rétrécit, un nez — que nul détourage ne devine.
+
+     Surface de révolution : une pile d'anneaux, chacun décrit par sa hauteur,
+     sa demi-largeur et ses DEUX profondeurs, l'avant d'un crâne étant bien
+     plus plat que l'arrière. Les traits (arcade, nez, orbites, menton) sont
+     des bosses et des creux ajoutés vers l'avant, éteints sur les côtés.
+
+     Facettes à plat, une normale par TRIANGLE et non par sommet : c'est ce
+     qui donne le rendu low poly. Les vêtements, eux, moyennent les normales
+     de leurs faces — leur aspect facetté vient de la grosseur des mailles.
+     Les sommets ne sont donc pas partagés (trois par triangle) ; cela coûte
+     ici quarante kilo-octets et simplifie les UV, chaque face portant les
+     siennes : la couture du dos ne demande aucun sommet double.
+
+     Repère : hauteur crâne→menton = 1, y de +0,50 à −0,50, z vers le
+     spectateur, θ = 0 au milieu du visage, θ = ±π à la nuque. */
+  const TETE_M = 20;     // méridiens. Pair, donc θ = 0 tombe sur une arête : le nez a la sienne
+  /* [ y, demi-largeur, profondeur avant, profondeur arrière ]. Proportions
+     d'un crâne adulte : 0,72 de large et 0,78 de profond pour 1 de haut,
+     ligne des yeux à mi-hauteur, base du nez aux trois quarts. L'axe de
+     révolution passe par les oreilles, d'où l'écart entre l'avant (0,33) et
+     l'arrière (0,45) : un crâne déborde bien plus derrière que devant.
+     Pas d'anneau étranglé sous le menton : un tour de potier n'y ferait pas
+     une mâchoire, seulement un collier — la mâchoire descend donc droit sur
+     le cou, et c'est le menton, poussé vers l'avant, qui la dessine. */
+  const TETE_ANNEAUX = [
+    [ 0.500, 0.105, 0.105, 0.125],  // sommet du crâne
+    [ 0.468, 0.205, 0.202, 0.242],
+    [ 0.418, 0.276, 0.260, 0.318],
+    [ 0.338, 0.325, 0.300, 0.378],
+    [ 0.238, 0.352, 0.320, 0.418],
+    [ 0.118, 0.360, 0.331, 0.444],  // temples — le plus large
+    [ 0.010, 0.355, 0.335, 0.450],  // ligne des yeux et des oreilles
+    [-0.100, 0.340, 0.335, 0.434],  // pommettes
+    [-0.200, 0.310, 0.325, 0.400],  // base du nez
+    [-0.300, 0.265, 0.305, 0.354],  // bouche
+    [-0.400, 0.199, 0.270, 0.304],  // angle de la mâchoire
+    [-0.480, 0.116, 0.196, 0.236],  // menton
+    [-0.600, 0.149, 0.114, 0.214],  // cou (reculé : il part de l'arrière du crâne)
+    [-0.740, 0.172, 0.124, 0.224],  // base du cou
+  ];
+  const TETE_R = TETE_ANNEAUX.length;
+  const gauss = (v, c, r) => { const t = (v - c) / r; return Math.exp(-t * t); };
+  // anneau interpolé : l'atlas a besoin des valeurs ENTRE deux anneaux
+  function anneauTete(r){
+    const i = Math.max(0, Math.min(TETE_R - 1.001, r)), a = Math.floor(i), t = i - a;
+    const A = TETE_ANNEAUX[a], B = TETE_ANNEAUX[Math.min(TETE_R - 1, a + 1)];
+    return [A[0] + (B[0]-A[0])*t, A[1] + (B[1]-A[1])*t, A[2] + (B[2]-A[2])*t, A[3] + (B[3]-A[3])*t];
+  }
+  /* Un point de la surface. L'exposant 0,75 devant APLATIT le visage : la
+     profondeur se maintient plus longtemps quand on s'écarte de l'axe, au
+     lieu de retomber en arc de cercle. L'arrière reste un demi-ovale. */
+  function surfaceTete(y, w, f, b, th){
+    const s = Math.sin(th), c = Math.cos(th);
+    let z = c >= 0 ? f * Math.pow(c, 0.75) : -b * (-c);
+    if (c > 0){
+      z += 0.021 * gauss(y,  0.105, 0.062) * Math.pow(c, 1.5);     // arcade sourcilière
+      z += 0.076 * gauss(y, -0.075, 0.130) * gauss(th, 0, 0.26);   // nez
+      z -= 0.017 * gauss(y,  0.010, 0.052) * (gauss(th, 0.33, 0.13) + gauss(th, -0.33, 0.13)); // orbites
+      z -= 0.013 * gauss(y, -0.318, 0.050) * Math.pow(c, 2.5);     // creux sous la lèvre
+      z += 0.027 * gauss(y, -0.452, 0.068) * Math.pow(c, 2.2);     // menton
+    }
+    return [w * s, y, z];
+  }
+  const HAUTEUR_TETE = 1.05; // le modèle occupe le cadre comme un vêtement (extension plafonnée à 1,08)
+  /* Maillage à facettes plates. Chaque triangle porte ses trois sommets, sa
+     normale et son éclairage cuit — la même loi que buildMesh, pour que la
+     tête et les vêtements soient éclairés pareil. */
+  /* Les oreilles, seule pièce que le tour de potier ne peut pas donner : une
+     coquille aplatie, plaquée sur le côté à la hauteur des yeux et reculée.
+     Sans elles la forme reste un mannequin de vitrine — c'est l'oreille, pas
+     le nez, qui fait lire un crâne de trois quarts. Six côtés, deux plans :
+     on reste dans le compte de facettes du reste du modèle. */
+  const OREILLE = { y: -0.015, z: -0.075, ry: 0.098, rz: 0.062, ep: 0.030, n: 6 };
+  /* Coordonnées d'atlas d'un point du volume : le tour de tête pour u, la
+     hauteur ramenée à l'échelle des anneaux pour v. Sert aux oreilles, qui ne
+     naissent pas de la grille et n'ont donc pas d'UV toutes prêtes ; elles
+     prennent ainsi la teinte de peau cousue autour d'elles. */
+  function uvTete(x, y, z){
+    const u = (Math.atan2(x, z) + Math.PI) / (2 * Math.PI);
+    let r = TETE_R - 1;
+    for (let ti = 0; ti < TETE_R - 1; ti++){
+      const y0 = TETE_ANNEAUX[ti][0], y1 = TETE_ANNEAUX[ti+1][0];
+      if (y <= y0 && y >= y1){ r = ti + (y0 - y) / (y0 - y1); break; }
+      if (y > TETE_ANNEAUX[0][0]){ r = 0; break; }
+    }
+    return [u, Math.max(0, Math.min(1, r / (TETE_R - 1)))];
+  }
+  /* Maillage à facettes plates. Chaque triangle porte ses trois sommets, sa
+     normale et son éclairage cuit — la même loi que buildMesh, pour que la
+     tête et les vêtements soient éclairés pareil. */
+  function buildTete(){
+    const M = TETE_M, R = TETE_R;
+    const ang = mi => (mi / M) * 2 * Math.PI - Math.PI;   // −π à la nuque, 0 au milieu du visage
+    const P = [];
+    for (let ti = 0; ti < R; ti++){
+      const [y, w, f, b] = TETE_ANNEAUX[ti], row = [];
+      for (let mi = 0; mi < M; mi++) row.push(surfaceTete(y, w, f, b, ang(mi)));
+      P.push(row);
+    }
+    /* Chaque face porte un point de RÉFÉRENCE intérieur, et se retourne si sa
+       normale ne s'en éloigne pas. Ce test vaut mieux qu'un raisonnement sur
+       l'ordre des indices, où une erreur ne se voit qu'à l'exécution et
+       seulement sur certaines faces.
+       Le point est pris SUR L'AXE, à la hauteur de la face — et non au centre
+       du crâne. Un centre unique suppose la forme convexe, ce qu'elle n'est
+       pas : sous le menton le volume s'ÉVASE vers le bas, la normale de cette
+       ceinture pointe donc vers le haut, le produit changeait de signe et la
+       bande entière partait à l'envers — un trou noir au cou. Sur l'axe, à sa
+       hauteur, l'écart est purement radial et le signe ne dépend plus que du
+       sens de la normale. Les deux calottes et les oreilles, elles, sont
+       horizontales ou hors axe : elles gardent un repère à elles. */
+    const axe = y => [0, y, 0];
+    const faces = [];   // { p : trois sommets, uv : leurs trois couples, ref : le point intérieur }
+    const uOf = mi => mi / M, vOf = ti => ti / (R - 1);
+    for (let ti = 0; ti < R - 1; ti++) for (let mi = 0; mi < M; mi++){
+      const m2 = (mi + 1) % M, u0 = uOf(mi), u1 = uOf(mi + 1), v0 = vOf(ti), v1 = vOf(ti + 1);
+      const a = P[ti][mi], b = P[ti+1][mi], c = P[ti+1][m2], d = P[ti][m2];
+      const ref = axe((TETE_ANNEAUX[ti][0] + TETE_ANNEAUX[ti+1][0]) / 2);
+      faces.push({ p:[a, b, c], uv:[[u0,v0],[u0,v1],[u1,v1]], ref });
+      faces.push({ p:[a, c, d], uv:[[u0,v0],[u1,v1],[u1,v0]], ref });
+    }
+    // les deux disques qui referment le volume : sommet du crâne, base du cou
+    const milieu = ti => { let x = 0, y = 0, z = 0; for (let mi = 0; mi < M; mi++){ x += P[ti][mi][0]; y += P[ti][mi][1]; z += P[ti][mi][2]; } return [x/M, y/M, z/M]; };
+    const capH = milieu(0), capB = milieu(R-1);
+    capH[1] += 0.014;   // une calotte, pas un couvercle plat
+    for (let mi = 0; mi < M; mi++){
+      const m2 = (mi + 1) % M, u0 = uOf(mi), u1 = uOf(mi + 1);
+      faces.push({ p:[capH, P[0][mi], P[0][m2]], uv:[[(u0+u1)/2, 0],[u0, 0],[u1, 0]], ref: axe(capH[1] - 0.15) });
+      faces.push({ p:[capB, P[R-1][m2], P[R-1][mi]], uv:[[(u0+u1)/2, 1],[u1, 1],[u0, 1]], ref: axe(capB[1] + 0.15) });
+    }
+    // les oreilles : une coquille de six côtés de chaque côté du crâne
+    for (const cote of [1, -1]){
+      const O = OREILLE, bord = [], sommet = [];
+      // le point du crâne à l'aplomb de l'oreille donne son assise
+      const xBase = anneauTete(uvTete(0, O.y, 1)[1] * (TETE_R - 1))[1] * cote;
+      const centre = [xBase, O.y, O.z], pointe = [xBase + O.ep * cote, O.y, O.z - 0.012];
+      for (let i = 0; i < O.n; i++){
+        const a = (i / O.n) * 2 * Math.PI;
+        const y = O.y + O.ry * Math.cos(a), z = O.z + O.rz * Math.sin(a);
+        bord.push([xBase - 0.045 * cote, y, z]);   // bien enfoncé : le crâne se dérobe vers l'arrière, un bord affleurant laisserait un jour
+        sommet.push([xBase + O.ep * cote, O.y + O.ry * 0.62 * Math.cos(a), O.z + O.rz * 0.62 * Math.sin(a)]);
+      }
+      const uv = p => uvTete(p[0], p[1], p[2]);
+      for (let i = 0; i < O.n; i++){
+        const j = (i + 1) % O.n;
+        faces.push({ p:[bord[i], sommet[i], sommet[j]], uv:[uv(bord[i]), uv(sommet[i]), uv(sommet[j])], ref:centre });
+        faces.push({ p:[bord[i], sommet[j], bord[j]], uv:[uv(bord[i]), uv(sommet[j]), uv(bord[j])], ref:centre });
+        faces.push({ p:[pointe, sommet[i], sommet[j]], uv:[uv(pointe), uv(sommet[i]), uv(sommet[j])], ref:centre });
+      }
+    }
+    // à l'échelle, et centré sur la boîte entière (le cou compte pour un
+    // cinquième de la hauteur : la tête se pose dessus, elle ne flotte pas)
+    const ech = HAUTEUR_TETE / (TETE_ANNEAUX[0][0] - TETE_ANNEAUX[R-1][0]);
+    const cy = (TETE_ANNEAUX[0][0] + TETE_ANNEAUX[R-1][0]) / 2;
+    const nV = faces.length * 3;
+    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
+    let k = 0;
+    for (const face of faces){
+      const q = face.p.map(p => [p[0] * ech, (p[1] - cy) * ech, p[2] * ech]);
+      const r = [face.ref[0] * ech, (face.ref[1] - cy) * ech, face.ref[2] * ech];
+      const ux = q[1][0]-q[0][0], uy = q[1][1]-q[0][1], uz = q[1][2]-q[0][2];
+      const wx = q[2][0]-q[0][0], wy = q[2][1]-q[0][1], wz = q[2][2]-q[0][2];
+      let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
+      const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      const gx = (q[0][0]+q[1][0]+q[2][0])/3 - r[0], gy = (q[0][1]+q[1][1]+q[2][1])/3 - r[1], gz = (q[0][2]+q[1][2]+q[2][2])/3 - r[2];
+      const dehors = nx*gx + ny*gy + nz*gz >= 0;
+      const ordre = dehors ? [0,1,2] : [0,2,1];
+      if (!dehors){ nx = -nx; ny = -ny; nz = -nz; }
+      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.max(nz, 0), 3);
+      /* Écart de clarté entre facettes bien plus marqué que sur les vêtements
+         (0,74 + 0,32 là-bas) : une photo posée à plat sur le volume masque le
+         facettage, et le modèle redevenait un œuf photographique. C'est la
+         lumière, pas la géométrie, qui fait voir le low poly une fois texturé. */
+      const fac = 0.60 + 0.58 * dif, ajout = rim * 0.075;
+      for (const i of ordre){
+        const o = k * STRIDE;
+        data[o] = q[i][0]; data[o+1] = q[i][1]; data[o+2] = q[i][2];
+        data[o+3] = face.uv[i][0]; data[o+4] = face.uv[i][1];
+        data[o+5] = fac; data[o+6] = ajout;
+        index[k] = k; k++;
+      }
+    }
+    let zmin = 9, zmax = -9;
+    for (let i = 0; i < nV; i++){ const z = data[i*STRIDE+2]; if (z < zmin) zmin = z; if (z > zmax) zmax = z; }
+    return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
+  }
+  /* ---- l'atlas : la photo collée devant, la texture cousue tout autour ----
+     L'atlas est en coordonnées de la SURFACE (u = le tour de la tête, v = la
+     descente du crâne au cou), si bien qu'un texel tombe toujours au même
+     endroit du modèle. Le visage y est peint par projection INVERSE : pour
+     chaque texel on remonte au point 3D, on le projette droit devant sur le
+     plan de la photo et on y lit la couleur. C'est bien COLLER la photo sur
+     le modèle, et non l'enrouler — enroulée, elle étirerait les traits sur
+     les joues.
+     Le reste — tempes, oreilles, nuque, crâne, cou — n'existe sur aucune
+     photo de face : il est COUSU. Rangée par rangée, la couleur du bord
+     gauche et celle du bord droit se rejoignent par l'ARRIÈRE sur une courbe
+     en cosinus (pente nulle aux deux raccords, donc aucune arête au passage).
+     On obtient une continuité de teinte — cheveux en haut, peau au milieu,
+     col en bas — sans recopier le moindre trait reconnaissable : une copie
+     miroir du visage collerait un second visage sur la nuque. */
+  const ATLAS_W = 768, ATLAS_H = 384;
+  const CADRE_DEF = [0.50, 0.05, 0.94];   // [x du milieu du visage, y du sommet du crâne, y du menton], en fractions de la photo
+  const ARGILE = [214, 176, 150];         // repli sans photo : une argile chaude, le modelé venant des seules facettes
+  function atlasTete(photo, cadre){
+    const W = ATLAS_W, H = ATLAS_H;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const out = g.createImageData(W, H), o = out.data;
+    const couvert = new Uint8Array(W * H);  // 1 = peint par la photo
+    let pd = null, pw = 0, ph = 0, hx = 0, hy0 = 0, hy1 = 0;
+    if (photo){
+      const p = document.createElement('canvas'); pw = p.width = photo.naturalWidth || photo.width; ph = p.height = photo.naturalHeight || photo.height;
+      const pg = p.getContext('2d', { willReadFrequently:true }); pg.drawImage(photo, 0, 0);
+      pd = pg.getImageData(0, 0, pw, ph).data;
+      const c = cadre || CADRE_DEF;
+      hx = c[0] * pw; hy0 = c[1] * ph; hy1 = c[2] * ph;
+    }
+    /* La photo ne sert que dans les 52° autour de l'axe. Au-delà, la surface
+       fuit trop vite : à 68° un pixel de joue s'étalerait sur deux fois et
+       demie sa largeur, toute la tempe deviendrait un long tirage. */
+    const COS_BORD = Math.cos(52 * Math.PI / 180);
+    if (pd) for (let j = 0; j < H; j++){
+      const [y, w, f, b] = anneauTete(((j + 0.5) / H) * (TETE_R - 1));
+      for (let i = 0; i < W; i++){
+        const th = ((i + 0.5) / W) * 2 * Math.PI - Math.PI;
+        if (Math.cos(th) <= COS_BORD) continue;
+        const [X, Y] = surfaceTete(y, w, f, b, th);
+        const px = Math.round(hx + X * (hy1 - hy0)), py = Math.round(hy0 + (0.50 - Y) * (hy1 - hy0));
+        if (px < 0 || py < 0 || px >= pw || py >= ph) continue;
+        const s = (py * pw + px) * 4;
+        if (pd[s+3] < 128) continue;              // photo détourée : hors sujet, rien à coller
+        const k = j * W + i;
+        o[k*4] = pd[s]; o[k*4+1] = pd[s+1]; o[k*4+2] = pd[s+2]; o[k*4+3] = 255;
+        couvert[k] = 1;
+      }
+    }
+    /* La couture d'abord, le report ensuite, et pas l'inverse : le report
+       recopie une rangée ENTIÈRE, il lui faut donc une rangée déjà complète.
+       Dans l'autre ordre il descendait les côtés encore vides d'une rangée
+       à peine ébauchée, et le cou sortait noir. */
+    const rangPleine = j => { for (let i = 0; i < W; i++) if (couvert[j*W+i]) return true; return false; };
+    // la couture : les deux bords peints se rejoignent par l'arrière
+    for (let j = 0; j < H; j++){
+      let iL = -1, iR = -1;
+      for (let i = 0; i < W; i++) if (couvert[j*W+i]){ if (iL < 0) iL = i; iR = i; }
+      if (iL < 0) continue;                       // rangée sans photo : c'est au report de la remplir
+      const kL = (j*W+iL)*4, kR = (j*W+iR)*4, trou = (W - 1 - iR) + iL + 1;
+      for (let n = 0; n < trou; n++){
+        const k = (j*W + (iR + 1 + n) % W)*4, t = (n + 1) / (trou + 1);
+        const e = 0.5 - 0.5 * Math.cos(Math.PI * t);
+        for (let ch = 0; ch < 3; ch++) o[k+ch] = o[kR+ch] * (1 - e) + o[kL+ch] * e;
+        o[k+3] = 255;
+      }
+    }
+    // rangées sans un seul texel de photo (au-dessus du crâne, sous le menton) :
+    // on y descend la rangée peinte la plus proche, sinon l'argile
+    for (let j = 0; j < H; j++){
+      if (rangPleine(j)) continue;
+      let src = -1;
+      for (let d = 1; d < H && src < 0; d++){ if (j-d >= 0 && rangPleine(j-d)) src = j-d; else if (j+d < H && rangPleine(j+d)) src = j+d; }
+      for (let i = 0; i < W; i++){
+        const k = (j*W+i)*4;
+        if (src >= 0){ const s = (src*W+i)*4; o[k] = o[s]; o[k+1] = o[s+1]; o[k+2] = o[s+2]; }
+        else { const f2 = 1 - 0.18 * ((j + 0.5) / H); o[k] = ARGILE[0]*f2; o[k+1] = ARGILE[1]*f2; o[k+2] = ARGILE[2]*f2; }
+        o[k+3] = 255;
+      }
+    }
+    /* Adoucissement du seul territoire cousu, en noyau HAUT (cinq rangées
+       pour trois colonnes) et bouclé horizontalement. Chaque rangée ayant été
+       cousue pour elle-même, à partir de ses deux bords à elle, ce qui reste à
+       effacer est un rubanage horizontal : c'est donc verticalement qu'il faut
+       moyenner. Le visage n'y touche pas — c'est ce qui distingue une couture
+       d'un flou général. */
+    const tmp = new Uint8ClampedArray(o.length);
+    for (let passe = 0; passe < 2; passe++){
+      tmp.set(o);
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++){
+        const k = j*W+i; if (couvert[k]) continue;
+        for (let ch = 0; ch < 3; ch++){
+          let s = 0, n = 0;
+          for (let dj = -2; dj <= 2; dj++){ const jj = j+dj; if (jj < 0 || jj >= H) continue;
+            for (let di = -1; di <= 1; di++){ s += tmp[(jj*W + (i+di+W)%W)*4+ch]; n++; } }
+          o[k*4+ch] = s / n;
+        }
+      }
+    }
+    g.putImageData(out, 0, 0);
+    return cv;
+  }
   // ---- photos, textures étendues (canvas) et maillages en cache (clé : chemin de la photo) ----
   const images = new Map(), meshes = new Map(), altSrc = new Map();
   const maskArea = m => { let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return n; };
@@ -4375,6 +4684,8 @@ const model3d = (() => {
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
   let current = null, active = false, raf = 0, last = 0, token = 0;
   let angle = 0, hover = false, target = 0, tap = 0, rowAngle = 0, rows = [], fading = [], listDrawn = false;
+  let tourne = 0;        // tour continu, pour les modèles marqués `tourne` (la tête de la page Info)
+  const TOUR_MS = 16000; // un tour complet ; plus vite, on ne voit plus les facettes passer
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
@@ -4419,7 +4730,8 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
+  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.visage || '') + '|' + (item.cadre || CADRE_DEF).join(',')
+    : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
      remplace le gonflement en coussin par le vrai relief du sujet — sur un
@@ -4446,9 +4758,38 @@ const model3d = (() => {
     profondeurs.set(url, p);
     return p;
   }
+  /* Photo brute, telle qu'elle est sur le disque : pas de mise au carré, pas
+     de détourage, pas d'extension de texture. Le visage n'est pas une
+     silhouette à mailler, c'est une image à lire — et carrer() déplacerait le
+     sujet, ce à quoi les fractions de `cadre` ne survivraient pas. */
+  const visages = new Map();
+  function loadPhoto(url){
+    if (visages.has(url)) return visages.get(url);
+    const p = fetch(url, { cache:'no-cache' })
+      .then(r => { if (!r.ok) throw new Error(url + ' : ' + r.status); return r.blob(); })
+      .then(b => new Promise((ok, ko) => { const im = new Image(); im.onload = () => ok(im); im.onerror = ko; im.src = URL.createObjectURL(b); }))
+      .catch(() => null);        // pas de photo : la tête garde son argile
+    visages.set(url, p); return p;
+  }
+  /* La tête : un maillage calculé et un atlas, pas de photo à détourer. Sans
+     `visage`, ou si le fichier manque, atlasTete peint son argile — le modèle
+     reste présentable, seul le visage manque. */
+  function prepareTete(item, key){
+    const p = (item.visage ? loadPhoto(encodeURI(item.visage)) : Promise.resolve(null)).then(photo => {
+      let mesh = meshes.get(key);
+      if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
+      const tex = atlasTete(photo, item.cadre);
+      const a = { mesh, texF: tex, texB: tex, tourne: true };
+      ready.set(key, a);
+      if (list) list.warm(a);
+      return a;
+    }).catch(() => { ready.set(key, null); return null; });
+    assets.set(key, p); return p;
+  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
+    if (item.tete) return prepareTete(item, key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
     const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
@@ -4548,6 +4889,13 @@ const model3d = (() => {
     const dt = last ? Math.min(60, t - last) : 16; last = t;
     const ease = Math.min(1, dt / 110);
     const sway = reduced ? 0 : Math.sin(t / 3800 * Math.PI * 2) * SWAY; // balancement ±18° en 3,8 s, commun à la fiche et à la liste
+    /* Un vêtement se balance, une tête se montre de tous les côtés. La valeur
+       du tour avance TOUJOURS, même pendant que la souris tient l'angle : au
+       relâché le modèle rejoint la rotation là où elle en est, et non là où il
+       l'avait quittée — sinon il repartirait en arrière. Mouvement réduit :
+       aucun des deux, c'est précisément ce que ce réglage demande. */
+    tourne = (tourne + dt / TOUR_MS * Math.PI * 2) % (Math.PI * 2);
+    const repos = reduced ? 0 : (current && current.tourne ? tourne : sway);
     if (hover){ backT = 0; angle += shortest(target - angle) * ease; }
     else if (tap === 1){ backT = 0; angle += shortest(0 - angle) * ease; }
     else if (tap === 2){ backT = 0; angle += shortest(Math.PI - angle) * ease; }
@@ -4559,7 +4907,7 @@ const model3d = (() => {
       // et avec moins d'amplitude, pour toujours. Ici l'arrivée est exacte.
       if (!backT){ backFrom = angle; backT = t; }
       const p = Math.min(1, (t - backT) / BACK_MS);
-      angle = p >= 1 ? sway : backFrom + shortest(sway - backFrom) * (p * p * (3 - 2 * p));
+      angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * (p * p * (3 - 2 * p));
     }
     rowAngle = sway;
     if (list && (rows.length || fading.length)) drawRows(t);
@@ -4648,6 +4996,8 @@ const model3d = (() => {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && (active || rows.length) && !raf) raf = requestAnimationFrame(frame); });
   const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
+  // contrôle : l'atlas d'une tête, tel qu'il part au GPU
+  const debugAtlas = (visage, cadre) => (visage ? loadPhoto(encodeURI(visage)) : Promise.resolve(null)).then(p => atlasTete(p, cadre).toDataURL('image/png'));
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
   const debugTexture = url => loadImage(url).then(e => e.canvas); // contrôle : texture étendue d'une photo
   const debugSnapshot = () => { draw(); return canvas.toDataURL('image/png'); }; // contrôle : image du rendu courant
@@ -4685,7 +5035,7 @@ const model3d = (() => {
       },
     };
   }
-  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugAtlas, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -4700,7 +5050,7 @@ const slider = (() => {
   let avail = [], index = 0, item = null;
   function setup(it){
     item = it; avail = []; index = 0;
-    if (it && it.img){
+    if (it && (it.img || it.tete)){
       if (!swatch.classList.contains('no-gl')) avail.push(0);
       /* `seule3D` : pas de vues photo. Le cadenas d'une pièce verrouillée dit
          que l'article n'est pas disponible, il ne tient pas sa place — une
@@ -5439,7 +5789,7 @@ function fillPreview(){
     model3d.photoURL(front).then(u => { if (photo.dataset.for === front) photo.src = u; }).catch(() => { photo.src = front; });
     model3d.photoURL(back).then(u => { if (photo2.dataset.for === back) photo2.src = u; }).catch(() => { photo2.src = back; });
     slider.setup(vu); // vue 3D d'abord, puis les photos
-  } else if (vu.img){
+  } else if (vu.img || vu.tete){
     // le cadenas : le modèle seul, aucune photo (voir seule3D dans slider.setup)
     photo.removeAttribute('src');
     photo2.removeAttribute('src');
