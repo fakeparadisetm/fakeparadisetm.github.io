@@ -2308,8 +2308,25 @@ const sfx = (() => {
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
     if (ctx.state === 'suspended') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); } // refus sans geste : on réessaiera au suivant
+    // Tant que le moteur n'a pas réellement démarré, on ne programme rien :
+    // sinon les sons s'accumulent à l'instant zéro et partent tous ensemble
+    // au réveil, en un seul bloc très fort.
+    if (ctx.state !== 'running') return null;
     ambientStart(); // la nappe démarre au premier son, faute de quoi le navigateur la refuserait
     return ctx;
+  }
+  /* Instant de départ d'un son. L'horloge du moteur audio n'avance pas en
+     continu : elle progresse par paliers, et Firefox la rafraîchit avec du
+     retard. Plusieurs sons demandés coup sur coup lisaient donc la même
+     valeur et démarraient exactement ensemble, en s'additionnant : au lieu
+     d'une série de clics, un seul bloc sonore. On tient donc notre propre
+     curseur, qui ne recule jamais et espace deux départs d'au moins 12 ms. */
+  let nextFree = 0;
+  function at(){
+    const t = Math.max(ctx.currentTime, nextFree);
+    nextFree = t + 0.012;
+    api.lastAt = t; // contrôle : instant du dernier son programmé
+    return t;
   }
 
   /* ---- nappe de fond ----
@@ -2460,7 +2477,7 @@ const sfx = (() => {
     });
   };
   function playTick(vol){
-    const c = audio(); if (!c) return; const t = c.currentTime;
+    const c = audio(); if (!c) return; const t = at();
     // garde-fou contre un double déclenchement pour un même geste. Il se mesure
     // sur l'horloge système : celle du son n'avance que par blocs et peut être
     // en retard de plusieurs millisecondes, ce qui avalait des crans.
@@ -2482,8 +2499,9 @@ const sfx = (() => {
   // Montée linéaire : le son enfle, il ne frappe pas.
   // (gains élevés : les filtres retirent l'essentiel de l'énergie du bruit blanc)
   api.move = (held) => fire('move', held, () => {
-    const c = audio(); if (!c) return; const t = c.currentTime;
-    if (t - last.move < 0.06) return; // garde-fou : deux déclenchements pour un même geste
+    const c = audio(); if (!c) return;
+    if (c.currentTime - last.move < 0.06) return; // garde-fou : deux déclenchements pour un même geste
+    const t = at();
     last.move = t; api.plays.move++;
     // filtres très ouverts et niveau bas : du souffle, pas une note. La
     // sinusoïde d'appoint a été retirée, c'était elle qui donnait une hauteur.
@@ -2492,7 +2510,7 @@ const sfx = (() => {
   // ajout au panier : confirmation posée plutôt que joyeuse — une quarte qui
   // descend (do puis sol, les deux notes du bourdon de la nappe), timbre doux,
   // extinction longue, aucun bruit sec
-  api.add = () => { const c = audio(); if (!c) return; const t = c.currentTime;
+  api.add = () => { const c = audio(); if (!c) return; const t = at();
     api.plays.add++;
     note(t, 523.25, 523.25, 0.085, 0.24, 'sine', 0.006);
     note(t, 1046.5, 1046.5, 0.022, 0.13, 'sine', 0.006);
