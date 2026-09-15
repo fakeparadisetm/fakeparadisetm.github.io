@@ -2059,6 +2059,7 @@
           <div class="arena-end-ask" data-i18n="arenaAsk"></div>
           <div class="arena-end-actions">
             <button class="preview-cta" id="arenaAdd" data-i18n="arenaAdd"></button>
+            <button class="preview-cta preview-cta--secondary" id="arenaBack" data-i18n="arenaBack"></button>
             <button class="preview-cta preview-cta--secondary" id="arenaQuit" data-i18n="arenaQuit"></button>
           </div>
         </div>
@@ -2557,7 +2558,7 @@ const STRINGS = {
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAsk:"Add it to the bag?", arenaAdd:"Add to bag",
-    arenaQuit:"Close",
+    arenaBack:"Pick again", arenaQuit:"Close",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -2578,7 +2579,7 @@ const STRINGS = {
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Ajouter au panier",
-    arenaQuit:"Fermer",
+    arenaBack:"Retour au choix", arenaQuit:"Fermer",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -6077,6 +6078,17 @@ const arena = (() => {
     const ci = DATA.findIndex(c => c.kind === 'game');
     if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
   }
+  /* Le vainqueur : on quitte le jeu et on arrive SUR SA FICHE, dépliée, les
+     tailles ouvertes — il ne reste qu'à en choisir une, l'ajout passe
+     toujours par là.
+     Deux attentes, et elles sont nécessaires. La première parce qu'un
+     changement de catégorie diffère le remplissage du panneau de 170 ms (le
+     fondu de .swap) et que ce remplissage remet la fiche au repos quand
+     l'article change : déplier tout de suite serait effacé 170 ms plus tard.
+     C'est ce qui manquait — la fiche restait sur sa galerie, et les tailles,
+     bien qu'ouvertes, y sont écrasées à zéro : le bouton ne faisait rien de
+     visible. La seconde parce que la hauteur des tailles se mesure sur une
+     fiche immobile ; pendant qu'elle se déplie, la mesure serait fausse. */
   function acheterVainqueur(){
     const p = picks[vainqueur];
     const ci = DATA.indexOf(p.cat), ii = p.cat.items.indexOf(p.it);
@@ -6084,11 +6096,22 @@ const arena = (() => {
     if (ci < 0 || ii < 0) return;
     activeCat = ci; activeItem = ii;
     render();
-    // Le sélecteur s'ouvre à l'image suivante, et pas tout de suite : le clic
-    // sur « Ajouter au panier » remonte encore jusqu'au document, où un
-    // écouteur referme tout sélecteur ouvert par un clic venu d'ailleurs. Ouvert
-    // dans la foulée, il se serait donc refermé aussitôt.
-    requestAnimationFrame(() => openSizePicker(true)); // l'ajout passe toujours par une taille, comme ailleurs
+    setTimeout(() => {
+      ouvrirFiche(false);                              // la fiche se déplie, avec son toc de validation
+      setTimeout(() => openSizePicker(true), 360);     // une fois ouverte, les tailles
+    }, 220);
+  }
+  /* Retour à l'écran de choix : on range le duel et on repart d'une sélection
+     VIDE. Garder les deux pièces en place rendrait la revanche, qui a été
+     retirée à la demande ; ce bouton sert à départager deux autres articles. */
+  function retourChoix(){
+    cancelAnimationFrame(raf); raf = 0;
+    enDuel = false; fini = false;
+    shakeEl.style.transform = '';
+    stage.hidden = true; endBox.hidden = true; pickView.hidden = false;
+    picks = [null, null];
+    focus = 0;
+    majChoix();
   }
 
 
@@ -6179,6 +6202,7 @@ const arena = (() => {
   document.getElementById('arenaClear').addEventListener('click', () => { picks = [null, null]; majChoix(); });
   fightBtn.addEventListener('click', lancer);
   document.getElementById('arenaAdd').addEventListener('click', acheterVainqueur);
+  document.getElementById('arenaBack').addEventListener('click', retourChoix);
   document.getElementById('arenaQuit').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
   window.addEventListener('resize', () => { if (ouvert && enDuel) mesurer(); });
