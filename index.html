@@ -2903,7 +2903,7 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    panel:{ n:"FakeParadise™", img:"icons/aboutme3D.webp", seule3D:true,
+    panel:{ n:"FakeParadise™", img:"icons/aboutme3D.webp", depth:"icons/aboutme3D depth map.png", seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -4205,8 +4205,20 @@ const model3d = (() => {
   //      selon la distance au contour ; face arrière symétrique ; la photo de
   //      face est projetée devant, la photo de dos derrière (en miroir), sa
   //      silhouette calée sur celle de face.
-  function buildMesh(mask, backMask, doux){
+  function buildMesh(mask, backMask, doux, prof){
     const N = MASK_N, dist = distances(mask);
+    /* Carte de profondeur : on la ramène dans [0,1] sur les SEULS pixels du
+       sujet. Les valeurs du fond n'ont aucun sens ici (une carte estimée en
+       met partout) et fausseraient l'étalement. Le plancher à 0,3 empêche la
+       partie la plus lointaine de s'aplatir complètement : elle doit rester
+       un volume, pas une feuille. */
+    let relief = null;
+    if (prof){
+      let lo = 1e9, hi = -1e9;
+      for (let i = 0; i < N*N; i++) if (mask[i]){ const v = prof[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      const amp = hi - lo;
+      relief = amp > 0.02 ? (i => 0.3 + 0.7 * ((prof[i] - lo) / amp)) : null;
+    }
     const bbox = m => { let x0 = N, y0 = N, x1 = -1, y1 = -1, area = 0;
       for (let i = 0; i < N*N; i++) if (m[i]){ area++; const x = i % N, y = (i-x)/N; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       return { x0, y0, x1, y1, area }; };
@@ -4238,7 +4250,14 @@ const model3d = (() => {
       const d = seam ? 0 : Math.min(distAt(x, y), rInfl);
       let ux = x, uy = y; // près du contour, la texture est prise plus à l'intérieur (dégressif)
       if (d < rInfl){ const g = inward(x, y); if (g){ const ins = INSET * (1 - d / rInfl); ux += g[0] * ins; uy += g[1] * ins; } }
-      vx.push(x); vy.push(y); vz.push(THICK * profil(d / rInfl)); vu.push(ux); vv.push(uy);
+      /* Épaisseur du sommet : le coussin seul, ou le coussin MULTIPLIÉ par la
+         profondeur lue sur la carte. Le facteur de bord reste dans tous les
+         cas — c'est lui qui ramène la surface à zéro sur le contour, donc qui
+         referme le volume ; sans lui, le devant et le dos ne se rejoindraient
+         pas et la silhouette paraîtrait tranchée. */
+      const bord = profil(d / rInfl);
+      const p = relief ? relief(clampX(y) * N + clampX(x)) : 1;
+      vx.push(x); vy.push(y); vz.push(THICK * bord * p); vu.push(ux); vv.push(uy);
       ids.set(key, id); return id; };
     const crossing = (ax, ay, bx, by) => { // a intérieur, b extérieur : point de bascule du contour (8 pas)
       let tIn = 0;
@@ -4305,7 +4324,10 @@ const model3d = (() => {
       data[P*STRIDE+5] = 0.74 + 0.32*d; data[P*STRIDE+6] = rim*0.08;
     }
     // données CPU ; chaque contexte crée ses tampons GPU à la demande (makeRenderer → bufs)
-    return { data, index: new Uint16Array(front.concat(backI)), nFront: front.length, nBack: backI.length, tris: (front.length + backI.length) / 3, verts: nV };
+    // zmax, zmin : releve de controle du relief (voir model3d.debug)
+    let zmin = 9, zmax = -9;
+    for (let k = 0; k < nV; k++){ if (vz[k] < zmin) zmin = vz[k]; if (vz[k] > zmax) zmax = vz[k]; }
+    return { data, index: new Uint16Array(front.concat(backI)), nFront: front.length, nBack: backI.length, tris: (front.length + backI.length) / 3, verts: nV, zmin, zmax, relief: !!relief };
   }
 
   // ---- photos, textures étendues (canvas) et maillages en cache (clé : chemin de la photo) ----
@@ -4385,12 +4407,38 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img);
+  const keyOf = item => encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
+  /* Carte de profondeur (facultative, par article). Une image en niveaux de
+     gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
+     remplace le gonflement en coussin par le vrai relief du sujet — sur un
+     personnage, le coussin ne pouvait que deviner, il donnait un buste aussi
+     bombé qu'un ballon et une tête aussi plate que les jambes.
+     Lue à la résolution du masque et par le même chemin que lui (carrer, puis
+     un carré de MASK_N) : sans cela les deux ne se superposeraient pas. */
+  const profondeurs = new Map();
+  function loadDepth(url){
+    if (profondeurs.has(url)) return profondeurs.get(url);
+    const p = new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => {
+        const N = MASK_N, c = document.createElement('canvas'); c.width = N; c.height = N;
+        const g = c.getContext('2d', { willReadFrequently:true });
+        g.drawImage(carrer(im), 0, 0, N, N);
+        const d = g.getImageData(0, 0, N, N).data, out = new Float32Array(N * N);
+        for (let i = 0; i < N * N; i++) out[i] = (d[i*4] * 0.299 + d[i*4+1] * 0.587 + d[i*4+2] * 0.114) / 255;
+        res(out);
+      };
+      im.onerror = rej;
+      im.src = url;
+    }).catch(() => null);   // carte absente ou illisible : on retombe sur le coussin
+    profondeurs.set(url, p);
+    return p;
+  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
-    const p = Promise.all([loadImage(front), loadImage(back)]).then(([f, b]) => {
+    const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
       if (bMask && maskArea(bMask) < 0.7 * maskArea(f.mask)){
         bMask = mirrorMask(f.mask);
@@ -4399,7 +4447,7 @@ const model3d = (() => {
         texB = altSrc.get(k2);
       }
       let mesh = meshes.get(key);
-      if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front)); meshes.set(key, mesh); }
+      if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front), prof); meshes.set(key, mesh); }
       const a = mesh ? { mesh, texF: f.canvas, texB } : null;
       ready.set(key, a);
       if (list) list.warm(a); // la ligne s'affiche dès que possible, sans à-coup
@@ -4586,7 +4634,7 @@ const model3d = (() => {
   resizeList();
   window.addEventListener('resize', () => { swatchW = 0; resizeList(); if (active) resize(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && (active || rows.length) && !raf) raf = requestAnimationFrame(frame); });
-  const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, angle: Math.round(angle * 180 / Math.PI) % 360, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
+  const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
   const debugTexture = url => loadImage(url).then(e => e.canvas); // contrôle : texture étendue d'une photo
