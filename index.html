@@ -1386,6 +1386,195 @@
     .preview.info-panel{width:min(36vw,460px);}
   }
 
+  /* ---------- mini-jeu « Versus » (provisoire) ----------
+     Même grammaire que les autres fenêtres du site : voile sombre, panneau de
+     verre, fondu par visibility pour ne rien peindre quand c'est fermé. */
+  .arena-overlay{
+    position:fixed;inset:0;z-index:40;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,2,4,0);
+    visibility:hidden;
+    pointer-events:none;
+    transition:background-color 0.2s ease, visibility 0s linear 0.2s;
+  }
+  .arena-overlay.open{
+    background:rgba(0,2,4,0.82);
+    visibility:visible;
+    pointer-events:auto;
+    transition:background-color 0.3s ease, visibility 0s;
+  }
+  .arena-panel{
+    width:min(94vw,1180px);
+    height:min(88vh,780px);
+    display:flex;
+    flex-direction:column;
+    border-radius:8px;
+    overflow:hidden;
+    transform:translateY(14px) scale(0.975);
+    transition:transform 0.2s ease;
+  }
+  .arena-overlay.open .arena-panel{transform:none;transition:transform 0.35s cubic-bezier(.2,.8,.2,1);}
+  .arena-panel > *{opacity:0;transition:opacity 0s linear 0.2s;}
+  .arena-overlay.open .arena-panel > *{opacity:1;transition:opacity 0.3s ease 0.05s;}
+  .arena-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px 12px;
+    flex:0 0 auto;
+  }
+  .arena-head h2{
+    font-size:19px;font-weight:550;letter-spacing:4px;
+    color:var(--blue);
+    text-shadow:0 0 16px rgba(var(--accent-rgb),0.45);
+  }
+
+  /* --- écran de choix --- */
+  .arena-pick{
+    flex:1 1 auto;
+    display:flex;flex-direction:column;
+    min-height:0;                 /* sans quoi la grille pousse le panneau au lieu de défiler */
+    padding:0 22px;
+  }
+  .arena-pick[hidden]{display:none;}
+  .arena-pick-head{text-align:center;}
+  .arena-pick-title{font-size:17px;letter-spacing:0.3px;}
+  .arena-pick-sub{margin-top:5px;font-size:12.5px;color:var(--white-60);}
+  .arena-slots{
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    margin:14px 0 12px;
+  }
+  .arena-slot{
+    width:min(30vw,240px);height:62px;
+    display:flex;align-items:center;gap:11px;
+    padding:0 13px;
+    border:1px dashed rgba(255,255,255,0.18);
+    border-radius:5px;
+    font-size:13px;
+    color:var(--white-35);
+    overflow:hidden;
+  }
+  .arena-slot.filled{
+    border-style:solid;
+    border-color:rgba(var(--accent-rgb),0.55);
+    background:rgba(var(--accent-rgb),0.07);
+    color:var(--white);
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.18);
+  }
+  .arena-slot img{width:44px;height:44px;object-fit:cover;border-radius:3px;flex:0 0 auto;}
+  .arena-slot b{font-weight:450;font-size:12.5px;line-height:1.3;overflow:hidden;}
+  .arena-vs{
+    font-size:14px;font-weight:550;letter-spacing:2px;
+    color:var(--blue);
+    text-shadow:0 0 12px rgba(var(--accent-rgb),0.5);
+  }
+  .arena-grid{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(112px,1fr));
+    gap:10px;
+    padding:4px 2px 10px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(var(--accent-rgb),0.45) transparent;
+  }
+  .arena-card{
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:4px;
+    padding:8px 8px 9px;
+    cursor:pointer;
+    text-align:left;
+    color:inherit;
+    font:inherit;
+    transition:border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .arena-card img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:3px;display:block;background:rgba(0,0,0,0.25);}
+  .arena-card span{display:block;margin-top:7px;font-size:11px;line-height:1.3;color:var(--white-60);}
+  .arena-card:hover{border-color:rgba(var(--accent-rgb),0.5);background:rgba(var(--accent-rgb),0.08);}
+  .arena-card.focus{border-color:rgba(255,255,255,0.85);}
+  .arena-card.picked{
+    border-color:rgba(var(--accent-rgb),0.85);
+    background:rgba(var(--accent-rgb),0.16);
+    transform:translateY(-2px);
+  }
+  .arena-card.picked span{color:var(--white);}
+  .arena-pick-actions{display:flex;gap:10px;justify-content:center;padding:4px 0 16px;flex:0 0 auto;}
+  .arena-pick-actions .preview-cta{margin-top:0;}
+  .preview-cta[disabled]{opacity:0.35;cursor:default;pointer-events:none;}
+
+  /* --- le duel --- */
+  .arena-stage{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;flex-direction:column;
+  }
+  .arena-stage[hidden]{display:none;}
+  .arena-hud{
+    display:flex;align-items:flex-start;gap:16px;
+    padding:2px 22px 12px;
+    flex:0 0 auto;
+  }
+  .arena-side{flex:1 1 0;min-width:0;}
+  .arena-side.right{text-align:right;}
+  .arena-name{
+    font-size:13px;letter-spacing:0.4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    margin-bottom:6px;
+  }
+  .arena-bar{
+    position:relative;height:9px;
+    background:rgba(255,255,255,0.09);
+    border:1px solid rgba(255,255,255,0.13);
+    border-radius:5px;
+    overflow:hidden;
+  }
+  .arena-bar i{position:absolute;inset:0;transform-origin:left center;display:block;}
+  .arena-side.right .arena-bar i{transform-origin:right center;}
+  /* la barre fantôme retarde sur la vraie : le coup encaissé se lit d'un coup d'œil */
+  .arena-bar .ghost{background:rgba(255,72,72,0.75);transition:transform 0.55s ease 0.12s;}
+  .arena-bar .fill{
+    background:linear-gradient(90deg, rgba(var(--accent-rgb),0.85), rgba(255,255,255,0.9));
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.5);
+    transition:transform 0.28s cubic-bezier(.2,.8,.2,1);
+  }
+  .arena-turn{
+    flex:0 0 auto;align-self:center;
+    font-size:12px;letter-spacing:2px;color:var(--white-35);
+    min-width:52px;text-align:center;
+  }
+  .arena-shake{position:relative;flex:1 1 auto;min-height:0;}
+  .arena-shake canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #arenaGL{z-index:1;}
+  #arenaFx{z-index:2;}
+
+  /* --- carte de fin --- */
+  .arena-end{
+    position:absolute;inset:0;z-index:3;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(0,2,4,0.45);
+  }
+  .arena-end[hidden]{display:none;}
+  .arena-end-card{
+    padding:26px 30px;
+    border-radius:6px;
+    text-align:center;
+    animation:arenaPop 0.45s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes arenaPop{from{opacity:0;transform:translateY(10px) scale(0.96);}to{opacity:1;transform:none;}}
+  .arena-end-title{
+    font-size:24px;font-weight:450;letter-spacing:0.4px;
+    text-shadow:0 0 20px rgba(var(--accent-rgb),0.45);
+  }
+  .arena-end-ask{margin-top:8px;font-size:13px;color:var(--white-60);}
+  .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+  .arena-end-actions .preview-cta{margin-top:0;}
+
+  @media (max-width:820px){
+    .arena-panel{width:96vw;height:92vh;}
+    .arena-slot{width:40vw;}
+  }
+
   @media (max-width:820px){
     .preview{display:none;}
     .categories{padding-left:6vw;}
@@ -1539,6 +1728,74 @@
     </div>
     <div class="info-body" id="infoBody"></div>
     <div class="legal-hint">
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- Mini-jeu « Versus » (provisoire, 15 sept. 2026) : deux articles s'affrontent
+     et le sort désigne celui qu'on achète. Trois calques empilés dans l'arène :
+     le décor en parallaxe, les deux vêtements en 3D, les attaques. Voir le
+     module `arena` dans le script. -->
+<div class="arena-overlay" id="arenaOverlay" role="dialog" aria-modal="true" aria-labelledby="arenaTitle">
+  <div class="arena-panel glass">
+    <div class="arena-head">
+      <h2 id="arenaTitle" data-i18n="arenaTitle">VERSUS</h2>
+      <button class="legal-close" id="arenaClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+    </div>
+
+    <!-- 1. choix des deux articles -->
+    <div class="arena-pick" id="arenaPick">
+      <div class="arena-pick-head">
+        <div class="arena-pick-title" data-i18n="arenaPick"></div>
+        <div class="arena-pick-sub" data-i18n="arenaPickSub"></div>
+      </div>
+      <div class="arena-slots">
+        <div class="arena-slot" id="arenaSlot0"></div>
+        <div class="arena-vs">VS</div>
+        <div class="arena-slot" id="arenaSlot1"></div>
+      </div>
+      <div class="arena-grid" id="arenaGrid"></div>
+      <div class="arena-pick-actions">
+        <button class="preview-cta" id="arenaFight" data-i18n="arenaFight" disabled></button>
+        <button class="preview-cta preview-cta--secondary" id="arenaClear" data-i18n="arenaClear"></button>
+      </div>
+    </div>
+
+    <!-- 2. le duel -->
+    <div class="arena-stage" id="arenaStage" hidden>
+      <div class="arena-hud">
+        <div class="arena-side">
+          <div class="arena-name" id="arenaName0"></div>
+          <div class="arena-bar"><i class="ghost" id="arenaGhost0"></i><i class="fill" id="arenaFill0"></i></div>
+        </div>
+        <div class="arena-turn" id="arenaTurn">VS</div>
+        <div class="arena-side right">
+          <div class="arena-name" id="arenaName1"></div>
+          <div class="arena-bar"><i class="ghost" id="arenaGhost1"></i><i class="fill" id="arenaFill1"></i></div>
+        </div>
+      </div>
+      <div class="arena-shake" id="arenaShake">
+        <canvas id="arenaBg"></canvas>
+        <canvas id="arenaGL"></canvas>
+        <canvas id="arenaFx"></canvas>
+      </div>
+      <div class="arena-end" id="arenaEnd" hidden>
+        <div class="arena-end-card glass">
+          <div class="arena-end-title" id="arenaEndTitle"></div>
+          <div class="arena-end-ask" data-i18n="arenaAsk"></div>
+          <div class="arena-end-actions">
+            <button class="preview-cta" id="arenaAdd" data-i18n="arenaAdd"></button>
+            <button class="preview-cta preview-cta--secondary" id="arenaAgain" data-i18n="arenaAgain"></button>
+            <button class="preview-cta preview-cta--secondary" id="arenaQuit" data-i18n="arenaQuit"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legal-hint">
+      <span><span class="key">←</span><span class="key">→</span> <span data-i18n="hintBrowse">browse</span></span>
+      <span><span class="key wide">enter</span> <span data-i18n="hintPick">pick</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
   </div>
@@ -2023,6 +2280,12 @@ const STRINGS = {
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
     language:"Language", currency:"Currency", sound:"Sound", soundOn:"On", soundOff:"Off",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to bag", hintInstagram:"open Instagram", hintOpen:"open",
+    // Mini-jeu « Versus » (provisoire)
+    play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS",
+    arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
+    arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
+    arenaWins:"wins", arenaAsk:"Add it to the bag?", arenaAdd:"Add to bag",
+    arenaAgain:"Rematch", arenaQuit:"Close",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -2038,6 +2301,12 @@ const STRINGS = {
     photo:"Photo", prevPhoto:"Vue précédente", nextPhoto:"Vue suivante",
     language:"Langue", currency:"Devise", sound:"Son", soundOn:"Activé", soundOff:"Coupé",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
+    // Mini-jeu « Versus » (provisoire)
+    play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS",
+    arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
+    arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
+    arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Ajouter au panier",
+    arenaAgain:"Revanche", arenaQuit:"Fermer",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -2185,6 +2454,12 @@ const DATA = [
   { name:{en:"Unique Pieces", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"info", items:[],
     panel:{ n:{en:"Unique Pieces", fr:"Pièces uniques"},
       d:"No unique pieces for the moment." } },
+  // Provisoire (demande du 15 sept. 2026) : mini-jeu pour departager deux
+  // articles quand on hesite. L'icone lance l'arene, voir le module `arena`.
+  { name:{en:"Versus", fr:"Versus"}, icon:"arena icon.svg", kind:"game", items:[],
+    panel:{ n:{en:"Versus", fr:"Versus"},
+      d:{en:"Torn between two pieces? Let them settle it.\nPick two items, then watch them fight.\nThe winner is pure chance — it decides for you.",
+         fr:"Hésitation entre deux pièces ? Laissez-les se battre.\nChoisissez deux articles, puis regardez le duel.\nLe vainqueur est tiré au sort — il décide à votre place."} } },
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
@@ -2768,7 +3043,7 @@ const model3d = (() => {
   // pixels des photos (canvas « souillé ») et bloque fetch → pas de détourage possible.
   // Le site doit être servi en http:// (start-site.bat en local, ou l'hébergeur).
   const fileMode = location.protocol === 'file:';
-  const stub = { show(){}, hide(){}, setRows(){}, rows3d:false, photoURL: url => Promise.resolve(url) };
+  const stub = { show(){}, hide(){}, setRows(){}, rows3d:false, photoURL: url => Promise.resolve(url), makeScene: () => null };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const MASK_N = 192;    // résolution du masque de silhouette (pixels)
   const GRID = 56;       // mailles sur la plus grande dimension du vêtement
@@ -2805,8 +3080,17 @@ const model3d = (() => {
   //      des lignes de la liste).
   const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;
     varying vec2 vUV;varying vec2 vSh;void main(){vUV=aUV;vSh=aSh;gl_Position=uMVP*vec4(aPos,1.0);}`;
-  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;varying vec2 vUV;varying vec2 vSh;
-    void main(){gl_FragColor=vec4((texture2D(uTex,vUV).rgb*vSh.x+vSh.y)*uAlpha,uAlpha);}`;
+  /* uTint : teinte de dégât du mini-jeu (voir le module `arena`). rgb donne la
+     couleur, a son intensité ; (0,0,0,0) partout ailleurs, donc la fiche et la
+     liste rendent exactement comme avant. Un mélange PUIS un ajout : le mélange
+     recolore le tissu, l'ajout le fait rayonner au lieu de le noircir. */
+  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;
+    varying vec2 vUV;varying vec2 vSh;
+    void main(){
+      vec3 c = texture2D(uTex,vUV).rgb*vSh.x+vSh.y;
+      c = mix(c, uTint.rgb, uTint.a*0.75) + uTint.rgb*uTint.a*0.45;
+      gl_FragColor=vec4(c*uAlpha,uAlpha);
+    }`;
   const STRIDE = 7;      // flottants par sommet : position (3), uv (2), éclairage (2)
   const LIGHT = (() => { const l = Math.hypot(0.35, 0.5, 0.8); return [0.35 / l, 0.5 / l, 0.8 / l]; })();
 
@@ -2827,6 +3111,7 @@ const model3d = (() => {
     const aPos = gl.getAttribLocation(prog, 'aPos'), aUV = gl.getAttribLocation(prog, 'aUV'), aSh = gl.getAttribLocation(prog, 'aSh');
     const uMVP = gl.getUniformLocation(prog, 'uMVP');
     const uTex = gl.getUniformLocation(prog, 'uTex'), uAlpha = gl.getUniformLocation(prog, 'uAlpha');
+    const uTint = gl.getUniformLocation(prog, 'uTint'); // teinte de dégât du mini-jeu ; (0,0,0,0) ailleurs
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
@@ -2855,7 +3140,7 @@ const model3d = (() => {
     // dessine un modèle sur tout le canvas, ou dans le carré box = { x, y, s } (pixels du
     // canvas, y vers le bas, fractions permises : la fenêtre de rendu est entière et un
     // peu plus large, le décalage restant passe dans la projection → aucun tremblement)
-    function render(a, ang, pv, alpha, box, side){
+    function render(a, ang, pv, alpha, box, side, tint){
       const M = mul(rotX(0.14), rotY(ang)); // léger basculement vers le spectateur
       let MVP = mul(pv, M);
       if (box){
@@ -2867,6 +3152,7 @@ const model3d = (() => {
       } else { gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); }
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
+      gl.uniform4f(uTint, tint ? tint[0] : 0, tint ? tint[1] : 0, tint ? tint[2] : 0, tint ? tint[3] : 0);
       const b = bufs(a.mesh), S = STRIDE * 4;
       gl.bindBuffer(gl.ARRAY_BUFFER, b.vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, S, 0);
@@ -3348,7 +3634,27 @@ const model3d = (() => {
         dom: { x: r2(rc.left + camShift), y: r2(rc.top), s: r2(rc.width) } }; // le canvas suit la barre : on retire son décalage
     });
   };
-  return { show, hide, setRows, rows3d: !!list, photoURL, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+
+  /* ---- scène du mini-jeu (voir le module `arena`) ----
+     Un contexte WebGL de plus, créé seulement à l'ouverture de l'arène. Il
+     réutilise les maillages et les textures déjà calculés pour la fiche et la
+     liste — le travail lourd, détourage et gonflement, n'est fait qu'une fois
+     par photo — mais garde ses propres objets GPU, comme chaque contexte. */
+  function makeScene(cv){
+    const r = makeRenderer(cv, 512, true);
+    if (!r) return null;
+    return {
+      load: item => prepare(item),            // maillage + textures, mis en cache
+      ready: item => !!ready.get(keyOf(item)),
+      clear: r.clear,
+      // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
+      draw(item, ang, box, alpha, tint){
+        const a = ready.get(keyOf(item));
+        if (a) r.render(a, ang, PVrow, alpha == null ? 1 : alpha, box, '', tint);
+      },
+    };
+  }
+  return { show, hide, setRows, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -3499,7 +3805,7 @@ function updateHints(){
     show('enter', false); show('info', false); show('back', true, T('hintBack'));
   } else {
     show('browse', true, T('hintBrowse')); show('select', true, T('hintSelect'));
-    show('enter', true, cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : T('hintOpen'));
+    show('enter', true, cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
     show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
@@ -3932,7 +4238,7 @@ function fillPreview(){
 
   // Contact et Shipping Info : pas de sous-menu ni de visuel produit, le
   // contenu vient de cat.panel et s'affiche dès que l'icône est active.
-  const isInfo = cat.kind === 'contact' || cat.kind === 'info';
+  const isInfo = cat.kind === 'contact' || cat.kind === 'info' || cat.kind === 'game'; // gabarits texte, sans visuel produit
   const item = isInfo ? cat.panel : cat.items[activeItem];
   if (!item){ previewEl.classList.remove('show'); return; }
 
@@ -3972,9 +4278,10 @@ function fillPreview(){
     priceEl.textContent = 'instagram.com/fakeparadisetm';
     addBtn.hidden = false;
     addBtn.textContent = T('instagram');
-  } else if (cat.kind === 'info'){
+  } else if (cat.kind === 'info' || cat.kind === 'game'){
     priceEl.hidden = true;
-    addBtn.hidden = true; // tout tient dans le texte
+    addBtn.hidden = cat.kind !== 'game'; // Versus : seul le mini-jeu a un bouton, le reste tient dans le texte
+    if (cat.kind === 'game') addBtn.textContent = T('play');
   } else {
     priceEl.hidden = false;
     priceEl.innerHTML = item.was
@@ -4111,6 +4418,7 @@ addBtn.addEventListener('click', ()=>{
     window.open(INSTAGRAM_URL, '_blank');
     return;
   }
+  if (cat.kind === 'game'){ arena.open(); return; } // Versus : le bouton lance le mini-jeu
   if (cat.kind !== 'shop') return;
   // l'ajout passe par le choix d'une taille : le clic (ou un toucher, sans
   // survol) ouvre le sélecteur et le garde ouvert jusqu'à un choix
@@ -4207,9 +4515,593 @@ function closeLegal(){
 document.getElementById('legalClose').addEventListener('click', closeLegal);
 legalOverlay.addEventListener('click', (e) => { if (e.target === legalOverlay) closeLegal(); });
 
+
+/* ---------------- mini-jeu « Versus » (provisoire, 15 sept. 2026) ----------------
+   Départager deux articles quand on hésite : on en choisit deux, ils se battent
+   tout seuls, le sort désigne l'acheté. Aucune commande pendant le duel — c'est
+   un tirage au sort mis en scène, pas un jeu.
+
+   Le duel est ÉCRIT D'AVANCE, à l'ouverture (voir ecrireDuel) : on tire le
+   vainqueur, puis des dégâts qui tombent juste à 100 pour le perdant. C'est ce
+   qui permet de tenir les deux promesses à la fois — un vainqueur vraiment
+   aléatoire, et un duel court et net de quatre ou cinq attaques chacun, terminé
+   par un K.-O. plutôt que par une comparaison de barres. Le perdant ouvre donc
+   le duel, pour que le dernier coup soit celui du vainqueur.
+
+   Trois calques : le décor en parallaxe et les attaques au pinceau 2D, les deux
+   vêtements dans un troisième contexte WebGL (model3d.makeScene), qui réutilise
+   les maillages déjà calculés pour la fiche et la liste. */
+const arena = (() => {
+  const overlay = document.getElementById('arenaOverlay');
+  const pickView = document.getElementById('arenaPick');
+  const stage = document.getElementById('arenaStage');
+  const grid = document.getElementById('arenaGrid');
+  const shakeEl = document.getElementById('arenaShake');
+  const bgC = document.getElementById('arenaBg'), glC = document.getElementById('arenaGL'), fxC = document.getElementById('arenaFx');
+  const bg = bgC.getContext('2d'), fx = fxC.getContext('2d');
+  const endBox = document.getElementById('arenaEnd'), endTitle = document.getElementById('arenaEndTitle');
+  const turnLabel = document.getElementById('arenaTurn');
+  const slots = [0, 1].map(i => document.getElementById('arenaSlot' + i));
+  const nameEls = [0, 1].map(i => document.getElementById('arenaName' + i));
+  const fillEls = [0, 1].map(i => document.getElementById('arenaFill' + i));
+  const ghostEls = [0, 1].map(i => document.getElementById('arenaGhost' + i));
+  const fightBtn = document.getElementById('arenaFight');
+
+  let scene = null;            // contexte 3D de l'arène, créé au premier duel
+  let ouvert = false, enDuel = false;
+  let picks = [null, null], cartes = [], focus = 0, catalogue = [];
+  let raf = 0, W = 0, H = 0, K = 1;          // W/H en pixels CSS, K = pixels de canvas par pixel CSS
+
+  /* ---- catalogue : tous les articles en vente, toutes catégories confondues.
+     Relu à chaque ouverture, puisque catalogue.json peut l'avoir changé. ---- */
+  function listerArticles(){
+    const out = [];
+    DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => out.push({ it, cat })); });
+    return out;
+  }
+
+  /* ---- écran de choix ---- */
+  function construireGrille(){
+    catalogue = listerArticles();
+    grid.textContent = '';
+    cartes = catalogue.map((e, i) => {
+      const b = document.createElement('button');
+      b.className = 'arena-card';
+      b.type = 'button';
+      const img = document.createElement('img');
+      img.alt = '';
+      img.loading = 'lazy';
+      const src = encodeURI(e.it.img || '');
+      // photoURL rend la copie déjà téléchargée par le modèle 3D : aucun aller-retour de plus
+      if (src) model3d.photoURL(src).then(u => { img.src = u; }).catch(() => { img.src = src; });
+      const t = document.createElement('span');
+      t.textContent = L(e.it.n);
+      b.append(img, t);
+      b.addEventListener('click', () => { focus = i; choisir(i); });
+      grid.appendChild(b);
+      return b;
+    });
+    picks = [null, null];
+    focus = 0;
+    majChoix();
+  }
+  function choisir(i){
+    const e = catalogue[i];
+    const deja = picks.findIndex(p => p && p.i === i);
+    if (deja >= 0){ picks[deja] = null; }                       // re-cliquer retire
+    else if (!picks[0]) picks[0] = { i, it: e.it, cat: e.cat };
+    else if (!picks[1]) picks[1] = { i, it: e.it, cat: e.cat };
+    else { picks[0] = picks[1]; picks[1] = { i, it: e.it, cat: e.cat }; } // les deux pleins : le plus ancien cède
+    sfx.tick();
+    majChoix();
+  }
+  function majChoix(){
+    slots.forEach((el, s) => {
+      const p = picks[s];
+      el.classList.toggle('filled', !!p);
+      el.textContent = '';
+      if (!p){ el.textContent = T('arenaSlotEmpty'); return; }
+      const img = document.createElement('img');
+      img.alt = '';
+      const src = encodeURI(p.it.img || '');
+      if (src) model3d.photoURL(src).then(u => { img.src = u; }).catch(() => { img.src = src; });
+      const b = document.createElement('b');
+      b.textContent = L(p.it.n);
+      el.append(img, b);
+    });
+    cartes.forEach((c, i) => {
+      c.classList.toggle('picked', picks.some(p => p && p.i === i));
+      c.classList.toggle('focus', i === focus);
+    });
+    fightBtn.disabled = !(picks[0] && picks[1]);
+    // Les deux choisis : le bouton prend le focus, Entrée lance donc le duel.
+    // Une flèche rend la main à la grille (voir bougerFocus).
+    if (!fightBtn.disabled) fightBtn.focus();
+  }
+  function colonnes(){ // nombre de colonnes réellement posées par la grille CSS
+    const n = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return Math.max(1, n);
+  }
+  function bougerFocus(d){
+    if (document.activeElement === fightBtn) fightBtn.blur();
+    const n = cartes.length;
+    if (!n) return;
+    focus = Math.max(0, Math.min(n - 1, focus + d));
+    majChoix();
+    cartes[focus].scrollIntoView({ block: 'nearest' });
+    sfx.tick(true);
+  }
+
+  /* ---- écriture du duel ----
+     Le vainqueur est tiré à pile ou face, puis on répartit les dégâts : ceux du
+     vainqueur tombent juste à 100 (K.-O. au dernier coup), ceux du perdant
+     laissent au vainqueur entre 25 et 55 points de vie. Le duel est donc court,
+     décisif, et toujours de la même longueur. */
+  function parts(total, k){ // k parts entières, positives, de somme exacte
+    const w = Array.from({ length: k }, () => 0.55 + Math.random());
+    const s = w.reduce((a, b) => a + b, 0);
+    const r = w.map(x => Math.max(1, Math.round(x / s * total)));
+    let reste = Math.round(total) - r.reduce((a, b) => a + b, 0);
+    for (let i = r.length - 1; reste !== 0 && i >= 0; i--){ // le reste d'arrondi se replace sans jamais passer sous 1
+      const d = Math.max(1 - r[i], reste);
+      r[i] += d; reste -= d;
+    }
+    return r;
+  }
+  // Durées d'un tour, en ms. Dix attaques au total : chaque dizaine de ms comptée
+  // ici se paie treize fois à l'écran, d'où des valeurs serrées (≈ 13 s en tout).
+  const PH = { intro: 800, wind: 260, impact: 340, rest: 150 };
+  let plan = [], finMs = 0, vainqueur = 0, vie = [100, 100];
+
+  function ecrireDuel(){
+    vainqueur = Math.random() < 0.5 ? 0 : 1;
+    const perdant = 1 - vainqueur;
+    const n = 4 + Math.round(Math.random());          // 4 ou 5 attaques chacun
+    const versPerdant = parts(100, n);
+    const versVainqueur = parts(38 + Math.random() * 34, n); // le vainqueur finit entre 28 % et 62 % de vie : le duel reste serré
+    plan = [];
+    let t = PH.intro, precedente = -1;
+    for (let i = 0; i < n; i++){
+      // le perdant ouvre : le dernier coup du duel est donc celui du vainqueur
+      [[perdant, versVainqueur[i]], [vainqueur, versPerdant[i]]].forEach(paire => {
+        const from = paire[0], dmg = paire[1];
+        let a = Math.floor(Math.random() * ATTAQUES.length);
+        if (a === precedente) a = (a + 1 + Math.floor(Math.random() * (ATTAQUES.length - 1))) % ATTAQUES.length;
+        precedente = a;
+        const atk = ATTAQUES[a];
+        const tir = t + PH.wind;
+        plan.push({ from: from, to: 1 - from, dmg: dmg, atk: atk, t0: t, tir: tir,
+                    choc: tir + atk.vol, fin: tir + atk.vol + PH.impact + PH.rest });
+        t = tir + atk.vol + PH.impact + PH.rest;
+      });
+    }
+    finMs = t;
+    vie = [100, 100];
+  }
+
+  /* ---- attaques : quatre sorts, tirés dans un ordre aléatoire, jamais deux
+     fois de suite le même. `vol` est la durée du trajet ; `trace` dessine le
+     projectile à l'avancement u (0 au départ, 1 à l'arrivée) ; `choc` dessine
+     l'impact à l'avancement v. Tout est peint à la couleur d'ambiance du
+     moment, pour que le duel reste dans la teinte du site. ---- */
+  const TAU2 = Math.PI * 2;
+  let ACC = '120,190,220'; // couleur d'accent, relue à chaque ouverture
+  const lerp = (a, b, u) => a + (b - a) * u;
+
+  const ATTAQUES = [
+    { // FLÈCHE : un trait qui monte en cloche et pique sur la cible
+      id: 'fleche', vol: 480,
+      trace(g, u, a, b){
+        const cl = h => Math.sin(Math.max(0, Math.min(1, h)) * Math.PI) * H * 0.30;
+        const x = lerp(a.x, b.x, u), y = lerp(a.y, b.y, u) - cl(u);
+        const x2 = lerp(a.x, b.x, u - 0.02), y2 = lerp(a.y, b.y, u - 0.02) - cl(u - 0.02);
+        g.save(); g.translate(x, y); g.rotate(Math.atan2(y - y2, x - x2));
+        g.fillStyle = 'rgba(' + ACC + ',0.35)';                   // sillage
+        g.beginPath(); g.moveTo(-46, 0); g.lineTo(0, -3); g.lineTo(0, 3); g.closePath(); g.fill();
+        g.shadowBlur = 14; g.shadowColor = 'rgba(' + ACC + ',0.9)';
+        g.fillStyle = '#fff';
+        g.beginPath(); g.moveTo(14, 0); g.lineTo(-8, -4.5); g.lineTo(-4, 0); g.lineTo(-8, 4.5); g.closePath(); g.fill();
+        g.restore();
+      },
+      choc(g, v, p){
+        g.strokeStyle = 'rgba(255,255,255,' + (1 - v) + ')'; g.lineWidth = 2;
+        for (let i = 0; i < 9; i++){
+          const a = i / 9 * TAU2 + v * 2, r = 8 + v * 58;
+          g.beginPath();
+          g.moveTo(p.x + Math.cos(a) * r * 0.55, p.y + Math.sin(a) * r * 0.55);
+          g.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r);
+          g.stroke();
+        }
+      },
+    },
+    { // NUÉE : un essaim de poussières qui s'enroule puis se resserre sur la cible
+      id: 'nuee', vol: 560,
+      trace(g, u, a, b){
+        for (let i = 0; i < 34; i++){
+          const uu = Math.max(0, Math.min(1, u - (i % 7) * 0.035));
+          const t = uu * uu * (3 - 2 * uu);                       // arrivée en douceur : l'essaim se rassemble
+          const ph = i * 1.7 + uu * 9;
+          const spread = (1 - uu) * H * 0.16 * (0.4 + (i % 5) / 5);
+          const x = lerp(a.x, b.x, t) + Math.cos(ph) * spread * 0.5;
+          const y = lerp(a.y, b.y, t) + Math.sin(ph) * spread;
+          g.fillStyle = i % 4 === 0 ? 'rgba(255,255,255,' + (0.85 - uu * 0.2) + ')'
+                                    : 'rgba(' + ACC + ',' + (0.75 - uu * 0.15) + ')';
+          g.beginPath(); g.arc(x, y, 1.4 + (i % 4) * 0.9, 0, TAU2); g.fill();
+        }
+      },
+      choc(g, v, p){
+        g.fillStyle = 'rgba(' + ACC + ',' + (0.5 * (1 - v)) + ')';
+        g.beginPath(); g.arc(p.x, p.y, 10 + v * 70, 0, TAU2); g.fill();
+        for (let i = 0; i < 22; i++){
+          const a = i / 22 * TAU2, r = v * (50 + (i % 5) * 16);
+          g.fillStyle = 'rgba(255,255,255,' + ((1 - v) * 0.9) + ')';
+          g.beginPath(); g.arc(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r * 0.7, 2.2 * (1 - v) + 0.6, 0, TAU2); g.fill();
+        }
+      },
+    },
+    { // FAISCEAU : une charge qui enfle chez le tireur, puis un rayon net
+      id: 'faisceau', vol: 540,
+      trace(g, u, a, b){
+        if (u < 0.62){                                           // charge
+          const c = u / 0.62, r = 4 + c * 20;
+          g.fillStyle = 'rgba(' + ACC + ',' + (0.25 + c * 0.5) + ')';
+          g.beginPath(); g.arc(a.x, a.y, r * 1.9, 0, TAU2); g.fill();
+          g.fillStyle = 'rgba(255,255,255,' + (0.5 + c * 0.5) + ')';
+          g.beginPath(); g.arc(a.x, a.y, r * 0.55, 0, TAU2); g.fill();
+          for (let i = 0; i < 6; i++){                            // éclats aspirés par la charge
+            const ang = i / 6 * TAU2 + c * 5, d = (1 - c) * 70 + 14;
+            g.fillStyle = 'rgba(' + ACC + ',' + c + ')';
+            g.beginPath(); g.arc(a.x + Math.cos(ang) * d, a.y + Math.sin(ang) * d, 2, 0, TAU2); g.fill();
+          }
+          return;
+        }
+        const c = Math.min(1, (u - 0.62) / 0.38 * 1.8);
+        const x = lerp(a.x, b.x, c), y = lerp(a.y, b.y, c);
+        const grad = g.createLinearGradient(a.x, a.y, x, y);
+        grad.addColorStop(0, 'rgba(' + ACC + ',0.15)');
+        grad.addColorStop(0.75, 'rgba(' + ACC + ',0.85)');
+        grad.addColorStop(1, 'rgba(255,255,255,0.95)');
+        g.strokeStyle = grad;
+        g.lineWidth = Math.sin(Math.min(1, c * 1.3) * Math.PI) * 13 + 2;
+        g.lineCap = 'round';
+        g.shadowBlur = 18; g.shadowColor = 'rgba(' + ACC + ',0.8)';
+        g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(x, y); g.stroke();
+      },
+      choc(g, v, p){
+        g.strokeStyle = 'rgba(255,255,255,' + (1 - v) + ')'; g.lineWidth = 3 * (1 - v) + 0.5;
+        g.beginPath(); g.arc(p.x, p.y, 6 + v * 88, 0, TAU2); g.stroke();
+        g.strokeStyle = 'rgba(' + ACC + ',' + ((1 - v) * 0.8) + ')'; g.lineWidth = 8 * (1 - v) + 0.5;
+        g.beginPath(); g.arc(p.x, p.y, 6 + v * 52, 0, TAU2); g.stroke();
+      },
+    },
+    { // ORBE : une sphère lente escortée de satellites, qui détone à l'arrivée
+      id: 'orbe', vol: 600,
+      trace(g, u, a, b){
+        const x = lerp(a.x, b.x, u), y = lerp(a.y, b.y, u) - Math.sin(u * Math.PI) * H * 0.10;
+        const pulse = 1 + Math.sin(u * 26) * 0.12;
+        const gr = g.createRadialGradient(x, y, 0, x, y, 26 * pulse);
+        gr.addColorStop(0, 'rgba(255,255,255,0.95)');
+        gr.addColorStop(0.35, 'rgba(' + ACC + ',0.8)');
+        gr.addColorStop(1, 'rgba(' + ACC + ',0)');
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(x, y, 26 * pulse, 0, TAU2); g.fill();
+        for (let i = 0; i < 3; i++){                               // satellites
+          const ang = u * 13 + i / 3 * TAU2;
+          g.fillStyle = 'rgba(255,255,255,0.9)';
+          g.beginPath(); g.arc(x + Math.cos(ang) * 26, y + Math.sin(ang) * 11, 2.6, 0, TAU2); g.fill();
+        }
+      },
+      choc(g, v, p){
+        const r = v * 104;
+        g.strokeStyle = 'rgba(' + ACC + ',' + (1 - v) + ')'; g.lineWidth = 12 * (1 - v) + 1;
+        g.beginPath(); g.arc(p.x, p.y, r, 0, TAU2); g.stroke();
+        for (let i = 0; i < 14; i++){                              // éclats projetés
+          const a2 = i / 14 * TAU2 + 0.3, d = r * 1.15;
+          g.strokeStyle = 'rgba(255,255,255,' + ((1 - v) * 0.85) + ')'; g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(p.x + Math.cos(a2) * d * 0.7, p.y + Math.sin(a2) * d * 0.7);
+          g.lineTo(p.x + Math.cos(a2) * d, p.y + Math.sin(a2) * d);
+          g.stroke();
+        }
+      },
+    },
+  ];
+
+  /* ---- décor ----
+     Quatre plans qui glissent à des vitesses différentes : c'est ce décalage
+     qui donne la profondeur. Tout est tracé à la volée, mais en quelques
+     dizaines de points par crête — sans commune mesure avec le ruban du fond,
+     qui, lui, est passé sur la carte graphique. */
+  const SOL = 0.84;        // ligne de sol, en fraction de la hauteur
+  const TAILLE = 0.54;     // côté du carré de rendu d'un vêtement, en fraction de la hauteur
+  const FACE = 0.82;       // trois quarts : chacun tourné vers le centre (~47°). Plus bas,
+                           // la perspective courte de la scène écrasait l'angle et les
+                           // vêtements paraissaient de face.
+
+  function crete(y0, amp, freq, off, fill){
+    bg.beginPath();
+    bg.moveTo(0, H);
+    for (let x = 0; x <= W + 14; x += 14){
+      const y = y0 + Math.sin((x + off) * freq) * amp + Math.sin((x + off) * freq * 2.3 + 1.1) * amp * 0.35;
+      bg.lineTo(x, y);
+    }
+    bg.lineTo(W, H); bg.closePath();
+    bg.fillStyle = fill; bg.fill();
+  }
+  function fond(tt, etats){
+    bg.setTransform(K, 0, 0, K, 0, 0);
+    bg.clearRect(0, 0, W, H);
+    const ciel = bg.createLinearGradient(0, 0, 0, H);
+    ciel.addColorStop(0, 'rgba(3,7,11,1)');
+    ciel.addColorStop(0.62, 'rgba(' + ACC + ',0.10)');
+    ciel.addColorStop(1, 'rgba(' + ACC + ',0.20)');
+    bg.fillStyle = ciel; bg.fillRect(0, 0, W, H);
+    const halo = bg.createRadialGradient(W * 0.5, H * SOL, 0, W * 0.5, H * SOL, W * 0.45);
+    halo.addColorStop(0, 'rgba(' + ACC + ',0.26)');
+    halo.addColorStop(1, 'rgba(' + ACC + ',0)');
+    bg.fillStyle = halo; bg.fillRect(0, 0, W, H);
+    for (let i = 0; i < 26; i++){                 // poussières, plan le plus lointain
+      const x = ((i * 137 + tt * 0.010 * (1 + (i % 3))) % (W + 40)) - 20;
+      const y = (i * 61) % (H * SOL);
+      bg.fillStyle = 'rgba(255,255,255,' + (0.05 + (i % 4) * 0.03) + ')';
+      bg.fillRect(x, y, 1.6, 1.6);
+    }
+    crete(H * 0.60, H * 0.055, 0.0042, tt * 0.006, 'rgba(' + ACC + ',0.13)');
+    crete(H * 0.71, H * 0.045, 0.0071, tt * 0.017, 'rgba(' + ACC + ',0.17)');
+    crete(H * 0.795, H * 0.028, 0.0115, tt * 0.036, 'rgba(3,9,14,0.75)');
+    // Sol : un dégradé qui part de la ligne d'horizon, et des dalles qui fuient
+    // vers le spectateur — elles s'écartent en descendant, le point de fuite
+    // étant sur l'horizon (les faire converger, comme au premier essai, donnait
+    // un entonnoir qui écrasait la scène).
+    const solG = bg.createLinearGradient(0, H * SOL, 0, H);
+    solG.addColorStop(0, 'rgba(' + ACC + ',0.30)');
+    solG.addColorStop(0.4, 'rgba(' + ACC + ',0.10)');
+    solG.addColorStop(1, 'rgba(2,6,10,0.5)');
+    bg.fillStyle = solG;
+    bg.fillRect(0, H * SOL, W, H * (1 - SOL));
+    bg.save();
+    bg.beginPath(); bg.rect(0, H * SOL, W, H * (1 - SOL)); bg.clip();
+    bg.strokeStyle = 'rgba(' + ACC + ',0.10)'; bg.lineWidth = 1;
+    for (let i = 0; i < 18; i++){                 // dalles, le plan le plus rapide
+      const x = ((i * 110 - tt * 0.06) % (W + 220) + W + 220) % (W + 220) - 110;
+      bg.beginPath(); bg.moveTo(x, H * SOL); bg.lineTo(W / 2 + (x - W / 2) * 3.4, H); bg.stroke();
+    }
+    bg.restore();
+    bg.strokeStyle = 'rgba(' + ACC + ',0.5)'; bg.lineWidth = 1.2;
+    bg.beginPath(); bg.moveTo(0, H * SOL); bg.lineTo(W, H * SOL); bg.stroke();
+    // ombres portées : sans elles les vêtements flottent au-dessus du sol
+    if (etats) etats.forEach(e => {
+      const r = e.S * 0.33, y = H * SOL + e.S * 0.01;
+      const om = bg.createRadialGradient(e.cx, y, 0, e.cx, y, r);
+      om.addColorStop(0, 'rgba(0,0,0,0.55)');
+      om.addColorStop(1, 'rgba(0,0,0,0)');
+      bg.fillStyle = om;
+      bg.save(); bg.translate(e.cx, y); bg.scale(1, 0.26); bg.translate(-e.cx, -y);
+      bg.beginPath(); bg.arc(e.cx, y, r, 0, TAU2); bg.fill();
+      bg.restore();
+    });
+  }
+
+  /* ---- combattants ----
+     Position, balancement, élan de tir et recul : tout se déduit de l'horloge
+     du duel, donc rien n'est stocké d'une image à l'autre. */
+  function tourCourant(tt){
+    for (let i = plan.length - 1; i >= 0; i--) if (tt >= plan[i].t0) return plan[i];
+    return null;
+  }
+  function etat(s, tt, fini){
+    const S = H * TAILLE;
+    const cx = W * (s === 0 ? 0.27 : 0.73);
+    const cy = H * SOL - S * 0.40;   // le bas du carré passe sous la ligne de sol : le vêtement s'y pose
+    const sens = s === 0 ? 1 : -1;                // +1 = vers le centre
+    let dx = 0, dy = Math.sin(tt / 620 + s * 2) * H * 0.012;
+    let ang = sens * FACE + Math.sin(tt / 900 + s) * 0.07;
+    let rouge = 0, alpha = 1;
+    const e = fini ? null : tourCourant(tt);
+    if (e && e.from === s){
+      if (tt < e.tir){                            // armement : on se ramasse en arrière
+        const u = (tt - e.t0) / PH.wind;
+        dx = -sens * H * 0.038 * Math.sin(u * Math.PI);
+        ang += sens * 0.24 * Math.sin(u * Math.PI);
+      } else if (tt < e.tir + 170){               // détente vers le centre
+        const u = (tt - e.tir) / 170;
+        dx = sens * H * 0.05 * (1 - u) * (1 - u);
+      }
+    }
+    if (e && e.to === s && tt >= e.choc){         // encaissé : rouge et recul
+      const u = Math.min(1, (tt - e.choc) / PH.impact);
+      rouge = (1 - u) * (1 - u);
+      dx = -sens * H * 0.06 * Math.sin(u * Math.PI);
+      ang -= sens * 0.2 * (1 - u);
+    }
+    if (fini && s !== vainqueur){                 // le perdant s'affaisse
+      dy += H * 0.03; ang *= 0.6; alpha = 0.45;
+    }
+    return { S: S, cx: cx + dx, cy: cy + dy, ang: ang, rouge: rouge, alpha: alpha };
+  }
+
+  /* ---- boucle du duel ---- */
+  let debut = 0, fini = false, faits = new Set(), nombres = [], secousse = 0;
+  function mesurer(){
+    const r = shakeEl.getBoundingClientRect();
+    W = r.width; H = r.height;
+    K = Math.min(2, window.devicePixelRatio || 1);
+    [bgC, glC, fxC].forEach(c => {
+      const w = Math.round(W * K), h = Math.round(H * K);
+      if (c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+    });
+  }
+  function majBarres(){
+    [0, 1].forEach(s => {
+      const v = Math.max(0, vie[s]) / 100;
+      fillEls[s].style.transform = 'scaleX(' + v + ')';
+      ghostEls[s].style.transform = 'scaleX(' + v + ')';
+    });
+  }
+  function image(now){
+    raf = requestAnimationFrame(image);
+    if (!debut) debut = now;
+    const tt = now - debut;
+    if (!fini && tt >= finMs) terminer();
+
+    // Les deux états sont calculés une seule fois par image : le décor s'en sert
+    // pour les ombres, la scène 3D pour les boîtes, les effets pour viser.
+    const st = [etat(0, tt, fini), etat(1, tt, fini)];
+    fond(tt, st);
+    if (scene){                        // vêtements : le contexte 3D dédié
+      scene.clear();
+      st.forEach((e, s) => {
+        scene.draw(picks[s].it, e.ang,
+          { x: (e.cx - e.S / 2) * K, y: (e.cy - e.S / 2) * K, s: e.S * K },
+          e.alpha, e.rouge > 0.01 ? [1, 0.16, 0.12, e.rouge] : null);
+      });
+    }
+
+    fx.setTransform(K, 0, 0, K, 0, 0);
+    fx.clearRect(0, 0, W, H);
+    const e = fini ? null : tourCourant(tt);
+    if (e){
+      const a = st[e.from], b = st[e.to];
+      const dep = { x: a.cx + (e.from === 0 ? a.S * 0.20 : -a.S * 0.20), y: a.cy };
+      const arr = { x: b.cx, y: b.cy };
+      if (tt >= e.tir && tt < e.choc){
+        fx.save(); e.atk.trace(fx, (tt - e.tir) / e.atk.vol, dep, arr); fx.restore();
+      }
+      if (tt >= e.choc && tt < e.choc + PH.impact){
+        const v = (tt - e.choc) / PH.impact;
+        fx.save(); e.atk.choc(fx, v, arr); fx.restore();
+        if (!faits.has(e)){                        // les dégâts ne tombent qu'une fois
+          faits.add(e);
+          vie[e.to] = Math.max(0, vie[e.to] - e.dmg);
+          majBarres();
+          nombres.push({ x: arr.x, y: arr.y - H * 0.10, t0: tt, val: e.dmg });
+          secousse = 11;
+          turnLabel.textContent = '-' + e.dmg;
+          sfx.tick();
+        }
+      }
+    }
+    // dégâts qui montent et s'effacent
+    nombres = nombres.filter(n => tt - n.t0 < 900);
+    nombres.forEach(n => {
+      const u = (tt - n.t0) / 900;
+      fx.font = '600 ' + Math.round(H * 0.052) + 'px Inter, sans-serif';
+      fx.textAlign = 'center';
+      fx.fillStyle = 'rgba(255,90,90,' + (1 - u) + ')';
+      fx.fillText('-' + n.val, n.x, n.y - u * H * 0.09);
+    });
+    // secousse : le décor, les vêtements et les effets bougent ensemble
+    if (secousse > 0.4){
+      secousse *= 0.86;
+      shakeEl.style.transform = 'translate(' + ((Math.random() - 0.5) * secousse).toFixed(2) + 'px,'
+                                             + ((Math.random() - 0.5) * secousse).toFixed(2) + 'px)';
+    } else if (secousse){ secousse = 0; shakeEl.style.transform = ''; }
+  }
+
+  function terminer(){
+    fini = true;
+    turnLabel.textContent = 'K.O.';
+    endTitle.textContent = L(picks[vainqueur].it.n) + ' ' + T('arenaWins');
+    endBox.hidden = false;
+    sfx.add();
+  }
+
+  /* ---- enchaînement ---- */
+  function lancer(){
+    if (!picks[0] || !picks[1]) return;
+    ACC = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || ACC;
+    pickView.hidden = true;
+    stage.hidden = false;
+    endBox.hidden = true;
+    if (!scene) scene = model3d.makeScene(glC);
+    if (scene) picks.forEach(p => scene.load(p.it));   // maillages déjà en cache : instantané
+    nameEls.forEach((el, s) => { el.textContent = L(picks[s].it.n); });
+    ecrireDuel();
+    majBarres();
+    faits = new Set(); nombres = []; secousse = 0; debut = 0; fini = false;
+    turnLabel.textContent = 'VS';
+    enDuel = true;
+    mesurer();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(image);
+  }
+  function revenirAuChoix(){
+    cancelAnimationFrame(raf); raf = 0;
+    enDuel = false; fini = false;
+    shakeEl.style.transform = '';
+    stage.hidden = true;
+    endBox.hidden = true;
+    pickView.hidden = false;
+    majChoix();
+  }
+  function ouvrir(){
+    if (ouvert) return;
+    ouvert = true;
+    ACC = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || ACC;
+    construireGrille();
+    stage.hidden = true; pickView.hidden = false; endBox.hidden = true;
+    overlay.classList.add('open');
+  }
+  function fermer(){
+    if (!ouvert) return;
+    ouvert = false;
+    cancelAnimationFrame(raf); raf = 0;
+    enDuel = false; fini = false;
+    shakeEl.style.transform = '';
+    overlay.classList.remove('open');
+  }
+  function acheterVainqueur(){
+    const p = picks[vainqueur];
+    const ci = DATA.indexOf(p.cat), ii = p.cat.items.indexOf(p.it);
+    fermer();
+    if (ci < 0 || ii < 0) return;
+    activeCat = ci; activeItem = ii;
+    render();
+    // Le sélecteur s'ouvre à l'image suivante, et pas tout de suite : le clic
+    // sur « Ajouter au panier » remonte encore jusqu'au document, où un
+    // écouteur referme tout sélecteur ouvert par un clic venu d'ailleurs. Ouvert
+    // dans la foulée, il se serait donc refermé aussitôt.
+    requestAnimationFrame(() => openSizePicker(true)); // l'ajout passe toujours par une taille, comme ailleurs
+  }
+
+  document.getElementById('arenaClose').addEventListener('click', fermer);
+  document.getElementById('arenaClear').addEventListener('click', () => { picks = [null, null]; majChoix(); });
+  fightBtn.addEventListener('click', lancer);
+  document.getElementById('arenaAdd').addEventListener('click', acheterVainqueur);
+  document.getElementById('arenaAgain').addEventListener('click', revenirAuChoix);
+  document.getElementById('arenaQuit').addEventListener('click', fermer);
+  overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
+  window.addEventListener('resize', () => { if (ouvert && enDuel) mesurer(); });
+
+  // Clavier : flèches dans la grille, Entrée choisit (ou lance quand les deux
+  // sont pris), Échap ferme. Pendant le duel il n'y a rien à faire — c'est un
+  // tirage au sort, pas un jeu — sauf Entrée pour passer à la fin.
+  function touche(e){
+    if (e.key === 'Escape'){ fermer(); return true; }
+    if (enDuel){
+      if (e.key === 'Enter' && !fini && plan.length){ debut = performance.now() - finMs; }
+      return true;
+    }
+    const col = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+    if (e.key === 'ArrowRight'){ bougerFocus(1); return true; }
+    if (e.key === 'ArrowLeft'){ bougerFocus(-1); return true; }
+    if (e.key === 'ArrowDown'){ bougerFocus(col); return true; }
+    if (e.key === 'ArrowUp'){ bougerFocus(-col); return true; }
+    if (e.key === 'Enter'){
+      if (picks[0] && picks[1] && document.activeElement === fightBtn) lancer();
+      else choisir(focus);
+      return true;
+    }
+    return false;
+  }
+
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche };
+})();
 /* ---------------- keyboard nav ---------------- */
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
+  // Mini-jeu ouvert : il prend toutes les touches (voir arena.key).
+  if (arena.isOpen()){ arena.key(e); return; }
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
   if (infoOverlay.classList.contains('open')){
     if (e.key === 'Escape') closeInfo();
@@ -4248,7 +5140,8 @@ window.addEventListener('keydown', (e)=>{
   // déclenche déjà son clic natif : on ne double pas avec l'ajout au panier.
   if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)){
     // produit : sélecteur de tailles ; Réglages / Livraison : mode panneau ; Contact : Instagram
-    if (DATA[activeCat].kind === 'contact') addBtn.click(); else enterPanel();
+    const k = DATA[activeCat].kind;
+    if (k === 'contact' || k === 'game') addBtn.click(); else enterPanel(); // Contact et Versus agissent tout de suite, sans mode panneau
   }
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
 });
@@ -4270,7 +5163,7 @@ window.addEventListener('keyup', (e) => {
 const WHEEL_FAST = 200; // ms sous lesquelles deux crans comptent comme un défilement lancé
 let wheelAcc = 0, wheelLast = 0, wheelStepAt = 0;
 window.addEventListener('wheel', (e) => {
-  if (startupActive || panelMode) return;
+  if (startupActive || panelMode || arena.isOpen()) return;
   if (infoOverlay.classList.contains('open') || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
   const scrollable = e.target.closest && e.target.closest('.preview-desc, .legal-body, .info-body, .cart-items');
   if (scrollable && scrollable.scrollHeight > scrollable.clientHeight) return;
@@ -4726,7 +5619,9 @@ function drawFrame(ts){
      plafonné pour qu'un retour d'onglet ne fasse pas bondir la vague. */
   t += Math.min(100, tLast ? now2 - tLast : 16.7) * 0.06;
   tLast = now2;
-  if (now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
+  // L'arène du mini-jeu couvre tout l'écran : inutile de peindre le ruban derrière,
+  // et le duel a besoin de tout le temps disponible.
+  if (!arena.isOpen() && now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
   drawSparkles();
   requestAnimationFrame(drawFrame);
 }
