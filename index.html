@@ -702,9 +702,6 @@
   .slide.active{display:block;}
   .slide.flat{width:100%;height:100%;object-fit:cover;}
   .preview-swatch canvas{position:absolute;inset:0;width:100%;height:100%;}
-  /* la poussière passe DERRIÈRE le modèle : même boîte, un cran plus bas */
-  #aboutFx{z-index:0;}
-  #previewGL{z-index:1;}
   /* Pastilles en HAUT du visuel, et non plus en bas : c'est la première chose
      qu'on lit en arrivant sur la fiche. Un reflet les parcourt de gauche à
      droite, en boucle, pour signaler qu'il y a plusieurs vues à voir. */
@@ -2017,12 +2014,7 @@
       <div class="slide-dots" id="slideDots"></div>
       <span id="previewInitial">F</span>
       <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
-      <!-- poussière de la page Info : des particules en sphère, DERRIÈRE le
-           modèle (voir le module `poussiere`). Canvas séparé et non WebGL :
-           quelques dizaines de petits polygones plats coûtent moins cher en
-           2D qu'un second contexte 3D, et le nuage reste sous le modèle sans
-           avoir à partager sa profondeur. -->
-      <div class="slide slide-3d" data-slide="0"><canvas id="aboutFx" hidden></canvas><canvas id="previewGL" hidden></canvas></div>
+      <div class="slide slide-3d" data-slide="0"><canvas id="previewGL" hidden></canvas></div>
       <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
       <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
       <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
@@ -5404,8 +5396,6 @@ function fillPreview(){
   // .info : le texte s'affiche en entier, sans accordéon (Contact, Livraison… et Info)
   previewEl.classList.toggle('info', isInfo || estAbout);
   swatchEl.hidden = isInfo;
-  // la poussière ne tourne que sur la page Info, et seulement quand elle est à l'écran
-  if (estAbout) poussiere.demarrer(); else poussiere.arreter();
   // Versus : l'aperçu du jeu prend la place du visuel produit. Peint à l'image
   // suivante, quand la boîte a enfin une taille.
   const teaserEl = document.getElementById('arenaTeaser');
@@ -5733,94 +5723,6 @@ function closeLegal(){
 document.getElementById('legalClose').addEventListener('click', closeLegal);
 legalOverlay.addEventListener('click', (e) => { if (e.target === legalOverlay) closeLegal(); });
 
-
-/* ============================================================================
-   Poussière de la page Info : un nuage de petites facettes en suspension,
-   réparties sur une sphère creuse qui tourne lentement DERRIÈRE le modèle.
-
-   En 2D et non en WebGL : quelques dizaines de polygones plats coûtent moins
-   cher qu'un second contexte 3D, et le nuage reste sous le modèle sans avoir à
-   partager sa profondeur — c'est le CSS qui empile les deux canvas.
-   « Low poly » se joue ici sur trois choses : des facettes de trois à cinq
-   côtés et non des ronds, un aplat par facette sans dégradé, et une taille qui
-   ne prend que quelques valeurs. Le reste — profondeur, flottement — vient du
-   calcul, pas du dessin.
-   ============================================================================ */
-const poussiere = (() => {
-  const cv = document.getElementById('aboutFx');
-  const ctx = cv ? cv.getContext('2d') : null;
-  const N = 78;                       // assez pour un nuage, assez peu pour ne rien coûter
-  let raf = 0, t0 = 0, taille = 0;
-  // Répartition UNIFORME sur la sphère : tirer la hauteur au hasard puis le
-  // rayon du parallèle qui lui correspond. Tirer deux angles au hasard, plus
-  // simple en apparence, entasserait les points aux deux pôles.
-  const grains = Array.from({ length: N }, () => {
-    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-    const r = 0.62 + Math.random() * 0.38;          // coquille épaisse, pas une coquille d'œuf
-    return {
-      x: s * Math.cos(th) * r, y: u * r, z: s * Math.sin(th) * r,
-      cotes: 3 + (Math.random() * 3 | 0),           // 3, 4 ou 5 côtés
-      rayon: 0.55 + Math.random() * 0.75,
-      tour: Math.random() * 6.28, vitesse: (Math.random() - 0.5) * 1.1,
-      phase: Math.random() * 6.28, clair: Math.random() < 0.22, // quelques-unes en blanc
-    };
-  });
-  function mesurer(){
-    const r = cv.getBoundingClientRect();
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
-    if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
-    taille = Math.min(cv.width, cv.height);
-  }
-  function image(now){
-    raf = requestAnimationFrame(image);
-    if (!t0) t0 = now;
-    const t = (now - t0) / 1000;
-    mesurer();
-    const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2, R = taille * 0.46;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    const acc = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim() || '120,180,255';
-    const ca = Math.cos(t * 0.16), sa = Math.sin(t * 0.16);     // la sphère tourne
-    const ct = Math.cos(0.32), st = Math.sin(0.32);             // et penche un peu vers nous
-    const vues = [];
-    for (const g of grains){
-      const fl = Math.sin(t * 0.55 + g.phase) * 0.035;          // flottement, chacune à son rythme
-      const x0 = g.x * ca - g.z * sa, z0 = g.x * sa + g.z * ca, y0 = g.y + fl;
-      const y1 = y0 * ct - z0 * st, z1 = y0 * st + z0 * ct;
-      const k = 2.7 / (2.7 + z1);                               // perspective courte : la profondeur se voit
-      vues.push({ g, x: cx + x0 * k * R, y: cy + y1 * k * R, k, z: z1 });
-    }
-    vues.sort((a, b) => b.z - a.z);                             // les plus lointaines d'abord
-    for (const v of vues){
-      const g = v.g, r = g.rayon * v.k * taille * 0.011;
-      const a = (g.clair ? 0.42 : 0.30) * Math.max(0.12, v.k - 0.42);
-      ctx.fillStyle = g.clair ? `rgba(255,255,255,${a.toFixed(3)})` : `rgba(${acc},${a.toFixed(3)})`;
-      ctx.beginPath();
-      const dep = g.tour + t * g.vitesse;
-      for (let i = 0; i < g.cotes; i++){
-        const an = dep + i * 2 * Math.PI / g.cotes;
-        const px = v.x + Math.cos(an) * r, py = v.y + Math.sin(an) * r;
-        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
-      }
-      ctx.closePath(); ctx.fill();
-    }
-  }
-  function demarrer(){
-    if (!ctx || raf) return;
-    cv.hidden = false;
-    t0 = 0;
-    raf = requestAnimationFrame(image);
-  }
-  function arreter(){
-    if (!ctx) return;
-    cancelAnimationFrame(raf); raf = 0;
-    cv.hidden = true;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, cv.width, cv.height);
-  }
-  return { demarrer, arreter, actif: () => !!raf };
-})();
 
 /* ---------------- mini-jeu « Versus » (provisoire, 15 sept. 2026) ----------------
    Départager deux articles quand on hésite : on en choisit deux, ils se battent
