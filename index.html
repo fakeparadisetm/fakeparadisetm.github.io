@@ -2370,6 +2370,17 @@ const sfx = (() => {
     if (!ctx) return;
     if (document.hidden) ctx.suspend(); else if (on) ctx.resume();
   });
+  // Les navigateurs n'autorisent le son qu'après un geste de l'utilisateur, et
+  // la molette n'en est pas un à leurs yeux. Sans ce déverrouillage, une visite
+  // menée entièrement à la molette resterait muette. On tente à chaque geste
+  // réel jusqu'à ce que le son parte (rien ne se déclenche pendant l'allumage).
+  const unlock = () => {
+    if (!audio()) return;
+    document.removeEventListener('pointerdown', unlock, true);
+    document.removeEventListener('keydown', unlock, true);
+  };
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('keydown', unlock, true);
   // Enveloppe : montée puis extinction douce. Une montée linéaire (soft) gonfle
   // le son progressivement, sans l'attaque sèche d'une montée exponentielle —
   // c'est ce qui sépare un bruit de défilement d'un coup.
@@ -4079,7 +4090,7 @@ window.addEventListener('wheel', (e) => {
   const now = performance.now(), gap = now - wheelLast;
   wheelLast = now;
   const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
-  let dir = 0;
+  let dir = 0, continu = false; // continu : flux d'un pavé tactile, traité comme une touche maintenue
   if (Math.abs(delta) >= 40 && (gap >= 25 || e.deltaMode === 1)){
     // cran de molette (événement isolé et franc) : un produit par cran, chaque cran
     // compte, sans limite de cadence (l'ancien délai de 80 ms en perdait un sur deux)
@@ -4090,11 +4101,13 @@ window.addEventListener('wheel', (e) => {
     wheelAcc += delta;
     if (Math.abs(wheelAcc) < 40 || now - wheelStepAt < 60) return;
     dir = Math.sign(wheelAcc); wheelAcc = 0;
+    continu = true;
   }
-  const rolling = now - wheelStepAt < 250; // molette lancée (le cran précédent est proche) : comme une touche maintenue
   wheelStepAt = now;
   const next = Math.max(0, Math.min(count - 1, activeItem + dir));
-  if (next !== activeItem){ activeItem = next; render(); sfx.tick(rolling); }
+  // un cran de molette est un geste délibéré, comme une pression : plein volume.
+  // Seul le flux continu d'un pavé tactile est atténué.
+  if (next !== activeItem){ activeItem = next; render(); sfx.tick(continu); }
 }, { passive: true });
 
 /* ---------------- outil de développement temporaire ----------------
