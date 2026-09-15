@@ -557,8 +557,11 @@
   }
   /* mode panneau (Entrée sur Réglages / Shipping Info) : cadre accentué */
   /* mode panneau : le cadre d'accent est lui aussi fondu (pas de trait net),
-     mais assez présent pour signaler le focus clavier */
-  .preview.focused{
+     mais assez présent pour signaler le focus clavier.
+     .choisi : même cadre dès qu'un article est CHOISI (clic ou Entrée sur la
+     miniature), sans attendre le mode panneau — c'est le même état pour l'œil,
+     la fiche est dépliée et c'est elle qu'on regarde. */
+  .preview.focused,.preview.choisi{
     box-shadow:
       var(--soft-edge),
       inset 0 0 5px rgba(var(--accent-rgb),0.30),
@@ -718,6 +721,12 @@
     transition:max-height 0.30s cubic-bezier(.2,.8,.2,1), opacity 0.14s ease;
   }
   .preview.gallery .size-picker{max-height:0;opacity:0;margin-top:0;}
+  /* Panneaux texte (Contact, Versus, Livraison, Pièces uniques) : PAS
+     d'accordéon. Ils n'ont pas deux états, et le plafond animé les faisait
+     grandir pendant une demi-seconde à l'arrivée — le bouton, dernier de la
+     boîte, apparaissait coupé par le bord du panneau. Sans plafond, le
+     panneau a sa hauteur définitive dès la première image. */
+  .preview.info .preview-info{max-height:none;overflow:visible;}
   /* Ouverture terminée : plus rien à rogner, et le liseré de focus du clavier
      — posé hors du bouton par outline-offset — cesse d'être coupé par le bord
      de la boîte (voir le transitionend qui pose cette classe). */
@@ -1083,14 +1092,15 @@
     line-height:1.6;
     margin-top:12px;
   }
+  /* Une ligne = un PRODUIT : son nom et sa croix en haut, son prix, puis une
+     pastille par taille commandée. Le nom garde ainsi toute la largeur. */
   .cart-row{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
+    flex-direction:column;
     padding-bottom:14px;
     border-bottom:1px solid rgba(255,255,255,0.06);
   }
+  .cart-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
   .cart-row-name{
     font-size:14px;
     font-weight:450;
@@ -1100,47 +1110,72 @@
     color:var(--blue);
     margin-top:4px;
   }
-  /* Taille choisie : DANS le groupe de quantité (demande du 15 sept. 2026),
-     séparée par un filet. Posée à côté en pastille autonome, elle coûtait
-     46 px à la colonne de gauche et le nom du produit passait à la ligne ;
-     ici elle ne coûte que son texte, et « M | − 1 + » se lit d'un bloc. */
+  .cart-row-sizes{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  /* Taille commandée : DANS le groupe de quantité, avec son compte en
+     pastille (demande du 15 sept. 2026). Deux tailles du même produit font
+     deux groupes côte à côte — « − M② + − XL① + » — et on lit d'un coup
+     combien d'exemplaires ont été pris dans chacune. */
   .cart-qty-size{
-    display:flex;align-items:center;
-    align-self:stretch;
-    padding:0 9px;
-    border-right:1px solid rgba(255,255,255,0.14);
-    font-size:11px;
+    display:flex;align-items:center;gap:5px;
+    padding:0 4px;
+    font-size:12px;
     letter-spacing:0.5px;
-    color:var(--white-60);
+    color:var(--white);
   }
+  .cart-qty-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:17px;height:17px;
+    padding:0 4px;
+    border-radius:9px;
+    background:rgba(var(--accent-rgb),0.22);
+    border:1px solid rgba(var(--accent-rgb),0.55);
+    font-size:10px;font-weight:600;line-height:1;
+    color:var(--white);
+  }
+  /* Retirer : la même croix que le + du descriptif, tournée d'un quart de
+     tour (demande du 15 sept. 2026). Un seul dessin pour les deux boutons. */
   .cart-remove{
-    background:none;border:none;
-    color:var(--white-35);
-    font-size:13px;
+    flex:0 0 auto;
+    position:relative;
+    width:20px;height:20px;
+    padding:0;
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:50%;
+    background:transparent;
     cursor:pointer;
-    letter-spacing:0.3px;
+    transition:border-color 0.2s ease, background 0.2s ease;
   }
-  .cart-remove:hover{color:var(--sale);}
-  /* quantité par ligne : groupe − n + à gauche de « Remove » */
-  .cart-row-actions{display:flex;align-items:center;gap:12px;flex:0 0 auto;}
+  .cart-remove::before,.cart-remove::after{
+    content:'';position:absolute;left:50%;top:50%;
+    background:var(--white-60);
+    border-radius:1px;
+    transition:background 0.2s ease;
+  }
+  /* Le quart de tour est porté par les DEUX traits, pas par le bouton : une
+     boîte carrée tournée déborde de sa propre largeur (le débordement
+     horizontal se mesure sur la boîte transformée) et le panier gagnait une
+     barre de défilement de 4 px. */
+  .cart-remove::before{width:9px;height:2px;transform:translate(-50%,-50%) rotate(45deg);}
+  .cart-remove::after{width:2px;height:9px;transform:translate(-50%,-50%) rotate(45deg);}
+  .cart-remove:hover{border-color:var(--sale);background:rgba(255,90,90,0.10);}
+  .cart-remove:hover::before,.cart-remove:hover::after{background:var(--sale);}
   .cart-qty{
     display:inline-flex;
     align-items:center;
     border:1px solid rgba(255,255,255,0.14);
-    border-radius:14px;
-    overflow:hidden;
+    border-radius:16px;
   }
   .cart-qty-btn{
     background:none;border:none;
-    width:26px;height:26px;
+    width:26px;height:28px;
     color:var(--white-60);
     font-size:15px;
     line-height:1;
     cursor:pointer;
+    border-radius:16px;
     transition:background 0.2s ease, color 0.2s ease;
   }
   .cart-qty-btn:hover{background:rgba(255,255,255,0.08);color:var(--white);}
-  .cart-qty-n{min-width:22px;text-align:center;font-size:13px;color:var(--white);}
   .cart-row-unit{margin-left:8px;font-size:11px;color:var(--white-35);} /* « 2 × €25 » sous le prix de la ligne */
 
   .cart-footer{
@@ -2695,15 +2730,15 @@ const DATA = [
   // articles quand on hesite. L'icone lance l'arene, voir le module `arena`.
   { name:{en:"Versus", fr:"Versus"}, icon:"arena icon.svg", kind:"game", items:[],
     panel:{ n:{en:"Versus", fr:"Versus"},
-      d:{en:"Two pieces. One winner. Zero thinking.\nCan't choose? Make them fight for it.",
-         fr:"Deux pièces. Un vainqueur. Zéro réflexion.\nVous hésitez ? Qu'elles se battent."} } },
+      d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
+         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} } },
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
   // Contact : trois choses et rien d'autre (demande du 15 sept. 2026) — « DM »,
   // la poignée Instagram en couleur d'accent, le bouton. Pas de texte
   // d'explication : l'adresse dit déjà où écrire.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
-    panel:{ n:"DM" } },
+    panel:{ n:"Contact via DM" } },
   { name:{en:"Settings", fr:"Réglages"}, icon:"settings icon.png", kind:"settings", items:[] },
   { name:{en:"Shipping Info", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
@@ -3937,10 +3972,31 @@ const model3d = (() => {
   const shortest = d => Math.atan2(Math.sin(d), Math.cos(d)); // écart angulaire le plus court
   const dprCap = () => Math.min(2, window.devicePixelRatio || 1);
   let swatchW = 0;
+  /* Visuel de la fiche : rendu à DEUX pixels de canvas par pixel d'écran sur
+     un écran à densité 1. Le visuel a grandi (456 → 544 px) sans que sa
+     densité suive : un pixel de canvas par pixel d'écran, et les arêtes du
+     modèle crénelaient franchement — ce que l'anticrénelage du contexte ne
+     rattrape pas à cette taille. Le coût est un tampon de 1088² au lieu de
+     544² pour UN seul modèle ; sur un écran déjà à 2, on y est déjà et rien
+     ne change (le plafond reste 2). */
+  const SUR = 2;
   function resize(){
     if (!swatchW) swatchW = swatch.clientWidth; // mesuré au premier affichage et à chaque redimensionnement
-    const s = Math.max(64, Math.round(swatchW * dprCap()));
+    const s = Math.max(64, Math.round(swatchW * Math.min(2, (window.devicePixelRatio || 1) * SUR)));
     if (canvas.width !== s){ canvas.width = s; canvas.height = s; }
+  }
+  /* La largeur du visuel ne dépend plus seulement de la fenêtre : le
+     descriptif et les tailles la reprennent (--squeeze, --sq-size), et la
+     fiche a deux états. Mesurée une seule fois, elle restait celle du premier
+     affichage et le modèle finissait étiré. L'observateur suit ces
+     changements sans lecture forcée, et ne fait que GRANDIR le tampon —
+     jamais le rétrécir pendant une transition, ce qui le réallouerait à
+     chaque image pour rien. */
+  if (window.ResizeObserver){
+    new ResizeObserver(entries => {
+      const w = Math.round(entries[0].contentRect.width);
+      if (w > swatchW){ swatchW = w; resize(); }
+    }).observe(swatch);
   }
   let listW = 0, listH = 0, listK = 1; // taille du canvas de la barre en pixels CSS, et pixels de canvas par pixel CSS
   function resizeList(){ // mesuré au démarrage et au redimensionnement seulement
@@ -4819,7 +4875,9 @@ function majInfoH(){
 function appliquerFiche(){
   previewEl.classList.remove('libre');   // le bloc va bouger : il rogne de nouveau
   previewInfo.classList.remove('libre');
-  previewEl.classList.toggle('gallery', DATA[activeCat].kind === 'shop' && !ficheOuverte);
+  const choisi = DATA[activeCat].kind === 'shop' && ficheOuverte;
+  previewEl.classList.toggle('gallery', !choisi && DATA[activeCat].kind === 'shop');
+  previewEl.classList.toggle('choisi', choisi);  // même cadre d'accent qu'en mode panneau
 }
 /* Clic sur le fond (demande du 15 sept. 2026) : la fiche revient à son état de
    repos, la galerie seule. On épargne ce qui a sa propre logique de clic — la
@@ -5001,33 +5059,46 @@ function renderCart(){
   if (!cart.length){
     itemsEl.innerHTML = `<div class="cart-empty">${T('cartEmpty')}</div>`;
   } else {
+    /* UNE ligne par PRODUIT (demande du 15 sept. 2026), et une pastille par
+       taille commandée, côte à côte, chacune portant son compte. Le panier
+       garde en mémoire une entrée par produit ET par taille — c'est ce qui
+       permet de compter — mais l'afficher ainsi répétait le nom du produit
+       autant de fois qu'on avait pris de tailles. */
+    const groupes = [];
     cart.forEach((line, idx) => {
+      const g = groupes.find(g => g.ref === line.ref);
+      (g || groupes[groupes.push({ ref: line.ref, n: line.n, p: line.p, tailles: [] }) - 1]).tailles.push({ line, idx });
+    });
+    groupes.forEach(g => {
       const row = document.createElement('div');
       row.className = 'cart-row';
-      // prix de la ligne (quantité comprise) ; le détail « 2 × €25 » en petit si qty > 1
-      const detail = line.qty > 1 ? `<span class="cart-row-unit">${line.qty} × ${formatPrice(line.p)}</span>` : '';
+      const qte = g.tailles.reduce((s, t) => s + t.line.qty, 0);
+      // prix du produit, toutes tailles ; le détail « 3 × €25 » en petit au-delà d'un exemplaire
+      const detail = qte > 1 ? `<span class="cart-row-unit">${qte} × ${formatPrice(g.p)}</span>` : '';
+      const pastilles = g.tailles.map(({ line, idx }) => `
+            <span class="cart-qty">
+              <button class="cart-qty-btn" data-idx="${idx}" data-delta="-1" aria-label="${esc(T('oneLess'))}">−</button>
+              <span class="cart-qty-size">${line.size ? esc(line.size) : '·'}<b class="cart-qty-badge">${line.qty}</b></span>
+              <button class="cart-qty-btn" data-idx="${idx}" data-delta="1" aria-label="${esc(T('oneMore'))}">+</button>
+            </span>`).join('');
       row.innerHTML = `
-        <div>
-          <div class="cart-row-name">${esc(L(line.n))}</div>
-          <div class="cart-row-price">${formatPrice(line.p * line.qty)}${detail}</div>
+        <div class="cart-row-top">
+          <div class="cart-row-name">${esc(L(g.n))}</div>
+          <button class="cart-remove" data-ref="${cart.indexOf(g.tailles[0].line)}" aria-label="${esc(T('remove'))}" title="${esc(T('remove'))}"></button>
         </div>
-        <div class="cart-row-actions">
-          <span class="cart-qty">
-            ${line.size ? `<span class="cart-qty-size">${esc(line.size)}</span>` : ''}
-            <button class="cart-qty-btn" data-idx="${idx}" data-delta="-1" aria-label="${esc(T('oneLess'))}">−</button>
-            <span class="cart-qty-n">${line.qty}</span>
-            <button class="cart-qty-btn" data-idx="${idx}" data-delta="1" aria-label="${esc(T('oneMore'))}">+</button>
-          </span>
-          <button class="cart-remove" data-idx="${idx}">${T('remove')}</button>
-        </div>
+        <div class="cart-row-price">${formatPrice(g.p * qte)}${detail}</div>
+        <div class="cart-row-sizes">${pastilles}</div>
       `;
       itemsEl.appendChild(row);
     });
   }
 
+  // la croix retire le produit ENTIER, toutes tailles confondues : la ligne
+  // est le produit, pas la taille (celles-ci se retirent avec leur −)
   itemsEl.querySelectorAll('.cart-remove').forEach(btn => {
     btn.addEventListener('click', () => {
-      cart.splice(Number(btn.dataset.idx), 1);
+      const ref = cart[Number(btn.dataset.ref)] && cart[Number(btn.dataset.ref)].ref;
+      for (let i = cart.length - 1; i >= 0; i--) if (cart[i].ref === ref) cart.splice(i, 1);
       updateCartCount();
       renderCart();
     });
