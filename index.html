@@ -403,6 +403,17 @@
     transition:transform 0.45s cubic-bezier(.2,.8,.2,1), opacity 0.45s ease, color 0.35s ease, text-shadow 0.35s ease;
     will-change:transform;
   }
+  /* Lignes de mini-jeu : l'icône du jeu devant son nom. Taille fixée ici, pas
+     laissée à l'image : la largeur de la ligne est mesurée une fois pour
+     toutes (voir _w dans render), souvent avant que le fichier n'arrive. */
+  .xmb-item.has-icon{display:flex;align-items:center;gap:9px;}
+  .xmb-item .xmb-ico{
+    width:26px;height:26px;flex:0 0 auto;
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+    opacity:0.72;
+    transition:opacity 0.35s ease;
+  }
+  .xmb-item.selected .xmb-ico{opacity:1;}
   .item-column.fast .xmb-item{transition-duration:0.18s;} /* défilement rapide (voir noteStep) */
   .xmb-item:hover{color:var(--white-60);}
   .xmb-item.selected{
@@ -2825,10 +2836,10 @@ const DATA = [
      Jumper est un parcours de plateforme dont la récompense est la pièce
      unique ci-dessus. Le panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
   { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"gamepad icon.svg", kind:"game", items:[
-    { n:"Jumper", jeu:"jumper",
+    { n:"Jumper", jeu:"jumper", icon:"jumper icon.svg",
       d:{en:"One level, one flag, a few falls.\nFinish it and the locked tee is yours.",
          fr:"Un niveau, un drapeau, quelques chutes.\nTerminez-le et le t-shirt verrouillé est à vous."} },
-    { n:"Versus", jeu:"versus",
+    { n:"Versus", jeu:"versus", icon:"versus icon.svg",
       d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
          fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} },
   ]},
@@ -4552,6 +4563,12 @@ function build(){
         row.classList.add('has-3d');
         row.title = L(item.n);
         if (item.was){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = T('sale'); row.appendChild(t); }
+      } else if (item.icon){
+        // mini-jeux : une petite icône devant le nom, dans le style de celles
+        // de la barre. Sa taille est fixée en CSS, donc la largeur de la ligne
+        // se mesure juste même avant que l'image ne soit chargée.
+        row.classList.add('has-icon');
+        row.innerHTML = `<img class="xmb-ico" src="${encodeURI('icons/' + item.icon)}" alt="">` + esc(L(item.n));
       } else {
         // une pièce encore verrouillée ne dit pas son nom : c'est la surprise
         row.innerHTML = esc(verrouille(item) ? T('locked') : L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');

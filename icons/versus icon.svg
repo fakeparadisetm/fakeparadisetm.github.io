@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icone du mini-jeu « Versus » : deux epees croisees, dans le style des
+       icones du menu (glyphe plein, blanc, angles arrondis, aucun trait).
+       Elle reprend le dessin de l'ancienne « arena icon.svg », qui servait de
+       vignette a la categorie avant que celle-ci ne passe a la manette. -->
+  <g fill="#fff">
+    <g transform="rotate(38 256 300)">
+      <path d="M256 40l18 46v170h-36V86z"/>
+      <rect x="192" y="258" width="128" height="24" rx="12"/>
+      <rect x="242" y="284" width="28" height="84" rx="14"/>
+      <circle cx="256" cy="388" r="22"/>
+    </g>
+    <g transform="rotate(-38 256 300)">
+      <path d="M256 40l18 46v170h-36V86z"/>
+      <rect x="192" y="258" width="128" height="24" rx="12"/>
+      <rect x="242" y="284" width="28" height="84" rx="14"/>
+      <circle cx="256" cy="388" r="22"/>
+    </g>
+  </g>
+</svg>

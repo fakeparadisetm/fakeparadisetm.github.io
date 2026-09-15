@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icone du mini-jeu « Jumper » : le personnage du jeu (carre arrondi, deux
+       yeux) en l'air au-dessus de sa plateforme, avec deux traits d'elan.
+       Meme style que les icones du menu : glyphe plein, blanc, angles
+       arrondis, aucun trait.
+
+       Quatre formes seulement, et toutes epaisses : l'icone doit encore se
+       lire a 26 px dans la liste. Une premiere version avait deux plateformes
+       minces et trois petits points — elle devenait une bouillie a cette
+       taille.
+
+       Les yeux sont DECOUPES dans le carre (fill-rule evenodd) et non peints
+       en sombre : le fichier peut ainsi servir de masque pour la lueur, qui ne
+       lit que l'opacite. -->
+  <g fill="#fff">
+    <!-- l'elan : deux traits qui montent vers le personnage -->
+    <rect x="76" y="300" width="70" height="26" rx="13" transform="rotate(-22 111 313)"/>
+    <rect x="130" y="240" width="62" height="24" rx="12" transform="rotate(-40 161 252)"/>
+    <!-- le personnage, yeux evides -->
+    <path fill-rule="evenodd" d="
+      M231 116 H321 A40 40 0 0 1 361 156 V246 A40 40 0 0 1 321 286 H231 A40 40 0 0 1 191 246 V156 A40 40 0 0 1 231 116 Z
+      M239 182 a17 17 0 1 0 0 34 a17 17 0 1 0 0-34 Z
+      M299 182 a17 17 0 1 0 0 34 a17 17 0 1 0 0-34 Z
+    "/>
+    <!-- la plateforme -->
+    <rect x="96" y="352" width="344" height="58" rx="29"/>
+  </g>
+</svg>
