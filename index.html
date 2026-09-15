@@ -2903,13 +2903,7 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    /* Le visuel est une VIDÉO détourée, rejouée en boucle sur un maillage bâti
-       sur l'union de ses silhouettes (voir loadVideo). `img` reste en secours :
-       si le navigateur ne sait pas lire le WebM, ou le lit sans sa couche
-       alpha, le portrait fixe reprend la main — avec sa carte de profondeur,
-       qui ne vaut que pour lui (le buste filmé n'a pas le même cadrage). */
-    panel:{ n:"FakeParadise™", video:"videos/infopanelvideo.webm",
-      img:"icons/aboutme3D.webp", depth:"icons/aboutme3D depth map.png", seule3D:true,
+    panel:{ n:"FakeParadise™", img:"icons/aboutme3D.webp", depth:"icons/aboutme3D depth map.png", seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -3940,14 +3934,7 @@ const model3d = (() => {
   const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;
     varying vec2 vUV;varying vec2 vSh;
     void main(){
-      vec4 tx = texture2D(uTex,vUV);
-      // Découpe par la transparence. Sans effet sur les vêtements : leur
-      // texture est envoyée en RVB, donc l'alpha vaut 1 partout et rien n'est
-      // jamais écarté. Elle ne sert qu'aux textures à canal alpha — une vidéo
-      // détourée, dont la silhouette bouge alors que le maillage, lui, est
-      // fixe : les facettes que l'image du moment ne couvre pas disparaissent.
-      if (tx.a < 0.35) discard;
-      vec3 base = mix(tx.rgb, uTint.rgb, uTint.a);
+      vec3 base = mix(texture2D(uTex,vUV).rgb, uTint.rgb, uTint.a);
       vec3 c = base*vSh.x + vSh.y + uTint.rgb*uTint.a*uTint.a*0.30;
       gl_FragColor=vec4(c*uAlpha,uAlpha);
     }`;
@@ -3978,30 +3965,16 @@ const model3d = (() => {
     gl.uniform1i(uTex, 0);
     const textures = new WeakMap(), buffers = new WeakMap(); // objets GPU de ce contexte, par source
     function texture(src){
-      /* Source VIVANTE (l'image d'une vidéo, redessinée à chaque nouvelle
-         image) : sa texture est renvoyée au GPU à chaque appel, en RVBA pour
-         garder la transparence, et sans mipmap — les recalculer soixante fois
-         par seconde coûterait plus cher que tout le reste. `src.vivant` est
-         posé par le module, ce n'est pas une propriété du canvas. */
-      const vivant = !!(src && src.vivant);
-      let t = textures.get(src);
-      if (t && (!vivant || !src.neuf)) return t;   // vivante mais inchangée : rien à renvoyer
+      let t = textures.get(src); if (t) return t;
       let img = src;
-      if (texSize && !vivant){ const c = document.createElement('canvas'); c.width = texSize; c.height = texSize; c.getContext('2d').drawImage(src, 0, 0, texSize, texSize); img = c; }
-      const neuve = !t;
-      if (neuve) t = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, t);
-      const F = vivant ? gl.RGBA : gl.RGB;
-      gl.texImage2D(gl.TEXTURE_2D, 0, F, F, gl.UNSIGNED_BYTE, img);
-      if (neuve){
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        if (mip && !vivant){ gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); }
-        else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        textures.set(src, t);
-      } else if (mip && !vivant) gl.generateMipmap(gl.TEXTURE_2D);
-      if (vivant) src.neuf = false;
-      return t;
+      if (texSize){ const c = document.createElement('canvas'); c.width = texSize; c.height = texSize; c.getContext('2d').drawImage(src, 0, 0, texSize, texSize); img = c; }
+      t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      if (mip){ gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); }
+      else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      textures.set(src, t); return t;
     }
     function bufs(mesh){
       let b = buffers.get(mesh); if (b) return b;
@@ -4069,13 +4042,7 @@ const model3d = (() => {
     const n = Math.max(w, h);
     const c = document.createElement('canvas'); c.width = n; c.height = n;
     const g = c.getContext('2d', { willReadFrequently:true });
-    /* Le pixel du coin HAUT-GAUCHE, pour juger du fond. En neuf arguments :
-       la forme courte `drawImage(img, 0, 0, 1, 1)` réduit l'image ENTIÈRE à un
-       pixel, et le navigateur ne moyenne pas — il en échantillonne un, pris
-       n'importe où. Sur une vidéo détourée cela tombait au milieu du sujet,
-       donc opaque : la marge se remplissait de la couleur du sujet et le
-       détourage prenait ensuite le sujet pour du fond. */
-    g.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1);
+    g.drawImage(img, 0, 0, 1, 1);                      // un pixel du coin, pour juger du fond
     const coin = g.getImageData(0, 0, 1, 1).data;
     g.clearRect(0, 0, n, n);
     if (coin[3] > 200){ g.fillStyle = `rgb(${coin[0]},${coin[1]},${coin[2]})`; g.fillRect(0, 0, n, n); }
@@ -4446,8 +4413,7 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => encodeURI(item.img || item.video || '') + '|' + encodeURI(item.img2 || item.img || '')
-    + (item.depth ? '|p:' + encodeURI(item.depth) : '') + (item.video ? '|v:' + encodeURI(item.video) : '');
+  const keyOf = item => encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
      remplace le gonflement en coussin par le vrai relief du sujet — sur un
@@ -4474,94 +4440,9 @@ const model3d = (() => {
     profondeurs.set(url, p);
     return p;
   }
-  /* ---- vidéo détourée comme texture (page Info) ----
-     Le maillage reste FIXE et la texture bouge. C'est ce qui rend la chose
-     abordable : détourer, mailler et étendre une texture coûte une fraction de
-     seconde par image — impensable soixante fois par seconde —, alors qu'une
-     vidéo se décode et se recopie sur le GPU pour presque rien.
-     Le volume est bâti sur l'UNION des silhouettes de huit images prélevées
-     dans la boucle : ainsi aucun geste ne sort jamais du maillage. Ce qui fait
-     bouger la silhouette, c'est la découpe par l'alpha dans le nuanceur — les
-     facettes que l'image du moment ne couvre pas sont écartées.
-     Limite assumée : le RELIEF, lui, ne s'anime pas. Sur un buste qui fume,
-     dont les mouvements restent dans le même plan, cela ne se voit pas ; sur un
-     geste ample, la texture glisserait sur la forme. */
-  const videos = new Map();
-  function loadVideo(url){
-    if (videos.has(url)) return videos.get(url);
-    const p = (async () => {
-      const v = document.createElement('video');
-      v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
-      v.src = url;
-      await new Promise((ok, ko) => { v.onloadeddata = () => ok(); v.onerror = () => ko(new Error('video')); });
-      const N = MASK_N, union = new Uint8Array(N * N);
-      const dur = isFinite(v.duration) ? v.duration : 0, K = dur ? 8 : 1;
-      const tmp = document.createElement('canvas');
-      tmp.width = v.videoWidth; tmp.height = v.videoHeight;
-      const tc = tmp.getContext('2d', { willReadFrequently:true });
-      for (let i = 0; i < K; i++){
-        if (dur){ v.currentTime = dur * (i + 0.5) / K; await new Promise(ok => { v.onseeked = () => ok(); }); }
-        tc.clearRect(0, 0, tmp.width, tmp.height);
-        tc.drawImage(v, 0, 0);
-        const m = silhouette(carrer(tmp));
-        for (let j = 0; j < N * N; j++) if (m[j]) union[j] = 1;
-      }
-      v.onseeked = null; v.currentTime = 0;
-      /* Garde-fou : un navigateur qui joue le WebM sans honorer sa couche alpha
-         rend un fond opaque, et la silhouette avale alors tout le cadre. Aucun
-         sujet détouré ne couvre 60 % de son carré (le portrait fixe en couvre
-         14) : au-delà, on renvoie null et la photo reprend la main. */
-      let aire = 0; for (let j = 0; j < N * N; j++) aire += union[j];
-      if (aire > 0.6 * N * N) return null;
-      /* Toile carrée où l'image du moment est recopiée : tout le module
-         travaille en carré (masque, UV), et le cadrage doit être le MÊME que
-         celui de carrer(), sinon la texture glisserait sur le maillage.
-         1024 et non 512 : une vidéo en portrait ne remplit que sa largeur dans
-         ce carré (720 sur 1280 ici, soit 56 %), et à 512 le sujet arrivait plus
-         petit que la place qu'il occupe à l'écran. Le surcoût est nul — la
-         toile ne repart au GPU qu'aux nouvelles images de la vidéo, trente
-         fois par seconde et non soixante (165 images/s mesurées, comme sans
-         vidéo). */
-      const cote = 1024, cv = document.createElement('canvas');
-      cv.width = cote; cv.height = cote; cv.vivant = true; cv.neuf = true;
-      const cx = cv.getContext('2d');
-      const n = Math.max(v.videoWidth, v.videoHeight), s = cote / n;
-      const dw = Math.round(v.videoWidth * s), dh = Math.round(v.videoHeight * s);
-      const dx = Math.round((cote - dw) / 2), dy = Math.round((cote - dh) / 2);
-      let derniere = -1;
-      const rafraichir = () => {
-        if (v.readyState < 2 || v.currentTime === derniere) return false;
-        derniere = v.currentTime;
-        cx.clearRect(0, 0, cote, cote);
-        cx.drawImage(v, dx, dy, dw, dh);
-        cv.neuf = true;                    // texture() ne renvoie au GPU que sur ce drapeau
-        return true;
-      };
-      rafraichir();
-      return { el: v, cv, mask: union, rafraichir };
-    })().catch(() => null);
-    videos.set(url, p);
-    return p;
-  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
-    if (item.video){
-      const p = Promise.all([loadVideo(encodeURI(item.video)), item.depthVid ? loadDepth(encodeURI(item.depthVid)) : null])
-        .then(([vid, prof]) => {
-          if (!vid) return item.img ? prepareImage(item, key) : null; // vidéo absente : la photo reprend la main
-          let mesh = meshes.get(key);
-          if (!mesh){ mesh = buildMesh(vid.mask, null, true, prof); meshes.set(key, mesh); }
-          const a = mesh ? { mesh, texF: vid.cv, texB: vid.cv, video: vid } : null;
-          ready.set(key, a);
-          if (list) list.warm(a);
-          return a;
-        }).catch(() => { ready.set(key, null); return null; });
-      assets.set(key, p); return p;
-    }
-    return prepareImage(item, key);
-  }
-  function prepareImage(item, key){
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
     const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
@@ -4581,13 +4462,7 @@ const model3d = (() => {
     assets.set(key, p); return p;
   }
   let debugSide = ''; // contrôle : ne dessiner qu'une face ('front' | 'back' | '')
-  function draw(){
-    // texture vivante : on recopie l'image du moment AVANT de dessiner, et
-    // seulement si la vidéo en a servi une nouvelle (voir rafraichir)
-    if (current && current.video) current.video.rafraichir();
-    panel.clear();
-    if (current) panel.render(current, angle, PV, 1, null, debugSide);
-  }
+  function draw(){ panel.clear(); if (current) panel.render(current, angle, PV, 1, null, debugSide); }
 
   // courbes des transitions CSS des lignes, résolues par bissection
   const bezier = (x1, y1, x2, y2) => {
@@ -4689,23 +4564,14 @@ const model3d = (() => {
   function show(item){
     active = true; canvas.hidden = false; resize();
     const my = ++token;
-    // changer de fiche ne passe pas par hide() : la vidéo de la précédente
-    // doit s'arrêter ici, sinon elle continuerait de se décoder dans le vide
-    if (current && current.video) current.video.el.pause();
     current = null; tap = 0;
     // une autre fiche a pu être affichée entre-temps ; et la photo peut manquer
     // (fichier pas encore déposé) : le panneau reste alors vide, sans erreur
-    prepare(item).then(a => {
-      if (my !== token) return;
-      panel.warm(a); current = a;
-      if (a && a.video){ const p = a.video.el.play(); if (p && p.catch) p.catch(() => {}); } // lecture muette : aucun geste requis
-    }).catch(() => {});
+    prepare(item).then(a => { if (my === token){ panel.warm(a); current = a; } }).catch(() => {});
     if (!raf) raf = requestAnimationFrame(frame);
   }
   function hide(){
-    active = false; token++;   // une fiche encore en préparation ne doit plus s'afficher après coup
-    if (current && current.video) current.video.el.pause(); // une vidéo hors écran ne doit pas tourner
-    current = null; canvas.hidden = true;
+    active = false; current = null; canvas.hidden = true;
     if (!rows.length && !fading.length && raf){ cancelAnimationFrame(raf); raf = 0; }
   }
   // Lignes de la liste ouverte, décrites par render() en pixels CSS dans le
@@ -4776,14 +4642,6 @@ const model3d = (() => {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && (active || rows.length) && !raf) raf = requestAnimationFrame(frame); });
   const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
-  // contrôle : silhouette d'union d'une vidéo (couverture et boîte englobante)
-  const debugVideo = url => loadVideo(url).then(v => { if (!v) return null; const N = MASK_N, m = v.mask;
-    let n = 0, x0 = N, y0 = N, x1 = -1, y1 = -1;
-    for (let i = 0; i < N*N; i++) if (m[i]){ n++; const x = i % N, y = (i-x)/N; if (x<x0) x0=x; if (x>x1) x1=x; if (y<y0) y0=y; if (y>y1) y1=y; }
-    const c = document.createElement('canvas'); c.width = N; c.height = N; const g = c.getContext('2d');
-    const id = g.createImageData(N, N); for (let i = 0; i < N*N; i++){ const t = m[i] ? 255 : 0; id.data[i*4]=t; id.data[i*4+1]=t; id.data[i*4+2]=t; id.data[i*4+3]=255; }
-    g.putImageData(id, 0, 0);
-    return { couverture: Math.round(n/(N*N)*1000)/10, boite: [x0, y0, x1, y1], taille: [v.el.videoWidth, v.el.videoHeight], duree: +v.el.duration.toFixed(2), enPause: v.el.paused, image: c.toDataURL('image/png') }; });
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
   const debugTexture = url => loadImage(url).then(e => e.canvas); // contrôle : texture étendue d'une photo
   const debugSnapshot = () => { draw(); return canvas.toDataURL('image/png'); }; // contrôle : image du rendu courant
@@ -4821,7 +4679,7 @@ const model3d = (() => {
       },
     };
   }
-  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugVideo, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -4836,7 +4694,7 @@ const slider = (() => {
   let avail = [], index = 0, item = null;
   function setup(it){
     item = it; avail = []; index = 0;
-    if (it && (it.img || it.video)){
+    if (it && it.img){
       if (!swatch.classList.contains('no-gl')) avail.push(0);
       /* `seule3D` : pas de vues photo. Le cadenas d'une pièce verrouillée dit
          que l'article n'est pas disponible, il ne tient pas sa place — une
@@ -5575,7 +5433,7 @@ function fillPreview(){
     model3d.photoURL(front).then(u => { if (photo.dataset.for === front) photo.src = u; }).catch(() => { photo.src = front; });
     model3d.photoURL(back).then(u => { if (photo2.dataset.for === back) photo2.src = u; }).catch(() => { photo2.src = back; });
     slider.setup(vu); // vue 3D d'abord, puis les photos
-  } else if (vu.img || vu.video){
+  } else if (vu.img){
     // le cadenas : le modèle seul, aucune photo (voir seule3D dans slider.setup)
     photo.removeAttribute('src');
     photo2.removeAttribute('src');
