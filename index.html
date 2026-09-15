@@ -300,6 +300,15 @@
     transform:scale(1);
     z-index:2;
   }
+  /* Icône passée SOUS la fiche et qui ressortirait par son bord droit : la
+     marge à droite du panneau est trop étroite pour elle, on n'en verrait
+     qu'une tranche posée contre l'arête. Elle s'éteint donc au lieu de
+     réapparaître (voir majIconesCachees). Après .active : l'icône active
+     n'est jamais dans ce cas, mais la règle doit pouvoir la couvrir. */
+  .category.masquee{
+    opacity:0;
+    pointer-events:none;
+  }
   .cat-icon{
     position:relative;
     width:104px;height:104px;
@@ -498,43 +507,11 @@
       0 24px 60px rgba(0,0,0,0.35),
       0 0 40px rgba(var(--accent2-rgb),0.10);
   }
-  /* Lueur de bord : quand une icône de la barre glisse derrière la fiche, elle
-     disparaît complètement et on perd le fil du menu. Son éclat traverse donc
-     le verre — une lueur s'allume sur l'arête gauche, à la hauteur de l'icône,
-     d'autant plus vive qu'elle est enfoncée. Hauteur, position et intensité
-     viennent de updateEdgeGlow() ; la transition est calquée sur celle de la
-     barre d'icônes pour que les deux bougent d'un seul mouvement. */
-  .preview::after{
-    content:'';
-    position:absolute;
-    /* --edge-top est le HAUT de la lueur, déjà calculé dans le repère de la
-       fiche : aucune arithmétique ici. Une version précédente centrait la lueur
-       avec margin-top:calc(hauteur / -2) ; si ce calc n'est pas compris, la
-       déclaration tombe, la marge vaut zéro et la lueur descend d'une
-       demi-hauteur — exactement le décalage constaté.
-       Réglage du 15 sept. 2026 : plus discrète et plus diffuse. Le trait net
-       de 3 px est devenu une nappe de 10 px sans cœur blanc, floutée, et son
-       opacité est divisée par deux — on devine l'icône derrière le verre au
-       lieu de voir un néon collé sur l'arête. */
-    left:-6px;
-    top:var(--edge-top,50%);
-    height:var(--edge-h,104px);
-    width:10px;
-    border-radius:6px;
-    opacity:calc(var(--edge-a,0) * 0.5);
-    background:linear-gradient(to bottom,
-      rgba(var(--accent-rgb),0) 0%,
-      rgba(var(--accent-rgb),0.55) 34%,
-      rgba(var(--accent-rgb),0.75) 50%,
-      rgba(var(--accent-rgb),0.55) 66%,
-      rgba(var(--accent-rgb),0) 100%);
-    filter:blur(5px);
-    box-shadow:0 0 22px 8px rgba(var(--accent-rgb),0.12);
-    pointer-events:none;
-    transition:opacity 0.4s cubic-bezier(.2,.8,.2,1),
-               top 0.4s cubic-bezier(.2,.8,.2,1),
-               height 0.4s cubic-bezier(.2,.8,.2,1);
-  }
+  /* La lueur de bord (une nappe d'accent sur l'arête gauche, à la hauteur de
+     l'icône cachée) a été retirée le 15 sept. 2026 à la demande : elle est
+     remplacée par l'inverse, plus simple à lire — une icône qui ressortirait
+     à DROITE de la fiche ne se montre pas du tout (.category.masquee,
+     posée par majIconesCachees). */
 
   /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
      plus grand, contenu centré (marges égales) pour la lecture et la navigation */
@@ -741,6 +718,10 @@
     transition:max-height 0.30s cubic-bezier(.2,.8,.2,1), opacity 0.14s ease;
   }
   .preview.gallery .size-picker{max-height:0;opacity:0;margin-top:0;}
+  /* Ouverture terminée : plus rien à rogner, et le liseré de focus du clavier
+     — posé hors du bouton par outline-offset — cesse d'être coupé par le bord
+     de la boîte (voir le transitionend qui pose cette classe). */
+  .preview-info.libre,.size-picker.libre{overflow:visible;}
   /* En-tête compact : le nom et le prix sur UNE ligne, au même corps, et le
      bouton de dépliage du descriptif au bout. Deux lignes gagnées, rendues au
      visuel. */
@@ -1119,16 +1100,18 @@
     color:var(--blue);
     margin-top:4px;
   }
-  .cart-row-size{ /* taille choisie, en pastille à côté du nom */
-    display:inline-block;
-    margin-left:8px;
-    padding:1px 8px;
-    border:1px solid rgba(255,255,255,0.2);
-    border-radius:10px;
+  /* Taille choisie : DANS le groupe de quantité (demande du 15 sept. 2026),
+     séparée par un filet. Posée à côté en pastille autonome, elle coûtait
+     46 px à la colonne de gauche et le nom du produit passait à la ligne ;
+     ici elle ne coûte que son texte, et « M | − 1 + » se lit d'un bloc. */
+  .cart-qty-size{
+    display:flex;align-items:center;
+    align-self:stretch;
+    padding:0 9px;
+    border-right:1px solid rgba(255,255,255,0.14);
     font-size:11px;
-    letter-spacing:0.4px;
+    letter-spacing:0.5px;
     color:var(--white-60);
-    vertical-align:middle;
   }
   .cart-remove{
     background:none;border:none;
@@ -2716,14 +2699,11 @@ const DATA = [
          fr:"Deux pièces. Un vainqueur. Zéro réflexion.\nVous hésitez ? Qu'elles se battent."} } },
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
-  // Contact : même forme que les autres panneaux texte — un titre, la mention
-  // en couleur d'accent (à la place du prix), deux lignes, puis le bouton.
-  // Avant, le titre PORTAIT l'adresse et la ligne d'accent la répétait en
-  // entier : deux fois la même chose, et rien qui dise quoi écrire.
+  // Contact : trois choses et rien d'autre (demande du 15 sept. 2026) — « DM »,
+  // la poignée Instagram en couleur d'accent, le bouton. Pas de texte
+  // d'explication : l'adresse dit déjà où écrire.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
-    panel:{ n:{en:"Contact", fr:"Contact"},
-      d:{en:"Orders, sizing, custom pieces — or just to say hi.\nDM us on Instagram, we answer within a day.",
-         fr:"Commandes, tailles, pièces sur mesure — ou juste pour dire bonjour.\nÉcrivez-nous en DM sur Instagram, réponse sous 24 heures."} } },
+    panel:{ n:"DM" } },
   { name:{en:"Settings", fr:"Réglages"}, icon:"settings icon.png", kind:"settings", items:[] },
   { name:{en:"Shipping Info", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
@@ -3397,6 +3377,7 @@ function closeSizePicker(){
   // une pastille cliquée garde le focus : masquée, Entrée la recliquerait
   if (sizePicker.contains(document.activeElement)) document.activeElement.blur();
   sizePicker.classList.remove('open');
+  sizePicker.classList.remove('libre');  // la fermeture doit de nouveau rogner
   previewEl.classList.remove('grown');
   previewEl.style.setProperty('--sq-size', '0px'); // le descriptif garde la sienne (--squeeze)
   sizePicker.setAttribute('aria-hidden', 'true');
@@ -3408,20 +3389,28 @@ function updateSizeFocus(){
 }
 
 
-/* La lueur de bord est posée dans le repère de la FICHE, or la fiche change de
-   hauteur : elle s'ouvre sur sa galerie, le descriptif se déplie, les tailles
-   apparaissent — et chacun de ces mouvements DURE. Placée une seule fois, au
-   début de l'animation, la lueur se retrouvait décalée par rapport à l'icône
-   dès que le panneau n'avait pas la hauteur d'une fiche produit. On la repose
-   donc à la fin de chaque transition de taille, et à l'image suivante après un
-   changement de contenu. */
-function recalerLueur(){ requestAnimationFrame(updateEdgeGlow); }
-['transitionend', 'transitioncancel'].forEach(ev => {
-  previewEl.addEventListener(ev, (e) => {
-    const t = e.target;
-    if (t !== previewEl && t.id !== 'previewInfo' && t.id !== 'sizePicker' && t.id !== 'previewDesc') return;
-    if (!/height|transform/.test(e.propertyName)) return;
-    updateEdgeGlow();
+/* Le bord droit de la fiche dépend du TYPE de catégorie (les panneaux texte
+   sont un peu plus étroits) : on repose donc les icônes à l'image qui suit un
+   changement de contenu. Sa hauteur, elle, n'entre plus dans le calcul depuis
+   que la lueur de bord a été remplacée. */
+function recalerIcones(){ requestAnimationFrame(majIconesCachees); }
+
+/* Les deux boîtes qui s'animent en hauteur se rognent (overflow:hidden), sans
+   quoi leur contenu fuirait pendant la transition. Mais le liseré de focus du
+   clavier est posé À L'EXTÉRIEUR du bouton (outline-offset) : il était coupé
+   par cette rognure, en bas de la fiche comme autour des pastilles de taille.
+   On rend donc le débordement visible UNE FOIS l'ouverture terminée — à ce
+   moment il n'y a plus rien à rogner, la boîte a exactement la hauteur de son
+   contenu — et on le reprend dès qu'une fermeture commence (voir les
+   classList.remove('libre') dans appliquerFiche et closeSizePicker). */
+// (par getElementById et non par la const previewInfo : elle est déclarée plus
+// bas dans le fichier, et une const n'existe pas avant sa ligne)
+[document.getElementById('previewInfo'), sizePicker].forEach(el => {
+  el.addEventListener('transitionend', (e) => {
+    if (e.target !== el || e.propertyName !== 'max-height') return;
+    const ouvert = el === sizePicker ? el.classList.contains('open')
+                                     : !previewEl.classList.contains('gallery');
+    el.classList.toggle('libre', ouvert);
   });
 });
 /* Vol vers le panier : c'est le MODÈLE 3D qui part, pas la photo. Il tourne sur
@@ -4681,7 +4670,7 @@ function render(){
   // décalées par transform (composité, fluide) et non par une marge animée,
   // qui relançait la mise en page à chaque image.
   const extra = activeColW ? Math.max(24, activeColW - 16) : 24;
-  geom.extra = extra; // repris par updateEdgeGlow, qui refait le même calcul de position
+  geom.extra = extra; // repris par majIconesCachees, qui refait le même calcul de position
   cats.forEach((el, ci) => {
     el.style.transform = `translateX(${ci > activeCat ? extra : 0}px) scale(${ci === activeCat ? 1 : 0.82})`;
   });
@@ -4740,69 +4729,46 @@ function scrollActiveIntoView(){
   const maxShift = prevEl ? prevEl.left + prevEl.w / 2 - 16 : 0;
   camShift = Math.max(0, Math.min(shift, maxShift));
   categoriesEl.style.transform = `translateX(-${camShift}px)`;
-  updateEdgeGlow();
+  majIconesCachees();
 }
 
-/* Lueur de bord (voir .preview::after) : une icône qui passe derrière la fiche
-   disparaît entièrement, et on perd le fil du menu. Son éclat traverse donc le
-   verre : une lueur s'allume sur l'arête gauche, à sa hauteur, et d'autant plus
-   vive qu'elle est enfoncée.
+/* Icônes qui ressortent à droite de la fiche (remplace la lueur de bord,
+   15 sept. 2026). La barre est plus large que la place laissée par le panneau :
+   les dernières catégories glissent derrière lui, puis réapparaissent dans la
+   marge de droite, trop étroite pour elles — on n'en voyait qu'une tranche
+   collée contre l'arête. Dès qu'une icône déborderait de ce bord droit, elle
+   s'éteint ; la transition d'opacité de .category l'emmène en même temps que
+   la barre glisse, donc on la voit s'effacer sous le panneau, pas disparaître
+   d'un coup.
 
    Tout se calcule à partir des positions au repos (geom) en refaisant les mêmes
    transformations que render() vient d'appliquer, jamais en relisant le DOM :
    juste après avoir posé un transform animé, le navigateur rend encore
    l'ancienne position, et une lecture par image ramènerait les recalculs de
-   mise en page qu'on a passé la soirée à retirer. La lueur reçoit donc son état
-   d'arrivée, et la transition CSS — la même que celle de la barre — l'y emmène
-   en même temps que les icônes. */
-function updateEdgeGlow(){
-  const eteint = () => previewEl.style.setProperty('--edge-a', '0');
-  if (!geom.cats.length || !previewEl.classList.contains('show')) return eteint();
-  /* La fiche est mesurée ici, et pas reprise du cache de render() : elle ne se
-     déplace ni ne s'anime en position (seule son opacité change, cf .swap),
-     mais sa HAUTEUR dépend de son contenu, et une mesure prise pendant qu'elle
-     était encore vide — au chargement, avant que le catalogue n'arrive —
-     placerait la lueur à côté pour le reste de la session. Une lecture par pas
-     de navigation ne coûte rien ; ce sont les lectures par image qu'il faut
-     éviter. */
+   mise en page qu'on a passé la soirée à retirer. */
+function majIconesCachees(){
+  const els = categoriesEl.querySelectorAll('.category'); // requête, pas de lecture de mise en page
+  if (!geom.cats.length || els.length !== geom.cats.length) return;
+  const montrer = () => els.forEach(el => el.classList.remove('masquee'));
+  if (!previewEl.classList.contains('show')) return montrer();
+  /* La fiche est mesurée ici, et pas reprise du cache de render() : sa largeur
+     dépend du type de catégorie (les panneaux texte sont un peu plus étroits)
+     et une mesure prise pendant qu'elle était encore vide — au chargement,
+     avant que le catalogue n'arrive — fausserait le bord pour le reste de la
+     session. Une lecture par pas de navigation ne coûte rien ; ce sont les
+     lectures par image qu'il faut éviter. */
   const p = previewEl.getBoundingClientRect();
-  if (!p.width) return eteint();
-  const bord = previewEl.clientTop;   // le repère d'un enfant absolu part du bord INTÉRIEUR du verre
-  const panHaut = p.top, panBas = p.bottom;
-  let force = 0, haut = 0, bas = 0;
+  if (!p.width) return montrer();
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
     const tx = (ci > activeCat ? geom.extra : 0) - camShift;
-    const cx = g.left + g.w / 2, cy = g.top + g.h / 2;      // l'échelle part du centre de la boîte (origine par défaut)
+    const cx = g.left + g.w / 2;                            // l'échelle part du centre de la boîte (origine par défaut)
     const gauche = cx + (g.left + g.icoL - cx) * s + tx;
-    const large = g.icoW * s;
-    if (gauche >= p.right) return;                          // passée au-delà de la fiche : hors écran, pas cachée par elle
-    const enfoncee = (gauche + large - p.left) / large;     // 0 : elle affleure le bord ; 1 : entièrement dessous
-    if (enfoncee <= 0 || enfoncee <= force) return;
-    // La boîte .category tient l'icône ET son libellé : son centre, autour
-    // duquel joue l'échelle, est plus bas que celui de l'icône. D'où le calcul
-    // complet plutôt qu'un simple g.top + g.icoH / 2.
-    const h1 = cy + (g.top + g.icoT - cy) * s;
-    const h2 = cy + (g.top + g.icoT + g.icoH - cy) * s;
-    // La lueur épouse l'icône ENTIÈRE, elle n'est pas rognée à la hauteur du
-    // panneau : rogner déplaçait son centre de 16 px et elle ne semblait plus
-    // alignée. C'est licite puisque, depuis, seule une icône entièrement
-    // couverte l'allume (voir juste en dessous).
-    /* Cachée veut dire ENTIÈREMENT cachée : l'icône doit tenir tout entière
-       dans la hauteur du panneau. Sur les panneaux courts (Contact, Réglages,
-       Livraison, Pièces uniques) elle dépasse par le haut ; le deuxième tiers
-       de sa hauteur restait visible au-dessus du coin, et la lueur — posée sur
-       toute l'icône — semblait s'allumer à côté de rien. Rien n'est caché,
-       donc rien ne s'allume. (Un demi-pixel de marge : les positions viennent
-       d'un calcul flottant.) */
-    const commun = Math.min(h2, panBas) - Math.max(h1, panHaut);
-    if (commun < (h2 - h1) - 0.5) return;
-    force = Math.min(1, enfoncee); haut = h1; bas = h2;
+    const droite = gauche + g.icoW * s;
+    // Le moindre dépassement suffit : une icône à moitié coupée par l'arête
+    // est précisément ce qu'on ne veut plus voir.
+    els[ci].classList.toggle('masquee', ci !== activeCat && droite > p.right);
   });
-  if (!force) return eteint();
-  previewEl.style.setProperty('--edge-top', Math.round(haut - p.top - bord) + 'px');
-  previewEl.style.setProperty('--edge-h', Math.round(bas - haut) + 'px');
-  previewEl.style.setProperty('--edge-a', force.toFixed(3));
 }
 
 let lastPreviewCat = -1, previewSwapTimer = null;
@@ -4851,8 +4817,24 @@ function majInfoH(){
   previewEl.style.setProperty('--info-h', (infoBase + (descOuvert && descMax ? descMax + 14 : 0)) + 'px');
 }
 function appliquerFiche(){
+  previewEl.classList.remove('libre');   // le bloc va bouger : il rogne de nouveau
+  previewInfo.classList.remove('libre');
   previewEl.classList.toggle('gallery', DATA[activeCat].kind === 'shop' && !ficheOuverte);
 }
+/* Clic sur le fond (demande du 15 sept. 2026) : la fiche revient à son état de
+   repos, la galerie seule. On épargne ce qui a sa propre logique de clic — la
+   fiche elle-même, les icônes et leurs listes (cliquer un article l'ouvre,
+   justement), les barres et les fenêtres modales. */
+document.addEventListener('click', (e) => {
+  if (!ficheOuverte) return;
+  if (e.target.closest('.preview, .category, .topbar, .hintbar, .legalbar, .brand, .dev-view,'
+                     + ' .cart-overlay, .info-overlay, .legal-overlay, .arena-overlay')) return;
+  ficheOuverte = false;
+  descOuvert = false; appliquerDesc(); majInfoH();   // au repos, le descriptif est replié
+  closeSizePicker();
+  if (panelMode) exitPanel();
+  appliquerFiche();
+});
 function ouvrirFiche(anim){
   if (DATA[activeCat].kind !== 'shop') return;
   if (anim){
@@ -4934,7 +4916,7 @@ function fillPreview(){
   if (item !== dernierItem){ dernierItem = item; ficheOuverte = false; descOuvert = false; appliquerDesc(); }
   appliquerFiche();
   requestAnimationFrame(mesurerInfo);   // après la mise en page du nouveau contenu
-  recalerLueur();                       // la hauteur du panneau vient de changer
+  recalerIcones();                      // la largeur du panneau vient peut-etre de changer
   if (isInfo) previewEl.classList.remove('desc-open');
 
   const infoBtn = document.getElementById('infoBtn');
@@ -5026,11 +5008,12 @@ function renderCart(){
       const detail = line.qty > 1 ? `<span class="cart-row-unit">${line.qty} × ${formatPrice(line.p)}</span>` : '';
       row.innerHTML = `
         <div>
-          <div class="cart-row-name">${esc(L(line.n))}${line.size ? `<span class="cart-row-size">${esc(line.size)}</span>` : ''}</div>
+          <div class="cart-row-name">${esc(L(line.n))}</div>
           <div class="cart-row-price">${formatPrice(line.p * line.qty)}${detail}</div>
         </div>
         <div class="cart-row-actions">
           <span class="cart-qty">
+            ${line.size ? `<span class="cart-qty-size">${esc(line.size)}</span>` : ''}
             <button class="cart-qty-btn" data-idx="${idx}" data-delta="-1" aria-label="${esc(T('oneLess'))}">−</button>
             <span class="cart-qty-n">${line.qty}</span>
             <button class="cart-qty-btn" data-idx="${idx}" data-delta="1" aria-label="${esc(T('oneMore'))}">+</button>
