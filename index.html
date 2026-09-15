@@ -1808,7 +1808,6 @@
           <div class="arena-end-ask" data-i18n="arenaAsk"></div>
           <div class="arena-end-actions">
             <button class="preview-cta" id="arenaAdd" data-i18n="arenaAdd"></button>
-            <button class="preview-cta preview-cta--secondary" id="arenaAgain" data-i18n="arenaAgain"></button>
             <button class="preview-cta preview-cta--secondary" id="arenaQuit" data-i18n="arenaQuit"></button>
           </div>
         </div>
@@ -2307,7 +2306,7 @@ const STRINGS = {
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAsk:"Add it to the bag?", arenaAdd:"Add to bag",
-    arenaAgain:"Rematch", arenaQuit:"Close",
+    arenaQuit:"Close",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -2328,7 +2327,7 @@ const STRINGS = {
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Ajouter au panier",
-    arenaAgain:"Revanche", arenaQuit:"Fermer",
+    arenaQuit:"Fermer",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -2480,8 +2479,8 @@ const DATA = [
   // articles quand on hesite. L'icone lance l'arene, voir le module `arena`.
   { name:{en:"Versus", fr:"Versus"}, icon:"arena icon.svg", kind:"game", items:[],
     panel:{ n:{en:"Versus", fr:"Versus"},
-      d:{en:"Torn between two pieces? Let them settle it.\nPick two items, then watch them fight.\nThe winner is pure chance — it decides for you.",
-         fr:"Hésitation entre deux pièces ? Laissez-les se battre.\nChoisissez deux articles, puis regardez le duel.\nLe vainqueur est tiré au sort — il décide à votre place."} } },
+      d:{en:"Two pieces. One winner. Zero thinking.\nCan't choose? Make them fight for it.",
+         fr:"Deux pièces. Un vainqueur. Zéro réflexion.\nVous hésitez ? Qu'elles se battent."} } },
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
@@ -2665,7 +2664,9 @@ const sfx = (() => {
   // Réglages › Son : couper arrête aussi la nappe de fond, rallumer la relance
   Object.defineProperty(api, 'enabled', {
     get: () => on,
-    set: v => { on = !!v; if (!on) ambientStop(); else if (ctx) ambientStart(); },
+    set: v => { on = !!v;
+      if (!on){ ambientStop(); combatStop(); }
+      else if (ctx){ if (arene) combatStart(); else ambientStart(); } }, // on relance ce qui a cours
   });
   function audio(){
     if (!on || startupActive) return null;
@@ -2685,7 +2686,9 @@ const sfx = (() => {
     // sinon les sons s'accumulent à l'instant zéro et partent tous ensemble
     // au réveil, en un seul bloc très fort.
     if (ctx.state !== 'running') return null;
-    ambientStart(); // la nappe démarre au premier son, faute de quoi le navigateur la refuserait
+    // Le fond démarre au premier son, faute de quoi le navigateur le refuserait.
+    // Dans l'arène, c'est le thème de combat qui tient ce rôle, pas la nappe.
+    if (arene) combatStart(); else ambientStart();
     return ctx;
   }
   /* Instant de départ d'un son. L'horloge du moteur audio n'avance pas en
@@ -2933,6 +2936,71 @@ const sfx = (() => {
     note(t, 130, 44, 0.11 * v, 0.17, 'triangle', 0.001);
     burst(t, { freq: 1500, q: 0.7, peak: 0.07 * v, attack: 0.001, decay: 0.09, lp: 4200 });
     burst(t + 0.02, { freq: 420, q: 1.1, peak: 0.045 * v, attack: 0.004, decay: 0.16, lp: 1600 });
+  };
+  /* ---- thème de combat 8 bits ----
+     Pendant le mini-jeu, la nappe du menu se tait et laisse la place à un motif
+     de chiptune : basse et lead en ondes carrées, charley en bruit. Volontairement
+     discret — il tourne sous les tirs et les impacts, il ne doit pas les couvrir.
+
+     Les pas sont PROGRAMMÉS EN AVANCE sur l'horloge audio, pas joués par un
+     minuteur : un setTimeout dérive de plusieurs millisecondes, ce qui s'entend
+     tout de suite sur une mesure. Le minuteur ne sert qu'à remplir la file. */
+  const PAS = 0.1136;                  // double-croche à 132 à la noire
+  const LA2 = 110;                     // la grave : tonique du motif
+  const demi = n => LA2 * Math.pow(2, n / 12);
+  // 32 pas, deux mesures. null = silence. Demi-tons depuis la tonique.
+  const BASSE = [0,null,0,null, 0,null,0,null, 5,null,5,null, 3,null,3,null,
+                 0,null,0,null, 0,null,0,null, 7,null,7,null, 5,null,3,null];
+  const CHANT = [12,null,null,15, null,12,null,null, 17,null,null,15, null,12,null,null,
+                 12,null,null,15, null,19,null,null, 17,null,15,null, 12,null,null,null];
+  let cbt = null, arene = false;
+  function combatStart(){
+    if (cbt || !ctx || !on) return;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.6);
+    g.connect(master);
+    cbt = { g: g, pas: 0, quand: ctx.currentTime + 0.12, timer: 0 };
+    combatFile();
+  }
+  function combatFile(){
+    if (!cbt) return;
+    const fin = ctx.currentTime + 0.4;                 // on remplit 400 ms d'avance
+    while (cbt.quand < fin){
+      const i = cbt.pas % BASSE.length, t = cbt.quand;
+      if (!document.hidden){
+        if (BASSE[i] !== null) voix(t, demi(BASSE[i]), 0.034, 0.115, 'square');
+        if (CHANT[i] !== null) voix(t, demi(CHANT[i] + 12), 0.019, 0.095, 'square');
+        if (i % 2 === 1) burst(t, { freq: 6200, q: 0.9, peak: 0.007, attack: 0.001, decay: 0.028 });
+      }
+      cbt.pas++; cbt.quand += PAS;
+    }
+    cbt.timer = setTimeout(combatFile, 120);
+  }
+  function voix(t, f, peak, dur, type){               // une note du motif, branchée sur le gain du thème
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = f;
+    const g = ctx.createGain();
+    env(g, t, peak, 0.002, dur);
+    o.connect(g); g.connect(cbt.g);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function combatStop(){
+    if (!cbt) return;
+    clearTimeout(cbt.timer);
+    const mort = cbt; cbt = null;
+    const t = ctx.currentTime;
+    mort.g.gain.cancelScheduledValues(t);
+    mort.g.gain.setValueAtTime(mort.g.gain.value, t);
+    mort.g.gain.linearRampToValueAtTime(0.0001, t + 0.35);
+    setTimeout(() => { try { mort.g.disconnect(); } catch (e){} }, 600);
+  }
+  /* Le mini-jeu prend la main sur la musique : la nappe du menu s'éteint, le
+     motif de combat démarre, et l'inverse à la sortie. */
+  api.combat = (v) => {
+    arene = !!v;
+    if (!audio()) return;
+    if (arene){ ambientStop(); combatStart(); }
+    else { combatStop(); ambientStart(); }
   };
   // Fin du duel : une petite fanfare, quatre notes qui montent. Plus large que
   // l'ajout au panier, mais du même bois — on reste dans la sonorité du site.
@@ -5198,7 +5266,7 @@ const arena = (() => {
     poussiere = [];
     const N = 44;
     const c = document.createElement('canvas'); c.width = c.height = N;
-    const g2 = c.getContext('2d');
+    const g2 = c.getContext('2d', { willReadFrequently: true });
     try { g2.drawImage(glC, boite.x, boite.y, boite.s, boite.s, 0, 0, N, N); }
     catch (err){ return; }
     const d = g2.getImageData(0, 0, N, N).data;
@@ -5402,21 +5470,13 @@ const arena = (() => {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(image);
   }
-  function revenirAuChoix(){
-    cancelAnimationFrame(raf); raf = 0;
-    enDuel = false; fini = false;
-    shakeEl.style.transform = '';
-    stage.hidden = true;
-    endBox.hidden = true;
-    pickView.hidden = false;
-    majChoix();
-  }
   function ouvrir(){
     if (ouvert) return;
     ouvert = true;
     construireGrille();
     stage.hidden = true; pickView.hidden = false; endBox.hidden = true;
     overlay.classList.add('open');
+    sfx.combat(true);   // la nappe du menu se tait, le thème 8 bits prend la main
   }
   function fermer(){
     if (!ouvert) return;
@@ -5425,6 +5485,7 @@ const arena = (() => {
     enDuel = false; fini = false;
     shakeEl.style.transform = '';
     overlay.classList.remove('open');
+    sfx.combat(false);  // retour à la nappe du menu
   }
   function acheterVainqueur(){
     const p = picks[vainqueur];
@@ -5528,7 +5589,6 @@ const arena = (() => {
   document.getElementById('arenaClear').addEventListener('click', () => { picks = [null, null]; majChoix(); });
   fightBtn.addEventListener('click', lancer);
   document.getElementById('arenaAdd').addEventListener('click', acheterVainqueur);
-  document.getElementById('arenaAgain').addEventListener('click', revenirAuChoix);
   document.getElementById('arenaQuit').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
   window.addEventListener('resize', () => { if (ouvert && enDuel) mesurer(); });
