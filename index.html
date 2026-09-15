@@ -4756,22 +4756,17 @@ const arena = (() => {
   const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
   const bandes = (g, w, y0, liste) => liste.forEach(b => R(g, 0, y0 + b[0], w, b[1], b[2]));
 
-  /* Palmier en ombre chinoise : un tronc qui s'incline et s'affine, une
-     couronne de palmes qui retombent, deux noix. Dessiné par une fonction pour
-     pouvoir en semer plusieurs de tailles et de penchants différents — quatre
-     palmiers identiques et symétriques faisaient décor de théâtre. */
   /* Éclair : une ligne brisée du haut vers le bas, autour du milieu. Sert à
      couper l'aperçu en deux et à montrer d'emblée que le décor change d'un
-     duel à l'autre. Les points sont tirés une fois et gardés, sinon la fente
-     et la lumière ne coïncideraient pas. */
+     duel à l'autre. Les écarts sont ÉCRITS, pas tirés au sort : l'aperçu est
+     une image fixe, elle doit être la même à chaque fois qu'on revient sur la
+     catégorie. */
+  const ECARTS = [0, 0.055, -0.042, 0.061, -0.030, 0.048, -0.055, 0.026, -0.038, 0.030, 0];
   function pointsEclair(w, h){
-    const pts = [], n = 9;
-    for (let i = 0; i <= n; i++){
-      const t = i / n;
-      const ecart = (i === 0 || i === n) ? 0 : (Math.random() - 0.5) * w * 0.14;
-      pts.push({ x: w * 0.5 + ecart + Math.sin(t * 7) * w * 0.03, y: t * h });
-    }
-    return pts;
+    return ECARTS.map((e, i) => {
+      const t = i / (ECARTS.length - 1);
+      return { x: w * 0.5 + e * w + Math.sin(t * 7) * w * 0.03, y: t * h };
+    });
   }
   function traitEclair(g, pts, ep, c){
     for (let i = 1; i < pts.length; i++){
@@ -4782,6 +4777,10 @@ const arena = (() => {
       }
     }
   }
+  /* Palmier en ombre chinoise : un tronc qui s'incline et s'affine, une
+     couronne de palmes qui retombent, deux noix. Dessiné par une fonction pour
+     pouvoir en semer plusieurs de tailles et de penchants différents — quatre
+     palmiers identiques et symétriques faisaient décor de théâtre. */
   function palmier(g, x, solY, ht, pente, c){
     for (let i = 0; i < ht; i++){                      // tronc, incurvé
       const u = i / ht;
@@ -5163,8 +5162,10 @@ const arena = (() => {
     const frappe = koT ? plan[plan.length - 1] : e;
     if (frappe && frappe.to === s && tt >= frappe.choc){
       const u = Math.min(1, (tt - frappe.choc) / PH.impact);
-      const bat = Math.sin(u * Math.PI * 6.5) > -0.25 ? 1 : 0.15;
-      rouge = (1 - u) * (1 - u) * bat;
+      // Cinq éclats FRANCS plutôt que trois adoucis : allumé ou éteint, net,
+      // comme un sprite qui clignote. Le sinus adouci lisait comme un fondu.
+      const bat = Math.floor(u * 10) % 2 ? 0 : 1;
+      rouge = (1 - u) * bat;   // décroissance linéaire : les derniers éclats comptent encore
       dx = -sens * H * 0.075 * Math.sin(u * Math.PI);
       ang -= sens * 0.24 * (1 - u);
       dy -= H * 0.012 * Math.sin(u * Math.PI);
@@ -5466,11 +5467,10 @@ const arena = (() => {
     teaser.taille = cle;
     [bc, gc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
     if (!teaser.scene) teaser.scene = model3d.makeScene(gc);
-    if (!teaser.decor){                                     // deux décors distincts, de part et d'autre de l'éclair
-      const i = Math.floor(Math.random() * DECORS.length);
-      const j = (i + 1 + Math.floor(Math.random() * (DECORS.length - 1))) % DECORS.length;
-      teaser.decor = [DECORS[i], DECORS[j]];
-    }
+    // Décors ÉCRITS, pas tirés au sort : l'aperçu est une image fixe, elle doit
+    // être la même à chaque retour sur la catégorie. La ruelle à gauche, la
+    // plage à droite — les deux qui contrastent le plus.
+    if (!teaser.decor) teaser.decor = [DECORS[0], DECORS[1]];
     const w = r.width, h = r.height, pw = 320, ph = Math.max(80, Math.round(pw * h / w));
     // 1. décor, au gros pixel comme dans l'arène — mais DEUX décors, fendus par
     //    un éclair : l'aperçu annonce ainsi que le lieu change d'un duel à
@@ -5502,11 +5502,14 @@ const arena = (() => {
     // 2. armes et projectile, dans le même tampon, par-dessus les vêtements
     const S = h * 0.50, gx = w * 0.24, dx = w * 0.76, cy = h * SOL - S * 0.31;
     const px = p => ({ x: p.x * pw / w, y: p.y * ph / h });
+    // 2. une arme dans chaque main, mais AUCUNE attaque en vol : l'aperçu
+    //    présente les combattants, il ne raconte pas un coup en cours. L'arc à
+    //    gauche (corde tendue), le pistolet à droite (au repos : son éclair de
+    //    bouche ne sort qu'au-delà de 0,9).
     gp.clearRect(0, 0, pw, ph);
-    const atk = ATTAQUES[3];                                 // le canon : son rayon se lit d'un coup d'œil, même figé
-    const dep = px({ x: gx + S * 0.26, y: cy }), arr = px({ x: dx, y: cy });
-    atk.main(gp, dep.x, dep.y, 1, 1);
-    atk.trace(gp, 0.62, dep, arr);
+    const mainG = px({ x: gx + S * 0.26, y: cy }), mainD = px({ x: dx - S * 0.26, y: cy });
+    ATTAQUES[0].main(gp, mainG.x, mainG.y, 1, 0.8);
+    ATTAQUES[1].main(gp, mainD.x, mainD.y, -1, 0.5);
     const gf = fc.getContext('2d');
     gf.imageSmoothingEnabled = false;
     gf.clearRect(0, 0, fc.width, fc.height);
