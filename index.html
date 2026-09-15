@@ -3836,6 +3836,11 @@ const model3d = (() => {
   const TOL = 8;         // écart de couleur (RVB) toléré autour de la couleur du fond : au-dessus du bruit JPEG (≈ 3),
                          // en dessous du plus faible écart tissu/fond rencontré (raglan blanc sur blanc : ses zones
                          // claires passent dans le fond dès 12 ; mesuré sur les 15 photos, stable de 6 à 10)
+  const TROU = 0.04;     // part de la silhouette au-delà de laquelle une poche de fond enfermée devient un vrai trou
+                         // (l'anse d'un cadenas ≈ 17 % ; un trou de serrure ≈ 1,5 %)
+  // Photos qu'on accepte de trouer : des OBJETS, jamais un vêtement (voir silhouette).
+  // L'espace du nom de fichier arrive encodé (« lock%20icon ») : le motif doit prévoir les deux.
+  const TROUS_OK = /lock(%20|\s)icon/;
   const INSET = 2.5;     // texture prise plus à l'intérieur au contour (px du masque), dégressif jusqu'au bout du gonflement
   const AREA_UNIT = 0.637; // √(surface du vêtement, px) par unité : même surface pour tous, un tee ≈ 0,95 de large
   const EXT_R = 10;      // rayon (px du masque) de la moyenne locale du tissu pour la texture étendue (dilue étiquettes et imprimés)
@@ -3967,7 +3972,7 @@ const model3d = (() => {
   if (!list) listCanvas.remove();
 
   // ---- 1. silhouette depuis la photo ----
-  function silhouette(img){
+  function silhouette(img, troue){
     const N = MASK_N, c = document.createElement('canvas'); c.width = N; c.height = N;
     const ctx = c.getContext('2d', { willReadFrequently:true });
     ctx.drawImage(img, 0, 0, N, N);
@@ -4000,7 +4005,29 @@ const model3d = (() => {
       k++;
     }
     const mask = new Uint8Array(N*N);
-    for (let i = 0; i < N*N; i++) mask[i] = label[i] === best ? 1 : 0;
+    let aire = 0;
+    for (let i = 0; i < N*N; i++){ mask[i] = label[i] === best ? 1 : 0; if (mask[i]) aire++; }
+    /* Poches de fond ENFERMÉES dans la forme. L'étiquetage ci-dessus les a
+       absorbées, et c'est ce qu'il faut pour un VÊTEMENT : une poche y vient
+       presque toujours d'un détourage imparfait — le raglan blanc sur blanc a
+       ainsi 13 % de sa silhouette en « fond » au milieu du tissu —, et la
+       trouer percerait le modèle. Sur un OBJET en revanche, une grande poche
+       est un vrai trou : l'intérieur de l'anse d'un cadenas. Sans cela le
+       maillage se referme dessus et on voit le fond de la photo à travers.
+       D'où la liste blanche TROUS_OK plutôt qu'une règle générale : le seuil
+       qui sépare le trou du défaut (13 % contre 17 % ici) est trop serré pour
+       qu'on s'y fie les yeux fermés. Le seuil TROU écarte tout de même les
+       petits détails d'une image autorisée — un trou de serrure fait 1,5 % et
+       doit rester plein, c'est un dessin, pas une ouverture. */
+    const vue = troue ? new Uint8Array(N*N) : null;
+    for (let s = 0; troue && s < N*N; s++){
+      if (!mask[s] || !bg[s] || vue[s]) continue;
+      const st = [s], poche = [s]; vue[s] = 1;
+      while (st.length){ const i = st.pop(), x = i % N, y = (i-x)/N;
+        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
+        for (const j of nb) if (mask[j] && bg[j] && !vue[j]){ vue[j] = 1; st.push(j); poche.push(j); } }
+      if (poche.length > aire * TROU) for (const i of poche) mask[i] = 0;
+    }
     mask.bg = [r, g, b]; mask.alphaMode = a < 30; // repris par extendTexture (jugement pixel par pixel au contour)
     return mask;
   }
@@ -4220,7 +4247,7 @@ const model3d = (() => {
       .then(r => { if (!r.ok) throw new Error(url + ' : ' + r.status); return r.blob(); })
       .then(blob => new Promise((res, rej) => { entry.blobURL = URL.createObjectURL(blob); img.onload = () => res(); img.onerror = rej; img.src = entry.blobURL; }))
       .then(() => {
-        entry.mask = silhouette(img); // silhouette : sert au maillage (photo de face) et à l'extension de texture
+        entry.mask = silhouette(img, TROUS_OK.test(url)); // silhouette : sert au maillage (photo de face) et à l'extension de texture
         entry.canvas = extendTexture(img, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
         return entry;
       });
