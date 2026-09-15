@@ -2507,9 +2507,11 @@ const sfx = (() => {
     burst(t, { freq: 4400, q: 1.8, peak: 0.26 * vol, attack: 0.0006, decay: 0.012 });
     burst(t, { freq: 1700, q: 4, peak: 0.10 * vol, attack: 0.0006, decay: 0.009 });
   }
-  // Liste verticale : un clic par produit, 60 % moins fort tant que la touche
-  // est maintenue. Pas de clic supplémentaire à l'arrêt : le produit sur
-  // lequel on s'arrête a déjà sonné en arrivant, le répéter ferait doublon.
+  // Liste verticale : un clic par produit, 60 % moins fort tant que le
+  // défilement est lancé — touche maintenue, ou crans de molette qui
+  // s'enchaînent (voir WHEEL_FAST). Pas de clic supplémentaire à l'arrêt : le
+  // produit sur lequel on s'arrête a déjà sonné en arrivant, le répéter
+  // ferait doublon.
   api.tick = (held) => playTick(held ? 0.4 : 1);
   // barre horizontale : dans l'esprit du XMB de la PS3 — un souffle résonant
   // et sombre plutôt qu'un bruit large. Trois couches : un filtre étroit (Q
@@ -4139,6 +4141,7 @@ window.addEventListener('keyup', (e) => {
    compte, quelle que soit la cadence ; le flux continu d'un pavé tactile est
    accumulé (40 px = un produit, un pas au plus toutes les 60 ms) pour ne pas
    sauter d'items. Les pas rapprochés raccourcissent les glissements (noteStep). */
+const WHEEL_FAST = 200; // ms sous lesquelles deux crans comptent comme un défilement lancé
 let wheelAcc = 0, wheelLast = 0, wheelStepAt = 0;
 window.addEventListener('wheel', (e) => {
   if (startupActive || panelMode) return;
@@ -4163,11 +4166,16 @@ window.addEventListener('wheel', (e) => {
     dir = Math.sign(wheelAcc); wheelAcc = 0;
     continu = true;
   }
+  /* Molette lancée : les crans s'enchaînent comme une touche qui se répète, le
+     clic passe donc au même volume réduit que sous une touche maintenue (voir
+     sfx.tick). Le premier cran d'une salve, lui, est loin du précédent : il
+     sonne à plein, exactement comme la première pression avant que la répétition
+     du clavier ne démarre. L'écart se mesure sur le cran précédent RETENU, donc
+     AVANT d'écrire wheelStepAt — le comparer à lui-même serait toujours vrai. */
+  const rapide = continu || (wheelStepAt > 0 && now - wheelStepAt < WHEEL_FAST);
   wheelStepAt = now;
   const next = Math.max(0, Math.min(count - 1, activeItem + dir));
-  // un cran de molette est un geste délibéré, comme une pression : plein volume.
-  // Seul le flux continu d'un pavé tactile est atténué.
-  if (next !== activeItem){ activeItem = next; render(); sfx.tick(continu); }
+  if (next !== activeItem){ activeItem = next; render(); sfx.tick(rapide); }
 }, { passive: true });
 
 /* ---------------- outil de développement temporaire ----------------
