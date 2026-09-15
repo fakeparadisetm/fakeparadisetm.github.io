@@ -3113,25 +3113,13 @@ const sfx = (() => {
     if (arene){ ambientStop(); combatStart(); }
     else { combatStop(); ambientStart(); }
   };
-  /* « Woump » d'entrée dans le mini-jeu, dans l'esprit du bouton guide d'une
-     manette : un grave qui enfle et retombe, pas un choc. Une fondamentale qui
-     descend vite, son octave en retrait pour la définition, et un souffle
-     sourd qui lui donne du corps. L'enveloppe en cloche évite l'attaque franche
-     — c'est ce qui sépare un « woump » d'un « boum ». */
-  api.woump = () => {
-    const c = audio(); if (!c) return; const t = at();
-    note(t, 150, 48, 0.12, 0.46, 'sine', 0.012, 0.22);
-    note(t, 300, 96, 0.04, 0.34, 'sine', 0.012, 0.22);
-    note(t + 0.01, 62, 40, 0.05, 0.55, 'triangle', 0.03, 0.3);
-    burst(t, { freq: 320, q: 0.8, peak: 0.036, attack: 0.05, decay: 0.3, lp: 700, bell: 0.25 });
-  };
   /* Carillon d'ouverture : deux notes aiguës qui montent d'une quarte, comme
-     une application qui s'annonce. Il suit le « woump » d'un dixième de
-     seconde, APRÈS sa crête — le grave est l'appui sur le bouton, l'aigu est l'écran qui
-     s'allume. Chaque note porte son octave et sa quinte en retrait : c'est ce
-     qui lui donne le côté cristallin plutôt qu'un simple bip. */
+     une application qui s'annonce. Le grave qui l'accompagnait a été retiré à
+     la demande — l'aigu seul suffit, et il porte mieux. Chaque note garde son
+     octave et sa quinte en retrait : c'est ce qui lui donne le côté cristallin
+     plutôt qu'un simple bip. */
   api.startup = () => {
-    const c = audio(); if (!c) return; const t = at() + 0.2;  // après la crête du woump : les deux ne s'additionnent pas
+    const c = audio(); if (!c) return; const t = at();
     [[1318.5, 0, 0.055], [1760, 0.105, 0.062]].forEach(n => {
       note(t + n[1], n[0], n[0], n[2], 0.20, 'sine', 0.004, 0.28);
       note(t + n[1], n[0] * 2, n[0] * 2, n[2] * 0.28, 0.13, 'sine', 0.004, 0.28);
@@ -4837,10 +4825,11 @@ const arena = (() => {
   }
 
   /* ---- écran de choix ---- */
-  /* Vignette en gros pixel : la photo est REDESSINÉE en 36 px de côté, avec
+  /* Vignette en gros pixel : la photo est REDESSINÉE en 64 px de côté, avec
      lissage — c'est la réduction qui doit moyenner —, puis rendue à l'écran
-     sans lissage (CSS image-rendering:pixelated). Une photo simplement réduite
-     en CSS reste lisse et trahit tout de suite le décor 16 bits. */
+     sans lissage. 64 px et non 36 : à 36 le vêtement n'était plus reconnaissable,
+     et un aperçu de boutique doit d'abord se lire. Une photo simplement réduite
+     en CSS, elle, reste lisse et trahit tout de suite le décor 16 bits. */
   function vignette(cv, src, n){
     cv.width = cv.height = n;
     const g = cv.getContext('2d');
@@ -4857,7 +4846,7 @@ const arena = (() => {
       b.className = 'arena-card';
       b.type = 'button';
       const cv = document.createElement('canvas');
-      vignette(cv, e.it.img, 36);
+      vignette(cv, e.it.img, 64);
       const t = document.createElement('span');
       t.textContent = L(e.it.n);
       b.append(cv, t);
@@ -4887,7 +4876,7 @@ const arena = (() => {
       el.textContent = '';
       if (!p){ el.textContent = T('arenaSlotEmpty'); return; }
       const cv = document.createElement('canvas');
-      vignette(cv, p.it.img, 32);
+      vignette(cv, p.it.img, 48);
       const b = document.createElement('b');
       b.textContent = L(p.it.n);
       el.append(cv, b);
@@ -5014,7 +5003,7 @@ const arena = (() => {
     R(g, tx - 3, ty + 3, 3, 3, c); R(g, tx + 2, ty + 4, 3, 3, c);   // noix de coco
   }
   const DECORS = [
-  { // RUELLE SOMBRE : deux murs qui se resserrent, une lampe, une flaque
+  { // RUELLE SOMBRE : deux murs qui se resserrent, un lampadaire, une benne
     nom: 'ruelle',
     fixe(g, w, h){
       const sol = h * SOL, mur = w * 0.21;          // mur du fond entre les deux murs latéraux
@@ -5059,14 +5048,12 @@ const arena = (() => {
       R(g, lampX - 1, lampY + 4, 3, h * 0.42, '#1c1828');            // mât
       R(g, lampX - 5, lampY, 11, 5, '#3a3350');                      // capot
       R(g, lampX - 4, lampY + 4, 9, 2, '#4a4368');
-      // sol : bitume, trottoir au pied des murs, bouche d'égout, flaque
+      // sol : bitume, trottoir au pied des murs, bouche d'égout
       R(g, 0, sol, w, h - sol, '#17161f');
       R(g, 0, sol, w, 2, '#262133');
       R(g, 0, sol + 4, mur * 0.8, 2, '#201c2b'); R(g, w - mur * 0.8, sol + 4, mur * 0.8, 2, '#201c2b');
       for (let i = 0; i < 40; i++) R(g, (i * 53) % w, sol + 5 + (i * 17) % Math.max(4, h - sol - 6), 1, 1, '#221f2c');
       R(g, w * 0.62, sol + 14, 14, 6, '#221e2d'); R(g, w * 0.625, sol + 15, 12, 4, '#191622'); // bouche d'égout
-      R(g, w * 0.28, sol + 11, 52, 8, '#1d2436');                     // flaque
-      R(g, w * 0.30, sol + 12, 34, 2, '#26324a');
     },
     vif(g, w, h, t){
       const sol = h * SOL, lampX = Math.round(w * 0.82), lampY = sol - h * 0.42;
@@ -5078,8 +5065,6 @@ const arena = (() => {
       g.moveTo(lampX, lampY + 6); g.lineTo(lampX - w * 0.20, sol + 2); g.lineTo(lampX + w * 0.20, sol + 2);
       g.closePath(); g.fill();
       g.globalAlpha = 0.16 * f; R(g, lampX - w * 0.15, sol, w * 0.30, 3, '#ffd68a'); // reflet au sol
-      g.globalAlpha = 0.5 + 0.5 * Math.sin(t / 700);                  // la flaque frissonne
-      R(g, w * 0.30, sol + 12, 34, 1, '#2e3c58');
       g.globalAlpha = 1;
     },
   },
@@ -5176,10 +5161,9 @@ const arena = (() => {
       // rampe du plafond
       R(g, 10, h * 0.075, w - 20, 3, 'rgba(255,220,150,' + f1 + ')');
       R(g, 10, h * 0.075 - 2, w - 20, 2, 'rgba(120,96,60,' + (0.5 + f1 * 0.3) + ')'); // le réflecteur
-      [[7, 0.22], [16, 0.11], [30, 0.05]].forEach(b => {
+      [[7, 0.22], [16, 0.11], [30, 0.05]].forEach(b => {       // halo en trois paliers
+        g.globalAlpha = b[1] * f1; R(g, 10, h * 0.075 + 3, w - 20, b[0], '#ffb43c');
       });
-      g.globalAlpha = 1;
-      g.globalAlpha = 0.11 * f1; R(g, 0, sol, w, h - sol, '#ffb43c');  // la lumière bave sur le béton
       g.globalAlpha = 1;
       R(g, w * 0.5 - 4, h * 0.10, 8, 5, f1 > 0.5 ? '#ffeccb' : '#8a7a5c'); // la suspension suit la rampe
     },
@@ -5621,8 +5605,7 @@ const arena = (() => {
     construireGrille();
     stage.hidden = true; pickView.hidden = false; endBox.hidden = true;
     overlay.classList.add('open');
-    sfx.woump();        // le « woump » d'entrée, comme un bouton de manette
-    sfx.startup();      // puis le carillon : l'application s'annonce
+    sfx.startup();      // le carillon d'ouverture : l'application s'annonce
     sfx.combat(true);   // la nappe du menu se tait, le thème 8 bits prend la main
   }
   function fermer(){
