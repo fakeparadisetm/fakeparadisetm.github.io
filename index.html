@@ -433,20 +433,6 @@
     pointer-events:none;      /* les lignes en dessous gardent survol, clic et info-bulle */
   }
   /* ligne sélectionnée : halo d'accent derrière l'aperçu (dégradé statique, pas de filtre) */
-  /* Fond de lecture derrière CHAQUE aperçu de la liste. Mesuré : un sweat noir
-     rend une image trois fois plus sombre qu'un tee blanc (luminosité moyenne
-     64 contre 185) — sur le ruban sombre il disparaissait, alors qu'il est en
-     fait dessiné plus large. Un disque très doux, immobile, suffit à le
-     décoller du fond ; c'est un dégradé statique, pas un filtre, donc il ne
-     coûte rien pendant les déplacements. */
-  .xmb-item.has-3d::after{
-    content:'';
-    position:absolute;inset:-10px;
-    border-radius:50%;
-    background:radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.03) 52%, transparent 70%);
-    z-index:-1;
-    pointer-events:none;
-  }
   .xmb-item.has-3d.selected::before{
     content:'';
     position:absolute;inset:-14px;
@@ -800,13 +786,17 @@
   .desc-toggle::before,.desc-toggle::after{
     content:'';
     position:absolute;left:50%;top:50%;
-    background:var(--white-60);
-    transition:background 0.2s ease;
+    /* traits aussi gras que le texte, et une lueur discrète pour qu'ils ne
+       paraissent pas creux à côté du nom */
+    background:var(--white);
+    border-radius:1px;
+    box-shadow:0 0 5px rgba(var(--accent-rgb),0.6);
+    transition:box-shadow 0.2s ease;
   }
-  .desc-toggle::before{width:9px;height:1px;transform:translate(-50%,-50%);}
-  .desc-toggle::after{width:1px;height:9px;transform:translate(-50%,-50%);}
+  .desc-toggle::before{width:10px;height:2px;transform:translate(-50%,-50%);}
+  .desc-toggle::after{width:2px;height:10px;transform:translate(-50%,-50%);}
   .desc-toggle:hover{border-color:rgba(var(--accent-rgb),0.85);background:rgba(var(--accent-rgb),0.10);}
-  .desc-toggle:hover::before,.desc-toggle:hover::after{background:var(--white);}
+  .desc-toggle:hover::before,.desc-toggle:hover::after{box-shadow:0 0 8px rgba(var(--accent-rgb),0.9);}
   .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);}
   .preview-desc{
     margin-top:0;
@@ -3237,6 +3227,16 @@ const sfx = (() => {
       note(t + n[1], n[0] * 1.5, n[0] * 1.5, n[2] * 0.14, 0.11, 'triangle', 0.004, 0.28);
     });
   };
+  /* Validation d'un article : un petit « toc » tactile, plus court et plus doux
+     que le clic de défilement. Deux couches seulement — un grain de bruit qui
+     donne le contact, une note brève qui donne le « c'est pris ». Il doit se
+     sentir plus qu'il ne s'entend : c'est pour ça qu'il n'a pas de queue. */
+  api.select = () => {
+    const c = audio(); if (!c) return; const t = at();
+    burst(t, { freq: 2300, q: 2.2, peak: 0.075, attack: 0.001, decay: 0.018, lp: 6000 });
+    note(t, 880, 660, 0.05, 0.075, 'sine', 0.002);
+    note(t + 0.004, 220, 200, 0.03, 0.06, 'triangle', 0.002);
+  };
   // Fin du duel : une petite fanfare, quatre notes qui montent. Plus large que
   // l'ajout au panier, mais du même bois — on reste dans la sonorité du site.
   api.win = () => {
@@ -3983,20 +3983,36 @@ const model3d = (() => {
       const s2 = c.s * listK * ech, d2 = (s2 - c.s * listK) / 2;
       pose.push({ a: a, ang: ang, alpha: c.a, box: { x: c.x * listK - d2, y: c.y * listK - d2, s: s2 } });
     }
-    /* Ombre portée : le même maillage redessiné en noir, décalé et transparent.
-       Bien moins cher qu'un filtre CSS sur le canvas — un filtre plein écran sur
-       une surface repeinte à chaque image est précisément ce qui hachait la
-       barre. Toutes les ombres passent D'ABORD, puis le tampon de profondeur est
-       vidé : sans ce vidage l'ombre, écrite à la même profondeur que le
-       vêtement, faisait rejeter ses pixels par le test de profondeur et c'est
-       l'ombre qu'on voyait à sa place. */
-    for (const p of pose)
-      list.render(p.a, p.ang, PVrow, p.alpha * 0.34,
-        { x: p.box.x + p.box.s * 0.04, y: p.box.y + p.box.s * 0.055, s: p.box.s }, '', [0, 0, 0, 1]);
-    // Le découpage (scissor) est encore celui de la dernière ombre : sans le
-    // désactiver, le vidage ne porterait que sur cette case-là.
-    list.gl.disable(list.gl.SCISSOR_TEST);
-    list.gl.clear(list.gl.DEPTH_BUFFER_BIT);
+    if (!pose.length) return;
+    /* Chaque passe écrit dans le tampon de profondeur, à la MÊME profondeur que
+       la suivante, qui se verrait alors rejetée par le test — on ne verrait que
+       la première. On vide donc la profondeur entre les passes, et hors
+       découpage : le scissor de la dernière case restreindrait le vidage. */
+    const videProfondeur = () => {
+      list.gl.disable(list.gl.SCISSOR_TEST);
+      list.gl.clear(list.gl.DEPTH_BUFFER_BIT);
+    };
+    // aide au dessin d'une passe décalée et/ou agrandie, teinte imposée
+    const passe = (p, dx, dy, ech2, alpha, teinte) => {
+      const s3 = p.box.s * ech2, d3 = (s3 - p.box.s) / 2;
+      list.render(p.a, p.ang, PVrow, p.alpha * alpha,
+        { x: p.box.x - d3 + p.box.s * dx, y: p.box.y - d3 + p.box.s * dy, s: s3 }, '', teinte);
+    };
+    /* Halo : la silhouette du vêtement redessinée plus grande, en blanc très
+       transparent, deux fois. Il épouse donc la FORME du produit au lieu d'être
+       un disque, et c'est ce qui décolle un sweat noir du fond sombre. */
+    const BLANC = [1, 1, 1, 1], NOIR = [0, 0, 0, 1];
+    for (const p of pose){ passe(p, 0, 0, 1.20, 0.028, BLANC); passe(p, 0, 0, 1.10, 0.034, BLANC); }
+    videProfondeur();
+    /* Ombre portée : le même maillage en noir, décalé. Trois passes légèrement
+       écartées la rendent floue — bien moins cher qu'un filtre CSS sur le
+       canvas, qui repeindrait tout l'écran à chaque image et hacherait la barre. */
+    for (const p of pose){
+      passe(p, 0.045, 0.060, 1.05, 0.13, NOIR);
+      passe(p, 0.035, 0.050, 1.02, 0.13, NOIR);
+      passe(p, 0.028, 0.042, 1.00, 0.12, NOIR);
+    }
+    videProfondeur();
     for (const p of pose){ list.render(p.a, p.ang, PVrow, p.alpha, p.box); listDrawn = true; }
     if (fading.length) fading = fading.filter(st => now - st.t0 < st.dur);
   }
@@ -4243,10 +4259,10 @@ function build(){
       }
       row.addEventListener('click', (e)=>{
         e.stopPropagation();
-        const moved = activeCat !== ci || activeItem !== ii;
         exitPanel(); activeCat=ci; activeItem=ii; render();
-        if (moved) sfx.tick();
-        ouvrirFiche(true);   // la miniature tourne sur elle-même et la fiche se déplie
+        // un clic sur une ligne EST une validation : le son de sélection suffit,
+        // celui du défilement ferait doublon
+        ouvrirFiche(true);
       });
       col.appendChild(row);
     });
@@ -4799,6 +4815,7 @@ function ouvrirFiche(anim){
     const row = cat && cat.querySelector('.item-column').children[activeItem];
     if (row) model3d.spin(row);
   }
+  sfx.select();          // validation : un petit toc tactile, à chaque sélection
   if (ficheOuverte) return;
   ficheOuverte = true;
   appliquerFiche();
