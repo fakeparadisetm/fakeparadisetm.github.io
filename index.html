@@ -3083,7 +3083,7 @@ const verrouille = (item) => !!(item && item.verrou && !DEBLOQUE.a(item.verrou))
    chaque image lui ferait tout recalculer.
    La photo est sur fond NOIR, ce qui ne gêne pas : le détourage prend la
    couleur des quatre coins pour référence, quelle qu'elle soit. */
-const ITEM_VERROU = { n:"???", img:"icons/lock icon 2D.jpg" };
+const ITEM_VERROU = { n:"???", img:"icons/lock icon 2D.jpg", seule3D:true };
 // ce qu'il faut afficher pour un article : lui-même, ou le cadenas s'il est fermé
 const visuelDe = (item) => verrouille(item) ? ITEM_VERROU : item;
 // Exemplaires déjà au panier pour un article, toutes tailles confondues
@@ -4565,8 +4565,14 @@ const slider = (() => {
     item = it; avail = []; index = 0;
     if (it && it.img){
       if (!swatch.classList.contains('no-gl')) avail.push(0);
-      avail.push(1);
-      if (it.img2 && it.img2 !== it.img) avail.push(2);
+      /* `seule3D` : pas de vues photo. Le cadenas d'une pièce verrouillée dit
+         que l'article n'est pas disponible, il ne tient pas sa place — une
+         galerie de photos en ferait un produit qu'on regarde sous toutes les
+         coutures, ce qu'il n'est pas. */
+      if (!it.seule3D){
+        avail.push(1);
+        if (it.img2 && it.img2 !== it.img) avail.push(2);
+      }
     }
     dotsEl.innerHTML = '';
     avail.forEach((s, i) => {
@@ -5282,13 +5288,18 @@ function fillPreview(){
   const initial = document.getElementById('previewInitial');
   // verrouillé : c'est le cadenas qu'on montre, avec son modèle et ses vues
   const vu = visuelDe(item);
-  if (vu.img){
+  if (vu.img && !vu.seule3D){
     // vues 2D du diaporama : la même copie fraîche que le modèle 3D (revalidée au chargement)
     const front = encodeURI(vu.img), back = encodeURI(vu.img2 || vu.img); // sans photo de dos : la même des deux côtés
     photo.dataset.for = front; photo2.dataset.for = back;
     model3d.photoURL(front).then(u => { if (photo.dataset.for === front) photo.src = u; }).catch(() => { photo.src = front; });
     model3d.photoURL(back).then(u => { if (photo2.dataset.for === back) photo2.src = u; }).catch(() => { photo2.src = back; });
     slider.setup(vu); // vue 3D d'abord, puis les photos
+  } else if (vu.img){
+    // le cadenas : le modèle seul, aucune photo (voir seule3D dans slider.setup)
+    photo.removeAttribute('src');
+    photo2.removeAttribute('src');
+    slider.setup(vu);
   } else {
     slider.setup(null);
     photo.removeAttribute('src');
