@@ -4042,7 +4042,13 @@ const model3d = (() => {
     const n = Math.max(w, h);
     const c = document.createElement('canvas'); c.width = n; c.height = n;
     const g = c.getContext('2d', { willReadFrequently:true });
-    g.drawImage(img, 0, 0, 1, 1);                      // un pixel du coin, pour juger du fond
+    /* Le pixel du coin HAUT-GAUCHE, pour juger du fond. En neuf arguments :
+       la forme courte `drawImage(img, 0, 0, 1, 1)` réduit l'image ENTIÈRE à un
+       pixel, et le navigateur ne moyenne pas — il en ÉCHANTILLONNE un, pris
+       n'importe où. Sur une image détourée cela peut tomber en plein sujet,
+       donc opaque : la marge se remplirait de sa couleur et le détourage
+       prendrait ensuite le sujet pour du fond. */
+    g.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1);
     const coin = g.getImageData(0, 0, 1, 1).data;
     g.clearRect(0, 0, n, n);
     if (coin[3] > 200){ g.fillStyle = `rgb(${coin[0]},${coin[1]},${coin[2]})`; g.fillRect(0, 0, n, n); }
