@@ -28,3 +28,7 @@ desktop.ini
 # Sources de travail de la page Info : gardees en local, le site sert les
 # versions web depuis icons/
 pictures/
+
+# Modele source de la tete de la page Info : converti une fois et fige dans
+# index.html, le fichier lui-meme ne sert pas au site
+3Dmodels/
