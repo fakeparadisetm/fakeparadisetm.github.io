@@ -2903,7 +2903,7 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    panel:{ n:"FakeParadise™", img:"icons/info 3D.png", seule3D:true,
+    panel:{ n:"FakeParadise™", img:"icons/aboutme2D icon.png", seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -4010,6 +4010,31 @@ const model3d = (() => {
   if (!list) listCanvas.remove();
 
   // ---- 1. silhouette depuis la photo ----
+  /* Le module travaille en CARRÉ : le masque comme la texture sont dessinés
+     dans un carré de MASK_N côtés, et la texture est reprise à la résolution
+     de l'image. Une photo haute — le portrait de la page Info, 1080 × 2392 —
+     y deviendrait large et courte : c'est exactement ce qu'on a vu au premier
+     essai, un personnage écrasé.
+     On carre donc l'image à l'arrivée, une fois pour toutes, plutôt que de
+     traîner un rapport d'aspect dans les trois étages du pipeline (masque,
+     texture, UV du maillage). Une photo déjà carrée — les dix-sept photos
+     produit — ressort telle quelle, sans un pixel de différence.
+     Le remplissage reprend le coin de l'image quand il est opaque (photo sur
+     fond uni) et reste transparent sinon (photo détourée) : dans les deux cas
+     le détourage lit la marge comme du fond, et non comme du sujet. */
+  function carrer(img){
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (w === h || !w || !h) return img;
+    const n = Math.max(w, h);
+    const c = document.createElement('canvas'); c.width = n; c.height = n;
+    const g = c.getContext('2d', { willReadFrequently:true });
+    g.drawImage(img, 0, 0, 1, 1);                      // un pixel du coin, pour juger du fond
+    const coin = g.getImageData(0, 0, 1, 1).data;
+    g.clearRect(0, 0, n, n);
+    if (coin[3] > 200){ g.fillStyle = `rgb(${coin[0]},${coin[1]},${coin[2]})`; g.fillRect(0, 0, n, n); }
+    g.drawImage(img, Math.round((n - w) / 2), Math.round((n - h) / 2));
+    return c;
+  }
   function silhouette(img, troue){
     const N = MASK_N, c = document.createElement('canvas'); c.width = N; c.height = N;
     const ctx = c.getContext('2d', { willReadFrequently:true });
@@ -4129,7 +4154,7 @@ const model3d = (() => {
       fill[i*3] = a[0]; fill[i*3+1] = a[1]; fill[i*3+2] = a[2];
     }
     // pleine résolution
-    const W = img.naturalWidth, H = img.naturalHeight;
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height; // Image ou canvas (voir carrer)
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d', { willReadFrequently:true });
     ctx.drawImage(img, 0, 0);
@@ -4285,8 +4310,9 @@ const model3d = (() => {
       .then(r => { if (!r.ok) throw new Error(url + ' : ' + r.status); return r.blob(); })
       .then(blob => new Promise((res, rej) => { entry.blobURL = URL.createObjectURL(blob); img.onload = () => res(); img.onerror = rej; img.src = entry.blobURL; }))
       .then(() => {
-        entry.mask = silhouette(img, TROUS_OK.test(url)); // silhouette : sert au maillage (photo de face) et à l'extension de texture
-        entry.canvas = extendTexture(img, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
+        const carre = carrer(img);                     // le module travaille en carré (voir carrer)
+        entry.mask = silhouette(carre, TROUS_OK.test(url)); // silhouette : sert au maillage (photo de face) et à l'extension de texture
+        entry.canvas = extendTexture(carre, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
         return entry;
       });
     images.set(url, entry);
