@@ -414,21 +414,38 @@
   .xmb-item.has-icon{
     width:88px;height:88px;
     padding:0;
-    font-size:0;line-height:0;
-    display:flex;align-items:center;justify-content:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:5px;
     overflow:visible;
   }
   .xmb-item .xmb-ico{
     position:relative;z-index:1;
-    width:62px;height:62px;
+    width:56px;height:56px;
     filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) blur(0.7px);
     opacity:0.55;
     transition:opacity 0.35s ease, filter 0.35s ease;
   }
   .xmb-item.selected .xmb-ico{opacity:1;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55));}
+  /* le nom, en petit sous l'icône : deux glyphes abstraits ne se reconnaissent
+     pas d'emblée, et le libellé tient dans la boîte sans la changer de taille */
+  .xmb-nom{
+    position:relative;z-index:1;
+    max-width:88px;
+    font-size:10px;line-height:12px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    color:var(--white-35);
+    text-shadow:0 2px 4px rgba(0,0,0,0.6);
+    transition:color 0.35s ease;
+  }
+  .xmb-item.selected .xmb-nom{color:var(--white);}
+  /* pièce verrouillée : pas de lueur d'accent — l'accent dit « choisi », et
+     ce cadenas doit dire « fermé ». Il porte ses propres gris. */
+  .xmb-item.verrou .xmb-ico-glow{display:none;}
   .xmb-ico-glow{
-    position:absolute;left:50%;top:50%;
-    width:62px;height:62px;
+    position:absolute;left:50%;top:50%;margin-top:-6px;
+    width:56px;height:56px;
     transform:translate(-50%,-50%) scale(1.22);
     filter:blur(6px);
     opacity:0;
@@ -442,6 +459,7 @@
     mask:var(--icon) center/contain no-repeat;
   }
   .xmb-item.selected .xmb-ico-glow{opacity:1;}
+  .xmb-item.has-icon .tag{position:absolute;right:-4px;top:2px;margin:0;font-size:11px;line-height:1;}
   .item-column.fast .xmb-item{transition-duration:0.18s;} /* défilement rapide (voir noteStep) */
   .xmb-item:hover{color:var(--white-60);}
   .xmb-item.selected{
@@ -4597,11 +4615,14 @@ function build(){
            dit pas quelle pièce il garde — c'est la surprise —, donc même
            l'info-bulle reste muette. */
         const verrou = verrouille(item);
+        const nom = verrou ? T('locked') : L(item.n);
         row.classList.add('has-icon');
-        row.title = verrou ? T('locked') : L(item.n);
+        if (verrou) row.classList.add('verrou');
+        row.title = nom;
         const u = encodeURI('icons/' + (verrou ? 'lock icon.svg' : item.icon));
         row.innerHTML = `<span class="xmb-ico-glow"><i style="--icon:url('${u}')"></i></span>`
-                      + `<img class="xmb-ico" src="${u}" alt="">`;
+                      + `<img class="xmb-ico" src="${u}" alt="">`
+                      + `<span class="xmb-nom">${esc(nom)}</span>`;
       } else {
         row.innerHTML = esc(L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
       }

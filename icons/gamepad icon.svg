@@ -1,36 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Icone de la categorie « Minigames » : une manette de la fin des annees
-       2000, a mi-chemin entre les deux consoles de l'epoque —
+  <!-- Icone de la categorie « Minigames » : la toute premiere manette, reprise
+       telle quelle a la demande — un corps « aile », deux poignees reliees par
+       un pont, la croix a gauche et deux boutons a droite. Les versions
+       suivantes (poignees allongees, puis disposition asymetrique facon 360)
+       chargeaient le centre du glyphe pour rien.
 
-       de la 360 : le corps trapu aux epaules arrondies, la grosse pastille
-       centrale, et surtout la disposition ASYMETRIQUE (stick en haut a gauche,
-       croix en dessous ; quatre boutons en haut a droite, stick en dessous) ;
-       de la PS3 : les poignees longues, fines et a peine ecartees, et les deux
-       sticks de meme taille.
-
-       Tout est BLANC : les creux sont DECOUPES dans la forme (fill-rule
-       evenodd), ils ne sont pas peints en sombre. C'est indispensable — le
-       fichier sert aussi de MASQUE pour la lueur de l'icone selectionnee
-       (.cat-glow-inner), et un masque ne lit que l'opacite : une zone peinte
-       en noir resterait pleine dans la lueur.
+       Seule difference avec l'originale : les creux sont DECOUPES dans la
+       forme (fill-rule evenodd) au lieu d'etre peints en sombre. C'est
+       indispensable — le fichier sert aussi de MASQUE pour la lueur de l'icone
+       selectionnee (.cat-glow-inner), et un masque ne lit que l'opacite : une
+       zone peinte en noir resterait pleine dans la lueur. La croix est un seul
+       trace en forme de plus, et non deux rectangles croises : avec evenodd,
+       deux creux qui se chevauchent se REMPLISSENT a leur intersection.
 
        Comme « shipping icon.svg », a remplacer par un PNG en changeant le nom
        de fichier dans DATA (index.html). -->
   <g fill="#fff">
-    <!-- poignees : longues et fines, a peine ecartees (PS3) -->
-    <path transform="rotate(11 148 296)" d="M148 248h0a36 36 0 0 1 36 36v92a36 36 0 0 1-36 36h0a36 36 0 0 1-36-36v-92a36 36 0 0 1 36-36z"/>
-    <path transform="rotate(-11 364 296)" d="M364 248h0a36 36 0 0 1 36 36v92a36 36 0 0 1-36 36h0a36 36 0 0 1-36-36v-92a36 36 0 0 1 36-36z"/>
-    <!-- corps trapu + creux, dans un seul trace : c'est ce qui les evide -->
     <path fill-rule="evenodd" d="
-      M158 164 H354 A54 54 0 0 1 408 218 V248 A54 54 0 0 1 354 302 H158 A54 54 0 0 1 104 248 V218 A54 54 0 0 1 158 164 Z
-      M168 186 a22 22 0 1 0 0 44 a22 22 0 1 0 0-44 Z
-      M212 244 H236 V256 H248 V280 H236 V292 H212 V280 H200 V256 H212 Z
-      M330 186 a15 15 0 1 0 0 30 a15 15 0 1 0 0-30 Z
-      M360 216 a15 15 0 1 0 0 30 a15 15 0 1 0 0-30 Z
-      M330 246 a15 15 0 1 0 0 30 a15 15 0 1 0 0-30 Z
-      M300 216 a15 15 0 1 0 0 30 a15 15 0 1 0 0-30 Z
-      M290 258 a20 20 0 1 0 0 40 a20 20 0 1 0 0-40 Z
-      M256 214 a26 26 0 1 0 0 52 a26 26 0 1 0 0-52 Z
+      M168 152h176c50 0 84 28 96 78l34 136c10 40-14 70-52 70-24 0-42-12-58-32l-34-44H182l-34 44c-16 20-34 32-58 32-38 0-62-30-52-70l34-136c12-50 46-78 96-78z
+      M149 215 H179 V252 H216 V282 H179 V319 H149 V282 H112 V252 H149 Z
+      M356 220 a20 20 0 1 0 0 40 a20 20 0 1 0 0-40 Z
+      M398 268 a20 20 0 1 0 0 40 a20 20 0 1 0 0-40 Z
     "/>
   </g>
 </svg>

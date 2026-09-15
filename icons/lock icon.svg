@@ -1,26 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- Icone de la piece verrouillee (categorie « Unique Items ») : un cadenas
-       facette, « low poly » — aucune courbe sur le corps, des chanfreins a la
-       place des angles, et deux plis qui se rejoignent au centre comme les
-       aretes d'un maillage. L'anse, haute et etroite, garde les memes epaules
-       chanfreinees : c'est elle qui fait lire « cadenas » et non « coffre »,
-       d'ou ses proportions — une premiere version, anse basse et large sur un
-       corps presque carre, ressemblait a une boite a outils.
+       en VOLUME, facette « low poly » — vu de trois quarts, une face par
+       aplat, aucune courbe nulle part, aucun degrade. L'anse est dessinee
+       deux fois, la copie du fond decalee de la profondeur de la boite : c'est
+       ce qui lui donne son epaisseur sans un seul dégradé.
 
-       Tout est BLANC : la serrure et les plis sont DECOUPES dans la forme
-       (fill-rule evenodd) et non peints en sombre — le fichier sert de masque
-       pour la lueur de la ligne selectionnee (voir .xmb-ico-glow), et un
-       masque ne lit que l'opacite. -->
-  <g fill="#fff">
-    <!-- l'anse : un U trace d'un seul coup, exterieur puis interieur -->
-    <path d="M158 266 V150 L196 100 H316 L354 150 V266 H306 V164 L292 148 H220 L206 164 V266 Z"/>
-    <!-- le corps + ses creux -->
-    <path fill-rule="evenodd" d="
-      M130 254 H382 L402 288 V404 L380 438 H132 L110 404 V288 Z
-      M110 292 L256 326 L256 338 L110 304 Z
-      M402 292 L256 326 L256 338 L402 304 Z
-      M256 340 a23 23 0 1 0 0 46 a23 23 0 1 0 0-46 Z
-      M245 370 H267 L275 412 H237 Z
-    "/>
+       C'est la seule icone du site qui ne soit pas un glyphe blanc, et c'est
+       voulu : ses gris eteints disent « ferme » la ou l'accent dit « choisi ».
+       Elle ne sert donc pas de masque pour la lueur — la ligne verrouillee n'en
+       a pas (voir .xmb-item.verrou dans index.html). -->
+  <g>
+    <!-- anse, partie arriere (decalee de +62,-38 : la profondeur de la boite) -->
+    <path fill="#697088" d="M248 258 V158 L280 108 H358 L390 158 V258 H350 V168 L334 144 H304 L288 168 V258 Z"/>
+    <!-- anse, partie avant, et son arete eclairee -->
+    <path fill="#aab2c8" d="M186 296 V196 L218 146 H296 L328 196 V296 H288 V206 L272 182 H242 L226 206 V296 Z"/>
+    <path fill="#ced5e6" d="M186 196 L218 146 H244 L206 202 Z"/>
+    <!-- corps : dessus, face avant, flanc droit -->
+    <path fill="#e3e8f5" d="M150 290 H330 L392 252 H212 Z"/>
+    <path fill="#b3bbd0" d="M150 290 H330 V448 H150 Z"/>
+    <path fill="#8b93ac" d="M330 290 L392 252 V410 L330 448 Z"/>
+    <!-- deux aretes de facettage sur la face avant -->
+    <path fill="#c3cadd" d="M150 290 H330 L150 344 Z"/>
+    <path fill="#9ba3ba" d="M150 448 H330 V404 Z"/>
+    <!-- la serrure, creusee dans la face avant -->
+    <path fill="#4b5270" d="M222 342 H258 L266 366 L240 386 L214 366 Z"/>
+    <path fill="#4b5270" d="M232 380 H248 L254 420 H226 Z"/>
   </g>
 </svg>
