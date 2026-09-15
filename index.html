@@ -596,14 +596,14 @@
   .fly-to-cart{
     position:fixed;
     z-index:60;
-    object-fit:contain;
+    display:none;
     pointer-events:none;
-    border-radius:4px;
     opacity:1;
     transform:translate(0,0) scale(1);
-    transition:transform 0.72s cubic-bezier(.45,0,.2,1), opacity 0.72s ease-in;
+    transition:transform 0.78s cubic-bezier(.45,0,.2,1), opacity 0.78s ease-in;
     filter:drop-shadow(0 10px 26px rgba(0,0,0,0.55));
   }
+  .fly-to-cart.on{display:block;}
   @media (prefers-reduced-motion:reduce){ .fly-to-cart{display:none;} }
   /* Tailles : dépliées DANS la fiche, sous les boutons, au survol d'« Ajouter
      au panier ». C'était auparavant un panneau flottant posé sous la fiche, qui
@@ -713,6 +713,26 @@
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
   .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
+  /* Fiche au repos : seule la galerie est visible. C'est la sélection de
+     l'article — un clic sur la miniature ou Entrée — qui déplie le reste.
+     --info-h est mesuré au remplissage : sans lui l'animation partirait d'un
+     max-height arbitraire et la vitesse d'ouverture dépendrait de la longueur
+     du texte. Le visuel, lui, ne change PAS de taille entre les deux états :
+     un vêtement qui grandirait puis rapetisserait à chaque sélection serait
+     insupportable. */
+  .preview-info{
+    max-height:var(--info-h, 340px);
+    opacity:1;
+    overflow:hidden;
+    transition:max-height 0.34s cubic-bezier(.2,.8,.2,1),
+               opacity 0.22s ease 0.06s;
+  }
+  .preview.gallery .preview-info{
+    max-height:0;
+    opacity:0;
+    transition:max-height 0.30s cubic-bezier(.2,.8,.2,1), opacity 0.14s ease;
+  }
+  .preview.gallery .size-picker{max-height:0;opacity:0;margin-top:0;}
   /* En-tête compact : le nom et le prix sur UNE ligne, au même corps, et le
      bouton de dépliage du descriptif au bout. Deux lignes gagnées, rendues au
      visuel. */
@@ -1872,17 +1892,24 @@
       <canvas id="teaserGL"></canvas>
       <canvas id="teaserFx"></canvas>
     </div>
-    <!-- Nom et prix sur une seule ligne, même corps : l'en-tête tient en une
-         hauteur au lieu de deux, ce qui rend sa place au visuel. -->
-    <div class="preview-head">
-      <div class="preview-name" id="previewName"></div>
-      <div class="preview-price" id="previewPrice"></div>
-      <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
-    </div>
-    <div class="preview-desc" id="previewDesc"></div>
-    <div class="preview-actions">
-      <button class="preview-cta" id="addBtn">+ Add to bag</button>
-      <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
+    <!-- Tout ce qui n'est pas la galerie tient dans ce bloc : au repos la fiche
+         ne montre QUE le visuel, et c'est la sélection de l'article (clic ou
+         Entrée) qui la déplie. --info-h, mesuré au remplissage, donne sa
+         hauteur d'arrivée : sans elle l'animation partirait d'un max-height
+         arbitraire et la vitesse d'ouverture dépendrait du texte. -->
+    <div class="preview-info" id="previewInfo">
+      <!-- Nom et prix sur une seule ligne, même corps : l'en-tête tient en une
+           hauteur au lieu de deux, ce qui rend sa place au visuel. -->
+      <div class="preview-head">
+        <div class="preview-name" id="previewName"></div>
+        <div class="preview-price" id="previewPrice"></div>
+        <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
+      </div>
+      <div class="preview-desc" id="previewDesc"></div>
+      <div class="preview-actions">
+        <button class="preview-cta" id="addBtn">+ Add to bag</button>
+        <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
+      </div>
     </div>
     <!-- Tailles : dépliées sous les boutons au survol d'« Ajouter au panier ».
          Elles étaient auparavant un panneau flottant posé sous la fiche. -->
@@ -3271,9 +3298,13 @@ function buildSizePills(sizes){
 function mesurerTailles(){
   const r = previewEl.getBoundingClientRect();
   const barre = document.querySelector('.hintbar').getBoundingClientRect().top;
-  sizePicker.style.maxHeight = 'none';               // hauteur naturelle, le temps de la lire
+  /* scrollHeight donne la hauteur du CONTENU même quand la boîte est écrasée à
+     zéro et masquée (overflow:hidden) : inutile de lever le plafond pour la
+     lire. C'est même nuisible — poser max-height:none puis relire force le
+     navigateur à retenir « none » comme valeur de départ, et il n'y a pas de
+     transition entre « none » et une longueur : la rangée apparaissait d'un
+     coup pendant que la fiche, elle, glissait. D'où le sursaut. */
   const besoin = sizePicker.scrollHeight + 14;       // + la marge que .open ajoute
-  sizePicker.style.maxHeight = '';
   const libre = Math.max(0, barre - r.bottom - 10);
   const grow = Math.min(besoin, libre);
   previewEl.style.setProperty('--size-h', (besoin - 14) + 'px');
@@ -3314,32 +3345,50 @@ function updateSizeFocus(){
   [...sizePills.children].forEach((p, i) => p.classList.toggle('focus', i === sizeIndex));
 }
 
-/* Vol vers le panier : une copie de la photo affichée part du visuel et
-   rétrécit jusqu'à l'icône du panier. Une COPIE, pas l'élément lui-même : la
-   fiche continue de vivre pendant le vol. La vue 3D n'étant pas une image, la
-   photo de face lui sert de doublure — à l'écran c'est le même vêtement. */
+/* Vol vers le panier : c'est le MODÈLE 3D qui part, pas la photo. Il tourne sur
+   lui-même pendant tout le trajet et rétrécit jusqu'à l'icône du panier.
+   Le canvas et son contexte sont créés une seule fois et réutilisés : en créer
+   un par ajout épuiserait les contextes WebGL de la page. Le déplacement est
+   confié à une transition CSS (donc au compositeur) et seule la rotation est
+   redessinée à chaque image — le trajet reste fluide même si le dessin prend du
+   retard. */
+let volCanvas = null, volScene = null, volRaf = 0;
 function volVersPanier(item){
   const swatch = document.querySelector('.preview-swatch');
   const cible = document.getElementById('cartCount');
-  if (!swatch || !cible || !item || !item.img || swatch.hidden) return;
+  if (!swatch || !cible || !item || !item.img) return;
   const a = swatch.getBoundingClientRect(), b = cible.getBoundingClientRect();
   if (!a.width) return;
-  const img = document.createElement('img');
-  img.className = 'fly-to-cart';
-  img.alt = '';
-  img.style.cssText = 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + a.width + 'px;height:' + a.height + 'px;';
-  const src = encodeURI(item.img);
-  model3d.photoURL(src).then(u => { img.src = u; }).catch(() => { img.src = src; });
-  document.body.appendChild(img);
+  if (!volCanvas){
+    volCanvas = document.createElement('canvas');
+    volCanvas.className = 'fly-to-cart';
+    document.body.appendChild(volCanvas);
+    volScene = model3d.makeScene(volCanvas);
+  }
+  if (!volScene) return;                       // sans WebGL, pas de vol : la fiche reste en place
+  const k = Math.min(2, window.devicePixelRatio || 1);
+  const cote = Math.round(Math.min(340, a.width) * k);
+  if (volCanvas.width !== cote){ volCanvas.width = volCanvas.height = cote; }
+  volCanvas.style.cssText = 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + a.width + 'px;height:' + a.width + 'px;';
+  volCanvas.classList.add('on');
+  volScene.load(item);
   const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
   const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+  const t0 = performance.now(), DUREE = 780;
+  cancelAnimationFrame(volRaf);
+  (function image(){
+    const u = Math.min(1, (performance.now() - t0) / DUREE);
+    volScene.clear();
+    volScene.draw(item, u * Math.PI * 4, { x: 0, y: 0, s: volCanvas.width }, 1); // deux tours en chemin
+    if (u < 1) volRaf = requestAnimationFrame(image);
+    else { volCanvas.classList.remove('on'); volScene.clear(); }
+  })();
   // deux images d'attente : la transition ne part que si l'état initial a été
   // peint, sinon le navigateur fond les deux états en un seul et rien ne bouge
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    img.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(0.07)';
-    img.style.opacity = '0.1';
+    volCanvas.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(0.06)';
+    volCanvas.style.opacity = '0.15';
   }));
-  setTimeout(() => img.remove(), 900);
 }
 function addToBag(size){
   const cat = DATA[activeCat];
@@ -4141,7 +4190,7 @@ function build(){
         const moved = activeCat !== ci || activeItem !== ii;
         exitPanel(); activeCat=ci; activeItem=ii; render();
         if (moved) sfx.tick();
-        model3d.spin(row);   // la miniature choisie fait trois tours sur elle-même
+        ouvrirFiche(true);   // la miniature tourne sur elle-même et la fiche se déplie
       });
       col.appendChild(row);
     });
@@ -4207,6 +4256,7 @@ descToggle.addEventListener('click', (e) => {
   e.stopPropagation();
   descOuvert = !descOuvert;
   appliquerDesc();
+  majInfoH();          // le bloc doit grandir d'autant, sinon le texte reste coupé
   sfx.tick();
 });
 descToggle.addEventListener('mousedown', (e) => e.preventDefault()); // pas de focus : Entrée reste « mode panneau »
@@ -4649,6 +4699,42 @@ function updatePreview(){
   fillPreview();
 }
 
+
+/* Deux états de la fiche. Au repos elle ne montre QUE la galerie ; choisir
+   l'article — clic sur la miniature ou Entrée — la déplie sur le reste.
+   Changer d'article la referme : sinon on resterait avec une fiche ouverte sur
+   un produit qu'on n'a pas choisi.
+   --info-h est la hauteur d'arrivée du bloc. Elle est calculée, et non relue à
+   chaque ouverture : le descriptif est en cours de transition quand on toggle,
+   et scrollHeight rendrait alors une hauteur intermédiaire. On mesure donc une
+   fois, descriptif replié (infoBase), et on ajoute la hauteur connue du
+   descriptif quand il est déplié. */
+let ficheOuverte = false, dernierItem = null, infoBase = 0;
+const previewInfo = document.getElementById('previewInfo');
+function mesurerInfo(){
+  // scrollHeight lit le contenu même sous un plafond : surtout ne pas lever
+  // max-height pour mesurer, la transition suivante serait perdue (voir
+  // mesurerTailles, même piège).
+  infoBase = previewInfo.scrollHeight - (descOuvert && descMax ? descMax + 14 : 0);
+  majInfoH();
+}
+function majInfoH(){
+  previewEl.style.setProperty('--info-h', (infoBase + (descOuvert && descMax ? descMax + 14 : 0)) + 'px');
+}
+function appliquerFiche(){
+  previewEl.classList.toggle('gallery', DATA[activeCat].kind === 'shop' && !ficheOuverte);
+}
+function ouvrirFiche(anim){
+  if (DATA[activeCat].kind !== 'shop') return;
+  if (anim){
+    const cat = document.querySelectorAll('.category')[activeCat];
+    const row = cat && cat.querySelector('.item-column').children[activeItem];
+    if (row) model3d.spin(row);
+  }
+  if (ficheOuverte) return;
+  ficheOuverte = true;
+  appliquerFiche();
+}
 function fillPreview(){
   const cat = DATA[activeCat];
   const previewProduct = document.getElementById('previewProduct');
@@ -4710,6 +4796,11 @@ function fillPreview(){
   // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
   // Livraison, Versus) affichent tout, sans repli.
   descToggle.hidden = isInfo || !item.d;
+  // Changer d'article referme la fiche ET le descriptif : on revient toujours
+  // à la galerie seule, état de repos.
+  if (item !== dernierItem){ dernierItem = item; ficheOuverte = false; descOuvert = false; appliquerDesc(); }
+  appliquerFiche();
+  requestAnimationFrame(mesurerInfo);   // après la mise en page du nouveau contenu
   if (isInfo) previewEl.classList.remove('desc-open');
 
   const infoBtn = document.getElementById('infoBtn');
@@ -5972,7 +6063,11 @@ window.addEventListener('keydown', (e)=>{
   if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)){
     // produit : sélecteur de tailles ; Réglages / Livraison : mode panneau ; Contact : Instagram
     const k = DATA[activeCat].kind;
-    if (k === 'contact' || k === 'game') addBtn.click(); else enterPanel(); // Contact et Versus agissent tout de suite, sans mode panneau
+    // Contact et Versus agissent tout de suite. Sur une fiche produit, Entrée
+    // fait la même chose qu'un clic sur la miniature : elle tourne et la fiche
+    // se déplie, puis la navigation du panneau reprend son cours.
+    if (k === 'contact' || k === 'game') addBtn.click();
+    else { ouvrirFiche(true); enterPanel(); }
   }
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
 });
