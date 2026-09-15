@@ -2307,7 +2307,7 @@ const sfx = (() => {
       const d = noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); } // refus sans geste : on réessaiera au suivant
     ambientStart(); // la nappe démarre au premier son, faute de quoi le navigateur la refuserait
     return ctx;
   }
@@ -2337,8 +2337,10 @@ const sfx = (() => {
       return o;
     });
     amb = { g, lp, drone };
-    const plan = () => { ambTimer = setTimeout(() => { if (!amb) return; ambientNote(); plan(); }, 7000 + Math.random() * 11000); };
-    ambientNote(); plan();
+    ambientNote(); ambientPlan();
+  }
+  function ambientPlan(){ // une note longue de plus, à intervalle irrégulier
+    ambTimer = setTimeout(() => { ambTimer = 0; if (!amb) return; ambientNote(); ambientPlan(); }, 7000 + Math.random() * 11000);
   }
   function ambientNote(){
     if (!amb || document.hidden || ctx.state !== 'running') return; // rien ne s'empile hors écran
@@ -2365,22 +2367,25 @@ const sfx = (() => {
     dead.g.gain.linearRampToValueAtTime(0.0001, t + 1.2); // extinction douce, pas de coupure nette
     setTimeout(() => dead.drone.forEach(o => { try { o.stop(); } catch (e){} }), 1500);
   }
-  // hors écran, tout se met en pause (et la nappe ne tourne pas pour rien)
+  /* Hors écran, on fait taire la nappe sans toucher au contexte audio.
+     Le mettre en pause paraissait plus propre, mais le rallumer demande un
+     nouveau geste de l'utilisateur : Firefox refusait donc de le réveiller au
+     retour et le site devenait muet pour de bon, jusqu'au rechargement. */
   document.addEventListener('visibilitychange', () => {
-    if (!ctx) return;
-    if (document.hidden) ctx.suspend(); else if (on) ctx.resume();
+    if (!amb) return;
+    const t = ctx.currentTime;
+    amb.g.gain.cancelScheduledValues(t);
+    amb.g.gain.setValueAtTime(amb.g.gain.value, t);
+    amb.g.gain.linearRampToValueAtTime(document.hidden ? 0.0001 : 0.18, t + 0.4);
+    if (!document.hidden && !ambTimer) ambientPlan(); // les notes reprennent leur cours
   });
-  // Les navigateurs n'autorisent le son qu'après un geste de l'utilisateur, et
-  // la molette n'en est pas un à leurs yeux. Sans ce déverrouillage, une visite
-  // menée entièrement à la molette resterait muette. On tente à chaque geste
-  // réel jusqu'à ce que le son parte (rien ne se déclenche pendant l'allumage).
-  const unlock = () => {
-    if (!audio()) return;
-    document.removeEventListener('pointerdown', unlock, true);
-    document.removeEventListener('keydown', unlock, true);
-  };
-  document.addEventListener('pointerdown', unlock, true);
-  document.addEventListener('keydown', unlock, true);
+  /* Les navigateurs n'autorisent le son qu'après un geste de l'utilisateur, et
+     la molette n'en est pas un à leurs yeux : une visite menée entièrement à la
+     molette resterait muette. L'écoute reste en place pour toute la durée de la
+     visite, et non le temps d'un seul déverrouillage : si le navigateur coupe
+     le son en cours de route, le clic ou la touche suivante le rouvre. */
+  document.addEventListener('pointerdown', () => audio(), true);
+  document.addEventListener('keydown', () => audio(), true);
   // Enveloppe : montée puis extinction douce. Une montée linéaire (soft) gonfle
   // le son progressivement, sans l'attaque sèche d'une montée exponentielle —
   // c'est ce qui sépare un bruit de défilement d'un coup.
