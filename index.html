@@ -502,10 +502,14 @@
   .preview::after{
     content:'';
     position:absolute;
-    left:-2px;                                  /* à cheval sur l'arête, la lueur déborde des deux côtés */
-    top:var(--edge-y,50%);
+    left:-2px;                     /* à cheval sur l'arête, la lueur déborde des deux côtés */
+    /* --edge-top est le HAUT de la lueur, déjà calculé dans le repère de la
+       fiche : aucune arithmétique ici. Une version précédente centrait la lueur
+       avec margin-top:calc(hauteur / -2) ; si ce calc n'est pas compris, la
+       déclaration tombe, la marge vaut zéro et la lueur descend d'une
+       demi-hauteur — exactement le décalage constaté. */
+    top:var(--edge-top,50%);
     height:var(--edge-h,104px);
-    margin-top:calc(var(--edge-h,104px) / -2);  /* centré sur --edge-y, sans transform : top peut s'animer */
     width:3px;
     border-radius:3px;
     opacity:var(--edge-a,0);
@@ -517,12 +521,9 @@
       rgba(var(--accent-rgb),0) 100%);
     box-shadow:0 0 10px 1px rgba(var(--accent-rgb),0.55), 0 0 26px 6px rgba(var(--accent-rgb),0.22);
     pointer-events:none;
-    /* margin-top suit height : sans quoi la lueur se décentrerait le temps de
-       l'animation quand une icône est rognée par le haut ou le bas de la fiche */
     transition:opacity 0.4s cubic-bezier(.2,.8,.2,1),
                top 0.4s cubic-bezier(.2,.8,.2,1),
-               height 0.4s cubic-bezier(.2,.8,.2,1),
-               margin-top 0.4s cubic-bezier(.2,.8,.2,1);
+               height 0.4s cubic-bezier(.2,.8,.2,1);
   }
 
   /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
@@ -3677,7 +3678,7 @@ function noteStep(col){
    qui forçait le navigateur à recalculer la mise en page à chaque ligne et à
    chaque pas de défilement. Les positions des icônes ne dépendent pas des
    transformations (qui, elles, sont animées), donc ce cache reste juste. */
-const geom = { ready: false, cats: [], previewLeft: 0, previewW: 0, previewTop: 0, previewH: 0,
+const geom = { ready: false, cats: [], previewLeft: 0, previewW: 0,
                previewCat: -1, activeColLeft: 0, activeColW: 0, extra: 0 };
 function measureGeometry(){
   geom.cats = [...categoriesEl.querySelectorAll('.category')].map(el => {
@@ -3691,9 +3692,7 @@ function measureGeometry(){
 }
 function measurePreviewBox(){ // largeur/position du panneau : dépend de la fenêtre et du type de catégorie
   const r = previewEl.getBoundingClientRect();
-  geom.previewLeft = r.left; geom.previewW = r.width;
-  geom.previewTop = r.top; geom.previewH = r.height;
-  geom.previewCat = activeCat;
+  geom.previewLeft = r.left; geom.previewW = r.width; geom.previewCat = activeCat;
 }
 let geomRaf = 0;
 window.addEventListener('resize', () => { // une seule reprise par image pendant un redimensionnement
@@ -3853,27 +3852,39 @@ function scrollActiveIntoView(){
    en même temps que les icônes. */
 function updateEdgeGlow(){
   const eteint = () => previewEl.style.setProperty('--edge-a', '0');
-  if (!geom.previewW || !previewEl.classList.contains('show')) return eteint();
-  const panL = geom.previewLeft, panR = panL + geom.previewW;
-  const panHaut = geom.previewTop + 8, panBas = geom.previewTop + geom.previewH - 8; // 8 px : la lueur reste sur la partie droite de l'arête, hors des coins arrondis
-  let force = 0, centre = 0, hauteur = 0;
+  if (!geom.cats.length || !previewEl.classList.contains('show')) return eteint();
+  /* La fiche est mesurée ici, et pas reprise du cache de render() : elle ne se
+     déplace ni ne s'anime en position (seule son opacité change, cf .swap),
+     mais sa HAUTEUR dépend de son contenu, et une mesure prise pendant qu'elle
+     était encore vide — au chargement, avant que le catalogue n'arrive —
+     placerait la lueur à côté pour le reste de la session. Une lecture par pas
+     de navigation ne coûte rien ; ce sont les lectures par image qu'il faut
+     éviter. */
+  const p = previewEl.getBoundingClientRect();
+  if (!p.width) return eteint();
+  const bord = previewEl.clientTop;   // le repère d'un enfant absolu part du bord INTÉRIEUR du verre
+  const panHaut = p.top + 8, panBas = p.bottom - 8; // 8 px : la lueur reste sur la partie droite de l'arête, hors des coins arrondis
+  let force = 0, haut = 0, bas = 0;
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
     const tx = (ci > activeCat ? geom.extra : 0) - camShift;
     const cx = g.left + g.w / 2, cy = g.top + g.h / 2;      // l'échelle part du centre de la boîte (origine par défaut)
     const gauche = cx + (g.left + g.icoL - cx) * s + tx;
     const large = g.icoW * s;
-    if (gauche >= panR) return;                             // passée au-delà de la fiche : hors écran, pas cachée par elle
-    const enfoncee = (gauche + large - panL) / large;       // 0 : elle affleure le bord ; 1 : entièrement dessous
+    if (gauche >= p.right) return;                          // passée au-delà de la fiche : hors écran, pas cachée par elle
+    const enfoncee = (gauche + large - p.left) / large;     // 0 : elle affleure le bord ; 1 : entièrement dessous
     if (enfoncee <= 0 || enfoncee <= force) return;
-    const haut = Math.max(panHaut, cy + (g.top + g.icoT - cy) * s);
-    const bas = Math.min(panBas, cy + (g.top + g.icoT + g.icoH - cy) * s);
-    if (bas <= haut) return;                                // l'icône est au-dessus ou en dessous de la fiche
-    force = Math.min(1, enfoncee); centre = (haut + bas) / 2; hauteur = bas - haut;
+    // La boîte .category tient l'icône ET son libellé : son centre, autour
+    // duquel joue l'échelle, est plus bas que celui de l'icône. D'où le calcul
+    // complet plutôt qu'un simple g.top + g.icoH / 2.
+    const h1 = Math.max(panHaut, cy + (g.top + g.icoT - cy) * s);
+    const h2 = Math.min(panBas, cy + (g.top + g.icoT + g.icoH - cy) * s);
+    if (h2 <= h1) return;                                   // l'icône est au-dessus ou en dessous de la fiche
+    force = Math.min(1, enfoncee); haut = h1; bas = h2;
   });
   if (!force) return eteint();
-  previewEl.style.setProperty('--edge-y', Math.round(centre - geom.previewTop) + 'px');
-  previewEl.style.setProperty('--edge-h', Math.round(hauteur) + 'px');
+  previewEl.style.setProperty('--edge-top', Math.round(haut - p.top - bord) + 'px');
+  previewEl.style.setProperty('--edge-h', Math.round(bas - haut) + 'px');
   previewEl.style.setProperty('--edge-a', force.toFixed(3));
 }
 
