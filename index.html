@@ -3349,26 +3349,26 @@ const sfx = (() => {
     if (c.currentTime - last.move < 0.06) return; // garde-fou : deux déclenchements pour un même geste
     const t = at();
     last.move = t; api.plays.move++;
-    /* Filtres très ouverts et niveau bas : du souffle, pas une note. La
-       sinusoïde d'appoint a été retirée, c'était elle qui donnait une hauteur.
-       Réglage du 15 sept. 2026 : plus de souffle et moins de bosse. Le son
-       s'ouvrait en 55 ms et mourait en 190 — une petite vague. Il s'ouvre
-       maintenant en 25 ms et retombe sur 400, ce qui est la forme d'un
-       passage : on sent le geste au moment où il part, puis on l'entend
-       s'éloigner. Trois couches, dans cet ordre d'importance :
-       1. le corps, bande large (Q plus bas = de l'air, pas une note) qui
-          descend en fréquence — c'est la descente qui fait le « passage » ;
-       2. le voile aigu, deux fois plus long et très en retrait : c'est lui
-          qu'on entend s'éteindre après que la main a fini ;
-       3. une pointe de contact de 25 ms au tout début. C'est elle qui rend le
-          son tactile : sans elle, une attaque rapide n'est qu'un souffle qui
-          commence vite, avec elle le son a un bord sous le doigt.
+    /* Un « swoop » : le son glisse vers le grave au lieu de frapper. Aucune
+       attaque — les trois couches ont une enveloppe en cloche, elles partent
+       du silence et y reviennent —, et c'est la DESCENTE qui fait le geste.
+       Retour près du réglage d'avant (0,26 s, montée au quart) après un essai
+       à bord net et longue queue : trop marqué pour un son qu'on entend à
+       chaque pas de la barre.
+       1. le corps : bruit en bande large (Q bas = de l'air, pas une note) qui
+          descend de 700 à 300 Hz ;
+       2. le voile aigu, très en retrait, qui descend deux fois plus vite : le
+          côté « numérique », l'impression que quelque chose passe ;
+       3. une glissade sinusoïdale À PEINE audible (pic 0,009, un dixième du
+          corps). Une sinusoïde avait été retirée autrefois parce qu'elle
+          donnait une hauteur au souffle ; à ce niveau et sur cette pente elle
+          ne s'entend pas comme une note mais comme la trace du mouvement.
        Aucune couche ne dépasse 0,4 s, et ce n'est pas un réglage de goût : le
        tampon de bruit dure 0,4 s et ne boucle pas. Une couche plus longue se
        tairait net en plein milieu de son extinction, ce qui s'entend. */
-    burst(t, { freq: 950, q: 0.8, peak: 0.098, attack: 0.022, decay: 0.34, sweep: 330, lp: 1600, bell: 0.06 });
-    burst(t, { freq: 2600, q: 0.7, peak: 0.030, attack: 0.018, decay: 0.36, sweep: 900, bell: 0.05 });
-    burst(t, { freq: 3100, q: 1.4, peak: 0.026, attack: 0.001, decay: 0.024, lp: 7000 }); });
+    burst(t, { freq: 700, q: 1.0, peak: 0.090, attack: 0.06, decay: 0.20, sweep: 300, lp: 1700, bell: 0.26 });
+    burst(t, { freq: 1900, q: 0.9, peak: 0.026, attack: 0.05, decay: 0.19, sweep: 820, bell: 0.24 });
+    note(t, 1150, 520, 0.009, 0.20, 'sine', 0.03, 0.28); });
   // ajout au panier : confirmation posée plutôt que joyeuse — une quarte qui
   // descend (do puis sol, les deux notes du bourdon de la nappe), timbre doux,
   // extinction longue, aucun bruit sec
