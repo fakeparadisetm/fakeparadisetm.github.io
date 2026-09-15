@@ -3346,12 +3346,43 @@ const sfx = (() => {
               0,null,0,null, 0,null,0,null, 7,null,7,null, 5,null,3,null],
       chant: [12,null,null,15, null,12,null,null, 17,null,null,15, null,12,null,null,
               12,null,null,15, null,19,null,null, 17,null,15,null, 12,null,null,null] },
-    saut: { pas: 0.1014, base: 130.81,  // 148 à la noire, do grave
-      basse: [0,null,0,null, 7,null,0,null, 5,null,5,null, 12,null,7,null,
-              0,null,0,null, 7,null,0,null, 9,null,9,null, 7,null,7,null],
-      chant: [0,null,4,null, 7,null,4,null, 9,null,7,null, 4,null,null,null,
-              0,null,4,null, 7,null,12,null, 9,null,7,null, 4,null,2,null] },
   };
+  /* Le motif de Jumper, écrit plus longuement que celui du duel : QUATRE
+     phrases de deux mesures au lieu d'une seule qui tourne — treize secondes
+     avant de se répéter, contre trois. Et quatre voix au lieu de deux : basse
+     et mélodie carrées, un arpège en triangle qui remplit entre les deux, et
+     une batterie (grosse caisse sur les temps forts, caisse claire à contre-
+     temps, charley toutes les doubles).
+     La basse et l'arpège DÉCOULENT de la grille d'accords — c'est ainsi qu'on
+     écrit un chiptune, et cela garantit qu'ils ne jurent jamais avec la
+     mélodie, qui elle est écrite note à note. */
+  const SUITE = [0,7,9,5, 0,7,9,5, 5,7,0,9, 5,7,9,7];  // 16 accords : do, sol, la m, fa…
+  const FIG_B = [0, null, null, 0, null, 12, null, 7]; // figure de basse, par accord (8 pas)
+  const FIG_A = [null, 0, null, 4, null, 7, null, 12]; // arpège, glissé entre les notes de basse
+  const BASSE_S = [], ARP_S = [];
+  SUITE.forEach(a => {
+    const tierce = a === 9 ? 3 : 4;                    // la mineur : tierce mineure
+    for (let k = 0; k < 8; k++){
+      BASSE_S.push(FIG_B[k] === null ? null : a + FIG_B[k]);
+      ARP_S.push(FIG_A[k] === null ? null : a + (FIG_A[k] === 4 ? tierce : FIG_A[k]));
+    }
+  });
+  const CHANT_S = [
+    // A — elle s'installe
+    12,null,null,16, null,19,null,null, 19,null,17,null, 16,null,null,null,
+    17,null,null,16, null,14,null,null, 12,null,null,14, null,16,null,null,
+    // B — même départ, elle monte plus haut
+    12,null,null,16, null,19,null,24, null,null,23,null, 21,null,19,null,
+    17,null,19,null, 16,null,null,null, 14,null,12,null, null,null,null,null,
+    // C — le refrain, une quarte au-dessus
+    21,null,null,19, null,17,null,null, 19,null,null,21, null,19,null,null,
+    16,null,12,null, 16,null,19,null, 21,null,null,19, null,null,null,null,
+    // D — la descente qui ramène au début
+    17,null,16,null, 14,null,16,null, 17,null,19,null, 21,null,null,null,
+    19,null,17,null, 16,null,14,null, 12,null,null,null, null,null,null,null,
+  ];
+  PISTES.saut = { pas: 0.1014, base: 130.81,           // 148 à la noire, do grave
+    basse: BASSE_S, chant: CHANT_S, arpege: ARP_S, perc: true };
   let cbt = null, arene = false, piste = 'duel';
   function combatStart(nom){
     if (nom) piste = nom;
@@ -3372,9 +3403,15 @@ const sfx = (() => {
       if (!document.hidden){
         if (p.basse[i] !== null) voix(t, demi(p.basse[i]), 0.034, 0.115, 'square');
         if (p.chant[i] !== null) voix(t, demi(p.chant[i] + 12), 0.019, 0.095, 'square');
+        // arpège : une voix de remplissage, en triangle pour qu'elle se
+        // distingue des deux carrées sans leur prendre la place
+        if (p.arpege && p.arpege[i] !== null) voix(t, demi(p.arpege[i] + 12), 0.011, 0.062, 'triangle');
         if (i % 2 === 1) burst(t, { freq: 6200, q: 0.9, peak: 0.007, attack: 0.001, decay: 0.028 });
-        // Jumper : une frappe sourde sur les temps forts, qui donne l'appui
-        if (piste === 'saut' && i % 8 === 0) burst(t, { freq: 160, q: 1.2, peak: 0.030, attack: 0.001, decay: 0.07, sweep: 60, lp: 900 });
+        if (p.perc){
+          // grosse caisse sur les temps forts, caisse claire à contretemps
+          if (i % 8 === 0) burst(t, { freq: 160, q: 1.2, peak: 0.030, attack: 0.001, decay: 0.07, sweep: 60, lp: 900 });
+          if (i % 8 === 4) burst(t, { freq: 1900, q: 0.8, peak: 0.016, attack: 0.001, decay: 0.055, lp: 5200 });
+        }
       }
       cbt.pas++; cbt.quand += p.pas;
     }
