@@ -3349,10 +3349,26 @@ const sfx = (() => {
     if (c.currentTime - last.move < 0.06) return; // garde-fou : deux déclenchements pour un même geste
     const t = at();
     last.move = t; api.plays.move++;
-    // filtres très ouverts et niveau bas : du souffle, pas une note. La
-    // sinusoïde d'appoint a été retirée, c'était elle qui donnait une hauteur.
-    burst(t, { freq: 640, q: 1.1, peak: 0.085, attack: 0.05, decay: 0.14, sweep: 320, lp: 1700, bell: 0.3 });
-    burst(t, { freq: 1600, q: 1.0, peak: 0.024, attack: 0.05, decay: 0.13, sweep: 1000, bell: 0.3 }); });
+    /* Filtres très ouverts et niveau bas : du souffle, pas une note. La
+       sinusoïde d'appoint a été retirée, c'était elle qui donnait une hauteur.
+       Réglage du 15 sept. 2026 : plus de souffle et moins de bosse. Le son
+       s'ouvrait en 55 ms et mourait en 190 — une petite vague. Il s'ouvre
+       maintenant en 25 ms et retombe sur 400, ce qui est la forme d'un
+       passage : on sent le geste au moment où il part, puis on l'entend
+       s'éloigner. Trois couches, dans cet ordre d'importance :
+       1. le corps, bande large (Q plus bas = de l'air, pas une note) qui
+          descend en fréquence — c'est la descente qui fait le « passage » ;
+       2. le voile aigu, deux fois plus long et très en retrait : c'est lui
+          qu'on entend s'éteindre après que la main a fini ;
+       3. une pointe de contact de 25 ms au tout début. C'est elle qui rend le
+          son tactile : sans elle, une attaque rapide n'est qu'un souffle qui
+          commence vite, avec elle le son a un bord sous le doigt.
+       Aucune couche ne dépasse 0,4 s, et ce n'est pas un réglage de goût : le
+       tampon de bruit dure 0,4 s et ne boucle pas. Une couche plus longue se
+       tairait net en plein milieu de son extinction, ce qui s'entend. */
+    burst(t, { freq: 950, q: 0.8, peak: 0.098, attack: 0.022, decay: 0.34, sweep: 330, lp: 1600, bell: 0.06 });
+    burst(t, { freq: 2600, q: 0.7, peak: 0.030, attack: 0.018, decay: 0.36, sweep: 900, bell: 0.05 });
+    burst(t, { freq: 3100, q: 1.4, peak: 0.026, attack: 0.001, decay: 0.024, lp: 7000 }); });
   // ajout au panier : confirmation posée plutôt que joyeuse — une quarte qui
   // descend (do puis sol, les deux notes du bourdon de la nappe), timbre doux,
   // extinction longue, aucun bruit sec
