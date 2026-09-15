@@ -290,7 +290,7 @@
     flex-direction:column;
     align-items:center;
     cursor:pointer;
-    opacity:0.55;
+    opacity:0.42;   /* non sélectionnée : nettement en retrait (voir aussi le flou sur l'image) */
     transform:scale(0.82);
     transition:opacity 0.35s ease, transform 0.4s cubic-bezier(.2,.8,.2,1);
     will-change:transform;
@@ -330,12 +330,20 @@
     mask:var(--icon) center/contain no-repeat;
   }
   .category.active .cat-glow{opacity:1;}
+  /* Icône non sélectionnée : plus effacée, et un voile de flou très léger —
+     assez pour que la sélection se détache, pas assez pour brouiller le glyphe.
+     Le flou est ajouté DANS le filtre existant de l'image, et non sur un
+     parent : deux filtres empilés sur un élément qui se déplace, Firefox les
+     re-rasterise à chaque image, et c'est exactement ce qui hachait la barre
+     avant. Un seul filtre, une seule passe. */
   .cat-icon img{
     position:relative;
     z-index:1;
     width:58px;height:58px;object-fit:contain;
-    filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4)); /* un seul filtre, statique */
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4)) blur(0.9px);
+    transition:filter 0.35s ease;
   }
+  .category.active .cat-icon img{filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4));}
   .cat-label{
     margin-top:14px;
     font-size:13px;
@@ -502,24 +510,29 @@
   .preview::after{
     content:'';
     position:absolute;
-    left:-2px;                     /* à cheval sur l'arête, la lueur déborde des deux côtés */
     /* --edge-top est le HAUT de la lueur, déjà calculé dans le repère de la
        fiche : aucune arithmétique ici. Une version précédente centrait la lueur
        avec margin-top:calc(hauteur / -2) ; si ce calc n'est pas compris, la
        déclaration tombe, la marge vaut zéro et la lueur descend d'une
-       demi-hauteur — exactement le décalage constaté. */
+       demi-hauteur — exactement le décalage constaté.
+       Réglage du 15 sept. 2026 : plus discrète et plus diffuse. Le trait net
+       de 3 px est devenu une nappe de 10 px sans cœur blanc, floutée, et son
+       opacité est divisée par deux — on devine l'icône derrière le verre au
+       lieu de voir un néon collé sur l'arête. */
+    left:-6px;
     top:var(--edge-top,50%);
     height:var(--edge-h,104px);
-    width:3px;
-    border-radius:3px;
-    opacity:var(--edge-a,0);
+    width:10px;
+    border-radius:6px;
+    opacity:calc(var(--edge-a,0) * 0.5);
     background:linear-gradient(to bottom,
       rgba(var(--accent-rgb),0) 0%,
-      rgba(var(--accent-rgb),0.85) 26%,
-      rgba(255,255,255,0.92) 50%,
-      rgba(var(--accent-rgb),0.85) 74%,
+      rgba(var(--accent-rgb),0.55) 34%,
+      rgba(var(--accent-rgb),0.75) 50%,
+      rgba(var(--accent-rgb),0.55) 66%,
       rgba(var(--accent-rgb),0) 100%);
-    box-shadow:0 0 10px 1px rgba(var(--accent-rgb),0.55), 0 0 26px 6px rgba(var(--accent-rgb),0.22);
+    filter:blur(5px);
+    box-shadow:0 0 22px 8px rgba(var(--accent-rgb),0.12);
     pointer-events:none;
     transition:opacity 0.4s cubic-bezier(.2,.8,.2,1),
                top 0.4s cubic-bezier(.2,.8,.2,1),
@@ -551,6 +564,11 @@
   .preview.info-panel .pills{justify-content:center;}
   .preview.info-panel .pill{font-size:15px;padding:11px 20px;}
   .preview.show{opacity:1; pointer-events:auto;}
+  /* Tailles ouvertes : la fiche s'allonge vers le BAS. Elle est centrée par
+     translateY(-50%) ; ajouter la moitié de la croissance laisse donc le haut
+     en place et ne descend que le bas. */
+  .preview{transition:opacity 0.4s ease, transform 0.3s cubic-bezier(.2,.8,.2,1);}
+  .preview.grown{transform:translateY(calc(-50% + var(--grow,0px) / 2));}
   /* changement de catégorie : le panneau s'assombrit vite, puis le nouveau
      contenu apparaît en regagnant son opacité (transition normale de 0,4 s) */
   .preview.swap{
@@ -573,70 +591,57 @@
   /* fiche produit en mode panneau : partie en surbrillance (visuel ou bouton), même liseré que les pastilles */
   .preview-cta.focus{outline:2px solid rgba(255,255,255,0.85);outline-offset:3px;color:var(--white);}
   .preview-swatch.focus{outline:2px solid rgba(255,255,255,0.85);outline-offset:4px;}
-  /* ---------- sélecteur de tailles ----------
-     Panneau flottant sous la fiche produit, aligné sur ses bords (position
-     calculée par placeSizePicker), ouvert au survol de « + Add to bag » ou
-     par Entrée. Frère de la fiche et non enfant : la fiche anime son
-     opacité, ce qui priverait un panneau de verre enfant de son flou (même
-     règle que .cart-panel). Ombre portée marquée et fond un peu plus
-     couvrant pour qu'il se détache nettement de la fiche. */
-  .size-picker{
+  /* Vol vers le panier : la copie vit le temps du trajet, au-dessus de tout,
+     et ne réagit à rien. */
+  .fly-to-cart{
     position:fixed;
-    left:0;top:0;             /* remplacés par placeSizePicker */
-    z-index:7;                /* au-dessus de la fiche (6) et de la barre d'aide (5), sous les fenêtres (9) */
-    padding:16px 28px 20px;
-    /* même bordure floue que la fiche (--soft-edge défini sur .preview) */
-    --soft-edge:
-      inset 0 1px 0 rgba(255,255,255,0.10),
-      inset 0 0 3px rgba(255,255,255,0.10),
-      inset 0 0 10px rgba(255,255,255,0.04),
-      0 0 3px rgba(255,255,255,0.12),
-      0 0 12px 2px rgba(255,255,255,0.045);
-    border-radius:16px;
-    border-color:transparent;
-    text-align:center;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015) 45%, rgba(255,255,255,0.03)),
-      rgba(8,20,30,0.42);
-    box-shadow:
-      var(--soft-edge),
-      0 6px 14px rgba(0,0,0,0.45),
-      0 22px 48px rgba(0,0,0,0.6);
-    opacity:0;
-    visibility:hidden;
-    transform:translateY(-8px);
+    z-index:60;
+    object-fit:contain;
     pointer-events:none;
-    transition:opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+    border-radius:4px;
+    opacity:1;
+    transform:translate(0,0) scale(1);
+    transition:transform 0.72s cubic-bezier(.45,0,.2,1), opacity 0.72s ease-in;
+    filter:drop-shadow(0 10px 26px rgba(0,0,0,0.55));
+  }
+  @media (prefers-reduced-motion:reduce){ .fly-to-cart{display:none;} }
+  /* Tailles : dépliées DANS la fiche, sous les boutons, au survol d'« Ajouter
+     au panier ». C'était auparavant un panneau flottant posé sous la fiche, qui
+     la chevauchait sur les écrans justes. La fiche s'allonge vers le bas d'un
+     --grow calculé à l'ouverture : jamais plus que la place libre au-dessus de
+     la barre d'aide. Ce qui manque, s'il manque, est repris sur le visuel
+     (--squeeze), de sorte que les tailles soient toujours entières. */
+  .size-picker{
+    max-height:0;
+    overflow:hidden;
+    opacity:0;
+    margin-top:0;
+    transition:max-height 0.3s cubic-bezier(.2,.8,.2,1),
+               opacity 0.2s ease,
+               margin-top 0.3s cubic-bezier(.2,.8,.2,1);
   }
   .size-picker.open{
+    max-height:var(--size-h,120px);
     opacity:1;
-    visibility:visible;
-    transform:none;
-    pointer-events:auto;
-    transition:opacity 0.22s ease, transform 0.28s cubic-bezier(.2,.8,.2,1), visibility 0s;
+    margin-top:14px;
   }
-  /* pont invisible au-dessus du panneau : la souris passe du bouton au
-     sélecteur sans que le survol ne s'interrompe dans l'interstice */
-  .size-picker::before{content:'';position:absolute;left:0;right:0;top:-14px;height:14px;}
-  .size-picker .settings-label{margin-bottom:10px;}
+  .size-picker .settings-label{margin-bottom:9px;}
   .size-picker .pills{justify-content:center;gap:8px;}
   .size-picker .pill{min-width:54px;padding:10px 12px;font-size:14px;font-weight:550;letter-spacing:0.5px;}
   .preview-swatch{
-    /* carré (photos produit 1:1), réduit si la fenêtre est basse pour que la
-       fiche tienne entre l'horloge et la barre d'aide : hauteur d'écran moins
-       le descriptif moins --reserve (contenu fixe + barres + marges) */
-    width:min(100%, calc(100vh - var(--desc-h, 60px) - var(--reserve)));
+    /* Carré (photos produit 1:1), SANS cadre : ni fond, ni bord, ni ombre —
+       l'image occupe directement la fiche. Sa taille est ce qui reste de la
+       hauteur d'écran une fois retirés le descriptif déplié (--desc-h, nul
+       quand il est replié), le contenu fixe (--reserve) et, le cas échéant, ce
+       que les tailles n'ont pas pu prendre vers le bas (--squeeze). Replié, le
+       descriptif ne coûte donc rien et le visuel est au plus grand. */
+    width:min(100%, calc(100vh - var(--desc-h,0px) - var(--squeeze,0px) - var(--reserve)));
     aspect-ratio:1/1;
     margin:0 auto;
-    border-radius:3px;
-    /* fond du viewer 3D : la couleur d'accent du moment, assombrie, unie (demande utilisateur) */
-    background:linear-gradient(rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.30)), #0a0d12;
     display:flex;
     align-items:center;justify-content:center;
-    border:1px solid rgba(255,255,255,0.1);
-    box-shadow:0 0 40px rgba(var(--accent-rgb),0.18), inset 0 0 50px rgba(var(--accent-rgb),0.06);
     position:relative;
-    overflow:hidden;
+    transition:width 0.3s cubic-bezier(.2,.8,.2,1);
   }
   .preview-swatch span{
     font-size:68px;
@@ -655,44 +660,69 @@
   .slide.active{display:block;}
   .slide.flat{width:100%;height:100%;object-fit:cover;}
   .preview-swatch canvas{position:absolute;inset:0;width:100%;height:100%;}
+  /* Pastilles en HAUT du visuel, et non plus en bas : c'est la première chose
+     qu'on lit en arrivant sur la fiche. Un reflet les parcourt de gauche à
+     droite, en boucle, pour signaler qu'il y a plusieurs vues à voir. */
   .slide-dots{
-    position:absolute;left:0;right:0;bottom:9px;
-    display:flex;justify-content:center;gap:6px;
+    position:absolute;left:0;right:0;top:6px;
+    display:flex;justify-content:center;gap:7px;
     z-index:3;
     pointer-events:none;
   }
-  .preview-swatch:not(.has-slides) .slide-dots,.preview-swatch:not(.has-slides) .slide-arrow{display:none;}
+  .preview-swatch:not(.has-slides) .slide-dots,
+  .preview-swatch:not(.has-slides) .slide-edge{display:none;}
   .dot{
+    position:relative;
     width:6px;height:6px;
     padding:0;border:none;border-radius:50%;
-    background:rgba(255,255,255,0.45);
+    background:rgba(255,255,255,0.35);
     box-shadow:0 0 4px rgba(0,0,0,0.6);
     cursor:pointer;
     pointer-events:auto;
     transition:background 0.2s ease, transform 0.2s ease;
   }
-  .dot.active{background:#fff;transform:scale(1.3);}
-  .slide-arrow{
-    position:absolute;top:50%;
-    width:30px;height:30px;
-    transform:translateY(-50%);
-    padding:0;border:none;border-radius:50%;
-    background:rgba(0,0,0,0.45);
-    color:#fff;
-    font-size:22px;line-height:28px;
-    text-align:center;
-    cursor:pointer;
+  .dot.active{background:#fff;transform:scale(1.35);}
+  /* Le reflet : chaque pastille s'allume à son tour, décalée par --i. Une seule
+     animation, retardée — plutôt qu'un dégradé qui balaierait toute la rangée,
+     ce qui obligerait à repeindre une surface à chaque image. */
+  .dot::after{
+    content:'';
+    position:absolute;inset:-2px;
+    border-radius:50%;
+    background:rgba(var(--accent-rgb),0.9);
     opacity:0;
-    transition:opacity 0.2s ease, background 0.2s ease;
+    animation:dotSweep 2.6s ease-in-out infinite;
+    animation-delay:calc(var(--i,0) * 0.16s);
+    pointer-events:none;
+  }
+  @keyframes dotSweep{0%,72%,100%{opacity:0;}82%{opacity:0.55;}}
+  @media (prefers-reduced-motion:reduce){ .dot::after{animation:none;} }
+  /* Zones de navigation : deux bandes sur les bords intérieurs du visuel, à la
+     place des anciennes flèches. Invisibles au repos, elles s'allument sous la
+     souris pour dire de quel côté on va. */
+  .slide-edge{
+    position:absolute;top:0;bottom:0;
+    width:24%;
+    padding:0;border:none;
+    background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
+    opacity:0;
+    cursor:pointer;
+    transition:opacity 0.22s ease;
     z-index:3;
   }
-  .slide-arrow.prev{left:8px;}
-  .slide-arrow.next{right:8px;}
-  .slide-arrow:hover{background:rgba(0,0,0,0.7);}
-  .preview-swatch.has-slides:hover .slide-arrow{opacity:1;}
+  .slide-edge.prev{left:0;}
+  .slide-edge.next{right:0;transform:scaleX(-1);}
+  .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
+  /* En-tête compact : le nom et le prix sur UNE ligne, au même corps, et le
+     bouton de dépliage du descriptif au bout. Deux lignes gagnées, rendues au
+     visuel. */
+  .preview-head{
+    display:flex;align-items:baseline;gap:12px;
+    margin-top:18px;
+  }
   .preview-name{
-    margin-top:22px;
-    font-size:30px;
+    flex:1 1 auto;min-width:0;
+    font-size:24px;
     font-weight:450;
     letter-spacing:0.3px;
     text-shadow:0 0 14px rgba(var(--accent-rgb),0.2);
@@ -702,10 +732,9 @@
     line-height:1.3;         /* hauteur fixe : un emoji (HELLO❤️) ne l'agrandit plus */
     height:1.3em;
   }
-  .preview-swatch[hidden] + .preview-name{margin-top:0;} /* Contact / infos : pas de visuel */
   .preview-price{
-    margin-top:8px;
-    font-size:18px;
+    flex:0 0 auto;
+    font-size:24px;          /* exactement le corps du nom, comme demandé */
     color:var(--blue);
     font-weight:550;
     text-shadow:0 0 10px rgba(var(--accent-rgb),0.45);
@@ -715,25 +744,51 @@
     text-decoration:line-through;
     font-weight:450;
     margin-right:10px;
-    font-size:16px;
+    font-size:18px;
     text-shadow:none;
   }
+  /* Bouton de dépliage : un + minimal dans un cercle. Ouvert, il pivote d'un
+     quart de tour et devient une croix — un seul dessin, deux états. */
+  .desc-toggle{
+    flex:0 0 auto;align-self:center;
+    position:relative;
+    width:22px;height:22px;
+    padding:0;
+    border:1px solid rgba(255,255,255,0.28);
+    border-radius:50%;
+    background:transparent;
+    cursor:pointer;
+    transition:border-color 0.2s ease, background 0.2s ease, transform 0.28s cubic-bezier(.2,.8,.2,1);
+  }
+  .desc-toggle::before,.desc-toggle::after{
+    content:'';
+    position:absolute;left:50%;top:50%;
+    background:var(--white-60);
+    transition:background 0.2s ease;
+  }
+  .desc-toggle::before{width:9px;height:1px;transform:translate(-50%,-50%);}
+  .desc-toggle::after{width:1px;height:9px;transform:translate(-50%,-50%);}
+  .desc-toggle:hover{border-color:rgba(var(--accent-rgb),0.85);background:rgba(var(--accent-rgb),0.10);}
+  .desc-toggle:hover::before,.desc-toggle:hover::after{background:var(--white);}
+  .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);}
   .preview-desc{
-    margin-top:16px;
+    margin-top:0;
     font-size:15px;
     line-height:1.6;
     color:var(--white-60);
     white-space:pre-line; /* les retours à la ligne du texte sont respectés */
-    /* hauteur réservée = descriptif le plus long du catalogue, plafonnée à
-       DESC_MAX_LINES (measureDescHeight) : la fiche garde la même taille et un
-       texte plus long défile, barre fine collée au bord droit du panneau */
-    height:var(--desc-h, auto);
+    /* Accordéon : replié, sa hauteur est nulle et le visuel récupère la place
+       (voir .preview-swatch). Dépliée, elle vaut le texte mesuré, plafonné à
+       DESC_MAX_LINES — la fiche garde alors la même hauteur totale. */
+    height:var(--desc-h, 0px);
     overflow-y:auto;
     margin-right:calc(8px - var(--pad)); /* barre de défilement à 8 px du bord du panneau */
     padding-right:calc(var(--pad) - 8px);
     scrollbar-width:thin;
     scrollbar-color:rgba(var(--accent-rgb),0.45) transparent;
+    transition:height 0.3s cubic-bezier(.2,.8,.2,1), margin-top 0.3s cubic-bezier(.2,.8,.2,1);
   }
+  .preview.desc-open .preview-desc{margin-top:14px;}
   .preview-desc::-webkit-scrollbar{width:6px;}
   .preview-desc::-webkit-scrollbar-track{background:transparent;}
   .preview-desc::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),0.45);border-radius:3px;}
@@ -1345,10 +1400,11 @@
      texte, puisque c'est lui qui borne le visuel (voir .preview-swatch). */
   @media (min-height:1180px){
     .preview{--pad:36px;--reserve:462px;} /* contenu fixe ≈ 267 px + 160 px + 2×18 px */
-    .preview-name{margin-top:24px;font-size:33px;}
-    .preview-price{margin-top:9px;font-size:20px;}
+    .preview-head{margin-top:22px;}
+    .preview-name,.preview-price{font-size:27px;}   /* le nom et le prix gardent le MÊME corps */
     .preview-price .was{font-size:17px;}
-    .preview-desc{margin-top:18px;font-size:16.5px;}
+    .preview.desc-open .preview-desc{margin-top:18px;}
+    .preview-desc{font-size:16.5px;}
     .preview-cta{margin-top:29px;gap:11px;padding:14px 26px;font-size:15.5px;}
     .preview-actions{gap:11px;margin-top:29px;}
     .preview.info-panel{min-height:440px;max-height:min(76vh,720px);}
@@ -1366,9 +1422,10 @@
        pour que la fiche tienne entre l'horloge et la barre d'aide ; la largeur
        et la position gardent les valeurs des grands écrans */
     .preview{--pad:26px;--reserve:400px;} /* contenu fixe ≈ 205 px + 160 px + 2×17 px */
-    .preview-name{margin-top:18px;font-size:26px;}
-    .preview-price{font-size:16px;}
-    .preview-desc{margin-top:14px;font-size:13.5px;}
+    .preview-head{margin-top:15px;}
+    .preview-name,.preview-price{font-size:20px;}
+    .preview.desc-open .preview-desc{margin-top:12px;}
+    .preview-desc{font-size:13.5px;}
     .preview-cta{padding:11px 20px;font-size:13px;}
     .preview-actions{margin-top:22px;}
     .preview.info-panel{min-height:360px;}
@@ -1791,23 +1848,22 @@
   <div class="categories" id="categories"></div>
 </div>
 
-<!-- Sélecteur de tailles : frère de la fiche, posé sous elle par placeSizePicker (voir CSS .size-picker) -->
-<div class="size-picker glass" id="sizePicker" aria-hidden="true">
-  <div class="settings-label" data-i18n="sizeLabel">Size</div>
-  <div class="pills" id="sizePills"></div>
-</div>
 
 <div class="preview glass" id="preview">
   <div id="previewProduct">
+    <!-- Visuel : plus de cadre autour de la photo. Le conteneur reste — les
+         vues sont posées en absolu dessus et le canvas 3D s'y mesure — mais il
+         n'a plus ni fond, ni bord, ni ombre : l'image occupe directement la
+         fiche. Les deux zones de bord remplacent les flèches. -->
     <div class="preview-swatch" id="previewSwatch">
+      <div class="slide-dots" id="slideDots"></div>
       <span id="previewInitial">F</span>
       <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
       <div class="slide slide-3d" data-slide="0"><canvas id="previewGL" hidden></canvas></div>
       <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
       <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
-      <button type="button" class="slide-arrow prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view">‹</button>
-      <button type="button" class="slide-arrow next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view">›</button>
-      <div class="slide-dots" id="slideDots"></div>
+      <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
+      <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"></button>
     </div>
     <!-- Aperçu fixe du mini-jeu, dans le panneau « Versus » : un décor, deux
          vêtements et une attaque en vol. Voir arena.apercu(). -->
@@ -1816,12 +1872,23 @@
       <canvas id="teaserGL"></canvas>
       <canvas id="teaserFx"></canvas>
     </div>
-    <div class="preview-name" id="previewName"></div>
-    <div class="preview-price" id="previewPrice"></div>
+    <!-- Nom et prix sur une seule ligne, même corps : l'en-tête tient en une
+         hauteur au lieu de deux, ce qui rend sa place au visuel. -->
+    <div class="preview-head">
+      <div class="preview-name" id="previewName"></div>
+      <div class="preview-price" id="previewPrice"></div>
+      <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
+    </div>
     <div class="preview-desc" id="previewDesc"></div>
     <div class="preview-actions">
       <button class="preview-cta" id="addBtn">+ Add to bag</button>
       <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
+    </div>
+    <!-- Tailles : dépliées sous les boutons au survol d'« Ajouter au panier ».
+         Elles étaient auparavant un panneau flottant posé sous la fiche. -->
+    <div class="size-picker" id="sizePicker" aria-hidden="true">
+      <div class="settings-label" data-i18n="sizeLabel">Size</div>
+      <div class="pills" id="sizePills"></div>
     </div>
   </div>
   <div id="previewSettings" class="settings-panel">
@@ -2413,7 +2480,7 @@ const STRINGS = {
     language:"Language", currency:"Currency", sound:"Sound", soundOn:"On", soundOff:"Off",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to bag", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
-    play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS",
+    play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS", descToggle:"Show details",
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAsk:"Add it to the bag?", arenaAdd:"Add to bag",
@@ -2434,7 +2501,7 @@ const STRINGS = {
     language:"Langue", currency:"Devise", sound:"Son", soundOn:"Activé", soundOff:"Coupé",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
-    play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS",
+    play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS", descToggle:"Afficher le détail",
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Ajouter au panier",
@@ -3195,16 +3262,23 @@ function buildSizePills(sizes){
   });
 }
 
-function placeSizePicker(){
+/* Les tailles se déplient DANS la fiche. Il faut donc, à l'ouverture, décider
+   de combien la fiche peut s'allonger vers le bas : jamais au-delà de la barre
+   d'aide. Ce que la place libre ne permet pas est repris sur le visuel
+   (--squeeze), de sorte que les tailles soient toujours entières et cliquables.
+   Mesuré ici et pas en CSS : seul le script connaît la hauteur réelle des
+   pastilles et celle qui reste sous la fiche. */
+function mesurerTailles(){
   const r = previewEl.getBoundingClientRect();
-  sizePicker.style.left = r.left + 'px';
-  sizePicker.style.width = r.width + 'px';
-  // sous la fiche ; si l'écran est trop bas, remonté juste assez pour rester
-  // entier (il passe alors devant la barre d'aide, d'où l'ombre portée). Le
-  // max l'empêche de monter par-dessus la fiche : sur un écran juste, il perd
-  // son écart de 10 px et se colle dessous plutôt que de la chevaucher.
-  sizePicker.style.top = Math.max(r.bottom,
-    Math.min(r.bottom + 10, window.innerHeight - sizePicker.offsetHeight - 8)) + 'px';
+  const barre = document.querySelector('.hintbar').getBoundingClientRect().top;
+  sizePicker.style.maxHeight = 'none';               // hauteur naturelle, le temps de la lire
+  const besoin = sizePicker.scrollHeight + 14;       // + la marge que .open ajoute
+  sizePicker.style.maxHeight = '';
+  const libre = Math.max(0, barre - r.bottom - 10);
+  const grow = Math.min(besoin, libre);
+  previewEl.style.setProperty('--size-h', (besoin - 14) + 'px');
+  previewEl.style.setProperty('--grow', grow + 'px');
+  previewEl.style.setProperty('--squeeze', (besoin - grow) + 'px');
 }
 function openSizePicker(keyboard){
   const cat = DATA[activeCat];
@@ -3212,8 +3286,9 @@ function openSizePicker(keyboard){
   if (!item) return;
   clearTimeout(sizeCloseTimer);
   buildSizePills(sizesFor(item));
-  placeSizePicker(); // après les pastilles : la hauteur du panneau en dépend
+  mesurerTailles();                                  // après les pastilles : leur hauteur en dépend
   sizePicker.classList.add('open');
+  previewEl.classList.add('grown');
   sizePicker.setAttribute('aria-hidden', 'false');
   if (keyboard){
     if (!panelMode){ panelMode = true; previewEl.classList.add('focused'); }
@@ -3229,12 +3304,42 @@ function closeSizePicker(){
   // une pastille cliquée garde le focus : masquée, Entrée la recliquerait
   if (sizePicker.contains(document.activeElement)) document.activeElement.blur();
   sizePicker.classList.remove('open');
+  previewEl.classList.remove('grown');
+  previewEl.style.setProperty('--squeeze', '0px');
   sizePicker.setAttribute('aria-hidden', 'true');
   sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
 }
 function updateSizeFocus(){
   sizeIndex = Math.max(0, Math.min(currentSizes.length - 1, sizeIndex));
   [...sizePills.children].forEach((p, i) => p.classList.toggle('focus', i === sizeIndex));
+}
+
+/* Vol vers le panier : une copie de la photo affichée part du visuel et
+   rétrécit jusqu'à l'icône du panier. Une COPIE, pas l'élément lui-même : la
+   fiche continue de vivre pendant le vol. La vue 3D n'étant pas une image, la
+   photo de face lui sert de doublure — à l'écran c'est le même vêtement. */
+function volVersPanier(item){
+  const swatch = document.querySelector('.preview-swatch');
+  const cible = document.getElementById('cartCount');
+  if (!swatch || !cible || !item || !item.img || swatch.hidden) return;
+  const a = swatch.getBoundingClientRect(), b = cible.getBoundingClientRect();
+  if (!a.width) return;
+  const img = document.createElement('img');
+  img.className = 'fly-to-cart';
+  img.alt = '';
+  img.style.cssText = 'left:' + a.left + 'px;top:' + a.top + 'px;width:' + a.width + 'px;height:' + a.height + 'px;';
+  const src = encodeURI(item.img);
+  model3d.photoURL(src).then(u => { img.src = u; }).catch(() => { img.src = src; });
+  document.body.appendChild(img);
+  const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+  const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+  // deux images d'attente : la transition ne part que si l'état initial a été
+  // peint, sinon le navigateur fond les deux états en un seul et rien ne bouge
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    img.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(0.07)';
+    img.style.opacity = '0.1';
+  }));
+  setTimeout(() => img.remove(), 900);
 }
 function addToBag(size){
   const cat = DATA[activeCat];
@@ -3243,6 +3348,7 @@ function addToBag(size){
   // une ligne par produit et taille : un article déjà présent voit sa quantité augmenter
   const line = cart.find(l => l.ref === item && l.size === size);
   if (line) line.qty += 1; else cart.push(Object.assign({}, item, { ref: item, size, qty: 1 }));
+  volVersPanier(item);   // la photo s'envole vers le panier
   updateCartCount();
   sfx.add();
   if (panelMode) exitPanel(); else closeSizePicker();
@@ -3264,7 +3370,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#sizePicker, #addBtn')) return;
   if (panelMode && DATA[activeCat].kind === 'shop') exitPanel(); else closeSizePicker();
 });
-window.addEventListener('resize', () => { if (sizePicker.classList.contains('open')) placeSizePicker(); });
+window.addEventListener('resize', () => { if (sizePicker.classList.contains('open')) mesurerTailles(); });
 
 /* ---------------- aperçu 3D ----------------
    Modèle « très basique » généré à partir de la photo elle-même, sans
@@ -3298,7 +3404,7 @@ const model3d = (() => {
   // pixels des photos (canvas « souillé ») et bloque fetch → pas de détourage possible.
   // Le site doit être servi en http:// (start-site.bat en local, ou l'hébergeur).
   const fileMode = location.protocol === 'file:';
-  const stub = { show(){}, hide(){}, setRows(){}, rows3d:false, photoURL: url => Promise.resolve(url), makeScene: () => null };
+  const stub = { show(){}, hide(){}, setRows(){}, spin(){}, rows3d:false, photoURL: url => Promise.resolve(url), makeScene: () => null };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const MASK_N = 192;    // résolution du masque de silhouette (pixels)
   const GRID = 56;       // mailles sur la plus grande dimension du vêtement
@@ -3778,7 +3884,20 @@ const model3d = (() => {
       const c = st.cur = sample(st, now);
       const a = ready.get(keyOf(st.item));
       if (!a || c.a < 0.01 || c.y + c.s < 0 || c.y > listH) continue; // hors écran ou pas encore prêt
-      list.render(a, rowAngle, PVrow, c.a, { x: c.x * listK, y: c.y * listK, s: c.s * listK });
+      // rotation de sélection : trois tours et un quart de taille en plus,
+      // autour du centre de la case (voir spin)
+      let ang = rowAngle, ech = 1;
+      if (st.spin){
+        const u = (now - st.spin) / SPIN_MS;
+        if (u >= 1) st.spin = 0;
+        else {
+          const e = 1 - Math.pow(1 - u, 3);        // départ vif, arrivée douce
+          ang += e * Math.PI * 6;                  // 1 080 degrés
+          ech = 1 + Math.sin(u * Math.PI) * 0.25;  // +25 % au passage
+        }
+      }
+      const s2 = c.s * listK * ech, d2 = (s2 - c.s * listK) / 2;
+      list.render(a, ang, PVrow, c.a, { x: c.x * listK - d2, y: c.y * listK - d2, s: s2 });
       listDrawn = true;
     }
     if (fading.length) fading = fading.filter(st => now - st.t0 < st.dur);
@@ -3827,6 +3946,18 @@ const model3d = (() => {
   // une transition est interrompue). Les lignes qui disparaissent s'effacent
   // sur place, comme leur colonne.
   const FADE_MS = 300; // = .item-column, transition d'opacité
+  /* Sélection d'une miniature : trois tours complets (1 080°) en grandissant
+     d'un quart, puis retour à sa taille. L'animation est portée PAR LA LIGNE et
+     non par le module : les autres miniatures continuent leur balancement
+     pendant ce temps. Le grossissement s'applique autour du centre de la case,
+     d'où le recentrage de x et y. */
+  const SPIN_MS = 900;
+  function spin(el){
+    const st = states.get(el);
+    if (!st) return;
+    st.spin = performance.now();
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
   function setRows(next, dur){
     if (!list){ rows = []; return; }
     const now = performance.now(), keep = new Set(next.map(r => r.el));
@@ -3913,7 +4044,7 @@ const model3d = (() => {
       },
     };
   }
-  return { show, hide, setRows, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -3939,6 +4070,7 @@ const slider = (() => {
       b.type = 'button'; b.className = 'dot';
       b.setAttribute('aria-label', s === 0 ? '3D' : `${T('photo')} ${s}`);
       b.addEventListener('click', (e) => { e.stopPropagation(); go(i); });
+      b.style.setProperty('--i', i);   // décalage du reflet : les pastilles s'allument de gauche à droite
       b.addEventListener('mousedown', (e) => e.preventDefault()); // pas de focus clavier : Entrée ne rejouerait pas le clic
       dotsEl.appendChild(b);
     });
@@ -4009,6 +4141,7 @@ function build(){
         const moved = activeCat !== ci || activeItem !== ii;
         exitPanel(); activeCat=ci; activeItem=ii; render();
         if (moved) sfx.tick();
+        model3d.spin(row);   // la miniature choisie fait trois tours sur elle-même
       });
       col.appendChild(row);
     });
@@ -4023,6 +4156,13 @@ function build(){
 // mesure le descriptif le plus long du catalogue à la largeur réelle du
 // panneau (clone invisible #descProbe) et on réserve cette hauteur à tous.
 const DESC_MAX_LINES = 6; // au-delà, le descriptif défile dans la fiche
+/* Le descriptif est désormais un accordéon, replié par défaut : le visuel
+   récupère toute sa hauteur (voir .preview-swatch, qui soustrait --desc-h). On
+   mesure ici la hauteur qu'il PRENDRA une fois déplié — le descriptif le plus
+   long du catalogue, plafonné à DESC_MAX_LINES, mesuré à la largeur réelle du
+   panneau — pour que toutes les fiches s'ouvrent de la même hauteur et que la
+   fiche ne change pas de taille d'un produit à l'autre. */
+let descMax = 0, descOuvert = false;
 function measureDescHeight(){
   const probe = document.getElementById('descProbe');
   const cap = parseFloat(getComputedStyle(probe).lineHeight) * DESC_MAX_LINES;
@@ -4035,8 +4175,41 @@ function measureDescHeight(){
     });
   });
   probe.textContent = '';
-  previewEl.style.setProperty('--desc-h', max ? Math.min(max, cap) + 'px' : 'auto');
+  descMax = max ? Math.min(max, cap) : 0;
+  appliquerDesc();
 }
+function appliquerDesc(){
+  if (!descOuvert){
+    previewEl.classList.remove('desc-open');
+    previewEl.style.setProperty('--desc-h', '0px');
+    previewEl.style.setProperty('--squeeze', '0px');
+    descToggle.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  /* La fiche est centrée : l'ouvrir de N pixels descend son bas de N/2. Si ce
+     bas devait passer sous la barre d'aide, on reprend le manque sur le visuel
+     (--squeeze) plutôt que de laisser le texte déborder de l'écran. La mesure
+     se fait AVANT d'appliquer la hauteur : sinon on lirait une fiche déjà en
+     train de s'ouvrir, et le calcul partirait d'un état intermédiaire. */
+  previewEl.style.setProperty('--desc-h', '0px');
+  previewEl.style.setProperty('--squeeze', '0px');
+  const r = previewEl.getBoundingClientRect();
+  const barre = document.querySelector('.hintbar').getBoundingClientRect().top;
+  const besoin = descMax + 14;
+  const libre = Math.max(0, (barre - r.bottom - 10) * 2);
+  previewEl.style.setProperty('--squeeze', Math.max(0, besoin - libre) + 'px');
+  previewEl.style.setProperty('--desc-h', descMax + 'px');
+  previewEl.classList.add('desc-open');
+  descToggle.setAttribute('aria-expanded', 'true');
+}
+const descToggle = document.getElementById('descToggle');
+descToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  descOuvert = !descOuvert;
+  appliquerDesc();
+  sfx.tick();
+});
+descToggle.addEventListener('mousedown', (e) => e.preventDefault()); // pas de focus : Entrée reste « mode panneau »
 window.addEventListener('resize', measureDescHeight);
 
 // Aide clavier : complète sur la barre (flèches et Entrée, dont le libellé
@@ -4534,6 +4707,10 @@ function fillPreview(){
   document.getElementById('previewName').textContent = L(item.n);
   descEl.textContent = L(item.d);
   descEl.hidden = !item.d;
+  // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
+  // Livraison, Versus) affichent tout, sans repli.
+  descToggle.hidden = isInfo || !item.d;
+  if (isInfo) previewEl.classList.remove('desc-open');
 
   const infoBtn = document.getElementById('infoBtn');
   infoBtn.hidden = true;
