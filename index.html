@@ -2321,14 +2321,21 @@ const sfx = (() => {
      valeur et démarraient exactement ensemble, en s'additionnant : au lieu
      d'une série de clics, un seul bloc sonore. On tient donc notre propre
      curseur, qui ne recule jamais et espace deux départs d'au moins 12 ms. */
+  /* LEAD : on programme toujours un peu en avance. L'horloge lue ici est en
+     retard sur celle du moteur, parfois de plusieurs dizaines de millisecondes.
+     Un son programmé « maintenant » se retrouve donc dans le passé quand le
+     moteur le traite : les longs sons y survivent, amputés de leur début, mais
+     le clic, qui ne dure que 12 ms, disparaissait entièrement. C'est ce qui
+     faisait taire les clics alors que la nappe et les souffles continuaient.
+     25 ms d'avance sont inaudibles et mettent le son à l'abri. */
+  const LEAD = 0.025;
   let nextFree = 0;
   function at(){
     const now = ctx.currentTime;
-    let t = Math.max(now, nextFree);
-    // Garde-fou : le curseur ne doit jamais s'envoler devant l'horloge. Si
-    // celle-ci se fige ou ralentit, chaque son serait programmé un peu plus
-    // loin dans un futur qui n'arrive jamais, et le site deviendrait muet.
-    if (t > now + 0.15) t = now;
+    let t = Math.max(now + LEAD, nextFree);
+    // le curseur ne doit jamais s'envoler devant l'horloge : si celle-ci se
+    // fige, tout serait programmé dans un futur qui n'arrive jamais
+    if (t > now + 0.2) t = now + LEAD;
     nextFree = t + 0.012;
     api.lastAt = t; api.clock = now; // contrôle : instant programmé et horloge du moteur
     return t;
