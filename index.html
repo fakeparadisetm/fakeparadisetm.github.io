@@ -1804,11 +1804,8 @@
     text-transform:uppercase;letter-spacing:2.5px;
     text-shadow:2px 2px 0 rgba(0,0,0,0.85);
   }
-  .arena-end-ask{
-    margin-top:9px;font-size:10px;
-    text-transform:uppercase;letter-spacing:1.6px;
-    color:var(--white-60);
-  }
+  /* (le sous-titre de la carte de fin a été retiré le 15 sept. 2026 : le
+     titre nomme le vainqueur, les trois boutons disent le reste) */
   .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
   /* :focus et non :focus-visible — le focus est posé par le script à
      l'ouverture de la carte, et il doit se voir tout de suite. */
@@ -2059,7 +2056,6 @@
       <div class="arena-end" id="arenaEnd" hidden>
         <div class="arena-end-card">
           <div class="arena-end-title" id="arenaEndTitle"></div>
-          <div class="arena-end-ask" data-i18n="arenaAsk"></div>
           <div class="arena-end-actions">
             <button class="preview-cta" id="arenaAdd" data-i18n="arenaAdd"></button>
             <button class="preview-cta preview-cta--secondary" id="arenaBack" data-i18n="arenaBack"></button>
@@ -2548,7 +2544,7 @@ let currentLang = "en";
 
 const STRINGS = {
   en:{
-    bag:"CART", cartTitle:"Your cart", cartEmpty:"Your cart is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
+    cart:"CART", cartTitle:"Your cart", cartEmpty:"Your cart is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
     checkoutAlert:"Checkout isn't wired up yet — connect this to your payment provider when ready.",
     add:"+ Add to cart", added:"Added ✓", instagram:"Open Instagram ↗",
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
@@ -2560,7 +2556,7 @@ const STRINGS = {
     play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS", descToggle:"Show details",
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
-    arenaWins:"wins", arenaAsk:"Add it to the cart?", arenaAdd:"Go to product",
+    arenaWins:"wins", arenaAdd:"Go to product",
     arenaBack:"Pick again", arenaQuit:"Close",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
@@ -2569,7 +2565,7 @@ const STRINGS = {
     legalNote:"Courtesy translation: the French version is the contractual one and prevails in case of discrepancy.",
   },
   fr:{
-    bag:"PANIER", cartTitle:"Votre panier", cartEmpty:"Votre panier est vide.", remove:"Retirer", total:"Total", checkout:"Commander",
+    cart:"PANIER", cartTitle:"Votre panier", cartEmpty:"Votre panier est vide.", remove:"Retirer", total:"Total", checkout:"Commander",
     checkoutAlert:"Le paiement n'est pas encore branché — connectez votre prestataire de paiement quand vous serez prêt.",
     add:"+ Ajouter au panier", added:"Ajouté ✓", instagram:"Ouvrir Instagram ↗",
     moreInfo:"Plus d'infos", sizeGuide:"Guide des tailles", sizeNote:"Vêtement mesuré à plat, en centimètres, pouces en dessous.", hintInfo:"plus d'infos",
@@ -2581,7 +2577,7 @@ const STRINGS = {
     play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS", descToggle:"Afficher le détail",
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
-    arenaWins:"gagne", arenaAsk:"On l'ajoute au panier ?", arenaAdd:"Voir l'article",
+    arenaWins:"gagne", arenaAdd:"Voir l'article",
     arenaBack:"Retour au choix", arenaQuit:"Fermer",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
@@ -2986,11 +2982,12 @@ const sfx = (() => {
   // c'est ce qui rend la nappe lumineuse plutôt que mélancolique
   const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]; // do ré mi sol la, sur deux octaves
   let amb = null, ambTimer = 0;
-  /* Niveau de la nappe du menu : 0,126 au lieu de 0,18, soit 30 % de moins
-     (demande du 15 sept. 2026). Un seul gain la porte tout entière — le
-     bourdon et les notes y passent —, donc c'est le seul chiffre à changer,
-     et le retour d'onglet doit viser le même. */
-  const AMB_VOL = 0.126;
+  /* Niveau de la nappe du menu : 0,09 au lieu de 0,18 d'origine, soit MOITIÉ
+     moins (deux baisses demandées le 15 sept. 2026 : −30 %, puis « encore un
+     peu »). Un seul gain la porte tout entière — le bourdon et les notes y
+     passent —, donc c'est le seul chiffre à changer, et le retour d'onglet
+     doit viser le même. */
+  const AMB_VOL = 0.09;
   function ambientStart(){
     if (amb || !ctx || !on) return;
     const g = ctx.createGain();
@@ -3366,7 +3363,7 @@ function buildSizePills(sizes){
     const pill = document.createElement('button');
     pill.className = 'pill';
     pill.textContent = s;
-    pill.addEventListener('click', () => addToBag(s));
+    pill.addEventListener('click', () => addToCart(s));
     sizePills.appendChild(pill);
   });
 }
@@ -3502,7 +3499,7 @@ function volVersPanier(item){
     volCanvas.style.opacity = '0.15';
   }));
 }
-function addToBag(size){
+function addToCart(size){
   const cat = DATA[activeCat];
   const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
   if (!item) return;
@@ -4580,7 +4577,7 @@ function panelKey(e){
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp'){ closeSizePicker(); setProductPart('add'); updateHints(); }
       if (e.key === 'Enter'){
         e.preventDefault(); // sinon un bouton qui aurait le focus (clic précédent) recevrait aussi son clic natif : double ajout
-        addToBag(currentSizes[sizeIndex]);
+        addToCart(currentSizes[sizeIndex]);
       }
       return;
     }
@@ -5057,7 +5054,7 @@ function selectCategory(ci){
 
 function updateCartCount(){
   const n = cart.reduce((s, l) => s + l.qty, 0); // nombre d'articles, quantités comprises
-  document.getElementById('cartCount').textContent = `${T('bag')} · ${n}`;
+  document.getElementById('cartCount').textContent = `${T('cart')} · ${n}`;
 }
 
 function renderCart(){
