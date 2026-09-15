@@ -2323,9 +2323,14 @@ const sfx = (() => {
      curseur, qui ne recule jamais et espace deux départs d'au moins 12 ms. */
   let nextFree = 0;
   function at(){
-    const t = Math.max(ctx.currentTime, nextFree);
+    const now = ctx.currentTime;
+    let t = Math.max(now, nextFree);
+    // Garde-fou : le curseur ne doit jamais s'envoler devant l'horloge. Si
+    // celle-ci se fige ou ralentit, chaque son serait programmé un peu plus
+    // loin dans un futur qui n'arrive jamais, et le site deviendrait muet.
+    if (t > now + 0.15) t = now;
     nextFree = t + 0.012;
-    api.lastAt = t; // contrôle : instant du dernier son programmé
+    api.lastAt = t; api.clock = now; // contrôle : instant programmé et horloge du moteur
     return t;
   }
 
@@ -4445,6 +4450,7 @@ if (DIAG){
       'fond    ' + bgFps + ' img/s   pire ecart ' + bgWorstShown + ' ms\n' +
       'modeles ' + d.fps + ' img/s   ' + d.rows + ' apercus\n' +
       'son     ' + sfx.state() + '\n' +
+      'horloge ' + (sfx.clock || 0).toFixed(1) + ' s   avance ' + Math.round(((sfx.lastAt || 0) - (sfx.clock || 0)) * 1000) + ' ms\n' +
       'joues   clic ' + sfx.plays.tick + '  souffle ' + sfx.plays.move + '  panier ' + sfx.plays.add + '\n' +
       'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1);
   }, 500);
