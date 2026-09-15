@@ -3125,7 +3125,20 @@ const sfx = (() => {
       if (!C) return null;
       ctx = new C();
       master = ctx.createGain();
-      master.gain.value = 0.5;
+      /* Niveau général du site, calé sur une référence mesurée (demande du
+         15 sept. 2026 : « prends exemple sur kleidungsmarke.com, mais ne
+         change pas la balance »). Ce gain unique ne touche justement à aucune
+         balance : il multiplie tout par le même nombre.
+         Mesure : leur carillon de déverrouillage sort à 0,154 de crête (leur
+         fichier culmine à 0,771 et passe par un gain de 0,2), quand notre
+         propre carillon d'ouverture n'en sortait qu'à 0,054 — soit 2,9 fois
+         moins. D'où 0,5 × 2,8 = 1,4. Les deux relevés sont pris de la même
+         façon, le maximum absolu sur une fenêtre de 2048 échantillons en
+         sortie (voir api.level) : c'est ce qui les rend comparables.
+         Aucun risque de saturation : la plus forte de nos crêtes passe à
+         0,19, et même un duel qui empile tir, impact et musique reste sous
+         0,5, loin du 1,0 où l'on écrête. */
+      master.gain.value = 1.4;
       master.connect(ctx.destination);
       noise = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
       const d = noise.getChannelData(0);
