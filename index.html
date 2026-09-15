@@ -2897,6 +2897,15 @@ const DATA = [
   { name:{en:"Shipping Info", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
       d:"No exchanges. Returns within 14 days per our policy.\nItems are 100% made and printed in China unless specified.\nYou will receive confirmation of your order and your tracking number by e-mail.\nHave questions about your order? Check the contact section.\nOrders may take 2-3 weeks to be delivered.\nStay ballin" } },
+  /* Info : un panneau de texte, mais avec un VISUEL 3D à la place du visuel
+     produit. La photo détourée passe par exactement la même chaîne que les
+     vêtements — détourage, maillage, éclairage cuit, même résolution de
+     maillage — et la même texture sert aux deux faces, faute de vue de dos.
+     `seule3D` : le modèle seul, pas de diaporama photo. */
+  { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
+    panel:{ n:"FakeParadise™", img:"icons/info 3D.png", seule3D:true,
+      d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
+         fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
 
 /* ---------------- catalogue enregistré (catalogue.json) ----------------
@@ -4465,7 +4474,9 @@ const model3d = (() => {
     active = true; canvas.hidden = false; resize();
     const my = ++token;
     current = null; tap = 0;
-    prepare(item).then(a => { if (my === token){ panel.warm(a); current = a; } }); // une autre fiche a pu être affichée entre-temps
+    // une autre fiche a pu être affichée entre-temps ; et la photo peut manquer
+    // (fichier pas encore déposé) : le panneau reste alors vide, sans erreur
+    prepare(item).then(a => { if (my === token){ panel.warm(a); current = a; } }).catch(() => {});
     if (!raf) raf = requestAnimationFrame(frame);
   }
   function hide(){
@@ -4799,7 +4810,8 @@ function updateHints(){
     show('browse', true, T('hintBrowse')); show('select', true, T('hintSelect'));
     // une pièce verrouillée mène au jeu, pas au panier : l'aide doit le dire
     const verrouIci = cat.kind === 'shop' && verrouille(cat.items[activeItem]);
-    show('enter', true, verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
+    // Info : rien à ouvrir, tout est déjà à l'écran — pas d'aide « entrée »
+    show('enter', cat.kind !== 'about', verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
     show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
@@ -5265,8 +5277,13 @@ function fillPreview(){
   const previewProduct = document.getElementById('previewProduct');
   const previewSettings = document.getElementById('previewSettings');
 
+  /* « Info » a un pied dans chaque gabarit : son contenu est du texte, mais il
+     s'accompagne d'un VISUEL 3D. Il garde donc la mise en page d'une fiche
+     produit (visuel en haut, titre, texte dessous) et non la colonne centrée
+     des panneaux texte. */
+  const estAbout = cat.kind === 'about';
   // Contact, Réglages, Shipping Info : même gabarit, contenu centré
-  previewEl.classList.toggle('info-panel', cat.kind !== 'shop');
+  previewEl.classList.toggle('info-panel', cat.kind !== 'shop' && !estAbout);
 
   if (cat.kind === 'settings'){
     previewProduct.style.display = 'none';
@@ -5284,14 +5301,15 @@ function fillPreview(){
   const isInfo = cat.kind === 'contact' || cat.kind === 'info' || cat.kind === 'game'; // gabarits texte, sans visuel produit
   /* Mini-jeux : le contenu vient du JEU choisi dans la liste, pas d'un panneau
      unique — la catégorie en tient plusieurs depuis qu'ils sont deux. */
-  const item = cat.kind === 'game' ? cat.items[activeItem] : isInfo ? cat.panel : cat.items[activeItem];
+  const item = cat.kind === 'game' ? cat.items[activeItem] : (isInfo || estAbout) ? cat.panel : cat.items[activeItem];
   if (!item){ previewEl.classList.remove('show'); return; }
   const verrou = verrouille(item);   // pièce unique pas encore gagnée : nom masqué, achat impossible
 
   const swatchEl = document.querySelector('.preview-swatch');
   const descEl = document.getElementById('previewDesc');
   const priceEl = document.getElementById('previewPrice');
-  previewEl.classList.toggle('info', isInfo);
+  // .info : le texte s'affiche en entier, sans accordéon (Contact, Livraison… et Info)
+  previewEl.classList.toggle('info', isInfo || estAbout);
   swatchEl.hidden = isInfo;
   // Versus : l'aperçu du jeu prend la place du visuel produit. Peint à l'image
   // suivante, quand la boîte a enfin une taille.
@@ -5341,7 +5359,7 @@ function fillPreview(){
   descEl.hidden = !item.d && !verrou;
   // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
   // Livraison, Versus) affichent tout, sans repli.
-  descToggle.hidden = isInfo || !item.d;
+  descToggle.hidden = isInfo || estAbout || !item.d;
   // Changer d'article referme la fiche ET le descriptif : on revient toujours
   // à la galerie seule, état de repos.
   if (item !== dernierItem){ dernierItem = item; ficheOuverte = false; descOuvert = false; appliquerDesc(); }
@@ -5357,7 +5375,7 @@ function fillPreview(){
     priceEl.textContent = '@fakeparadisetm'; // la poignée, pas l'adresse entière : le bouton s'occupe d'y mener
     addBtn.hidden = false;
     addBtn.textContent = T('instagram');
-  } else if (cat.kind === 'info' || cat.kind === 'game'){
+  } else if (cat.kind === 'info' || cat.kind === 'game' || estAbout){
     priceEl.hidden = true;
     addBtn.hidden = cat.kind !== 'game'; // les mini-jeux ont un bouton, les panneaux texte tiennent dans leur texte
     if (cat.kind === 'game') addBtn.textContent = T('play');

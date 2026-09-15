@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icone de la categorie « Info » : une bulle de dialogue portant un i
+       minuscule. Meme style que les autres icones du menu : glyphe plein,
+       blanc, angles arrondis, aucun trait.
+
+       Le i est DECOUPE dans la bulle (fill-rule evenodd) et non peint en
+       sombre : le fichier sert aussi de masque pour la lueur de l'icone
+       selectionnee, et un masque ne lit que l'opacite.
+       La queue de la bulle part exactement de son bord bas sans le
+       chevaucher : deux sous-traces qui se recouvrent s'EVIDENT a leur
+       intersection avec evenodd. -->
+  <g fill="#fff">
+    <path fill-rule="evenodd" d="
+      M128 92 H384 A64 64 0 0 1 448 156 V308 A64 64 0 0 1 384 372 H128 A64 64 0 0 1 64 308 V156 A64 64 0 0 1 128 92 Z
+      M152 372 L152 444 L232 372 Z
+      M256 154 a22 22 0 1 0 0 44 a22 22 0 1 0 0-44 Z
+      M256 216 A20 20 0 0 1 276 236 V290 A20 20 0 0 1 256 310 A20 20 0 0 1 236 290 V236 A20 20 0 0 1 256 216 Z
+    "/>
+  </g>
+</svg>
