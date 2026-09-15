@@ -340,10 +340,10 @@
     position:relative;
     z-index:1;
     width:58px;height:58px;object-fit:contain;
-    filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4)) blur(0.9px);
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55)) blur(0.9px);
     transition:filter 0.35s ease;
   }
-  .category.active .cat-icon img{filter:drop-shadow(0 3px 4px rgba(0,0,0,0.4));}
+  .category.active .cat-icon img{filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));}
   .cat-label{
     margin-top:14px;
     font-size:13px;
@@ -443,7 +443,7 @@
     content:'';
     position:absolute;inset:-10px;
     border-radius:50%;
-    background:radial-gradient(circle, rgba(255,255,255,0.11), rgba(255,255,255,0.05) 52%, transparent 70%);
+    background:radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.03) 52%, transparent 70%);
     z-index:-1;
     pointer-events:none;
   }
@@ -759,7 +759,9 @@
     font-size:24px;
     font-weight:450;
     letter-spacing:0.3px;
-    text-shadow:0 0 14px rgba(var(--accent-rgb),0.2);
+    /* halo d'accent, plus une ombre portée franche : le nom se détache du visuel
+       qui passe juste au-dessus de lui */
+    text-shadow:0 0 14px rgba(var(--accent-rgb),0.2), 0 2px 5px rgba(0,0,0,0.55);
     white-space:nowrap;      /* toujours une ligne : la fiche ne change pas de hauteur */
     overflow:hidden;
     text-overflow:ellipsis;
@@ -3961,6 +3963,7 @@ const model3d = (() => {
     list.clear();
     if (!listH) return;
     const all = fading.length ? rows.concat(fading) : rows;
+    const pose = [];
     for (const st of all){
       const c = st.cur = sample(st, now);
       const a = ready.get(keyOf(st.item));
@@ -3978,9 +3981,23 @@ const model3d = (() => {
         }
       }
       const s2 = c.s * listK * ech, d2 = (s2 - c.s * listK) / 2;
-      list.render(a, ang, PVrow, c.a, { x: c.x * listK - d2, y: c.y * listK - d2, s: s2 });
-      listDrawn = true;
+      pose.push({ a: a, ang: ang, alpha: c.a, box: { x: c.x * listK - d2, y: c.y * listK - d2, s: s2 } });
     }
+    /* Ombre portée : le même maillage redessiné en noir, décalé et transparent.
+       Bien moins cher qu'un filtre CSS sur le canvas — un filtre plein écran sur
+       une surface repeinte à chaque image est précisément ce qui hachait la
+       barre. Toutes les ombres passent D'ABORD, puis le tampon de profondeur est
+       vidé : sans ce vidage l'ombre, écrite à la même profondeur que le
+       vêtement, faisait rejeter ses pixels par le test de profondeur et c'est
+       l'ombre qu'on voyait à sa place. */
+    for (const p of pose)
+      list.render(p.a, p.ang, PVrow, p.alpha * 0.34,
+        { x: p.box.x + p.box.s * 0.04, y: p.box.y + p.box.s * 0.055, s: p.box.s }, '', [0, 0, 0, 1]);
+    // Le découpage (scissor) est encore celui de la dernière ombre : sans le
+    // désactiver, le vidage ne porterait que sur cette case-là.
+    list.gl.disable(list.gl.SCISSOR_TEST);
+    list.gl.clear(list.gl.DEPTH_BUFFER_BIT);
+    for (const p of pose){ list.render(p.a, p.ang, PVrow, p.alpha, p.box); listDrawn = true; }
     if (fading.length) fading = fading.filter(st => now - st.t0 < st.dur);
   }
   function frame(t){
@@ -4167,6 +4184,13 @@ const slider = (() => {
   function go(i){ if (avail.length < 2) return; index = (i + avail.length) % avail.length; apply(); }
   document.getElementById('slidePrev').addEventListener('click', (e) => { e.stopPropagation(); go(index - 1); });
   document.getElementById('slideNext').addEventListener('click', (e) => { e.stopPropagation(); go(index + 1); });
+  /* Un clic au MILIEU de la galerie déplie la fiche. Les deux zones de bord et
+     les pastilles arrêtent la propagation de leur côté : cliquer pour changer
+     de vue ne déclenche donc pas l'ouverture, seul le centre le fait. */
+  swatch.addEventListener('click', (e) => {
+    if (e.target.closest('.slide-edge, .slide-dots')) return;
+    ouvrirFiche(false);
+  });
   let sx = 0, sy = 0; // balayage horizontal au doigt
   swatch.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; });
   swatch.addEventListener('pointerup', (e) => {
@@ -4705,8 +4729,13 @@ function updateEdgeGlow(){
     // déplaçait le centre de la lueur de 16 px et elle ne semblait plus alignée.
     // Elle déborde donc un peu au-dessus du coin — ce qui, avec un dégradé
     // flouté qui s'éteint à ses deux bouts, se lit comme une lumière qui
-    // contourne l'arête. On vérifie seulement que l'icône croise le panneau.
-    if (h2 <= panHaut || h1 >= panBas) return;
+    // contourne l'arête.
+    /* « En contact » veut dire vraiment en contact : il faut que les deux tiers
+       au moins de l'icône se trouvent en face du panneau. Une icône qui
+       n'affleure que son coin n'allume plus rien — la lueur, posée sur toute
+       la hauteur de l'icône, aurait alors flotté à côté du panneau. */
+    const commun = Math.min(h2, panBas) - Math.max(h1, panHaut);
+    if (commun < (h2 - h1) * 0.66) return;
     force = Math.min(1, enfoncee); haut = h1; bas = h2;
   });
   if (!force) return eteint();
