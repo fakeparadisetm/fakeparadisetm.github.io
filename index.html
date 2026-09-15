@@ -4382,11 +4382,54 @@ function drawSparkles(){
   sctx.globalCompositeOperation = 'source-over';
 }
 
-function drawFrame(){
-  paintWaves();
+/* ---------------- mesure et diagnostic ----------------
+   Ouvrir le site avec ?diag à la fin de l'adresse affiche un petit relevé en
+   haut à gauche : images par seconde du fond et des modèles 3D, pire écart
+   entre deux images (c'est lui qui trahit les saccades), état du son et
+   nombre de sons joués. Rien ne s'affiche sans ce ?diag, et rien n'est
+   mesuré non plus. Outil de mise au point, à retirer quand le site sera
+   stabilisé. */
+const DIAG = location.search.indexOf('diag') >= 0;
+let bgFrames = 0, bgFps = 0, bgT = 0, bgLast = 0, bgWorst = 0, bgWorstShown = 0;
+function drawFrame(ts){
+  if (DIAG){
+    const now = ts || performance.now();
+    if (bgLast){ const gap = now - bgLast; if (gap > bgWorst) bgWorst = gap; }
+    bgLast = now; bgFrames++;
+    if (now - bgT >= 1000){
+      bgFps = Math.round(bgFrames * 1000 / (now - bgT));
+      bgWorstShown = Math.round(bgWorst);
+      bgFrames = 0; bgT = now; bgWorst = 0;
+    }
+  }
+  /* Le ruban est de loin le poste le plus lourd de la page : près de 8 ms par
+     image, sur le fil principal, à redessiner des centaines de tranches. Or il
+     ondule très lentement. Le peindre 30 fois par seconde au lieu de 60 est
+     indiscernable à l'œil et rend la moitié de ce temps aux animations de
+     l'interface, qui en manquaient. Sa vitesse ne change pas : l'horloge du
+     ruban continue d'avancer à chaque image, seul l'affichage est espacé. */
+  const now2 = ts || performance.now();
+  if (now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
   drawSparkles();
   t += 1;
   requestAnimationFrame(drawFrame);
+}
+let wavesAt = 0;
+if (DIAG){
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;background:rgba(0,0,0,0.78);'
+    + 'color:#7fe0a0;font:12px/1.5 Consolas,monospace;padding:10px 12px;border-radius:8px;'
+    + 'white-space:pre;pointer-events:none;text-shadow:none;';
+  document.body.appendChild(box);
+  setInterval(() => {
+    const d = model3d.debug();
+    box.textContent =
+      'fond    ' + bgFps + ' img/s   pire ecart ' + bgWorstShown + ' ms\n' +
+      'modeles ' + d.fps + ' img/s   ' + d.rows + ' apercus\n' +
+      'son     ' + sfx.state() + '\n' +
+      'joues   clic ' + sfx.plays.tick + '  souffle ' + sfx.plays.move + '  panier ' + sfx.plays.add + '\n' +
+      'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1);
+  }, 500);
 }
 
 applyMood();          // avant la première image : palette, voiles et halo
