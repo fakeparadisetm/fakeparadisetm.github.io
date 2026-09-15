@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icone de la categorie « Minigames » : une manette, dessinee dans le style
+       des PNG du dossier (glyphe plein, blanc, angles arrondis). Elle remplace
+       les epees croisees, qui ne parlaient que de Versus.
+       Comme « shipping icon.svg » et « arena icon.svg », a remplacer par un PNG
+       en changeant le nom de fichier dans DATA (index.html). -->
+  <g fill="#fff">
+    <!-- corps : deux poignees reliees par un pont, coins tres arrondis -->
+    <path d="M168 152h176c50 0 84 28 96 78l34 136c10 40-14 70-52 70-24 0-42-12-58-32l-34-44H182l-34 44c-16 20-34 32-58 32-38 0-62-30-52-70l34-136c12-50 46-78 96-78z"/>
+  </g>
+  <g fill="#0b0f18">
+    <!-- croix directionnelle a gauche, creusee dans le corps -->
+    <rect x="112" y="252" width="104" height="30" rx="15"/>
+    <rect x="149" y="215" width="30" height="104" rx="15"/>
+    <!-- deux boutons a droite -->
+    <circle cx="356" cy="240" r="20"/>
+    <circle cx="398" cy="288" r="20"/>
+  </g>
+</svg>

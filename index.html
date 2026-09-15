@@ -2824,13 +2824,13 @@ const DATA = [
      liste et chaque ligne est un jeu — Versus départage deux articles,
      Jumper est un parcours de plateforme dont la récompense est la pièce
      unique ci-dessus. Le panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
-  { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"arena icon.svg", kind:"game", items:[
-    { n:"Versus", jeu:"versus",
-      d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
-         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} },
+  { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"gamepad icon.svg", kind:"game", items:[
     { n:"Jumper", jeu:"jumper",
       d:{en:"One level, one flag, a few falls.\nFinish it and the locked tee is yours.",
          fr:"Un niveau, un drapeau, quelques chutes.\nTerminez-le et le t-shirt verrouillé est à vous."} },
+    { n:"Versus", jeu:"versus",
+      d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
+         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
@@ -3336,35 +3336,47 @@ const sfx = (() => {
      Les pas sont PROGRAMMÉS EN AVANCE sur l'horloge audio, pas joués par un
      minuteur : un setTimeout dérive de plusieurs millisecondes, ce qui s'entend
      tout de suite sur une mesure. Le minuteur ne sert qu'à remplir la file. */
-  const PAS = 0.1136;                  // double-croche à 132 à la noire
-  const LA2 = 110;                     // la grave : tonique du motif
-  const demi = n => LA2 * Math.pow(2, n / 12);
-  // 32 pas, deux mesures. null = silence. Demi-tons depuis la tonique.
-  const BASSE = [0,null,0,null, 0,null,0,null, 5,null,5,null, 3,null,3,null,
-                 0,null,0,null, 0,null,0,null, 7,null,7,null, 5,null,3,null];
-  const CHANT = [12,null,null,15, null,12,null,null, 17,null,null,15, null,12,null,null,
-                 12,null,null,15, null,19,null,null, 17,null,15,null, 12,null,null,null];
-  let cbt = null, arene = false;
-  function combatStart(){
+  /* DEUX motifs, un par jeu — même moteur, mêmes voix carrées, mais rien à
+     voir à l'oreille : le duel est en la mineur, lent et têtu ; Jumper est en
+     do majeur, plus vif et plus haut, il rebondit comme le personnage. */
+  const PISTES = {
+    // 32 pas, deux mesures. null = silence. Demi-tons depuis la tonique.
+    duel: { pas: 0.1136, base: 110,     // double-croche à 132 à la noire, la grave
+      basse: [0,null,0,null, 0,null,0,null, 5,null,5,null, 3,null,3,null,
+              0,null,0,null, 0,null,0,null, 7,null,7,null, 5,null,3,null],
+      chant: [12,null,null,15, null,12,null,null, 17,null,null,15, null,12,null,null,
+              12,null,null,15, null,19,null,null, 17,null,15,null, 12,null,null,null] },
+    saut: { pas: 0.1014, base: 130.81,  // 148 à la noire, do grave
+      basse: [0,null,0,null, 7,null,0,null, 5,null,5,null, 12,null,7,null,
+              0,null,0,null, 7,null,0,null, 9,null,9,null, 7,null,7,null],
+      chant: [0,null,4,null, 7,null,4,null, 9,null,7,null, 4,null,null,null,
+              0,null,4,null, 7,null,12,null, 9,null,7,null, 4,null,2,null] },
+  };
+  let cbt = null, arene = false, piste = 'duel';
+  function combatStart(nom){
+    if (nom) piste = nom;
     if (cbt || !ctx || !on) return;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.6);
     g.connect(master);
-    cbt = { g: g, pas: 0, quand: ctx.currentTime + 0.12, timer: 0 };
+    cbt = { g: g, pas: 0, quand: ctx.currentTime + 0.12, timer: 0, p: PISTES[piste] || PISTES.duel };
     combatFile();
   }
   function combatFile(){
     if (!cbt) return;
+    const p = cbt.p, demi = n => p.base * Math.pow(2, n / 12);
     const fin = ctx.currentTime + 0.4;                 // on remplit 400 ms d'avance
     while (cbt.quand < fin){
-      const i = cbt.pas % BASSE.length, t = cbt.quand;
+      const i = cbt.pas % p.basse.length, t = cbt.quand;
       if (!document.hidden){
-        if (BASSE[i] !== null) voix(t, demi(BASSE[i]), 0.034, 0.115, 'square');
-        if (CHANT[i] !== null) voix(t, demi(CHANT[i] + 12), 0.019, 0.095, 'square');
+        if (p.basse[i] !== null) voix(t, demi(p.basse[i]), 0.034, 0.115, 'square');
+        if (p.chant[i] !== null) voix(t, demi(p.chant[i] + 12), 0.019, 0.095, 'square');
         if (i % 2 === 1) burst(t, { freq: 6200, q: 0.9, peak: 0.007, attack: 0.001, decay: 0.028 });
+        // Jumper : une frappe sourde sur les temps forts, qui donne l'appui
+        if (piste === 'saut' && i % 8 === 0) burst(t, { freq: 160, q: 1.2, peak: 0.030, attack: 0.001, decay: 0.07, sweep: 60, lp: 900 });
       }
-      cbt.pas++; cbt.quand += PAS;
+      cbt.pas++; cbt.quand += p.pas;
     }
     cbt.timer = setTimeout(combatFile, 120);
   }
@@ -3387,8 +3399,9 @@ const sfx = (() => {
   }
   /* Le mini-jeu prend la main sur la musique : la nappe du menu s'éteint, le
      motif de combat démarre, et l'inverse à la sortie. */
-  api.combat = (v) => {
+  api.combat = (v, nom) => {
     arene = !!v;
+    if (nom) piste = nom;          // « duel » (Versus) ou « saut » (Jumper)
     if (!audio()) return;
     if (arene){ ambientStop(); combatStart(); }
     else { combatStop(); ambientStart(); }
@@ -6257,7 +6270,7 @@ const arena = (() => {
     stage.hidden = true; pickView.hidden = false; endBox.hidden = true;
     overlay.classList.add('open');
     sfx.startup();      // le carillon d'ouverture : l'application s'annonce
-    sfx.combat(true);   // la nappe du menu se tait, le thème 8 bits prend la main
+    sfx.combat(true, 'duel');   // la nappe du menu se tait, le thème 8 bits prend la main
   }
   function fermer(){
     if (!ouvert) return;
@@ -6477,9 +6490,9 @@ const jumper = (() => {
      niveau engendré. Les distances tiennent compte de la portée du saut —
      275 px en longueur et 185 px en hauteur à pleine charge. */
   const NIVEAU = {
-    longueur: 8980,
+    longueur: 14400,
     // blocs pleins (sol) : [x, sommet, largeur]
-    sols: [[0, 400, 660], [1980, 400, 440], [4620, 400, 620], [8060, 340, 900]],
+    sols: [[0, 400, 660], [1980, 400, 440], [4620, 400, 620], [13360, 300, 900]],
     // plateformes minces, franchies par en dessous : [x, sommet, largeur]
     plates: [
       [760, 358, 150], [1000, 320, 140], [1230, 286, 130],           // A. prise en main
@@ -6492,15 +6505,34 @@ const jumper = (() => {
       [6440, 176, 150], [6680, 242, 150],                            // G. descente
       [7140, 190, 190],                                              // H. après la mobile verticale
       [7440, 232, 100], [7650, 206, 100], [7860, 180, 100],          // I. chapelet de sauts précis
+      /* Seconde moitié (allongée le 15 sept. 2026 : le niveau se bouclait en
+         1 min 30 au premier essai). Elle serre la vis — plateformes de 70 à
+         90 unités au lieu de 110 à 180, et des écarts de 200 à 220 contre la
+         portée maximale de 258. On ne demande pas d'atteindre plus loin, on
+         demande de doser plus juste. */
+      [8060, 340, 200],                                              // J. palier, puis les étroites
+      [8340, 300, 90], [8560, 268, 90], [8780, 236, 90], [9000, 268, 90],
+      [9640, 220, 140],                                              // K. entre les deux mobiles
+      [10100, 180, 160],
+      [10900, 300, 180],                                             // L. après les friables au-dessus du vide
+      [11160, 340, 120],
+      [11380, 300, 70], [11540, 244, 70], [11700, 188, 70], [11860, 132, 70], [12020, 76, 70], // M. la montée sèche
+      [12180, 76, 200],
+      [12600, 130, 110], [12910, 180, 110], [13220, 236, 110],       // N. les grands écarts
     ],
-    friables: [[3880, 250, 110], [4060, 244, 110], [4240, 272, 110]], // s'effondrent sous le poids
+    friables: [[3880, 250, 110], [4060, 244, 110], [4240, 272, 110], // s'effondrent sous le poids
+               [10340, 220, 100], [10520, 240, 100], [10700, 260, 100]],
     mobiles: [
       { x: 3200, y: 250, w: 150, dx: 260, dy: 0, per: 3.4 },
       { x: 6920, y: 290, w: 150, dx: 0, dy: -150, per: 2.8 },
+      { x: 9150, y: 250, w: 130, dx: 300, dy: 0, per: 3.0 },
+      { x: 9860, y: 300, w: 130, dx: 0, dy: -170, per: 2.6 },
     ],
-    pics: [[2080, 400, 3], [2260, 400, 3], [4720, 400, 3], [4900, 400, 4], [5080, 400, 3], [8320, 340, 3]],
-    checks: [[120, 400], [1700, 330], [2500, 352], [3600, 210], [4380, 300], [6120, 110], [7140, 190], [8100, 340]],
-    fin: { x: 8760, y: 340 },
+    pics: [[2080, 400, 3], [2260, 400, 3], [4720, 400, 3], [4900, 400, 4], [5080, 400, 3],
+           [11000, 300, 2], [13560, 300, 3], [13800, 300, 4]],
+    checks: [[120, 400], [1700, 330], [2500, 352], [3600, 210], [4380, 300], [6120, 110], [7140, 190],
+             [8100, 340], [9640, 220], [10900, 300], [12180, 76], [13400, 300]],
+    fin: { x: 14120, y: 300 },
   };
 
   let ouvert = false, etat = 'carte', raf = 0, dernier = 0;
@@ -6840,6 +6872,7 @@ const jumper = (() => {
     construire(); check = 0; chutes = 0; tempsMs = 0; replacer();
     overlay.classList.add('open');
     sfx.startup();
+    sfx.combat(true, 'saut');   // la nappe du menu se tait, le motif de Jumper prend la main
     montrerCarte(T('jumpReady'), T('jumpHow'), T('jumpStart'), null);
     cancelAnimationFrame(raf);
     dernier = performance.now();
@@ -6852,6 +6885,7 @@ const jumper = (() => {
     etat = 'carte';
     touches.gauche = touches.droite = touches.espace = false;
     overlay.classList.remove('open');
+    sfx.combat(false);          // retour à la nappe du menu
     // on revient sur la tuile du jeu, comme en quittant une application
     const ci = DATA.findIndex(c => c.kind === 'game');
     const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'jumper') : -1;
