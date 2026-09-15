@@ -1386,6 +1386,21 @@
     .preview.info-panel{width:min(36vw,460px);}
   }
 
+  /* Aperçu fixe du mini-jeu, dans le panneau « Versus ». Trois calques comme
+     dans l'arène : décor, vêtements, attaque. Peint une seule fois. */
+  .arena-teaser{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/7;
+    border-radius:4px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.10);
+    box-shadow:inset 0 0 30px rgba(0,0,0,0.45);
+  }
+  .arena-teaser[hidden]{display:none;}
+  .arena-teaser canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #teaserGL{z-index:1;}
+  #teaserFx{z-index:2;}
   /* ---------- mini-jeu « Versus » (provisoire) ----------
      Même grammaire que les autres fenêtres du site : voile sombre, panneau de
      verre, fondu par visibility pour ne rien peindre quand c'est fermé. */
@@ -1682,6 +1697,13 @@
       <button type="button" class="slide-arrow prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view">‹</button>
       <button type="button" class="slide-arrow next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view">›</button>
       <div class="slide-dots" id="slideDots"></div>
+    </div>
+    <!-- Aperçu fixe du mini-jeu, dans le panneau « Versus » : un décor, deux
+         vêtements et une attaque en vol. Voir arena.apercu(). -->
+    <div class="arena-teaser" id="arenaTeaser" hidden>
+      <canvas id="teaserBg"></canvas>
+      <canvas id="teaserGL"></canvas>
+      <canvas id="teaserFx"></canvas>
     </div>
     <div class="preview-name" id="previewName"></div>
     <div class="preview-price" id="previewPrice"></div>
@@ -2912,6 +2934,16 @@ const sfx = (() => {
     burst(t, { freq: 1500, q: 0.7, peak: 0.07 * v, attack: 0.001, decay: 0.09, lp: 4200 });
     burst(t + 0.02, { freq: 420, q: 1.1, peak: 0.045 * v, attack: 0.004, decay: 0.16, lp: 1600 });
   };
+  // Fin du duel : une petite fanfare, quatre notes qui montent. Plus large que
+  // l'ajout au panier, mais du même bois — on reste dans la sonorité du site.
+  api.win = () => {
+    const c = audio(); if (!c) return; const t = at();
+    [[523.25, 0], [659.25, 0.075], [783.99, 0.15], [1046.5, 0.235]].forEach(n => {
+      note(t + n[1], n[0], n[0], 0.075, 0.30, 'sine', 0.006);
+      note(t + n[1], n[0] * 2, n[0] * 2, 0.018, 0.16, 'sine', 0.006);
+    });
+    note(t + 0.235, 261.63, 261.63, 0.055, 0.5, 'triangle', 0.01);
+  };
   api.state = () => (ctx ? ctx.state : 'inactif') + (amb ? ' + nappe' : ''); // contrôle : « running + nappe » une fois tout parti
   /* Contrôle : niveau réellement produit en sortie. C'est la seule façon de
      distinguer un son qui ne part pas d'un son qui part mais qu'on n'entend
@@ -3111,15 +3143,19 @@ const model3d = (() => {
   //      des lignes de la liste).
   const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;
     varying vec2 vUV;varying vec2 vSh;void main(){vUV=aUV;vSh=aSh;gl_Position=uMVP*vec4(aPos,1.0);}`;
-  /* uTint : teinte de dégât du mini-jeu (voir le module `arena`). rgb donne la
-     couleur, a son intensité ; (0,0,0,0) partout ailleurs, donc la fiche et la
-     liste rendent exactement comme avant. Un mélange PUIS un ajout : le mélange
-     recolore le tissu, l'ajout le fait rayonner au lieu de le noircir. */
+  /* uTint : couleur imposée au vêtement (voir le module `arena`). rgb donne la
+     teinte, a sa part ; (0,0,0,0) partout ailleurs, donc la fiche et la liste
+     rendent exactement comme avant. La teinte REMPLACE la texture AVANT
+     l'éclairage cuit, pas après : à pleine force on obtient le vêtement en
+     couleur pleine mais toujours modelé par sa lumière — c'est ce qui sert à
+     l'éclair rouge du coup encaissé comme à l'aperçu du mini-jeu, où le modèle
+     est réutilisé sans sa photo. L'ajout, lui, ne monte qu'au carré : il fait
+     rayonner la teinte quand elle domine, sans éclaircir un simple reflet. */
   const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;
     varying vec2 vUV;varying vec2 vSh;
     void main(){
-      vec3 c = texture2D(uTex,vUV).rgb*vSh.x+vSh.y;
-      c = mix(c, uTint.rgb, uTint.a*0.75) + uTint.rgb*uTint.a*0.45;
+      vec3 base = mix(texture2D(uTex,vUV).rgb, uTint.rgb, uTint.a);
+      vec3 c = base*vSh.x + vSh.y + uTint.rgb*uTint.a*uTint.a*0.30;
       gl_FragColor=vec4(c*uAlpha,uAlpha);
     }`;
   const STRIDE = 7;      // flottants par sommet : position (3), uv (2), éclairage (2)
@@ -4278,6 +4314,11 @@ function fillPreview(){
   const priceEl = document.getElementById('previewPrice');
   previewEl.classList.toggle('info', isInfo);
   swatchEl.hidden = isInfo;
+  // Versus : l'aperçu du jeu prend la place du visuel produit. Peint à l'image
+  // suivante, quand la boîte a enfin une taille.
+  const teaserEl = document.getElementById('arenaTeaser');
+  teaserEl.hidden = cat.kind !== 'game';
+  if (cat.kind === 'game') requestAnimationFrame(() => arena.apercu());
   if (isInfo) model3d.hide();
   // photo produit si le produit en a une (item.img), sinon l'initiale ;
   // seconde photo (item.img2) révélée au survol
@@ -4715,6 +4756,29 @@ const arena = (() => {
   const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
   const bandes = (g, w, y0, liste) => liste.forEach(b => R(g, 0, y0 + b[0], w, b[1], b[2]));
 
+  /* Palmier en ombre chinoise : un tronc qui s'incline et s'affine, une
+     couronne de palmes qui retombent, deux noix. Dessiné par une fonction pour
+     pouvoir en semer plusieurs de tailles et de penchants différents — quatre
+     palmiers identiques et symétriques faisaient décor de théâtre. */
+  function palmier(g, x, solY, ht, pente, c){
+    for (let i = 0; i < ht; i++){                      // tronc, incurvé
+      const u = i / ht;
+      const dx = pente * u * u * 14;
+      R(g, x + dx, solY - i, Math.max(2, 4 - u * 2), 1, c);
+      if (i % 9 === 4) R(g, x + dx - 1, solY - i, Math.max(3, 5 - u * 2), 1, '#000000');
+    }
+    const tx = x + pente * 14, ty = solY - ht;         // sommet
+    for (let f = 0; f < 7; f++){
+      const a0 = -2.6 + f * 0.62 + pente * 0.25;       // départ vers le haut, étalé
+      const L = 15 + (f % 3) * 4;
+      for (let k = 0; k < L; k++){
+        const u = k / L;
+        const a = a0 + u * u * 1.5 * (a0 < -1.3 ? -1 : 1);  // la palme retombe
+        R(g, tx + Math.cos(a) * k * 1.2, ty + Math.sin(a) * k * 0.95 + u * u * 5, 2, 2, c);
+      }
+    }
+    R(g, tx - 3, ty + 3, 3, 3, c); R(g, tx + 2, ty + 4, 3, 3, c);   // noix de coco
+  }
   const DECORS = [
   { // RUELLE SOMBRE : deux murs qui se resserrent, une lampe, une flaque
     nom: 'ruelle',
@@ -4755,8 +4819,12 @@ const arena = (() => {
       R(g, w * 0.055, sol - 28, 36, 3, '#2f5236');
       R(g, w * 0.055, sol - 14, 36, 1, '#1b2f20');
       R(g, w * 0.16, sol - 9, 9, 9, '#1a1a22'); R(g, w * 0.19, sol - 7, 7, 7, '#1a1a22'); // sacs
-      R(g, w * 0.82, sol - h * 0.40, 3, h * 0.40, '#1c1828');         // lampadaire
-      R(g, w * 0.795, sol - h * 0.42, 9, 5, '#3a3350');
+      // Lampadaire : le mât, la lampe et le cône partent tous du MÊME axe. Les
+      // trois étaient décalés, la lumière semblait tomber à côté de son support.
+      const lampX = Math.round(w * 0.82), lampY = sol - h * 0.42;
+      R(g, lampX - 1, lampY + 4, 3, h * 0.42, '#1c1828');            // mât
+      R(g, lampX - 5, lampY, 11, 5, '#3a3350');                      // capot
+      R(g, lampX - 4, lampY + 4, 9, 2, '#4a4368');
       // sol : bitume, trottoir au pied des murs, bouche d'égout, flaque
       R(g, 0, sol, w, h - sol, '#17161f');
       R(g, 0, sol, w, 2, '#262133');
@@ -4767,12 +4835,15 @@ const arena = (() => {
       R(g, w * 0.30, sol + 12, 34, 2, '#26324a');
     },
     vif(g, w, h, t){
-      const sol = h * SOL, f = Math.sin(t / 90) > 0.6 ? 0.45 : 1;     // le tube grésille
-      R(g, w * 0.795, sol - h * 0.42, 9, 5, 'rgba(255,214,130,' + f + ')');
-      g.globalAlpha = 0.09 * f;                                       // cône de lumière
+      const sol = h * SOL, lampX = Math.round(w * 0.82), lampY = sol - h * 0.42;
+      const f = Math.sin(t / 90) > 0.6 ? 0.45 : 1;                    // le tube grésille
+      R(g, lampX - 4, lampY + 4, 9, 2, 'rgba(255,214,130,' + f + ')');
+      g.globalAlpha = 0.09 * f;                                       // cône, d'aplomb sous la lampe
       g.fillStyle = '#ffd68a';
-      g.beginPath(); g.moveTo(w * 0.835, sol - h * 0.42); g.lineTo(w * 0.60, sol + 2); g.lineTo(w * 1.02, sol + 2); g.closePath(); g.fill();
-      g.globalAlpha = 0.16 * f; R(g, w * 0.70, sol, w * 0.26, 3, '#ffd68a'); // reflet au sol
+      g.beginPath();
+      g.moveTo(lampX, lampY + 6); g.lineTo(lampX - w * 0.20, sol + 2); g.lineTo(lampX + w * 0.20, sol + 2);
+      g.closePath(); g.fill();
+      g.globalAlpha = 0.16 * f; R(g, lampX - w * 0.15, sol, w * 0.30, 3, '#ffd68a'); // reflet au sol
       g.globalAlpha = 0.5 + 0.5 * Math.sin(t / 700);                  // la flaque frissonne
       R(g, w * 0.30, sol + 12, 34, 1, '#2e3c58');
       g.globalAlpha = 1;
@@ -4807,15 +4878,11 @@ const arena = (() => {
       R(g, 0, sol, w, h - sol, '#e0c48c');                            // sable
       R(g, 0, sol, w, 2, '#f2dcae');
       for (let i = 0; i < 70; i++) R(g, (i * 47) % w, sol + 4 + (i * 13) % Math.max(4, h - sol - 4), 1, 1, '#c9a870');
-      [[w * 0.07, 1], [w * 0.93, -1]].forEach(p => {                  // palmiers, en ombre chinoise
-        const x = p[0], s = p[1], ht = Math.min(76, sol * 0.55);
-        R(g, x, sol - ht, 4, ht, '#1d1030');
-        for (let i = 0; i < 6; i++){
-          const a = -0.55 - i * 0.36, L = 24 - i * 2;
-          for (let k = 2; k < L; k++)
-            R(g, x + s * (2 + Math.cos(a) * k * 1.15), sol - ht + Math.abs(Math.sin(a)) * k * 0.7 - 3, 3, 3, '#1d1030');
-        }
-      });
+      // Quatre palmiers, ni à la même place ni de la même taille : deux qui
+      // encadrent, deux plus petits décalés vers l'intérieur, penchés chacun
+      // à sa façon.
+      [[0.055, 0.62, -0.9], [0.945, 0.55, 0.8], [0.21, 0.40, 0.5], [0.80, 0.34, -0.6]]
+        .forEach(p => palmier(g, w * p[0], sol + 1, Math.min(84, sol * p[1]), p[2], '#1d1030'));
     },
     vif(g, w, h, t){
       const sol = h * SOL, mer = sol - h * 0.15; // même repère que fixe()
@@ -4868,21 +4935,29 @@ const arena = (() => {
     },
     vif(g, w, h, t){
       const sol = h * SOL;
-      const f1 = Math.sin(t / 130) > -0.9 ? 1 : 0.25;                  // le tube du haut hésite
-      const f2 = 0.85 + Math.sin(t / 420) * 0.15;
-      R(g, 8, h * 0.075, w - 16, 3, 'rgba(255,60,160,' + f1 + ')');
-      [[6, 0.20], [14, 0.10], [26, 0.05]].forEach(b => {               // halo en trois paliers
-        g.globalAlpha = b[1] * f1; R(g, 8, h * 0.075 + 3, w - 16, b[0], '#ff3ca0');
+      /* Halogènes ambrés, pas des néons de boîte : une lumière chaude, et le
+         clignotement nerveux d'un tube fatigué — une suite de sinus déphasés
+         qui, de temps en temps, tombent ensemble et font décrocher la lampe.
+         Le hasard pur donnait un scintillement régulier, donc faux. */
+      const rate = (a, b, c) => Math.sin(t / a) + Math.sin(t / b + 1.7) + Math.sin(t / c + 4.1);
+      const f1 = rate(97, 211, 53) < -2.05 ? 0.15 : 0.92 + 0.08 * Math.sin(t / 61);
+      const f2 = rate(143, 79, 307) < -2.2 ? 0.25 : 0.95;
+      // rampe du plafond
+      R(g, 10, h * 0.075, w - 20, 3, 'rgba(255,220,150,' + f1 + ')');
+      R(g, 10, h * 0.075 - 2, w - 20, 2, 'rgba(120,96,60,' + (0.5 + f1 * 0.3) + ')'); // le réflecteur
+      [[7, 0.22], [16, 0.11], [30, 0.05]].forEach(b => {
+        g.globalAlpha = b[1] * f1; R(g, 10, h * 0.075 + 3, w - 20, b[0], '#ffb43c');
       });
       g.globalAlpha = 1;
-      R(g, w - 6, h * 0.12, 3, sol - h * 0.24, 'rgba(70,230,255,' + f2 + ')');
-      [[8, 0.18], [18, 0.08]].forEach(b => {
-        g.globalAlpha = b[1] * f2; R(g, w - 6 - b[0], h * 0.12, b[0], sol - h * 0.24, '#46e6ff');
+      // baladeuse murale, à droite
+      R(g, w - 9, h * 0.14, 4, sol - h * 0.28, 'rgba(255,205,120,' + f2 + ')');
+      [[9, 0.20], [20, 0.09]].forEach(b => {
+        g.globalAlpha = b[1] * f2; R(g, w - 9 - b[0], h * 0.14, b[0], sol - h * 0.28, '#ffb43c');
       });
-      g.globalAlpha = 0.09 * f1; R(g, 0, sol, w, h - sol, '#ff3ca0'); // le néon bave sur le béton
-      g.globalAlpha = 0.07 * f2; R(g, w * 0.7, sol, w * 0.3, h - sol, '#46e6ff');
+      g.globalAlpha = 0.11 * f1; R(g, 0, sol, w, h - sol, '#ffb43c');  // la lumière bave sur le béton
+      g.globalAlpha = 0.07 * f2; R(g, w * 0.68, sol, w * 0.32, h - sol, '#ffcf7a');
       g.globalAlpha = 1;
-      R(g, w * 0.5 - 4, h * 0.10, 8, 5, Math.sin(t / 2000) > -0.95 ? '#e8eaf0' : '#8a8d96'); // la baladeuse cligne
+      R(g, w * 0.5 - 4, h * 0.10, 8, 5, f1 > 0.5 ? '#ffeccb' : '#8a7a5c'); // la suspension suit la rampe
     },
   },
   ];
@@ -5031,15 +5106,28 @@ const arena = (() => {
     for (let i = plan.length - 1; i >= 0; i--) if (tt >= plan[i].t0) return plan[i];
     return null;
   }
-  function etat(s, tt, fini){
-    const S = H * TAILLE;
-    const cx = W * (s === 0 ? 0.27 : 0.73);
-    const cy = H * SOL - S * 0.31;               // le bas du carré passe sous la ligne de sol : le vêtement s'y pose
-    const sens = s === 0 ? 1 : -1;               // +1 = vers le centre
+
+  /* ---- la chute et le triomphe ----
+     Dès qu'un vêtement tombe à zéro, le plan est tronqué : il n'aura pas
+     d'animation d'attaque après sa mort — c'était le défaut le plus visible de
+     la première version, on voyait un mort armer son arc. Puis il se désagrège
+     en poussière, et le vainqueur fait un tour complet sur lui-même avant de
+     se présenter de face, au centre. FINALE donne le minutage, à partir de
+     l'instant du coup fatal. */
+  const FINALE = { poussiere: [260, 1050], tour: [420, 1150], carte: 1700 };
+  let koT = 0, perdant = -1, poussiere = [], fanfare = false;
+  const doux = u => u * u * (3 - 2 * u);
+  const avance = (tt, p) => Math.max(0, Math.min(1, (tt - koT - p[0]) / p[1]));
+
+  function etat(s, tt){
+    const S0 = H * TAILLE;
+    const cx0 = W * (s === 0 ? 0.27 : 0.73);
+    const sens = s === 0 ? 1 : -1;                // +1 = vers le centre
+    let S = S0, cx = cx0, cy = H * SOL - S0 * 0.31; // le bas du carré passe sous la ligne de sol
     let dx = 0, dy = Math.sin(tt / 620 + s * 2) * H * 0.012;
     let ang = sens * FACE + Math.sin(tt / 900 + s) * 0.07;
     let rouge = 0, alpha = 1, arme = 0;
-    const e = fini ? null : tourCourant(tt);
+    const e = koT ? null : tourCourant(tt);
     if (e && e.from === s){
       if (tt < e.tir){                            // armement : on se ramasse en arrière
         const u = (tt - e.t0) / PH.wind;
@@ -5052,16 +5140,73 @@ const arena = (() => {
         arme = 1;
       }
     }
-    if (e && e.to === s && tt >= e.choc){         // encaissé : rouge et recul
-      const u = Math.min(1, (tt - e.choc) / PH.impact);
+    const dernier = plan.length ? plan[plan.length - 1] : null;
+    if (dernier && dernier.to === s && tt >= dernier.choc){ // coup encaissé : éclair rouge et recul
+      const u = Math.min(1, (tt - dernier.choc) / PH.impact);
       rouge = (1 - u) * (1 - u);
       dx = -sens * H * 0.06 * Math.sin(u * Math.PI);
       ang -= sens * 0.2 * (1 - u);
     }
-    if (fini && s !== vainqueur){                 // le perdant s'affaisse
-      dy += H * 0.03; ang *= 0.6; alpha = 0.45;
+    if (koT && s === perdant){                    // il part en poussière : le tissu s'efface
+      const p = avance(tt, FINALE.poussiere);
+      alpha = 1 - doux(Math.min(1, p * 1.15));
+      dy += doux(p) * H * 0.02;
+      arme = 0;
+    }
+    if (koT && s === vainqueur){                  // tour complet, puis face au public, au centre
+      const p = doux(avance(tt, FINALE.tour));
+      // On tourne DANS L'AUTRE SENS que la pose de trois quarts : le tour fait
+      // alors plus d'un tour complet et s'achève pile sur la face (angle nul).
+      ang = ang + (-sens * 6.28318 - ang) * p;
+      cx = cx0 + (W * 0.5 - cx0) * p;
+      S = S0 * (1 + 0.14 * p);
+      cy = H * SOL - S * 0.31;
+      dy = Math.sin(tt / 620 + s * 2) * H * 0.012 * (1 - p * 0.6);
+      arme = 0;
     }
     return { S: S, cx: cx + dx, cy: cy + dy, ang: ang, rouge: rouge, alpha: alpha, arme: arme, sens: sens };
+  }
+
+  /* Poussière : les particules sont tirées des PIXELS RÉELS du vêtement, relus
+     dans le canvas 3D juste avant qu'il ne s'efface. On obtient sa silhouette
+     et ses couleurs, pas un nuage générique. Chaque grain garde sa place de
+     départ, un retard qui fait partir le bas en premier, et une dérive. */
+  function semerPoussiere(boite){
+    poussiere = [];
+    const N = 44;
+    const c = document.createElement('canvas'); c.width = c.height = N;
+    const g2 = c.getContext('2d');
+    try { g2.drawImage(glC, boite.x, boite.y, boite.s, boite.s, 0, 0, N, N); }
+    catch (err){ return; }
+    const d = g2.getImageData(0, 0, N, N).data;
+    const kx = PXW / W, ech = boite.s / K / N * kx;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+      const i = (y * N + x) * 4;
+      if (d[i + 3] < 60) continue;
+      if ((x + y * 3) % 2) continue;             // un grain sur deux : assez dense, deux fois moins lourd
+      poussiere.push({
+        x: boite.x / K * PXW / W + x * ech,
+        y: boite.y / K * pxH / H + y * (boite.s / K / N * pxH / H),
+        c: 'rgb(' + d[i] + ',' + d[i + 1] + ',' + d[i + 2] + ')',
+        r: 0.18 + 0.5 * ((x * 7 + y * 13) % 10) / 10,   // retard : le bas s'envole avant le haut
+        vx: ((x * 5 + y * 11) % 10) / 10 - 0.3,
+        vy: 0.7 + ((x * 3 + y * 7) % 10) / 10,
+      });
+    }
+  }
+  function peindrePoussiere(g, tt){
+    const p = avance(tt, FINALE.poussiere);
+    if (!p || !poussiere.length) return;
+    for (let i = 0; i < poussiere.length; i++){
+      const q = poussiere[i];
+      const u = (p - q.r) / (1 - q.r);
+      if (u <= 0) continue;
+      const a = 1 - u;
+      g.globalAlpha = a * a;
+      g.fillStyle = q.c;
+      g.fillRect(Math.round(q.x + q.vx * u * 26), Math.round(q.y - q.vy * u * u * 34 - u * 10), 1, 1);
+    }
+    g.globalAlpha = 1;
   }
   /* ---- boucle du duel ---- */
   let debut = 0, fini = false, faits = new Set(), nombres = [], secousse = 0;
@@ -5101,11 +5246,14 @@ const arena = (() => {
     raf = requestAnimationFrame(image);
     if (!debut) debut = now;
     const tt = now - debut;
-    if (!fini && tt >= finMs) terminer();
+    // Plan épuisé sans K.-O. : la vie restante tranche, et le perdant part en
+    // poussière comme s'il était tombé.
+    if (!koT && plan.length && tt >= plan[plan.length - 1].fin)
+      tomber(vie[0] === vie[1] ? (Math.random() < 0.5 ? 0 : 1) : (vie[0] < vie[1] ? 0 : 1), tt);
+    if (koT && !fanfare && tt >= koT + FINALE.tour[0] + FINALE.tour[1]){ fanfare = true; sfx.win(); }
+    if (koT && !fini && tt >= koT + FINALE.carte) terminer();
 
-    // Les deux états sont calculés une seule fois par image : la scène 3D s'en
-    // sert pour les boîtes, les armes et les effets pour viser.
-    const st = [etat(0, tt, fini), etat(1, tt, fini)];
+    const st = [etat(0, tt), etat(1, tt)];
 
     // 1. décor : la partie fixe recopiée, les détails vivants par-dessus
     const gb = pxBack.getContext('2d');
@@ -5114,11 +5262,12 @@ const arena = (() => {
     if (decor.vif) decor.vif(gb, PXW, pxH, tt);
     // ombres portées, dans le tampon du fond : sans elles les vêtements
     // flottent au-dessus du sol. En gros pixel, comme le reste du décor.
-    st.forEach(e => {
+    st.forEach((e, s) => {
+      if (e.alpha < 0.05) return;
       const p = versPx({ x: e.cx, y: H * SOL });
       const rw = Math.max(4, e.S * PXW / W * 0.26);
-      gb.globalAlpha = 0.20; R(gb, p.x - rw * 1.3, p.y - 2, rw * 2.6, 5, '#000000');
-      gb.globalAlpha = 0.38; R(gb, p.x - rw, p.y - 1, rw * 2, 3, '#000000');
+      gb.globalAlpha = 0.20 * e.alpha; R(gb, p.x - rw * 1.3, p.y - 2, rw * 2.6, 5, '#000000');
+      gb.globalAlpha = 0.38 * e.alpha; R(gb, p.x - rw, p.y - 1, rw * 2, 3, '#000000');
       gb.globalAlpha = 1;
     });
     bg.imageSmoothingEnabled = false;
@@ -5126,19 +5275,24 @@ const arena = (() => {
     bg.drawImage(pxBack, 0, 0, bgC.width, bgC.height);
 
     // 2. vêtements, dans le contexte 3D dédié
+    let boitePerdant = null;
     if (scene){
       scene.clear();
       st.forEach((e, s) => {
-        scene.draw(picks[s].it, e.ang,
-          { x: (e.cx - e.S / 2) * K, y: (e.cy - e.S / 2) * K, s: e.S * K },
-          e.alpha, e.rouge > 0.01 ? [1, 0.16, 0.12, e.rouge] : null);
+        const b = { x: (e.cx - e.S / 2) * K, y: (e.cy - e.S / 2) * K, s: e.S * K };
+        if (s === perdant) boitePerdant = b;
+        if (e.alpha < 0.02) return;
+        scene.draw(picks[s].it, e.ang, b, e.alpha, e.rouge > 0.01 ? [1, 0.16, 0.12, e.rouge] : null);
       });
+      // Les grains sont relus dans le canvas 3D à l'image même du coup fatal,
+      // pendant que le vêtement y est encore entier.
+      if (koT && !poussiere.length && boitePerdant) semerPoussiere(boitePerdant);
     }
 
-    // 3. armes, projectiles et impacts, au même gros pixel que le décor
+    // 3. armes, projectiles, impacts et poussière, au même gros pixel que le décor
     const gf = pxFront.getContext('2d');
     gf.clearRect(0, 0, PXW, pxH);
-    const e = fini ? null : tourCourant(tt);
+    const e = koT ? null : tourCourant(tt);
     if (e){
       const a = st[e.from], b = st[e.to];
       const bouche = versPx({ x: a.cx + a.sens * a.S * 0.26, y: a.cy });
@@ -5149,6 +5303,7 @@ const arena = (() => {
       if (tt >= e.tir && !e.tire){ e.tire = true; sfx.shot(e.atk.id); }
       if (tt >= e.choc && !faits.has(e)) encaisser(e, tt, { x: b.cx, y: b.cy });
     }
+    if (koT) peindrePoussiere(gf, tt);
     fx.imageSmoothingEnabled = false;
     fx.setTransform(1, 0, 0, 1, 0, 0);
     fx.clearRect(0, 0, fxC.width, fxC.height);
@@ -5186,18 +5341,22 @@ const arena = (() => {
     secousse = 11;
     turnLabel.textContent = '-' + e.dmg;
     sfx.hit(e.dmg);
-    if (vie[e.to] <= 0){ vainqueur = e.from; finMs = tt + PH.impact + 420; } // K.-O. : on n'attend pas la suite
+    if (vie[e.to] <= 0) tomber(e.to, tt);
+  }
+  // Il tombe : le plan s'arrête là, sinon on le verrait armer une attaque après
+  // sa mort — c'était le défaut le plus visible de la première version. La
+  // suite (poussière, tour d'honneur, carte) est réglée par FINALE.
+  function tomber(qui, tt){
+    if (koT) return;
+    perdant = qui; vainqueur = 1 - qui; koT = tt;
+    plan = plan.filter(p => p.choc <= tt);
+    turnLabel.textContent = vie[qui] <= 0 ? 'K.O.' : 'VS';
   }
 
   function terminer(){
     fini = true;
-    // Personne au tapis au bout des trois échanges : c'est la vie restante qui
-    // tranche, et une égalité parfaite se joue à pile ou face.
-    if (vainqueur < 0) vainqueur = vie[0] === vie[1] ? (Math.random() < 0.5 ? 0 : 1) : (vie[0] > vie[1] ? 0 : 1);
-    turnLabel.textContent = vie[1 - vainqueur] <= 0 ? 'K.O.' : 'VS';
     endTitle.textContent = L(picks[vainqueur].it.n) + ' ' + T('arenaWins');
     endBox.hidden = false;
-    sfx.add();
   }
 
   /* ---- enchaînement ---- */
@@ -5213,6 +5372,7 @@ const arena = (() => {
     ecrireDuel();
     majBarres();
     faits = new Set(); nombres = []; secousse = 0; debut = 0; fini = false;
+    koT = 0; perdant = -1; poussiere = []; fanfare = false;
     turnLabel.textContent = 'VS';
     enDuel = true;
     mesurer();
@@ -5257,6 +5417,66 @@ const arena = (() => {
     requestAnimationFrame(() => openSizePicker(true)); // l'ajout passe toujours par une taille, comme ailleurs
   }
 
+
+  /* ---- aperçu fixe du panneau ----
+     Le panneau « Versus » montre une image du jeu avant d'y entrer : un décor
+     tiré au sort, deux vêtements et une attaque en vol. Les deux vêtements
+     réutilisent le MAILLAGE de deux articles du catalogue mais PAS leur photo :
+     ils sont peints en bleu et en rouge pleins (uTint à fond, la teinte
+     remplace la texture avant l'éclairage cuit, donc ils restent modelés). Et
+     ce sont les PREMIERS articles de la boutique, pas des références figées :
+     si ceux-ci disparaissent un jour, l'aperçu prendra simplement les suivants
+     au lieu de montrer un produit mort. */
+  const teaser = { box: null, gl: null, scene: null, taille: '', decor: null };
+  function apercu(){
+    const box = document.getElementById('arenaTeaser');
+    if (!box) return;
+    const bouts = DATA.filter(c => c.kind === 'shop' && c.items.length);
+    if (!bouts.length) return;
+    const gauche = bouts[0].items[0];                       // un t-shirt
+    const droite = (bouts[1] || bouts[0]).items[0];         // un pull, ou à défaut le suivant
+    const bc = document.getElementById('teaserBg'), gc = document.getElementById('teaserGL'), fc = document.getElementById('teaserFx');
+    const r = box.getBoundingClientRect();
+    if (!r.width) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (teaser.taille === cle && teaser.scene) return;      // déjà peint à cette taille
+    teaser.taille = cle;
+    [bc, gc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
+    if (!teaser.scene) teaser.scene = model3d.makeScene(gc);
+    if (!teaser.decor) teaser.decor = DECORS[Math.floor(Math.random() * DECORS.length)];
+    const w = r.width, h = r.height, pw = 320, ph = Math.max(80, Math.round(pw * h / w));
+    // 1. décor, au gros pixel comme dans l'arène
+    const tampon = document.createElement('canvas'); tampon.width = pw; tampon.height = ph;
+    const gp = tampon.getContext('2d');
+    teaser.decor.fixe(gp, pw, ph);
+    if (teaser.decor.vif) teaser.decor.vif(gp, pw, ph, 1200);
+    const gb = bc.getContext('2d');
+    gb.imageSmoothingEnabled = false;
+    gb.clearRect(0, 0, bc.width, bc.height);
+    gb.drawImage(tampon, 0, 0, bc.width, bc.height);
+    // 2. armes et projectile, dans le même tampon, par-dessus les vêtements
+    const S = h * 0.50, gx = w * 0.24, dx = w * 0.76, cy = h * SOL - S * 0.31;
+    const px = p => ({ x: p.x * pw / w, y: p.y * ph / h });
+    gp.clearRect(0, 0, pw, ph);
+    const atk = ATTAQUES[3];                                 // le canon : son rayon se lit d'un coup d'œil, même figé
+    const dep = px({ x: gx + S * 0.26, y: cy }), arr = px({ x: dx, y: cy });
+    atk.main(gp, dep.x, dep.y, 1, 1);
+    atk.trace(gp, 0.62, dep, arr);
+    const gf = fc.getContext('2d');
+    gf.imageSmoothingEnabled = false;
+    gf.clearRect(0, 0, fc.width, fc.height);
+    gf.drawImage(tampon, 0, 0, fc.width, fc.height);
+    // 3. les deux vêtements, en couleur pleine : le modèle sans la photo
+    if (!teaser.scene) return;
+    Promise.all([teaser.scene.load(gauche), teaser.scene.load(droite)]).then(() => {
+      teaser.scene.clear();
+      [[gauche, gx, FACE, [0.26, 0.48, 0.98]], [droite, dx, -FACE, [0.95, 0.24, 0.24]]].forEach(v => {
+        teaser.scene.draw(v[0], v[2], { x: (v[1] - S / 2) * k, y: (cy - S / 2) * k, s: S * k }, 1,
+          [v[3][0], v[3][1], v[3][2], 1]);
+      });
+    });
+  }
   document.getElementById('arenaClose').addEventListener('click', fermer);
   document.getElementById('arenaClear').addEventListener('click', () => { picks = [null, null]; majChoix(); });
   fightBtn.addEventListener('click', lancer);
@@ -5288,7 +5508,7 @@ const arena = (() => {
     return false;
   }
 
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche };
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu: apercu };
 })();
 /* ---------------- keyboard nav ---------------- */
 window.addEventListener('keydown', (e)=>{
