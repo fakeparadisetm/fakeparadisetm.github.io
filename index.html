@@ -1176,6 +1176,7 @@
     transition:background 0.2s ease, color 0.2s ease;
   }
   .cart-qty-btn:hover{background:rgba(255,255,255,0.08);color:var(--white);}
+  .cart-qty-btn[disabled]{opacity:0.3;cursor:default;pointer-events:none;}
   .cart-row-unit{margin-left:8px;font-size:11px;color:var(--white-35);} /* « 2 × €25 » sous le prix de la ligne */
 
   .cart-footer{
@@ -1804,6 +1805,40 @@
     text-transform:uppercase;letter-spacing:2.5px;
     text-shadow:2px 2px 0 rgba(0,0,0,0.85);
   }
+  /* ---------- mini-jeu « Jumper » ----------
+     La fenêtre est celle de Versus (même verre, même en-tête, même barre
+     d'aide) : c'est le SITE, il ne change pas d'un jeu à l'autre. Ce qui
+     change est à l'intérieur — un seul canvas, dessiné net en pleine
+     résolution, là où Versus peint dans un tampon de 320 px. */
+  .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#0a0d18;}
+  #jumpCv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .jump-hud{
+    position:absolute;left:0;right:0;top:12px;
+    display:flex;justify-content:center;gap:26px;
+    font-size:11px;letter-spacing:2.4px;
+    color:rgba(255,255,255,0.55);
+    text-shadow:0 1px 3px rgba(0,0,0,0.6);
+    pointer-events:none;
+  }
+  .jump-hud span:nth-child(2){color:var(--white);}
+  .jump-card{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;
+    background:rgba(6,9,18,0.82);
+    backdrop-filter:blur(3px);
+    text-align:center;
+  }
+  .jump-card[hidden]{display:none;}
+  .jump-card-title{font-size:30px;font-weight:550;letter-spacing:4px;color:var(--white);}
+  .jump-card-sub{
+    max-width:min(560px,80%);
+    margin-top:6px;
+    font-size:13px;line-height:1.7;
+    color:var(--white-60);
+    white-space:pre-line;
+  }
+  .jump-card .arena-end-actions{margin-top:22px;}
   /* (le sous-titre de la carte de fin a été retiré le 15 sept. 2026 : le
      titre nomme le vainqueur, les trois boutons disent le reste) */
   .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
@@ -2073,6 +2108,42 @@
   </div>
 </div>
 
+<!-- ===== Mini-jeu « Jumper » (plateforme, provisoire comme Versus) =====
+     Un niveau horizontal à traverser en sauts chargés, récompense : la pièce
+     unique. Rien de commun avec Versus côté image — là-bas tout est pixel
+     16 bits, ici tout est vectoriel et net, dessiné en pleine résolution.
+     Voir le module `jumper` dans le script. -->
+<div class="arena-overlay" id="jumpOverlay" role="dialog" aria-modal="true" aria-labelledby="jumpTitle">
+  <div class="arena-panel glass">
+    <div class="arena-head">
+      <h2 id="jumpTitle">JUMPER</h2>
+      <button class="legal-close" id="jumpClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="jump-stage">
+      <canvas id="jumpCv"></canvas>
+      <div class="jump-hud">
+        <span id="jumpProgress">0%</span>
+        <span id="jumpTime">0:00</span>
+        <span id="jumpFalls">0</span>
+      </div>
+      <div class="jump-card" id="jumpCard" hidden>
+        <div class="jump-card-title" id="jumpCardTitle"></div>
+        <div class="jump-card-sub" id="jumpCardSub"></div>
+        <div class="arena-end-actions" id="jumpActions">
+          <button class="preview-cta" id="jumpGo"></button>
+          <button class="preview-cta preview-cta--secondary" id="jumpAgain" hidden></button>
+          <button class="preview-cta preview-cta--secondary" id="jumpQuit"></button>
+        </div>
+      </div>
+    </div>
+    <div class="legal-hint">
+      <span><span class="key">←</span><span class="key">→</span> <span data-i18n="jumpMove">move</span></span>
+      <span><span class="key wide">space</span> <span data-i18n="jumpJump">charge jump</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
+</div>
+
 <!-- Écran de démarrage : logo posé sur le ruban (position calculée par runStartup) -->
 <div class="startup" id="startup" aria-hidden="true">
   <div class="startup-mark" id="startupMark">
@@ -2323,7 +2394,7 @@ Date : ______<br>
 <tr><td data-label="Traitement">Communications commerciales (nouveautés, drops)</td><td data-label="Données">Adresse e-mail</td><td data-label="Base légale">Consentement, retirable à tout moment</td><td data-label="Conservation">3 ans après le dernier contact ou jusqu'au retrait du consentement</td></tr>
 </tbody>
 </table>
-<p>Le site ne crée pas de compte client et ne dépose aucun traceur (voir <a data-legal-link="cookies">Cookies</a>) ; le contenu du panier n'est conservé qu'en mémoire, le temps de la visite.</p>
+<p>Le site ne crée pas de compte client et ne dépose aucun traceur publicitaire ou de mesure d'audience (voir <a data-legal-link="cookies">Cookies</a>) ; le contenu du panier n'est conservé qu'en mémoire, le temps de la visite. Seule la liste des mini-jeux terminés est conservée dans le navigateur, sans donnée personnelle.</p>
 <h3>Destinataires</h3>
 <p>Les données sont destinées à ${C.brand} et, dans la stricte mesure nécessaire, à ses sous-traitants : prestataire de paiement (${C.payment}), transporteurs (${C.shipping.carriers}), hébergeur (${C.host.name}) et, le cas échéant, prestataire d'e-mailing. Elles ne sont jamais vendues. Certains prestataires peuvent être établis hors de l'Union européenne ; les transferts sont alors encadrés par des garanties appropriées (décision d'adéquation ou clauses contractuelles types de la Commission européenne).</p>
 <h3>Vos droits</h3>
@@ -2335,7 +2406,8 @@ Date : ______<br>
 { id:"cookies", label:"Cookies", title:"Cookies et traceurs", html:`
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
-<p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun stockage local, aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont celles de votre système : aucune ressource n'est chargée depuis un serveur tiers. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont celles de votre système : aucune ressource n'est chargée depuis un serveur tiers.</p>
+<p>Un seul élément est conservé sur votre terminal, dans le stockage local de votre navigateur : <strong>la liste des mini-jeux que vous avez terminés</strong> (clé <code>fp.debloque</code>), qui donne accès aux pièces qu'ils débloquent. Sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Cet élément ne contient aucune donnée personnelle, n'est jamais envoyé à un serveur et ne permet pas de vous suivre d'un site à l'autre ; il relève des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requiert donc pas votre consentement préalable. Vous pouvez l'effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
 <h3>Paramétrage de votre navigateur</h3>
@@ -2511,7 +2583,7 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 <tr><td data-label="Processing">Marketing communications (new releases, drops)</td><td data-label="Data">E-mail address</td><td data-label="Legal basis">Consent, which can be withdrawn at any time</td><td data-label="Retention">3 years after last contact or until consent is withdrawn</td></tr>
 </tbody>
 </table>
-<p>The site does not create customer accounts and does not set any trackers (see <a data-legal-link="cookies">Cookies</a>); the contents of your cart are kept in memory only, for the duration of your visit.</p>
+<p>The site does not create customer accounts and sets no advertising or analytics tracker (see <a data-legal-link="cookies">Cookies</a>); the contents of your cart are kept in memory only, for the duration of your visit. Only the list of completed minigames is kept in your browser, with no personal data.</p>
 <h3>Recipients</h3>
 <p>Data is intended for ${C.brand} and, strictly where necessary, for its processors: payment provider (${C.payment}), carriers (${C.shipping.carriers}), hosting provider (${C.host.name}) and, where applicable, e-mailing provider. It is never sold. Some providers may be established outside the European Union; transfers are then governed by appropriate safeguards (adequacy decision or the European Commission's standard contractual clauses).</p>
 <h3>Your rights</h3>
@@ -2523,7 +2595,8 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
-<p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no local storage, no audience measurement tool and no advertising or social media tracker. Fonts are those of your system: no resource is loaded from a third-party server. This is why no consent banner is displayed.</p>
+<p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are those of your system: no resource is loaded from a third-party server.</p>
+<p>One single item is kept on your device, in your browser's local storage: <strong>the list of minigames you have completed</strong> (key <code>fp.debloque</code>), which grants access to the pieces they unlock. Without it, simply reloading the page would take back a reward you had already earned. It holds no personal data, is never sent to a server and cannot be used to track you across sites; it qualifies as strictly necessary for a service you explicitly requested, and therefore does not require your prior consent. You can erase it at any time by clearing your browser's site data — the reward would then have to be earned again. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
 <h3>Browser settings</h3>
@@ -2558,6 +2631,13 @@ const STRINGS = {
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAdd:"Go to product",
     arenaBack:"Pick again", arenaQuit:"Close",
+    // Mini-jeu « Jumper » (plateforme) et pièce verrouillée
+    jumpReady:"READY?", jumpStart:"Start",
+    jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
+    jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked tee is yours.",
+    jumpSee:"See the item", jumpAgain:"Play again", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
+    locked:"???", lockedHow:"Locked.\nFinish the minigame Jumper to unlock this piece.",
+    lockedPlay:"Play Jumper", onlyOne:"One per person",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -2579,6 +2659,13 @@ const STRINGS = {
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAdd:"Voir l'article",
     arenaBack:"Retour au choix", arenaQuit:"Fermer",
+    // Mini-jeu « Jumper » (plateforme) et pièce verrouillée
+    jumpReady:"PRÊT ?", jumpStart:"Commencer",
+    jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
+    jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"Le t-shirt verrouillé est à vous.",
+    jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
+    locked:"???", lockedHow:"Verrouillé.\nTerminez le mini-jeu Jumper pour débloquer cette pièce.",
+    lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -2721,17 +2808,30 @@ const DATA = [
     {n:"CS:CO HOODIE (ALT)", p:40, d:{en:"400 GSM (100% cotton)\nBalloon Fit, Zip\nBrown\nCustom embroidery on left chest\nGlitter print on right chest\nKillfeed print on right sleeve\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"400 g/m² (100 % coton)\nCoupe ballon, zippé\nMarron\nBroderie personnalisée côté cœur\nImpression pailletée sur la poitrine droite\nImpression killfeed sur la manche droite\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/csco-hoodie-alt.jpg", img2:"products/csco-hoodie-alt-2.jpg", sz:"hoodie"},
     {n:"FISC HOODIE", p:40, d:{en:"COPS WILL NOT GIVE YOU SHIT FOR WEARING THIS IN PUBLIC, I TRIED\n400 GSM (100% cotton)\nBalloon Fit, Zip\nBlack\nCustom embroidery on left chest\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"LES FLICS NE TE DIRONT RIEN SI TU PORTES ÇA EN PUBLIC, J'AI TESTÉ\n400 g/m² (100 % coton)\nCoupe ballon, zippé\nNoir\nBroderie personnalisée côté cœur\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/fisc-hoodie.jpg", img2:"products/fisc-hoodie-2.jpg", sz:"hoodie"},
   ]},
-  // Pièces uniques : rien en vente pour l'instant, l'icône ouvre un panneau
-  // texte (anglais, comme Shipping Info) à la place d'une liste de produits.
-  { name:{en:"Unique Pieces", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"info", items:[],
-    panel:{ n:{en:"Unique Pieces", fr:"Pièces uniques"},
-      d:"No unique pieces for the moment." } },
-  // Provisoire (demande du 15 sept. 2026) : mini-jeu pour departager deux
-  // articles quand on hesite. L'icone lance l'arene, voir le module `arena`.
-  { name:{en:"Versus", fr:"Versus"}, icon:"arena icon.svg", kind:"game", items:[],
-    panel:{ n:{en:"Versus", fr:"Versus"},
+  /* Pièces uniques : une seule pour l'instant, et elle se MÉRITE — finir le
+     mini-jeu Jumper la déverrouille. Elle reste VISIBLE tant qu'elle est
+     verrouillée, nom masqué et bouton qui lance le jeu : une pièce qu'on ne
+     voit pas ne donne envie à personne. `verrou` porte le nom du jeu à
+     gagner, `max` le nombre d'exemplaires par visiteur.
+     Photo à venir : sans `img`, la fiche montre l'initiale et la ligne de
+     liste son nom, comme n'importe quel produit sans visuel. */
+  { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[
+    { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1,
+      d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
+         fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"} },
+  ]},
+  /* Mini-jeux (provisoire, comme le bouton Mobile) : la catégorie tient la
+     liste et chaque ligne est un jeu — Versus départage deux articles,
+     Jumper est un parcours de plateforme dont la récompense est la pièce
+     unique ci-dessus. Le panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
+  { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"arena icon.svg", kind:"game", items:[
+    { n:"Versus", jeu:"versus",
       d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
-         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} } },
+         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} },
+    { n:"Jumper", jeu:"jumper",
+      d:{en:"One level, one flag, a few falls.\nFinish it and the locked tee is yours.",
+         fr:"Un niveau, un drapeau, quelques chutes.\nTerminez-le et le t-shirt verrouillé est à vous."} },
+  ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
   // Contact : trois choses et rien d'autre (demande du 15 sept. 2026) — « DM »,
@@ -2892,6 +2992,37 @@ function applyMood(){
 let activeCat = 0;
 let activeItem = 0;
 let cart = [];
+
+/* Ce que le visiteur a débloqué en jouant (aujourd'hui : le mini-jeu Jumper,
+   qui ouvre l'accès au t-shirt de la catégorie « Unique Items »).
+
+   C'est la SEULE chose que le site écrive sur la machine du visiteur, et il le
+   faut : sans elle, un rechargement de page reprendrait une récompense déjà
+   gagnée — ce qui serait vécu comme une tricherie, et ferait perdre la vente.
+   localStorage plutôt qu'un cookie : la valeur n'a aucune raison de partir
+   dans chaque requête vers le serveur, elle ne regarde que le navigateur.
+   Elle ne contient aucune donnée personnelle, seulement le nom du jeu gagné.
+   La page « Cookies » le déclare ; toute lecture ou écriture est protégée, un
+   navigateur en navigation privée peut refuser l'accès au stockage. */
+const DEBLOQUE = (() => {
+  const CLE = 'fp.debloque';
+  let jeux = new Set();
+  try { const v = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(v)) jeux = new Set(v); } catch (e) {}
+  return {
+    a: (nom) => !nom || jeux.has(nom),          // pas de verrou = toujours accessible
+    ajouter: (nom) => {
+      if (jeux.has(nom)) return;
+      jeux.add(nom);
+      try { localStorage.setItem(CLE, JSON.stringify([...jeux])); } catch (e) {}
+      build();                                   // la liste change : le nom masqué tombe
+      render();
+    },
+  };
+})();
+// Un article verrouillé tant que son jeu n'est pas gagné (voir la catégorie « Unique Items »)
+const verrouille = (item) => !!(item && item.verrou && !DEBLOQUE.a(item.verrou));
+// Exemplaires déjà au panier pour un article, toutes tailles confondues
+const dejaPris = (item) => cart.reduce((n, l) => n + (l.ref === item ? l.qty : 0), 0);
 // Persistent horizontal "camera" offset for the category strip — only
 // nudged when the current selection would otherwise be hidden, so icons
 // already brought into view stay in view (see scrollActiveIntoView).
@@ -3289,6 +3420,23 @@ const sfx = (() => {
     note(t + 0.02, 392, 392, 0.030, 0.55, 'sine', 0.16, 0.30);
     note(t + 0.02, 784, 784, 0.012, 0.45, 'sine', 0.16, 0.30);
   };
+  /* Mini-jeu « Jumper ». Deux sons seulement, et volontairement petits : on les
+     entend des centaines de fois en une partie. Le saut monte avec la charge —
+     on entend donc la force du saut avant de le voir. La chute est son
+     contraire exact : la même note, qui descend, en plus sourd. */
+  api.saut = (force) => {
+    const c = audio(); if (!c) return; const t = at();
+    const f = 420 + 380 * (force || 0);
+    note(t, f, f * 1.9, 0.055, 0.10, 'triangle', 0.002);
+    note(t, f * 2, f * 3.4, 0.014, 0.07, 'sine', 0.002);
+    burst(t, { freq: 1900, q: 1.6, peak: 0.020, attack: 0.001, decay: 0.03, lp: 5000 });
+  };
+  api.chute = () => {
+    const c = audio(); if (!c) return; const t = at();
+    note(t, 320, 90, 0.085, 0.26, 'triangle', 0.004);
+    note(t, 160, 55, 0.055, 0.30, 'sine', 0.004);
+    burst(t, { freq: 420, q: 0.9, peak: 0.055, attack: 0.002, decay: 0.16, sweep: 140, lp: 1400 });
+  };
   /* Validation d'un article : un petit « toc » tactile, plus court et plus doux
      que le clic de défilement. Deux couches seulement — un grain de bruit qui
      donne le contact, une note brève qui donne le « c'est pris ». Il doit se
@@ -3397,7 +3545,7 @@ function mesurerTailles(){
 function openSizePicker(keyboard){
   const cat = DATA[activeCat];
   const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
-  if (!item) return;
+  if (!item || verrouille(item)) return;   // pièce pas encore gagnée : rien à choisir
   clearTimeout(sizeCloseTimer);
   buildSizePills(sizesFor(item));
   mesurerTailles();                                  // après les pastilles : leur hauteur en dépend
@@ -3502,9 +3650,13 @@ function volVersPanier(item){
 function addToCart(size){
   const cat = DATA[activeCat];
   const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
-  if (!item) return;
+  if (!item || verrouille(item)) return;
   // une ligne par produit et taille : un article déjà présent voit sa quantité augmenter
   const line = cart.find(l => l.ref === item && l.size === size);
+  // Pièce unique : un exemplaire par visiteur, toutes tailles confondues. On
+  // s'arrête là plutôt que d'ajouter un deuxième — le bouton reste, mais il ne
+  // fait plus rien, et le panier montre déjà la pièce.
+  if (item.max && dejaPris(item) >= item.max) return;
   if (line) line.qty += 1; else cart.push(Object.assign({}, item, { ref: item, size, qty: 1 }));
   volVersPanier(item);   // la photo s'envole vers le panier
   updateCartCount();
@@ -3519,7 +3671,7 @@ function scheduleSizeClose(){
   clearTimeout(sizeCloseTimer);
   sizeCloseTimer = setTimeout(closeSizePicker, 220);
 }
-addBtn.addEventListener('mouseenter', () => { if (DATA[activeCat].kind === 'shop') openSizePicker(false); });
+addBtn.addEventListener('mouseenter', () => { if (DATA[activeCat].kind === 'shop') openSizePicker(false); }); // openSizePicker écarte lui-même les pièces verrouillées
 addBtn.addEventListener('mouseleave', scheduleSizeClose);
 sizePicker.addEventListener('mouseenter', () => clearTimeout(sizeCloseTimer));
 sizePicker.addEventListener('mouseleave', scheduleSizeClose);
@@ -4351,7 +4503,8 @@ function build(){
         row.title = L(item.n);
         if (item.was){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = T('sale'); row.appendChild(t); }
       } else {
-        row.innerHTML = esc(L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
+        // une pièce encore verrouillée ne dit pas son nom : c'est la surprise
+        row.innerHTML = esc(verrouille(item) ? T('locked') : L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
       }
       row.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -4455,7 +4608,9 @@ function updateHints(){
     show('enter', false); show('info', false); show('back', true, T('hintBack'));
   } else {
     show('browse', true, T('hintBrowse')); show('select', true, T('hintSelect'));
-    show('enter', true, cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
+    // une pièce verrouillée mène au jeu, pas au panier : l'aide doit le dire
+    const verrouIci = cat.kind === 'shop' && verrouille(cat.items[activeItem]);
+    show('enter', true, verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
     show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
@@ -4833,7 +4988,7 @@ function majIconesCachees(){
   });
 }
 
-let lastPreviewCat = -1, previewSwapTimer = null;
+let lastPreviewCat = -1, previewSwapTimer = null, teaserJeu = '';
 // Changement de catégorie : le panneau perd son opacité, puis le nouveau
 // contenu apparaît en la regagnant. Dans une même catégorie, mise à jour directe.
 function updatePreview(){
@@ -4936,8 +5091,11 @@ function fillPreview(){
   // Contact et Shipping Info : pas de sous-menu ni de visuel produit, le
   // contenu vient de cat.panel et s'affiche dès que l'icône est active.
   const isInfo = cat.kind === 'contact' || cat.kind === 'info' || cat.kind === 'game'; // gabarits texte, sans visuel produit
-  const item = isInfo ? cat.panel : cat.items[activeItem];
+  /* Mini-jeux : le contenu vient du JEU choisi dans la liste, pas d'un panneau
+     unique — la catégorie en tient plusieurs depuis qu'ils sont deux. */
+  const item = cat.kind === 'game' ? cat.items[activeItem] : isInfo ? cat.panel : cat.items[activeItem];
   if (!item){ previewEl.classList.remove('show'); return; }
+  const verrou = verrouille(item);   // pièce unique pas encore gagnée : nom masqué, achat impossible
 
   const swatchEl = document.querySelector('.preview-swatch');
   const descEl = document.getElementById('previewDesc');
@@ -4948,7 +5106,18 @@ function fillPreview(){
   // suivante, quand la boîte a enfin une taille.
   const teaserEl = document.getElementById('arenaTeaser');
   teaserEl.hidden = cat.kind !== 'game';
-  if (cat.kind === 'game') requestAnimationFrame(() => arena.apercu());
+  if (cat.kind === 'game'){
+    /* Les deux jeux se partagent la même boîte d'aperçu. Versus se sert des
+       trois calques (décor au gros pixel, vêtements en 3D, effets), Jumper
+       d'un seul : on efface donc le calque 3D pour lui, et on force le
+       repeint quand on passe d'un jeu à l'autre — chacun garde par ailleurs
+       son cache de taille, sinon on repeindrait à chaque pas de la liste. */
+    const jeu = item.jeu || 'versus';
+    const change = teaserJeu !== jeu;
+    teaserJeu = jeu;
+    document.getElementById('teaserGL').style.opacity = jeu === 'versus' ? '1' : '0';
+    requestAnimationFrame(() => { if (jeu === 'versus') arena.apercu(change); else jumper.apercu(change); });
+  }
   if (isInfo) model3d.hide();
   // photo produit si le produit en a une (item.img), sinon l'initiale ;
   // seconde photo (item.img2) révélée au survol
@@ -4968,10 +5137,10 @@ function fillPreview(){
     photo2.removeAttribute('src');
   }
   initial.hidden = !!item.img; // l'initiale ne sert qu'aux produits sans photo
-  initial.textContent = L(item.n)[0];
-  document.getElementById('previewName').textContent = L(item.n);
-  descEl.textContent = L(item.d);
-  descEl.hidden = !item.d;
+  initial.textContent = verrou ? '?' : L(item.n)[0];
+  document.getElementById('previewName').textContent = verrou ? T('locked') : L(item.n);
+  descEl.textContent = verrou ? T('lockedHow') : L(item.d);
+  descEl.hidden = !item.d && !verrou;
   // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
   // Livraison, Versus) affichent tout, sans repli.
   descToggle.hidden = isInfo || !item.d;
@@ -4992,7 +5161,7 @@ function fillPreview(){
     addBtn.textContent = T('instagram');
   } else if (cat.kind === 'info' || cat.kind === 'game'){
     priceEl.hidden = true;
-    addBtn.hidden = cat.kind !== 'game'; // Versus : seul le mini-jeu a un bouton, le reste tient dans le texte
+    addBtn.hidden = cat.kind !== 'game'; // les mini-jeux ont un bouton, les panneaux texte tiennent dans leur texte
     if (cat.kind === 'game') addBtn.textContent = T('play');
   } else {
     priceEl.hidden = false;
@@ -5000,9 +5169,11 @@ function fillPreview(){
       ? `<span class="was">${formatPrice(item.was)}</span>${formatPrice(item.p)}`
       : formatPrice(item.p);
     addBtn.hidden = false;
-    addBtn.textContent = T('add');
-    // « More info » : guide des tailles, si le produit en a un
-    infoBtn.hidden = !item.sz;
+    /* Pièce verrouillée : le prix reste affiché — on doit savoir ce qu'on
+       joue — mais le bouton mène au jeu, pas au panier, et le guide des
+       tailles attend que la pièce soit gagnée. */
+    addBtn.textContent = verrou ? T('lockedPlay') : T('add');
+    infoBtn.hidden = !item.sz || verrou;
     infoBtn.textContent = T('moreInfo');
     // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
     if (sizePicker.classList.contains('open')) buildSizePills(sizesFor(item));
@@ -5079,13 +5250,15 @@ function renderCart(){
       const row = document.createElement('div');
       row.className = 'cart-row';
       const qte = g.tailles.reduce((s, t) => s + t.line.qty, 0);
+      // pièce unique : le « + » s'éteint une fois l'exemplaire pris
+      const plein = !!(g.ref.max && qte >= g.ref.max);
       // prix du produit, toutes tailles ; le détail « 3 × €25 » en petit au-delà d'un exemplaire
       const detail = qte > 1 ? `<span class="cart-row-unit">${qte} × ${formatPrice(g.p)}</span>` : '';
       const pastilles = g.tailles.map(({ line, idx }) => `
             <span class="cart-qty">
               <button class="cart-qty-btn" data-idx="${idx}" data-delta="-1" aria-label="${esc(T('oneLess'))}">−</button>
               <span class="cart-qty-size">${line.size ? esc(line.size) : '·'}<b class="cart-qty-badge">${line.qty}</b></span>
-              <button class="cart-qty-btn" data-idx="${idx}" data-delta="1" aria-label="${esc(T('oneMore'))}">+</button>
+              <button class="cart-qty-btn" data-idx="${idx}" data-delta="1" aria-label="${esc(T('oneMore'))}"${plein ? ' disabled title="' + esc(T('onlyOne')) + '"' : ''}>+</button>
             </span>`).join('');
       row.innerHTML = `
         <div class="cart-row-top">
@@ -5144,8 +5317,16 @@ addBtn.addEventListener('click', ()=>{
     window.open(INSTAGRAM_URL, '_blank');
     return;
   }
-  if (cat.kind === 'game'){ arena.open(); return; } // Versus : le bouton lance le mini-jeu
+  // Mini-jeux : le bouton lance celui qui est choisi dans la liste
+  if (cat.kind === 'game'){
+    const jeu = cat.items[activeItem] && cat.items[activeItem].jeu;
+    if (jeu === 'jumper') jumper.open(); else arena.open();
+    return;
+  }
   if (cat.kind !== 'shop') return;
+  // Pièce verrouillée : le bouton mène au jeu qui la débloque, pas au panier
+  const cible = cat.items[activeItem];
+  if (verrouille(cible)){ if (cible.verrou === 'jumper') jumper.open(); return; }
   // l'ajout passe par le choix d'une taille : le clic (ou un toucher, sans
   // survol) ouvre le sélecteur et le garde ouvert jusqu'à un choix
   openSizePicker(true);
@@ -5284,7 +5465,10 @@ const arena = (() => {
      Relu à chaque ouverture, puisque catalogue.json peut l'avoir changé. ---- */
   function listerArticles(){
     const out = [];
-    DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => out.push({ it, cat })); });
+    // Sans photo, pas de combattant : le duel montre le vêtement en 3D, et la
+    // grille de choix sa vignette. Cela écarte au passage la pièce unique tant
+    // qu'elle n'est pas dessinée.
+    DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => { if (it.img) out.push({ it, cat }); }); });
     return out;
   }
 
@@ -6086,7 +6270,8 @@ const arena = (() => {
     // On revient sur la fiche du jeu, comme on retombe sur la tuile d'une
     // application qu'on vient de quitter — et non sur la catégorie d'avant.
     const ci = DATA.findIndex(c => c.kind === 'game');
-    if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
+    const ii = ci >= 0 ? Math.max(0, DATA[ci].items.findIndex(it => it.jeu === 'versus')) : 0;
+    if (ci >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = ii; render(); }
   }
   /* Le vainqueur : on quitte le jeu et on arrive SUR SA FICHE, dépliée, les
      tailles ouvertes — il ne reste qu'à en choisir une, l'ajout passe
@@ -6135,7 +6320,7 @@ const arena = (() => {
      si ceux-ci disparaissent un jour, l'aperçu prendra simplement les suivants
      au lieu de montrer un produit mort. */
   const teaser = { scene: null, taille: '', decor: null, fente: null };
-  function apercu(){
+  function apercu(force){
     const box = document.getElementById('arenaTeaser');
     if (!box) return;
     const bouts = DATA.filter(c => c.kind === 'shop' && c.items.length);
@@ -6147,7 +6332,7 @@ const arena = (() => {
     if (!r.width) return;
     const k = Math.min(2, window.devicePixelRatio || 1);
     const cle = Math.round(r.width) + 'x' + Math.round(r.height);
-    if (teaser.taille === cle && teaser.scene) return;      // déjà peint à cette taille
+    if (!force && teaser.taille === cle && teaser.scene) return;   // déjà peint à cette taille
     teaser.taille = cle;
     [bc, gc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
     if (!teaser.scene) teaser.scene = model3d.makeScene(gc);
@@ -6251,11 +6436,530 @@ const arena = (() => {
 
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu: apercu };
 })();
-/* ---------------- keyboard nav ---------------- */
+
+/* ============================================================================
+   Mini-jeu « Jumper » — un parcours de plateforme, joué au clavier.
+   (provisoire, comme Versus et le bouton Mobile)
+
+   Trois partis pris, tous demandés :
+   • L'IMAGE ne doit rien avoir en commun avec Versus. Versus peint dans un
+     tampon de 320 px qu'on agrandit au gros pixel ; ici tout est vectoriel et
+     net, tracé en pleine résolution — des formes pleines, des angles arrondis,
+     une palette de crépuscule. Deux jeux, deux époques.
+   • Le parcours est HORIZONTAL : on va toujours vers la droite, même dans les
+     montées, qui sont des escaliers raides et non des puits.
+   • L'esprit de Jump King (on charge son saut, on vise) SANS la punition : on
+     garde le contrôle en l'air, et une chute ne renvoie qu'au dernier point de
+     passage. Le but est qu'on ait envie d'aller au bout, pas qu'on jette la
+     souris.
+
+   Le niveau est écrit en unités logiques dans une fenêtre de 960 × 480 : la
+   difficulté ne dépend donc pas de la taille du navigateur, seule l'échelle
+   change (le canvas est rempli en « cover », sans bandes noires).
+   ============================================================================ */
+const jumper = (() => {
+  const overlay = document.getElementById('jumpOverlay');
+  const cv = document.getElementById('jumpCv');
+  const ctx = cv.getContext('2d');
+  const carte = document.getElementById('jumpCard');
+  const carteT = document.getElementById('jumpCardTitle'), carteS = document.getElementById('jumpCardSub');
+  const btGo = document.getElementById('jumpGo'), btAgain = document.getElementById('jumpAgain'), btQuit = document.getElementById('jumpQuit');
+  const hudP = document.getElementById('jumpProgress'), hudT = document.getElementById('jumpTime'), hudF = document.getElementById('jumpFalls');
+
+  const VW = 960, VH = 480;        // fenêtre logique
+  const GRAV = 2000, RUN = 300, ACC = 2400, FRIC = 2800, AIR = 900;
+  const SAUT_MIN = 520, SAUT_MAX = 860, CHARGE = 0.6; // secondes pour un saut maximal
+  const MORT_Y = 620;              // sous cette ligne, on est tombé
+  const EP = 14, EP_SOL = 90;      // épaisseur d'une plateforme mince / d'un bloc plein
+  const JW = 22, JH = 26;          // le personnage
+
+  /* Le niveau. Tout est en dur et lisible : c'est un parcours dessiné, pas un
+     niveau engendré. Les distances tiennent compte de la portée du saut —
+     275 px en longueur et 185 px en hauteur à pleine charge. */
+  const NIVEAU = {
+    longueur: 8980,
+    // blocs pleins (sol) : [x, sommet, largeur]
+    sols: [[0, 400, 660], [1980, 400, 440], [4620, 400, 620], [8060, 340, 900]],
+    // plateformes minces, franchies par en dessous : [x, sommet, largeur]
+    plates: [
+      [760, 358, 150], [1000, 320, 140], [1230, 286, 130],           // A. prise en main
+      [1470, 300, 110], [1700, 330, 120],                            // B. les écarts s'allongent
+      [2500, 352, 120], [2690, 300, 120], [2880, 248, 120], [3070, 196, 130], // C. escalier
+      [3600, 210, 170],                                              // D. après la plateforme mobile
+      [4380, 300, 180],                                              // E. après les plateformes friables
+      [5320, 342, 110], [5480, 284, 110], [5640, 226, 110], [5800, 168, 110], [5960, 110, 110], // F. la tour
+      [6120, 110, 220],                                              // palier haut
+      [6440, 176, 150], [6680, 242, 150],                            // G. descente
+      [7140, 190, 190],                                              // H. après la mobile verticale
+      [7440, 232, 100], [7650, 206, 100], [7860, 180, 100],          // I. chapelet de sauts précis
+    ],
+    friables: [[3880, 250, 110], [4060, 244, 110], [4240, 272, 110]], // s'effondrent sous le poids
+    mobiles: [
+      { x: 3200, y: 250, w: 150, dx: 260, dy: 0, per: 3.4 },
+      { x: 6920, y: 290, w: 150, dx: 0, dy: -150, per: 2.8 },
+    ],
+    pics: [[2080, 400, 3], [2260, 400, 3], [4720, 400, 3], [4900, 400, 4], [5080, 400, 3], [8320, 340, 3]],
+    checks: [[120, 400], [1700, 330], [2500, 352], [3600, 210], [4380, 300], [6120, 110], [7140, 190], [8100, 340]],
+    fin: { x: 8760, y: 340 },
+  };
+
+  let ouvert = false, etat = 'carte', raf = 0, dernier = 0;
+  let joueur = null, plaques = [], mobiles = [], friables = [];
+  let cam = { x: 0, y: 0 }, vue = { s: 1, ox: 0, oy: 0 };
+  let check = 0, chutes = 0, tempsMs = 0, secousse = 0;
+  const touches = { gauche: false, droite: false, espace: false };
+  // étoiles du fond, tirées une fois pour toutes : elles ne doivent pas
+  // scintiller d'une partie à l'autre
+  const etoiles = (() => {
+    let g = 1234567; const r = () => (g = (g * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    return Array.from({ length: 90 }, () => ({ x: r() * NIVEAU.longueur, y: r() * 360 - 60, t: 0.6 + r() * 1.4 }));
+  })();
+
+  function construire(){
+    plaques = NIVEAU.plates.map(p => ({ x: p[0], y: p[1], w: p[2] }));
+    mobiles = NIVEAU.mobiles.map(m => Object.assign({}, m, { px: m.x, py: m.y, ax: m.x, ay: m.y }));
+    mobiles.forEach(m => plaques.push({ x: m.x, y: m.y, w: m.w, mob: m }));
+    friables = NIVEAU.friables.map(f => ({ x: f[0], y: f[1], w: f[2], usure: 0, chute: 0, py: f[1] }));
+    friables.forEach(f => plaques.push({ x: f.x, y: f.y, w: f.w, fri: f }));
+  }
+  function replacer(){
+    const c = NIVEAU.checks[check];
+    joueur = { x: c[0], y: c[1] - JH / 2 - 1, vx: 0, vy: 0, sol: true, charge: 0, face: 1, support: null, etir: 0 };
+    friables.forEach(f => { f.usure = 0; f.chute = 0; f.py = f.y; });
+    cam.x = Math.max(0, Math.min(NIVEAU.longueur - VW, joueur.x - VW * 0.38));
+    cam.y = Math.max(-80, Math.min(140, joueur.y - 260));
+  }
+
+  /* ---- physique ---- */
+  function relacher(){
+    const j = joueur;
+    if (!j || !j.sol || j.charge <= 0){ if (j) j.charge = 0; return; }
+    const t = j.charge / CHARGE;
+    const dir = (touches.droite ? 1 : 0) - (touches.gauche ? 1 : 0);
+    j.vy = -(SAUT_MIN + (SAUT_MAX - SAUT_MIN) * t);
+    j.vx = dir * RUN * (0.55 + 0.45 * t);
+    j.sol = false; j.support = null; j.charge = 0; j.etir = 1;
+    sfx.saut(t);
+  }
+  function mourir(){
+    chutes++;
+    secousse = 1;
+    sfx.chute();
+    replacer();
+  }
+  function pas(dt){
+    const j = joueur;
+    // 1. les plateformes mobiles avancent AVANT le joueur, et l'emportent
+    mobiles.forEach(m => {
+      m.ax = m.px; m.ay = m.py;
+      const u = (Math.sin(tempsMs / 1000 * Math.PI * 2 / m.per) + 1) / 2;
+      m.px = m.x + m.dx * u; m.py = m.y + m.dy * u;
+    });
+    plaques.forEach(p => { if (p.mob){ p.x = p.mob.px; p.y = p.mob.py; } if (p.fri){ p.y = p.fri.py; } });
+    if (j.support && j.support.mob){ j.x += j.support.mob.px - j.support.mob.ax; j.y += j.support.mob.py - j.support.mob.ay; }
+    // 2. plateformes friables : elles cèdent sous le poids, puis tombent
+    friables.forEach(f => {
+      if (f.chute){ f.chute += dt; f.py += 900 * f.chute * dt; }
+      else if (f.usure > 0.45){ f.chute = 0.0001; }
+    });
+    // 3. charge du saut : on ne court pas en chargeant, c'est ce qui donne sa
+    //    tension au geste. À pleine charge le saut part tout seul, sinon on
+    //    resterait bloqué à attendre sans savoir que c'est plein.
+    const dir = (touches.droite ? 1 : 0) - (touches.gauche ? 1 : 0);
+    if (dir) j.face = dir;
+    if (j.sol && touches.espace){
+      j.charge = Math.min(CHARGE, j.charge + dt);
+      j.vx -= Math.sign(j.vx) * Math.min(Math.abs(j.vx), FRIC * 2 * dt);
+      if (j.charge >= CHARGE) relacher();
+    } else {
+      const a = j.sol ? ACC : AIR;
+      if (dir) j.vx = Math.max(-RUN, Math.min(RUN, j.vx + dir * a * dt));
+      else if (j.sol) j.vx -= Math.sign(j.vx) * Math.min(Math.abs(j.vx), FRIC * dt);
+    }
+    j.vy = Math.min(1400, j.vy + GRAV * dt);
+    // 4. horizontale, puis blocs pleins
+    j.x += j.vx * dt;
+    if (j.x < JW / 2) { j.x = JW / 2; j.vx = 0; }
+    for (const b of NIVEAU.sols){
+      if (j.x + JW / 2 <= b[0] || j.x - JW / 2 >= b[0] + b[2]) continue;
+      if (j.y + JH / 2 <= b[1] + 2 || j.y - JH / 2 >= b[1] + EP_SOL) continue;
+      if (j.vx > 0) j.x = b[0] - JW / 2; else if (j.vx < 0) j.x = b[0] + b[2] + JW / 2;
+      j.vx = 0;
+    }
+    // 5. verticale
+    const basAvant = j.y + JH / 2;
+    j.y += j.vy * dt;
+    const solAvant = j.sol;
+    j.sol = false; j.support = null;
+    for (const b of NIVEAU.sols){
+      if (j.x + JW / 2 <= b[0] || j.x - JW / 2 >= b[0] + b[2]) continue;
+      if (j.vy >= 0 && basAvant <= b[1] + 6 && j.y + JH / 2 >= b[1]){
+        j.y = b[1] - JH / 2; j.vy = 0; j.sol = true;
+      } else if (j.vy < 0 && j.y - JH / 2 < b[1] + EP_SOL && j.y + JH / 2 > b[1] + EP_SOL){
+        j.y = b[1] + EP_SOL + JH / 2; j.vy = 0;   // on se cogne au plafond du bloc
+      }
+    }
+    if (j.vy >= 0){
+      for (const p of plaques){
+        if (p.fri && p.fri.chute) continue;
+        if (j.x + JW / 2 <= p.x || j.x - JW / 2 >= p.x + p.w) continue;
+        // tolérance généreuse : une plateforme qui monte ne doit pas traverser
+        if (basAvant > p.y + 10 || j.y + JH / 2 < p.y) continue;
+        j.y = p.y - JH / 2; j.vy = 0; j.sol = true; j.support = p;
+        if (p.fri) p.fri.usure += dt;
+      }
+    }
+    if (j.sol && !solAvant && j.etir > 0.2) j.etir = -1;   // atterrissage : le personnage s'écrase
+    j.etir += (0 - j.etir) * Math.min(1, dt * 9);
+    // 6. pics et vide
+    for (const s of NIVEAU.pics){
+      const x0 = s[0], x1 = s[0] + s[2] * 22;
+      if (j.x + JW / 2 - 4 > x0 && j.x - JW / 2 + 4 < x1 && j.y + JH / 2 > s[1] - 14 && j.y - JH / 2 < s[1] + 4){ mourir(); return; }
+    }
+    if (j.y > MORT_Y){ mourir(); return; }
+    // 7. points de passage et arrivée
+    for (let i = NIVEAU.checks.length - 1; i > check; i--){
+      if (j.x > NIVEAU.checks[i][0]){ check = i; sfx.select(); break; }
+    }
+    if (j.x > NIVEAU.fin.x) gagner();
+  }
+
+  /* ---- dessin : des formes pleines, des angles arrondis, aucune image ---- */
+  function rr(x, y, w, h, r){   // rectangle arrondi, écrit à la main : roundRect
+    r = Math.min(r, w / 2, h / 2); // n'existe pas partout, et il n'en faut que ça
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  const repere = (f) => ctx.setTransform(vue.s, 0, 0, vue.s, vue.ox - cam.x * f * vue.s, vue.oy - cam.y * f * vue.s);
+  function plateau(x, y, w, h){
+    ctx.fillStyle = 'rgba(8,6,20,0.35)';           // ombre portée, posée plus bas
+    rr(x + 3, y + 7, w, h, 7); ctx.fill();
+    ctx.fillStyle = '#e8ebff';
+    rr(x, y, w, h, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff';                     // arête supérieure, plus claire
+    rr(x + 4, y + 2, w - 8, 3, 1.5); ctx.fill();
+    ctx.fillStyle = 'rgba(80,70,130,0.18)';        // bas plus sombre : le volume
+    rr(x + 4, y + h - 5, w - 8, 3, 1.5); ctx.fill();
+  }
+  function pics(x, y, n){
+    ctx.fillStyle = '#ff6b6b';
+    ctx.beginPath();
+    for (let i = 0; i < n; i++){
+      const x0 = x + i * 22;
+      ctx.moveTo(x0, y); ctx.lineTo(x0 + 11, y - 20); ctx.lineTo(x0 + 22, y);
+    }
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    for (let i = 0; i < n; i++){ const x0 = x + i * 22; ctx.moveTo(x0 + 8, y); ctx.lineTo(x0 + 11, y - 20); ctx.lineTo(x0 + 13, y); }
+    ctx.fill();
+  }
+  function drapeau(x, y, actif, t){
+    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
+    if (actif){                                     // le halo D'ABORD : derrière le drapeau, pas dessus
+      const h = ctx.createRadialGradient(x + 8, y - 44, 2, x + 8, y - 44, 44);
+      h.addColorStop(0, 'rgba(255,255,255,0.22)'); h.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = h;
+      ctx.beginPath(); ctx.arc(x + 8, y - 44, 44, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = actif ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.30)';
+    ctx.fillRect(x - 1.5, y - 54, 3, 54);
+    const flot = actif ? Math.sin(t / 220) * 4 : 0;  // il flotte une fois allumé
+    ctx.fillStyle = actif ? acc : 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, y - 54); ctx.lineTo(x + 30, y - 45 + flot); ctx.lineTo(x + 1.5, y - 36);
+    ctx.closePath(); ctx.fill();
+  }
+  function arrivee(x, y, t){
+    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
+    ctx.save();
+    ctx.globalAlpha = 0.18 + Math.sin(t / 420) * 0.05;
+    ctx.fillStyle = acc;
+    rr(x - 46, y - 190, 92, 190, 46); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#ffffff';
+    rr(x - 30, y - 160, 60, 160, 30); ctx.fill();
+    ctx.fillStyle = acc;
+    rr(x - 18, y - 140, 36, 120, 18); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 15px "Inter", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('★', x, y - 72);
+    ctx.textAlign = 'left';
+  }
+  function perso(t){
+    const j = joueur;
+    const c = j.charge / CHARGE;
+    // écrasement : à la charge on se tasse, à l'envol on s'étire
+    const sy = 1 - c * 0.30 + j.etir * 0.22, sx = 1 + c * 0.22 - j.etir * 0.16;
+    const w = JW * sx, h = JH * sy;
+    const x = j.x - w / 2, y = j.y + JH / 2 - h;
+    ctx.fillStyle = 'rgba(8,6,20,0.30)';
+    ctx.beginPath(); ctx.ellipse(j.x, j.y + JH / 2 + 3, w * 0.55, 4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    rr(x, y, w, h, 7); ctx.fill();
+    ctx.fillStyle = '#231a3a';                       // deux yeux, tournés vers la marche
+    const ox = j.face * 3.2;
+    ctx.beginPath();
+    ctx.ellipse(j.x - 4.5 + ox, y + h * 0.42, 2.1, 2.8 - c * 1.2, 0, 0, 7);
+    ctx.ellipse(j.x + 4.5 + ox, y + h * 0.42, 2.1, 2.8 - c * 1.2, 0, 0, 7);
+    ctx.fill();
+    if (c > 0.02){                                   // jauge de charge, au-dessus
+      const L = 34;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      rr(j.x - L / 2, y - 14, L, 5, 2.5); ctx.fill();
+      ctx.fillStyle = c > 0.97 ? '#ffd166' : '#ffffff';
+      rr(j.x - L / 2, y - 14, L * c, 5, 2.5); ctx.fill();
+    }
+  }
+  function dessiner(t){
+    const r = cv.getBoundingClientRect();
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
+    if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    /* Échelle : la plus PETITE des deux, pour que la fenêtre logique tienne
+       toujours en entier. Sur un canvas large on voit alors davantage de
+       monde à droite et à gauche, jamais moins de hauteur — l'inverse
+       (« cover ») rognait le haut et le bas, et un saut de 185 unités sortait
+       de l'écran. Il n'y a pas de bandes noires pour autant : le ciel et les
+       collines couvrent tout le canvas, pas seulement la fenêtre logique. */
+    vue.s = Math.min(cv.width / VW, cv.height / VH);
+    vue.ox = (cv.width - VW * vue.s) / 2;
+    vue.oy = (cv.height - VH * vue.s) / 2;
+    if (secousse > 0){ vue.ox += (Math.random() - 0.5) * 16 * secousse * vue.s; vue.oy += (Math.random() - 0.5) * 16 * secousse * vue.s; }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const ciel = ctx.createLinearGradient(0, 0, 0, cv.height);
+    ciel.addColorStop(0, '#0b0f2b'); ciel.addColorStop(0.45, '#241a44'); ciel.addColorStop(0.78, '#5b2a4e'); ciel.addColorStop(1, '#9c4a4a');
+    ctx.fillStyle = ciel; ctx.fillRect(0, 0, cv.width, cv.height);
+
+    // largeur et hauteur de monde réellement visibles (le canvas est plus
+    // large que la fenêtre logique dès que le panneau l'est)
+    const larg = cv.width / vue.s, haut = cv.height / vue.s;
+    repere(0.12);                                    // étoiles
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (const e of etoiles){
+      ctx.globalAlpha = 0.25 + 0.4 * Math.abs(Math.sin(t / 2600 + e.x));
+      ctx.fillRect(e.x, e.y, e.t, e.t);
+    }
+    ctx.globalAlpha = 1;
+    // deux rangs de collines, l'un derrière l'autre
+    const collines = (f, col, ray, base) => {
+      repere(f);
+      ctx.fillStyle = col;
+      const x0 = cam.x * f - larg / 2, x1 = x0 + larg * 2;
+      for (let x = Math.floor(x0 / 340) * 340; x < x1; x += 340){
+        ctx.beginPath(); ctx.arc(x, base, ray, Math.PI, 0); ctx.fill();
+      }
+      ctx.fillRect(x0, base, x1 - x0, haut + 400);
+    };
+    collines(0.30, '#2a1b44', 210, 430);
+    collines(0.55, '#3a2150', 150, 470);
+
+    repere(1);
+    // pics, sols, plateformes, points de passage, arrivée
+    for (const s of NIVEAU.pics) pics(s[0], s[1], s[2]);
+    for (const b of NIVEAU.sols) plateau(b[0], b[1], b[2], EP_SOL);
+    for (const p of plaques){
+      if (p.fri && p.fri.chute > 0.9) continue;
+      ctx.save();
+      if (p.fri){
+        if (p.fri.usure > 0.15 && !p.fri.chute){ ctx.translate(Math.sin(t / 28) * 1.6, 0); }  // elle tremble avant de céder
+        ctx.globalAlpha = p.fri.chute ? Math.max(0, 1 - p.fri.chute) : 1;
+      }
+      plateau(p.x, p.y, p.w, EP);
+      if (p.fri){                                    // deux fissures : on voit qu'elle est fragile
+        ctx.fillStyle = 'rgba(60,50,100,0.45)';
+        ctx.fillRect(p.x + p.w * 0.34, p.y + 3, 2, EP - 6);
+        ctx.fillRect(p.x + p.w * 0.62, p.y + 3, 2, EP - 6);
+      }
+      ctx.restore();
+    }
+    NIVEAU.checks.forEach((c, i) => { if (i) drapeau(c[0], c[1], i <= check, t); });
+    arrivee(NIVEAU.fin.x, NIVEAU.fin.y, t);
+    perso(t);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /* ---- boucle et enchaînement ---- */
+  function boucle(now){
+    raf = requestAnimationFrame(boucle);
+    const dt = Math.min(0.033, (now - dernier) / 1000 || 0);
+    dernier = now;
+    if (etat === 'jeu'){
+      tempsMs += dt * 1000;
+      // deux demi-pas : à 30 images par seconde un saut rapide traverserait
+      // une plateforme mince entre deux images
+      pas(dt / 2); if (etat === 'jeu') pas(dt / 2);
+      // caméra : elle suit de loin, avec du retard, et ne sort jamais du niveau
+      const cx = Math.max(0, Math.min(NIVEAU.longueur - VW, joueur.x - VW * 0.38));
+      const cy = Math.max(-80, Math.min(140, joueur.y - 260));
+      cam.x += (cx - cam.x) * Math.min(1, dt * 6);
+      cam.y += (cy - cam.y) * Math.min(1, dt * 4);
+      const pct = Math.round(Math.max(0, Math.min(1, joueur.x / NIVEAU.fin.x)) * 100);
+      hudP.textContent = pct + '%';
+      hudT.textContent = Math.floor(tempsMs / 60000) + ':' + String(Math.floor(tempsMs / 1000) % 60).padStart(2, '0');
+      hudF.textContent = chutes + ' ' + T('jumpFalls');
+    }
+    secousse = Math.max(0, secousse - dt * 3);
+    dessiner(now);
+  }
+  function montrerCarte(titre, sous, principal, rejouer){
+    carteT.textContent = titre;
+    carteS.textContent = sous;
+    btGo.textContent = principal;
+    btAgain.hidden = !rejouer;
+    if (rejouer) btAgain.textContent = rejouer;
+    btQuit.textContent = T('arenaQuit');
+    carte.hidden = false;
+    btGo.focus();
+  }
+  function commencer(){
+    carte.hidden = true;
+    etat = 'jeu';
+    check = 0; chutes = 0; tempsMs = 0;
+    construire(); replacer();
+    dernier = performance.now();
+  }
+  function gagner(){
+    if (etat !== 'jeu') return;
+    etat = 'gagne';
+    DEBLOQUE.ajouter('jumper');       // la pièce unique s'ouvre, et le reste
+    sfx.win();
+    montrerCarte(T('jumpWin'), T('jumpWinSub') + '\n' + T('jumpFalls') + ' : ' + chutes, T('jumpSee'), T('jumpAgain'));
+  }
+  function ouvrir(){
+    if (ouvert) return;
+    ouvert = true;
+    etat = 'carte';
+    construire(); check = 0; chutes = 0; tempsMs = 0; replacer();
+    overlay.classList.add('open');
+    sfx.startup();
+    montrerCarte(T('jumpReady'), T('jumpHow'), T('jumpStart'), null);
+    cancelAnimationFrame(raf);
+    dernier = performance.now();
+    raf = requestAnimationFrame(boucle);
+  }
+  function fermer(){
+    if (!ouvert) return;
+    ouvert = false;
+    cancelAnimationFrame(raf); raf = 0;
+    etat = 'carte';
+    touches.gauche = touches.droite = touches.espace = false;
+    overlay.classList.remove('open');
+    // on revient sur la tuile du jeu, comme en quittant une application
+    const ci = DATA.findIndex(c => c.kind === 'game');
+    const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'jumper') : -1;
+    if (ci >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = Math.max(0, ii); render(); }
+  }
+  function versArticle(){          // « Voir l'article » : la pièce unique, débloquée
+    fermer();
+    const ci = DATA.findIndex(c => c.id === 'unique');
+    if (ci < 0) return;
+    activeCat = ci; activeItem = 0;
+    render();
+    setTimeout(() => ouvrirFiche(false), 220);   // même délai que l'arène : le panneau se remplit d'abord
+  }
+  /* Clavier : le jeu prend TOUTES les touches tant qu'il est ouvert. L'appui
+     et le relâchement comptent autant l'un que l'autre — c'est le relâchement
+     d'Espace qui lance le saut. */
+  function touche(e){
+    if (e.key === 'Escape'){ fermer(); return true; }
+    if (e.key === 'ArrowLeft'){ touches.gauche = true; e.preventDefault(); return true; }
+    if (e.key === 'ArrowRight'){ touches.droite = true; e.preventDefault(); return true; }
+    if (e.key === ' ' || e.key === 'Spacebar'){
+      e.preventDefault();
+      if (etat === 'carte' || etat === 'gagne') return true;  // la carte a ses boutons
+      touches.espace = true;
+      return true;
+    }
+    if (e.key === 'Enter') return false;   // laissé au bouton qui a le focus
+    return true;
+  }
+  function relache(e){
+    if (!ouvert) return;
+    if (e.key === 'ArrowLeft') touches.gauche = false;
+    if (e.key === 'ArrowRight') touches.droite = false;
+    if (e.key === ' ' || e.key === 'Spacebar'){
+      if (touches.espace && etat === 'jeu') relacher();
+      touches.espace = false;
+    }
+  }
+  btGo.addEventListener('click', () => { if (etat === 'gagne') versArticle(); else commencer(); });
+  btAgain.addEventListener('click', commencer);
+  btQuit.addEventListener('click', fermer);
+  document.getElementById('jumpClose').addEventListener('click', fermer);
+  overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
+
+  /* ---- aperçu du panneau : une image fixe, même palette que le jeu ---- */
+  const vig = { taille: '' };
+  function apercu(force){
+    const box = document.getElementById('arenaTeaser');
+    const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
+    if (!box || !bc) return;
+    const r = box.getBoundingClientRect();
+    if (!r.width) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (!force && vig.taille === cle) return;
+    vig.taille = cle;
+    [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
+    const g = bc.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, bc.width, bc.height);
+    fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
+    const W = bc.width, H = bc.height, s = H / 300;
+    const ciel = g.createLinearGradient(0, 0, 0, H);
+    ciel.addColorStop(0, '#0b0f2b'); ciel.addColorStop(0.45, '#241a44'); ciel.addColorStop(0.78, '#5b2a4e'); ciel.addColorStop(1, '#9c4a4a');
+    g.fillStyle = ciel; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.5)';
+    for (let i = 0; i < 26; i++) g.fillRect((i * 97 % 100) / 100 * W, (i * 53 % 40) / 100 * H, 2, 2);
+    const colline = (col, ray, base) => { g.fillStyle = col; for (let x = -ray; x < W + ray; x += ray * 1.7){ g.beginPath(); g.arc(x, base, ray, Math.PI, 0); g.fill(); } g.fillRect(0, base, W, H); };
+    colline('#2a1b44', 90 * s, H * 0.82);
+    colline('#3a2150', 62 * s, H * 0.95);
+    const pl = (x, y, w, h) => { g.fillStyle = 'rgba(8,6,20,0.35)'; g.fillRect(x + 2 * s, y + 5 * s, w, h); g.fillStyle = '#e8ebff'; g.fillRect(x, y, w, h); g.fillStyle = '#fff'; g.fillRect(x + 3 * s, y + 2 * s, w - 6 * s, 2 * s); };
+    pl(W * 0.06, H * 0.74, W * 0.22, 10 * s);
+    pl(W * 0.40, H * 0.60, W * 0.17, 10 * s);
+    pl(W * 0.72, H * 0.46, W * 0.22, 10 * s);
+    // le personnage, en plein saut entre deux plateformes
+    const px = W * 0.345, py = H * 0.50, pw = 17 * s, ph = 22 * s;
+    g.fillStyle = '#fff'; g.fillRect(px - pw / 2, py - ph / 2, pw, ph);
+    g.fillStyle = '#231a3a';
+    g.fillRect(px - 1 * s, py - 3 * s, 3 * s, 4 * s); g.fillRect(px + 4 * s, py - 3 * s, 3 * s, 4 * s);
+    // le drapeau d'arrivée, tout à droite
+    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
+    const fx = W * 0.88, fy = H * 0.46;
+    g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(fx - 1.5 * s, fy - 42 * s, 3 * s, 42 * s);
+    g.fillStyle = acc; g.beginPath(); g.moveTo(fx + 1.5 * s, fy - 42 * s); g.lineTo(fx + 26 * s, fy - 33 * s); g.lineTo(fx + 1.5 * s, fy - 24 * s); g.closePath(); g.fill();
+  }
+
+  /* Contrôle, dans l'esprit de model3d.debug() : l'état courant, et la
+     possibilité de se poser à une abscisse donnée pour vérifier une section
+     sans la rejouer depuis le début. Rien n'est protégé ici — un verrou tenu
+     par le navigateur se contourne de toute façon depuis la console ; c'est
+     une porte de jeu, pas une serrure. */
+  const debug = (x) => {
+    if (x != null && joueur){
+      joueur.x = x; joueur.vx = 0; joueur.vy = 0;
+      for (let i = NIVEAU.checks.length - 1; i >= 0; i--) if (x > NIVEAU.checks[i][0]){ check = i; break; }
+    }
+    return { etat, x: joueur ? Math.round(joueur.x) : 0, y: joueur ? Math.round(joueur.y) : 0,
+             sol: !!(joueur && joueur.sol), charge: joueur ? +joueur.charge.toFixed(2) : 0,
+             check, chutes, ms: Math.round(tempsMs) };
+  };
+
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu: apercu, debug: debug };
+})();
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
-  // Mini-jeu ouvert : il prend toutes les touches (voir arena.key).
+  // Mini-jeu ouvert : il prend toutes les touches (voir arena.key / jumper.key).
   if (arena.isOpen()){ arena.key(e); return; }
+  if (jumper.isOpen()){ jumper.key(e); return; }
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
   if (infoOverlay.classList.contains('open')){
     if (e.key === 'Escape') closeInfo();
@@ -6303,6 +7007,8 @@ window.addEventListener('keydown', (e)=>{
   }
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
 });
+// Jumper a besoin des RELÂCHEMENTS : c'est en lâchant Espace que le saut part.
+window.addEventListener('keyup', (e) => { if (jumper.isOpen()) jumper.up(e); });
 
 // Touche de direction relâchée : la sélection est arrivée, le son mis de côté
 // pendant le défilement part tout de suite (voir sfx.land).
