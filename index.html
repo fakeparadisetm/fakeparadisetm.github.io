@@ -4210,10 +4210,13 @@ let sparklesReady = false;
    coûteux, pour un rendu identique. Le ruban net, lui, reste à pleine
    résolution, comme les étincelles. */
 const GLOW_SCALE = 0.25;
+const RIBBON_SCALE = 0.5; // voir paintRibbon
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
-  canvas.width = sparkleCanvas.width = waveLayer.width = W;
-  canvas.height = sparkleCanvas.height = waveLayer.height = H;
+  canvas.width = sparkleCanvas.width = W;
+  canvas.height = sparkleCanvas.height = H;
+  waveLayer.width = Math.max(1, Math.round(W * RIBBON_SCALE));
+  waveLayer.height = Math.max(1, Math.round(H * RIBBON_SCALE));
   canvasGlow.width = glowLayer.width = Math.max(1, Math.round(W * GLOW_SCALE));
   canvasGlow.height = glowLayer.height = Math.max(1, Math.round(H * GLOW_SCALE));
   if (sparklesReady) seedSparkles(); // le nombre de particules dépend de la largeur
@@ -4273,30 +4276,41 @@ function colorRibbon(rgb){
   sheetStrip = c;
 }
 
-// Hauteur de la spine à l'abscisse x (utilisée aussi par les particules).
-function spineY(x){
-  let y = H * WAVE.y;
-  for (const c of WAVE.spine) y += H * c.amp * Math.sin(x * TAU * c.cycles / W + t * c.speed + c.phase);
+// Hauteur de la spine, dans un repère de largeur w et de hauteur h. Tout le
+// ruban est décrit en proportions : le dessiner dans un repère réduit donne
+// exactement la même forme, en moins de pixels.
+function spineIn(x, w, h){
+  let y = h * WAVE.y;
+  for (const c of WAVE.spine) y += h * c.amp * Math.sin(x * TAU * c.cycles / w + t * c.speed + c.phase);
   return y;
 }
+// Hauteur de la spine à l'écran (utilisée par les particules, qui, elles, sont nettes).
+function spineY(x){ return spineIn(x, W, H); }
 
 function paintRibbon(){
-  wctx.clearRect(0, 0, W, H);
+  // Le ruban est tracé dans un calque réduit (voir RIBBON_SCALE), puis agrandi
+  // en une seule fois. Il est fait de dégradés très doux et d'un halo flouté :
+  // l'agrandissement ne se voit pas, mais le travail est divisé par quatre en
+  // surface et par deux en nombre de tranches. Le repère du calque est utilisé
+  // tel quel, sans mise à l'échelle du contexte : réduire le contexte annule
+  // les chemins rapides du navigateur et coûte plus cher que de ne rien faire.
+  const w = waveLayer.width, h = waveLayer.height;
+  wctx.clearRect(0, 0, w, h);
   wctx.globalCompositeOperation = 'lighter';
   wctx.lineCap = 'round';
   wctx.lineJoin = 'round';
   const step = WAVE.step;
-  const n = Math.ceil(W / step) + 3;
+  const n = Math.ceil(w / step) + 3;
   const sp = new Float32Array(n);
-  for (let i = 0; i < n; i++) sp[i] = spineY((i - 1) * step);
+  for (let i = 0; i < n; i++) sp[i] = spineIn((i - 1) * step, w, h);
   const top = new Float32Array(n), bot = new Float32Array(n);
   for (const sh of SHEETS){
     for (let i = 0; i < n; i++){
       const x = (i - 1) * step;
-      const yT = sp[i] + H * (sh.off + sh.a * Math.sin(x * TAU * sh.c / W + t * sh.s + sh.p));
-      const u = 0.5 + 0.5 * Math.sin(x * TAU * sh.tc / W + t * sh.ts + sh.tp);
+      const yT = sp[i] + h * (sh.off + sh.a * Math.sin(x * TAU * sh.c / w + t * sh.s + sh.p));
+      const u = 0.5 + 0.5 * Math.sin(x * TAU * sh.tc / w + t * sh.ts + sh.tp);
       top[i] = yT;
-      bot[i] = yT + H * sh.thick * (1 - sh.twist + sh.twist * u);
+      bot[i] = yT + h * sh.thick * (1 - sh.twist + sh.twist * u);
     }
     // corps : une tranche de dégradé par colonne, étirée entre les deux bords.
     // Tranches jointives sans lissage : un chevauchement ou un bord adouci
@@ -4311,12 +4325,12 @@ function paintRibbon(){
     wctx.globalAlpha = 1;
     wctx.beginPath();
     for (let i = 0; i < n; i++){ const x = (i - 1) * step; if (i === 0) wctx.moveTo(x, top[i]); else wctx.lineTo(x, top[i]); }
-    wctx.lineWidth = 1.3;
+    wctx.lineWidth = 1.3 * RIBBON_SCALE; // le calque sera agrandi : le trait doit rester fin à l'écran
     wctx.strokeStyle = `rgba(${edgeRgb},${sh.edge})`;
     wctx.stroke();
     wctx.beginPath();
     for (let i = 0; i < n; i++){ const x = (i - 1) * step; if (i === 0) wctx.moveTo(x, bot[i]); else wctx.lineTo(x, bot[i]); }
-    wctx.lineWidth = 1;
+    wctx.lineWidth = 1 * RIBBON_SCALE;
     wctx.strokeStyle = `rgba(${edgeRgb},${sh.edge * 0.4})`;
     wctx.stroke();
   }
@@ -4341,9 +4355,9 @@ function paintBackground(context, w, h){
 
 function paintWaves(){
   paintRibbon();
-  // canvas net
+  // canvas net : le calque réduit est agrandi en une seule passe
   paintBackground(ctx);
-  ctx.drawImage(waveLayer, 0, 0);
+  ctx.drawImage(waveLayer, 0, 0, W, H);
   // halo : le même ruban recoloré (source-in garde sa transparence) dans une
   // version vive de la couleur d'ambiance, puis flouté par le CSS du canvas
   const gw = glowLayer.width, gh = glowLayer.height;
