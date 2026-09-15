@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icone de la piece verrouillee (categorie « Unique Items ») : un cadenas
+       facette, « low poly » — aucune courbe sur le corps, des chanfreins a la
+       place des angles, et deux plis qui se rejoignent au centre comme les
+       aretes d'un maillage. L'anse, haute et etroite, garde les memes epaules
+       chanfreinees : c'est elle qui fait lire « cadenas » et non « coffre »,
+       d'ou ses proportions — une premiere version, anse basse et large sur un
+       corps presque carre, ressemblait a une boite a outils.
+
+       Tout est BLANC : la serrure et les plis sont DECOUPES dans la forme
+       (fill-rule evenodd) et non peints en sombre — le fichier sert de masque
+       pour la lueur de la ligne selectionnee (voir .xmb-ico-glow), et un
+       masque ne lit que l'opacite. -->
+  <g fill="#fff">
+    <!-- l'anse : un U trace d'un seul coup, exterieur puis interieur -->
+    <path d="M158 266 V150 L196 100 H316 L354 150 V266 H306 V164 L292 148 H220 L206 164 V266 Z"/>
+    <!-- le corps + ses creux -->
+    <path fill-rule="evenodd" d="
+      M130 254 H382 L402 288 V404 L380 438 H132 L110 404 V288 Z
+      M110 292 L256 326 L256 338 L110 304 Z
+      M402 292 L256 326 L256 338 L402 304 Z
+      M256 340 a23 23 0 1 0 0 46 a23 23 0 1 0 0-46 Z
+      M245 370 H267 L275 412 H237 Z
+    "/>
+  </g>
+</svg>

@@ -403,17 +403,45 @@
     transition:transform 0.45s cubic-bezier(.2,.8,.2,1), opacity 0.45s ease, color 0.35s ease, text-shadow 0.35s ease;
     will-change:transform;
   }
-  /* Lignes de mini-jeu : l'icône du jeu devant son nom. Taille fixée ici, pas
-     laissée à l'image : la largeur de la ligne est mesurée une fois pour
-     toutes (voir _w dans render), souvent avant que le fichier n'arrive. */
-  .xmb-item.has-icon{display:flex;align-items:center;gap:9px;}
-  .xmb-item .xmb-ico{
-    width:26px;height:26px;flex:0 0 auto;
-    filter:drop-shadow(0 2px 4px rgba(0,0,0,0.55));
-    opacity:0.72;
-    transition:opacity 0.35s ease;
+  /* Lignes à icône (mini-jeux, pièce verrouillée) : MÊME boîte que les
+     aperçus 3D — 88 px, centrée, sans texte — pour que toutes les listes du
+     site se mesurent pareil ; le nom reste dans la fiche et en info-bulle.
+     Et même traitement : l'icône non sélectionnée s'efface et se voile
+     légèrement, la sélectionnée s'allume avec une lueur qui épouse sa forme.
+     La lueur reprend le procédé des icônes de la barre — une copie du glyphe
+     en masque, floutée une seule fois, dont seule l'opacité s'anime : aucun
+     filtre n'est recalculé pendant les déplacements. */
+  .xmb-item.has-icon{
+    width:88px;height:88px;
+    padding:0;
+    font-size:0;line-height:0;
+    display:flex;align-items:center;justify-content:center;
+    overflow:visible;
   }
-  .xmb-item.selected .xmb-ico{opacity:1;}
+  .xmb-item .xmb-ico{
+    position:relative;z-index:1;
+    width:62px;height:62px;
+    filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) blur(0.7px);
+    opacity:0.55;
+    transition:opacity 0.35s ease, filter 0.35s ease;
+  }
+  .xmb-item.selected .xmb-ico{opacity:1;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55));}
+  .xmb-ico-glow{
+    position:absolute;left:50%;top:50%;
+    width:62px;height:62px;
+    transform:translate(-50%,-50%) scale(1.22);
+    filter:blur(6px);
+    opacity:0;
+    transition:opacity 0.35s ease;
+    z-index:0;pointer-events:none;
+  }
+  .xmb-ico-glow i{
+    position:absolute;inset:0;
+    background:rgba(var(--accent-rgb),0.6); /* même intensité que la lueur des icônes de la barre */
+    -webkit-mask:var(--icon) center/contain no-repeat;
+    mask:var(--icon) center/contain no-repeat;
+  }
+  .xmb-item.selected .xmb-ico-glow{opacity:1;}
   .item-column.fast .xmb-item{transition-duration:0.18s;} /* défilement rapide (voir noteStep) */
   .xmb-item:hover{color:var(--white-60);}
   .xmb-item.selected{
@@ -4563,15 +4591,19 @@ function build(){
         row.classList.add('has-3d');
         row.title = L(item.n);
         if (item.was){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = T('sale'); row.appendChild(t); }
-      } else if (item.icon){
-        // mini-jeux : une petite icône devant le nom, dans le style de celles
-        // de la barre. Sa taille est fixée en CSS, donc la largeur de la ligne
-        // se mesure juste même avant que l'image ne soit chargée.
+      } else if (item.icon || verrouille(item)){
+        /* Mini-jeux, et pièce encore verrouillée : une icône à la place du
+           nom, exactement comme un produit montre son aperçu. Le cadenas ne
+           dit pas quelle pièce il garde — c'est la surprise —, donc même
+           l'info-bulle reste muette. */
+        const verrou = verrouille(item);
         row.classList.add('has-icon');
-        row.innerHTML = `<img class="xmb-ico" src="${encodeURI('icons/' + item.icon)}" alt="">` + esc(L(item.n));
+        row.title = verrou ? T('locked') : L(item.n);
+        const u = encodeURI('icons/' + (verrou ? 'lock icon.svg' : item.icon));
+        row.innerHTML = `<span class="xmb-ico-glow"><i style="--icon:url('${u}')"></i></span>`
+                      + `<img class="xmb-ico" src="${u}" alt="">`;
       } else {
-        // une pièce encore verrouillée ne dit pas son nom : c'est la surprise
-        row.innerHTML = esc(verrouille(item) ? T('locked') : L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
+        row.innerHTML = esc(L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
       }
       row.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -4913,17 +4945,19 @@ function render(){
     // 1) état de chaque ligne ; largeur connue d'avance (aperçu 3D) ou mesurée une seule fois
     const place = rows.map((row, ii) => {
       const dist = Math.abs(ii - sel), has3d = row.classList.contains('has-3d');
+      // boîte carrée de 88 px : aperçu 3D d'un produit, ou icône d'un mini-jeu
+      const carre = has3d || row.classList.contains('has-icon');
       row.classList.toggle('selected', ii === sel);
       row.style.opacity = fade(dist, ii > sel);
-      if (!has3d && row._w === undefined) row._w = row.offsetWidth;
-      return { row, has3d, s: scaleFor(dist), op: fade(dist, ii > sel), w: has3d ? ITEM_CSS : row._w, ty: 0 };
+      if (!carre && row._w === undefined) row._w = row.offsetWidth;
+      return { row, has3d, carre, s: scaleFor(dist), op: fade(dist, ii > sel), w: carre ? ITEM_CSS : row._w, ty: 0 };
     });
     let maxW = 0, y = 0;
     place.forEach(p => { maxW = Math.max(maxW, p.w); });
     // 2) placement : la sélection à 0, la suite en dessous, le reste au-dessus de l'icône
     for (let ii = sel; ii < place.length; ii++){
       const p = place[ii];
-      const nudge = ii === sel && !p.has3d ? 4 : 0; // lignes texte : la sélection avance de 4 px ; aperçus 3D : centrés
+      const nudge = ii === sel && !p.carre ? 4 : 0; // lignes texte : la sélection avance de 4 px ; boîtes carrées : centrées
       p.ty = y;
       p.row.style.transform = `translate(${nudge}px, ${y}px) scale(${p.s})`;
       y += ROW_H * p.s;
