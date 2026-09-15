@@ -25,5 +25,6 @@ icons/fakeparadise.ico
 Thumbs.db
 desktop.ini
 
-# Video source de la page Info : gardee en local, plus utilisee par le site
-videos/
+# Sources de travail de la page Info : gardees en local, le site sert les
+# versions web depuis icons/
+pictures/

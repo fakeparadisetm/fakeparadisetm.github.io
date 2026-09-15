@@ -2909,14 +2909,16 @@ const DATA = [
        reste de la texture étant cousu à partir de ses bords. Elle doit être
        recadrée sur la tête seule, sommet du crâne en haut, menton en bas ;
        `cadre` dit à quelles fractions de l'image ces deux-là tombent, et où
-       passe le milieu du visage — [x du milieu, sommet, menton], par défaut
-       [0,50 0,05 0,94]. Sans `visage`, la tête garde son argile et seules ses
-       facettes la modèlent.
-       PROVISOIRE : l'image en place est une image arrêtée de la vidéo du
-       16 sept. 2026, avec ce qu'elle a de gênant — une main devant la bouche,
-       les yeux baissés. Une vraie photo de face déposée sous le même nom la
-       remplace sans toucher au code. */
-    panel:{ n:"FakeParadise™", tete:true, visage:"icons/visage.webp", seule3D:true,
+       passe le milieu du visage, plus un étirement horizontal —
+       [x du milieu, sommet, menton, étirement]. Sans `visage`, la tête garde
+       son argile et seules ses facettes la modèlent.
+       `capuche` : vraie par défaut. Elle couvre tout sauf le visage, donc
+       exactement ce qu'une photo de face ne sait pas montrer — nuque, crâne,
+       cou. `capuche:false` rend la tête nue, utile pour juger la géométrie.
+       La photo vient de `pictures/`, convertie en WebP dans `icons/` ; le
+       cadre est calé sur la barre des lunettes, qui tombe à 49 % du chemin
+       crâne → menton. */
+    panel:{ n:"FakeParadise™", tete:true, visage:"icons/visage.webp", cadre:[0.499, 0.105, 0.971, 1.20], seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -4376,7 +4378,7 @@ const model3d = (() => {
 
      Repère : hauteur crâne→menton = 1, y de +0,50 à −0,50, z vers le
      spectateur, θ = 0 au milieu du visage, θ = ±π à la nuque. */
-  const TETE_M = 20;     // méridiens. Pair, donc θ = 0 tombe sur une arête : le nez a la sienne
+  const TETE_M = 24;     // méridiens. Pair, donc θ = 0 tombe sur une arête : le nez a la sienne
   /* [ y, demi-largeur, profondeur avant, profondeur arrière ]. Proportions
      d'un crâne adulte : 0,72 de large et 0,78 de profond pour 1 de haut,
      ligne des yeux à mi-hauteur, base du nez aux trois quarts. L'axe de
@@ -4417,17 +4419,15 @@ const model3d = (() => {
     let z = c >= 0 ? f * Math.pow(c, 0.75) : -b * (-c);
     if (c > 0){
       z += 0.021 * gauss(y,  0.105, 0.062) * Math.pow(c, 1.5);     // arcade sourcilière
-      z += 0.076 * gauss(y, -0.075, 0.130) * gauss(th, 0, 0.26);   // nez
+      z += 0.085 * gauss(y, -0.075, 0.130) * gauss(th, 0, 0.21);   // nez : plus saillant et plus étroit, pour qu'il fasse une ARÊTE et non un renflement
       z -= 0.017 * gauss(y,  0.010, 0.052) * (gauss(th, 0.33, 0.13) + gauss(th, -0.33, 0.13)); // orbites
+      z += 0.014 * gauss(y, -0.095, 0.078) * (gauss(th, 0.60, 0.16) + gauss(th, -0.60, 0.16)); // pommettes
       z -= 0.013 * gauss(y, -0.318, 0.050) * Math.pow(c, 2.5);     // creux sous la lèvre
       z += 0.027 * gauss(y, -0.452, 0.068) * Math.pow(c, 2.2);     // menton
     }
     return [w * s, y, z];
   }
   const HAUTEUR_TETE = 1.05; // le modèle occupe le cadre comme un vêtement (extension plafonnée à 1,08)
-  /* Maillage à facettes plates. Chaque triangle porte ses trois sommets, sa
-     normale et son éclairage cuit — la même loi que buildMesh, pour que la
-     tête et les vêtements soient éclairés pareil. */
   /* Les oreilles, seule pièce que le tour de potier ne peut pas donner : une
      coquille aplatie, plaquée sur le côté à la hauteur des yeux et reculée.
      Sans elles la forme reste un mannequin de vitrine — c'est l'oreille, pas
@@ -4451,7 +4451,7 @@ const model3d = (() => {
   /* Maillage à facettes plates. Chaque triangle porte ses trois sommets, sa
      normale et son éclairage cuit — la même loi que buildMesh, pour que la
      tête et les vêtements soient éclairés pareil. */
-  function buildTete(){
+  function buildTete(capuche){
     const M = TETE_M, R = TETE_R;
     const ang = mi => (mi / M) * 2 * Math.PI - Math.PI;   // −π à la nuque, 0 au milieu du visage
     const P = [];
@@ -4470,7 +4470,7 @@ const model3d = (() => {
        ceinture pointe donc vers le haut, le produit changeait de signe et la
        bande entière partait à l'envers — un trou noir au cou. Sur l'axe, à sa
        hauteur, l'écart est purement radial et le signe ne dépend plus que du
-       sens de la normale. Les deux calottes et les oreilles, elles, sont
+       sens de la normale. Calottes, oreilles et bordure de capuche sont
        horizontales ou hors axe : elles gardent un repère à elles. */
     const axe = y => [0, y, 0];
     const faces = [];   // { p : trois sommets, uv : leurs trois couples, ref : le point intérieur }
@@ -4511,10 +4511,70 @@ const model3d = (() => {
         faces.push({ p:[pointe, sommet[i], sommet[j]], uv:[uv(pointe), uv(sommet[i]), uv(sommet[j])], ref:centre });
       }
     }
-    // à l'échelle, et centré sur la boîte entière (le cou compte pour un
-    // cinquième de la hauteur : la tête se pose dessus, elle ne flotte pas)
-    const ech = HAUTEUR_TETE / (TETE_ANNEAUX[0][0] - TETE_ANNEAUX[R-1][0]);
-    const cy = (TETE_ANNEAUX[0][0] + TETE_ANNEAUX[R-1][0]) / 2;
+    let yHaut = TETE_ANNEAUX[0][0], yBas = TETE_ANNEAUX[R-1][0];
+    if (capuche){
+      const C = CAPUCHE_ANNEAUX, K = C.length, UV = CAPUCHE_UV;
+      // grille propre au tissu : la bordure ne relie que la capuche à elle-même,
+      // rien ne l'oblige à suivre les méridiens du crâne
+      const MC = CAPUCHE_M, angC = mi => (mi / MC) * 2 * Math.PI - Math.PI;
+      yHaut = C[0][0]; yBas = C[K-1][0];
+      const Q = [];
+      for (let ti = 0; ti < K; ti++){
+        const [y, w, f, b] = C[ti], row = [];
+        for (let mi = 0; mi < MC; mi++) row.push(surfaceTete(y, w, f, b, angC(mi)));
+        Q.push(row);
+      }
+      // la maille est sautée si son CENTRE tombe dans l'ouverture
+      const ouvert = [];
+      for (let ti = 0; ti < K - 1; ti++){
+        const ym = (C[ti][0] + C[ti+1][0]) / 2, row = [];
+        for (let mi = 0; mi < MC; mi++) row.push(dansOuverture((angC(mi) + angC(mi+1)) / 2, ym));
+        ouvert.push(row);
+      }
+      for (let ti = 0; ti < K - 1; ti++) for (let mi = 0; mi < MC; mi++){
+        if (ouvert[ti][mi]) continue;
+        const m2 = (mi + 1) % MC, ref = axe((C[ti][0] + C[ti+1][0]) / 2);
+        const a = Q[ti][mi], b = Q[ti+1][mi], c = Q[ti+1][m2], d = Q[ti][m2];
+        faces.push({ p:[a, b, c], uv:[UV, UV, UV], ref });
+        faces.push({ p:[a, c, d], uv:[UV, UV, UV], ref });
+      }
+      // calottes du tissu : le dessus, et la coupe franche du bas
+      const milQ = ti => { let x=0, y=0, z=0; for (let mi=0; mi<MC; mi++){ x+=Q[ti][mi][0]; y+=Q[ti][mi][1]; z+=Q[ti][mi][2]; } return [x/MC, y/MC, z/MC]; };
+      const qH = milQ(0), qB = milQ(K-1); qH[1] += 0.018;
+      for (let mi = 0; mi < MC; mi++){
+        const m2 = (mi + 1) % MC;
+        faces.push({ p:[qH, Q[0][mi], Q[0][m2]], uv:[UV, UV, UV], ref: axe(qH[1] - 0.15) });
+        faces.push({ p:[qB, Q[K-1][m2], Q[K-1][mi]], uv:[UV, UV, UV], ref: axe(qB[1] + 0.15) });
+      }
+      /* La bordure : l'épaisseur du tissu le long de l'ouverture. Le bord
+         intérieur est le même point ramené de 18 % vers l'axe — juste assez
+         pour passer devant le crâne sans le traverser (le crâne occupe 84 %
+         du rayon de la capuche à hauteur des yeux), et cela recule aussi le
+         bord, comme le ferait un ourlet qui plonge vers le visage.
+         Elle se voit depuis l'INTÉRIEUR de l'ouverture : son repère est donc
+         le symétrique du centre de la face par rapport au centre de
+         l'ouverture, ce qui revient à demander que la normale regarde vers ce
+         centre-là. */
+      const OC = [0, OUVERTURE.yc, 0.55];
+      const rentre = p => [p[0] * 0.82, p[1], p[2] * 0.82];
+      const bordure = (A, B) => {
+        const a = A, b = B, c = rentre(B), d = rentre(A);
+        const gx = (a[0]+b[0]+c[0]+d[0])/4, gy = (a[1]+b[1]+c[1]+d[1])/4, gz = (a[2]+b[2]+c[2]+d[2])/4;
+        const ref = [2*gx - OC[0], 2*gy - OC[1], 2*gz - OC[2]];
+        faces.push({ p:[a, b, c], uv:[UV, UV, UV], ref });
+        faces.push({ p:[a, c, d], uv:[UV, UV, UV], ref });
+      };
+      for (let ti = 0; ti < K - 1; ti++) for (let mi = 0; mi < MC; mi++){
+        if (!ouvert[ti][mi]) continue;
+        const m2 = (mi + 1) % MC, mg = (mi - 1 + MC) % MC;
+        if (!ouvert[ti][mg]) bordure(Q[ti][mi], Q[ti+1][mi]);            // frontière à gauche
+        if (!ouvert[ti][m2]) bordure(Q[ti+1][m2], Q[ti][m2]);            // à droite
+        if (ti === 0 || !ouvert[ti-1][mi]) bordure(Q[ti][m2], Q[ti][mi]); // au-dessus
+        if (ti === K-2 || !ouvert[ti+1][mi]) bordure(Q[ti+1][mi], Q[ti+1][m2]); // au-dessous
+      }
+    }
+    // à l'échelle, et centré sur la boîte entière — capuche comprise quand il y en a une
+    const ech = HAUTEUR_TETE / (yHaut - yBas), cy = (yHaut + yBas) / 2;
     const nV = faces.length * 3;
     const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
     let k = 0;
@@ -4529,11 +4589,11 @@ const model3d = (() => {
       const dehors = nx*gx + ny*gy + nz*gz >= 0;
       const ordre = dehors ? [0,1,2] : [0,2,1];
       if (!dehors){ nx = -nx; ny = -ny; nz = -nz; }
-      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.max(nz, 0), 3);
       /* Écart de clarté entre facettes bien plus marqué que sur les vêtements
          (0,74 + 0,32 là-bas) : une photo posée à plat sur le volume masque le
          facettage, et le modèle redevenait un œuf photographique. C'est la
          lumière, pas la géométrie, qui fait voir le low poly une fois texturé. */
+      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.max(nz, 0), 3);
       const fac = 0.60 + 0.58 * dif, ajout = rim * 0.075;
       for (const i of ordre){
         const o = k * STRIDE;
@@ -4563,21 +4623,68 @@ const model3d = (() => {
      col en bas — sans recopier le moindre trait reconnaissable : une copie
      miroir du visage collerait un second visage sur la nuque. */
   const ATLAS_W = 768, ATLAS_H = 384;
-  const CADRE_DEF = [0.50, 0.05, 0.94];   // [x du milieu du visage, y du sommet du crâne, y du menton], en fractions de la photo
+  /* [x du milieu du visage, y du sommet du crâne, y du menton] en fractions de
+     la photo, plus un ÉTIREMENT horizontal facultatif. Ce quatrième nombre
+     existe parce qu'une photo de visage détouré s'arrête aux joues : elle est
+     plus étroite, rapportée à sa hauteur, que le devant du modèle, et sans lui
+     il resterait de la couture au bord de l'ouverture. Au-delà de 1,3 le
+     visage s'élargit visiblement ; mieux vaut alors rétrécir l'ouverture. */
+  const CADRE_DEF = [0.50, 0.05, 0.94, 1];
   const ARGILE = [214, 176, 150];         // repli sans photo : une argile chaude, le modelé venant des seules facettes
+  /* ---- la capuche ----
+     Elle ne décore pas : elle RÉSOUT. Une photo de face ne dit rien de la
+     nuque, du crâne ni du cou, et tout ce que la couture pouvait en faire
+     était une continuité de teinte, honnête mais rubanée. La capuche couvre
+     exactement ce que la photo ne sait pas : il ne reste à l'air libre que le
+     visage, c'est-à-dire la seule chose dont on ait une vraie image.
+
+     Deuxième surface de révolution, plus ample que le crâne, ouverte devant
+     sur un ovale. Les mailles dont le CENTRE tombe dans l'ovale sont sautées —
+     l'ouverture est donc facettée, à gros pans, et c'est voulu : une découpe
+     lisse jurerait avec le reste. Le long de cette frontière court une
+     bordure, l'épaisseur du tissu, sans quoi on verrait la capuche comme une
+     coquille d'œuf sans tranche. */
+  const CAPUCHE_M = 16;   // MOINS de méridiens que le crâne : du tissu n'a pas de traits à porter, et
+                          // à vingt-quatre la capuche redevenait un cylindre lisse — un pan de 22° se voit
+  const CAPUCHE_ANNEAUX = [
+    [ 0.600, 0.130, 0.020, 0.330],  // le haut, rejeté en arrière : une capuche portée penche vers la nuque
+    [ 0.505, 0.290, 0.215, 0.440],
+    [ 0.360, 0.395, 0.330, 0.520],
+    [ 0.205, 0.436, 0.375, 0.562],
+    [ 0.045, 0.448, 0.392, 0.580],  // le tissu bombe derrière, comme une capuche portée
+    [-0.115, 0.446, 0.390, 0.582],
+    [-0.270, 0.438, 0.378, 0.576],
+    [-0.420, 0.440, 0.364, 0.570],
+    [-0.560, 0.470, 0.352, 0.576],  // sous le menton, le tissu s'écarte
+    [-0.680, 0.560, 0.372, 0.610],  // il retombe sur les épaules
+    [-0.780, 0.700, 0.430, 0.660],  // bas, coupé net
+  ];
+  /* L'ouverture : une ellipse en (angle, hauteur), large de ±54° au plus fort
+     et descendant sous le menton. Le premier essai, à ±35°, ne montrait qu'une
+     fente : il faut qu'on voie le visage ENTIER, joues comprises, sinon ce
+     n'est plus une capuche mais une meurtrière. Le bord HAUT, lui, descend
+     juste au-dessus des sourcils : plus haut, on découvre le front, et avec
+     lui tout ce que la photo porte de mieux caché. */
+  const OUVERTURE = { th0: 0.95, yc: -0.205, ry: 0.355 };
+  const dansOuverture = (th, y) => {
+    const a = th / OUVERTURE.th0, b = (y - OUVERTURE.yc) / OUVERTURE.ry;
+    return a*a + b*b <= 1;
+  };
+  const CAPUCHE_RVB = [34, 34, 40];   // charbon, pas noir : sur du noir pur aucun éclairage ne se lit, et les pans disparaissent
+  const CAPUCHE_UV = [4 / ATLAS_W, 4 / ATLAS_H];  // pastille unie réservée dans un coin de l'atlas (voir atlasTete)
   function atlasTete(photo, cadre){
     const W = ATLAS_W, H = ATLAS_H;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     const out = g.createImageData(W, H), o = out.data;
     const couvert = new Uint8Array(W * H);  // 1 = peint par la photo
-    let pd = null, pw = 0, ph = 0, hx = 0, hy0 = 0, hy1 = 0;
+    let pd = null, pw = 0, ph = 0, hx = 0, hy0 = 0, hy1 = 0, etx = 1;
     if (photo){
       const p = document.createElement('canvas'); pw = p.width = photo.naturalWidth || photo.width; ph = p.height = photo.naturalHeight || photo.height;
       const pg = p.getContext('2d', { willReadFrequently:true }); pg.drawImage(photo, 0, 0);
       pd = pg.getImageData(0, 0, pw, ph).data;
       const c = cadre || CADRE_DEF;
-      hx = c[0] * pw; hy0 = c[1] * ph; hy1 = c[2] * ph;
+      hx = c[0] * pw; hy0 = c[1] * ph; hy1 = c[2] * ph; etx = c[3] || 1;
     }
     /* La photo ne sert que dans les 52° autour de l'axe. Au-delà, la surface
        fuit trop vite : à 68° un pixel de joue s'étalerait sur deux fois et
@@ -4589,7 +4696,7 @@ const model3d = (() => {
         const th = ((i + 0.5) / W) * 2 * Math.PI - Math.PI;
         if (Math.cos(th) <= COS_BORD) continue;
         const [X, Y] = surfaceTete(y, w, f, b, th);
-        const px = Math.round(hx + X * (hy1 - hy0)), py = Math.round(hy0 + (0.50 - Y) * (hy1 - hy0));
+        const px = Math.round(hx + X * (hy1 - hy0) / etx), py = Math.round(hy0 + (0.50 - Y) * (hy1 - hy0));
         if (px < 0 || py < 0 || px >= pw || py >= ph) continue;
         const s = (py * pw + px) * 4;
         if (pd[s+3] < 128) continue;              // photo détourée : hors sujet, rien à coller
@@ -4647,6 +4754,16 @@ const model3d = (() => {
           o[k*4+ch] = s / n;
         }
       }
+    }
+    /* La pastille unie de la capuche, dans le coin de l'atlas et posée EN
+       DERNIER — le flou ci-dessus travaille sur tout ce qui n'est pas du
+       visage, il l'aurait délavée. Le coin (u vers la nuque, v au sommet du
+       crâne) est sous le tissu de toute façon, on ne lui vole rien.
+       Un huitième de texel suffirait, mais huit sur huit met les quatre
+       texels lus par le filtre linéaire bien à l'intérieur. */
+    for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++){
+      const k = (j*W+i)*4;
+      o[k] = CAPUCHE_RVB[0]; o[k+1] = CAPUCHE_RVB[1]; o[k+2] = CAPUCHE_RVB[2]; o[k+3] = 255;
     }
     g.putImageData(out, 0, 0);
     return cv;
@@ -4730,7 +4847,7 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.visage || '') + '|' + (item.cadre || CADRE_DEF).join(',')
+  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.visage || '') + '|' + (item.cadre || CADRE_DEF).join(',') + (item.capuche === false ? '|nu' : '|cap')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -4777,7 +4894,7 @@ const model3d = (() => {
   function prepareTete(item, key){
     const p = (item.visage ? loadPhoto(encodeURI(item.visage)) : Promise.resolve(null)).then(photo => {
       let mesh = meshes.get(key);
-      if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
+      if (!mesh){ mesh = buildTete(item.capuche !== false); meshes.set(key, mesh); }
       const tex = atlasTete(photo, item.cadre);
       const a = { mesh, texF: tex, texB: tex, tourne: true };
       ready.set(key, a);
