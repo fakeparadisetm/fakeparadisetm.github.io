@@ -493,6 +493,38 @@
       0 24px 60px rgba(0,0,0,0.35),
       0 0 40px rgba(var(--accent2-rgb),0.10);
   }
+  /* Lueur de bord : quand une icône de la barre glisse derrière la fiche, elle
+     disparaît complètement et on perd le fil du menu. Son éclat traverse donc
+     le verre — une lueur s'allume sur l'arête gauche, à la hauteur de l'icône,
+     d'autant plus vive qu'elle est enfoncée. Hauteur, position et intensité
+     viennent de updateEdgeGlow() ; la transition est calquée sur celle de la
+     barre d'icônes pour que les deux bougent d'un seul mouvement. */
+  .preview::after{
+    content:'';
+    position:absolute;
+    left:-2px;                                  /* à cheval sur l'arête, la lueur déborde des deux côtés */
+    top:var(--edge-y,50%);
+    height:var(--edge-h,104px);
+    margin-top:calc(var(--edge-h,104px) / -2);  /* centré sur --edge-y, sans transform : top peut s'animer */
+    width:3px;
+    border-radius:3px;
+    opacity:var(--edge-a,0);
+    background:linear-gradient(to bottom,
+      rgba(var(--accent-rgb),0) 0%,
+      rgba(var(--accent-rgb),0.85) 26%,
+      rgba(255,255,255,0.92) 50%,
+      rgba(var(--accent-rgb),0.85) 74%,
+      rgba(var(--accent-rgb),0) 100%);
+    box-shadow:0 0 10px 1px rgba(var(--accent-rgb),0.55), 0 0 26px 6px rgba(var(--accent-rgb),0.22);
+    pointer-events:none;
+    /* margin-top suit height : sans quoi la lueur se décentrerait le temps de
+       l'animation quand une icône est rognée par le haut ou le bas de la fiche */
+    transition:opacity 0.4s cubic-bezier(.2,.8,.2,1),
+               top 0.4s cubic-bezier(.2,.8,.2,1),
+               height 0.4s cubic-bezier(.2,.8,.2,1),
+               margin-top 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+
   /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
      plus grand, contenu centré (marges égales) pour la lecture et la navigation */
   .preview.info-panel{
@@ -3645,18 +3677,23 @@ function noteStep(col){
    qui forçait le navigateur à recalculer la mise en page à chaque ligne et à
    chaque pas de défilement. Les positions des icônes ne dépendent pas des
    transformations (qui, elles, sont animées), donc ce cache reste juste. */
-const geom = { ready: false, cats: [], previewLeft: 0, previewW: 0, previewCat: -1, activeColLeft: 0, activeColW: 0 };
+const geom = { ready: false, cats: [], previewLeft: 0, previewW: 0, previewTop: 0, previewH: 0,
+               previewCat: -1, activeColLeft: 0, activeColW: 0, extra: 0 };
 function measureGeometry(){
   geom.cats = [...categoriesEl.querySelectorAll('.category')].map(el => {
     const col = el.querySelector('.item-column');
-    return { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, colTop: col.offsetTop };
+    const ico = el.querySelector('.cat-icon'); // boîte de l'icône, pour la lueur de bord
+    return { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, colTop: col.offsetTop,
+             icoL: ico.offsetLeft, icoT: ico.offsetTop, icoW: ico.offsetWidth, icoH: ico.offsetHeight };
   });
   measurePreviewBox();
   geom.ready = true;
 }
 function measurePreviewBox(){ // largeur/position du panneau : dépend de la fenêtre et du type de catégorie
   const r = previewEl.getBoundingClientRect();
-  geom.previewLeft = r.left; geom.previewW = r.width; geom.previewCat = activeCat;
+  geom.previewLeft = r.left; geom.previewW = r.width;
+  geom.previewTop = r.top; geom.previewH = r.height;
+  geom.previewCat = activeCat;
 }
 let geomRaf = 0;
 window.addEventListener('resize', () => { // une seule reprise par image pendant un redimensionnement
@@ -3740,6 +3777,7 @@ function render(){
   // décalées par transform (composité, fluide) et non par une marge animée,
   // qui relançait la mise en page à chaque image.
   const extra = activeColW ? Math.max(24, activeColW - 16) : 24;
+  geom.extra = extra; // repris par updateEdgeGlow, qui refait le même calcul de position
   cats.forEach((el, ci) => {
     el.style.transform = `translateX(${ci > activeCat ? extra : 0}px) scale(${ci === activeCat ? 1 : 0.82})`;
   });
@@ -3798,6 +3836,45 @@ function scrollActiveIntoView(){
   const maxShift = prevEl ? prevEl.left + prevEl.w / 2 - 16 : 0;
   camShift = Math.max(0, Math.min(shift, maxShift));
   categoriesEl.style.transform = `translateX(-${camShift}px)`;
+  updateEdgeGlow();
+}
+
+/* Lueur de bord (voir .preview::after) : une icône qui passe derrière la fiche
+   disparaît entièrement, et on perd le fil du menu. Son éclat traverse donc le
+   verre : une lueur s'allume sur l'arête gauche, à sa hauteur, et d'autant plus
+   vive qu'elle est enfoncée.
+
+   Tout se calcule à partir des positions au repos (geom) en refaisant les mêmes
+   transformations que render() vient d'appliquer, jamais en relisant le DOM :
+   juste après avoir posé un transform animé, le navigateur rend encore
+   l'ancienne position, et une lecture par image ramènerait les recalculs de
+   mise en page qu'on a passé la soirée à retirer. La lueur reçoit donc son état
+   d'arrivée, et la transition CSS — la même que celle de la barre — l'y emmène
+   en même temps que les icônes. */
+function updateEdgeGlow(){
+  const eteint = () => previewEl.style.setProperty('--edge-a', '0');
+  if (!geom.previewW || !previewEl.classList.contains('show')) return eteint();
+  const panL = geom.previewLeft, panR = panL + geom.previewW;
+  const panHaut = geom.previewTop + 8, panBas = geom.previewTop + geom.previewH - 8; // 8 px : la lueur reste sur la partie droite de l'arête, hors des coins arrondis
+  let force = 0, centre = 0, hauteur = 0;
+  geom.cats.forEach((g, ci) => {
+    const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
+    const tx = (ci > activeCat ? geom.extra : 0) - camShift;
+    const cx = g.left + g.w / 2, cy = g.top + g.h / 2;      // l'échelle part du centre de la boîte (origine par défaut)
+    const gauche = cx + (g.left + g.icoL - cx) * s + tx;
+    const large = g.icoW * s;
+    if (gauche >= panR) return;                             // passée au-delà de la fiche : hors écran, pas cachée par elle
+    const enfoncee = (gauche + large - panL) / large;       // 0 : elle affleure le bord ; 1 : entièrement dessous
+    if (enfoncee <= 0 || enfoncee <= force) return;
+    const haut = Math.max(panHaut, cy + (g.top + g.icoT - cy) * s);
+    const bas = Math.min(panBas, cy + (g.top + g.icoT + g.icoH - cy) * s);
+    if (bas <= haut) return;                                // l'icône est au-dessus ou en dessous de la fiche
+    force = Math.min(1, enfoncee); centre = (haut + bas) / 2; hauteur = bas - haut;
+  });
+  if (!force) return eteint();
+  previewEl.style.setProperty('--edge-y', Math.round(centre - geom.previewTop) + 'px');
+  previewEl.style.setProperty('--edge-h', Math.round(hauteur) + 'px');
+  previewEl.style.setProperty('--edge-a', force.toFixed(3));
 }
 
 let lastPreviewCat = -1, previewSwapTimer = null;
