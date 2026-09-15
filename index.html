@@ -71,7 +71,10 @@
   #waveCanvasGlow{
     position:fixed;inset:0;width:100%;height:100%;
     z-index:0;
-    filter:blur(22px) saturate(1.1) brightness(1.1);
+    /* le canvas est au quart de la résolution : son agrandissement floute déjà
+       beaucoup, un rayon de 6 px suffit là où il en fallait 22, pour bien moins
+       cher (le flou plein écran était le poste le plus lourd sous Firefox) */
+    filter:blur(6px) saturate(1.1) brightness(1.1);
     opacity:0.55;
     mix-blend-mode:screen;
   }
@@ -4184,10 +4187,18 @@ const glctx = glowLayer.getContext('2d');
 let W,H;
 let BG0 = '#04080c', BG1 = '#0d1f30', GLOW_RGB = '60,110,140', GLOW_VIVID = 'rgb(90,168,194)';
 let sparklesReady = false;
+/* Le halo est dessiné au quart de la résolution de l'écran. Il n'est jamais vu
+   net : le CSS le floute, et l'agrandissement du navigateur le floute déjà
+   lui-même. Cela permet de descendre le flou CSS de 22 à 6 pixels, bien moins
+   coûteux, pour un rendu identique. Le ruban net, lui, reste à pleine
+   résolution, comme les étincelles. */
+const GLOW_SCALE = 0.25;
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
-  canvas.width = canvasGlow.width = sparkleCanvas.width = waveLayer.width = glowLayer.width = W;
-  canvas.height = canvasGlow.height = sparkleCanvas.height = waveLayer.height = glowLayer.height = H;
+  canvas.width = sparkleCanvas.width = waveLayer.width = W;
+  canvas.height = sparkleCanvas.height = waveLayer.height = H;
+  canvasGlow.width = glowLayer.width = Math.max(1, Math.round(W * GLOW_SCALE));
+  canvasGlow.height = glowLayer.height = Math.max(1, Math.round(H * GLOW_SCALE));
   if (sparklesReady) seedSparkles(); // le nombre de particules dépend de la largeur
 }
 resize();
@@ -4198,7 +4209,9 @@ let t = 0;
 const TAU = Math.PI * 2;
 const WAVE = {
   y: 0.55,      // hauteur moyenne du ruban (fraction de la hauteur d'écran)
-  step: 4,      // largeur d'une tranche de rendu (px)
+  step: 8,      // largeur d'une tranche de rendu (px). Le ruban est fait de ~2950
+                // tranches par image à 4 px : c'était le gros du temps de calcul.
+                // À 8 px, il y en a moitié moins pour un rendu identique à l'œil.
   // colonne vertébrale : une grande houle (0,8 longueur d'onde par écran)
   // plus deux ondulations plus courtes. amp en fraction de H, cycles par
   // largeur d'écran, speed en rad/image.
@@ -4293,19 +4306,20 @@ function paintRibbon(){
   wctx.globalAlpha = 1;
 }
 
-function paintBackground(context){
-  const grad = context.createLinearGradient(0, 0, 0, H);
+function paintBackground(context, w, h){
+  if (w === undefined){ w = W; h = H; } // le canvas du halo a sa propre taille, réduite
+  const grad = context.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, BG0);
   grad.addColorStop(0.55, BG0);
   grad.addColorStop(1, BG1);
   context.fillStyle = grad;
-  context.fillRect(0, 0, W, H);
+  context.fillRect(0, 0, w, h);
   // lueur d'horizon en bas d'écran, comme le halo du XMB
-  const glow = context.createRadialGradient(W*0.55, H*1.15, 0, W*0.55, H*1.15, W*0.75);
+  const glow = context.createRadialGradient(w*0.55, h*1.15, 0, w*0.55, h*1.15, w*0.75);
   glow.addColorStop(0, `rgba(${GLOW_RGB},0.28)`);
   glow.addColorStop(1, `rgba(${GLOW_RGB},0)`);
   context.fillStyle = glow;
-  context.fillRect(0, 0, W, H);
+  context.fillRect(0, 0, w, h);
 }
 
 function paintWaves(){
@@ -4315,13 +4329,14 @@ function paintWaves(){
   ctx.drawImage(waveLayer, 0, 0);
   // halo : le même ruban recoloré (source-in garde sa transparence) dans une
   // version vive de la couleur d'ambiance, puis flouté par le CSS du canvas
+  const gw = glowLayer.width, gh = glowLayer.height;
   glctx.globalCompositeOperation = 'source-over';
-  glctx.clearRect(0, 0, W, H);
-  glctx.drawImage(waveLayer, 0, 0);
+  glctx.clearRect(0, 0, gw, gh);
+  glctx.drawImage(waveLayer, 0, 0, gw, gh); // réduction en une seule passe
   glctx.globalCompositeOperation = 'source-in';
   glctx.fillStyle = GLOW_VIVID;
-  glctx.fillRect(0, 0, W, H);
-  paintBackground(ctxGlow);
+  glctx.fillRect(0, 0, gw, gh);
+  paintBackground(ctxGlow, gw, gh);
   ctxGlow.globalCompositeOperation = 'lighter';
   ctxGlow.drawImage(glowLayer, 0, 0);
   ctxGlow.globalAlpha = 0.7;
