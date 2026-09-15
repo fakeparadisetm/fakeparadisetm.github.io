@@ -3124,7 +3124,13 @@ const addBtn = document.getElementById('addBtn');
    de démarrage. Réglable dans Réglages › Son (non mémorisé, comme la langue
    et la devise : le site ne stocke rien). */
 const sfx = (() => {
-  let ctx = null, master = null, noise = null, on = true;
+  /* PROVISOIRE (16 sept. 2026, demande de l'utilisateur : « fais que par défaut
+     le son soit off sur le site. il faudra rétablir ce choix plus tard »).
+     Pour remettre le son à l'allumage : `on = true` ci-dessous, et rien
+     d'autre — tout passe par ce seul drapeau, audio() renvoyant null tant
+     qu'il est faux, si bien qu'aucun contexte audio n'est même créé. Le
+     panneau Réglages › Son montre « Coupé » et suffit à rallumer. */
+  let ctx = null, master = null, noise = null, on = false;
   const api = {};
   // Réglages › Son : couper arrête aussi la nappe de fond, rallumer la relance
   Object.defineProperty(api, 'enabled', {
