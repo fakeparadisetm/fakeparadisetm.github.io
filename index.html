@@ -2743,7 +2743,6 @@ const STRINGS = {
        degrés » en ferait une corvée affichée ; ne rien écrire du tout en
        ferait une pièce morte, que personne ne saurait jamais pouvoir ouvrir. */
     lockedRiddle:"Locked.\nNo game gives this one away. They say a head, spun long enough, ends up letting something go.",
-    lockedWait:"Not yet",
     eggUnlocked:"A unique piece has been unlocked", eggWhere:"Unique Items",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
@@ -2774,7 +2773,6 @@ const STRINGS = {
     locked:"???", lockedHow:"Verrouillé.\nTerminez le mini-jeu Jumper pour débloquer cette pièce.",
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
     lockedRiddle:"Verrouillé.\nAucun jeu ne la donne. Il paraît qu'à force de tourner, une tête finit par lâcher quelque chose.",
-    lockedWait:"Pas encore",
     eggUnlocked:"Une pièce unique s'est déverrouillée", eggWhere:"Pièces uniques",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
@@ -4009,6 +4007,18 @@ const model3d = (() => {
   const rotY = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); };
   const rotX = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); };
   const ident = () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+  /* Rotation autour d'un axe QUELCONQUE (unitaire), formule de Rodrigues. Les
+     deux rotations d'écran ci-dessus ne suffisent pas pour remettre la tête
+     d'aplomb : l'axe qui l'y ramène est horizontal, mais quelconque dans le
+     plan de l'écran — il dépend de la pose où on l'a laissée. */
+  const rotAxe = (x, y, z, t) => {
+    const c = Math.cos(t), s = Math.sin(t), k = 1 - c;
+    return new Float32Array([
+      c + x*x*k,     y*x*k + z*s,   z*x*k - y*s,   0,
+      x*y*k - z*s,   c + y*y*k,     z*y*k + x*s,   0,
+      x*z*k + y*s,   y*z*k - x*s,   c + z*z*k,     0,
+      0, 0, 0, 1]);
+  };
   /* Une orientation qu'on accumule image par image DÉRIVE : au bout de quelques
      minutes les produits de flottants ne décrivent plus tout à fait une
      rotation, et le modèle se met à enfler ou à cisailler. On remet donc la
@@ -4778,8 +4788,9 @@ const model3d = (() => {
      vêtement se regarde de face et de dos, il n'y a rien d'autre à en voir. La
      tête, elle, n'est pas un produit, et la page Info n'est pas une fiche — il
      faut que la main le sente tout de suite. Elle se comporte donc comme le
-     cube du menu d'une console : on la pousse, elle CONTINUE, elle ralentit, et
-     elle ne se redresse jamais toute seule. On peut la retourner complètement.
+     cube du menu d'une console : on la pousse, elle CONTINUE, elle ralentit.
+     On peut la retourner complètement, et elle ne se relève qu'une fois l'élan
+     retombé (voir « retour à la verticale »).
      L'orientation est gardée en MATRICE, accumulée d'un geste à l'autre, et non
      en couple d'angles : des angles d'Euler ont un haut et un bas, et dès que le
      modèle passe par-dessus, tirer vers la droite le fait partir à gauche. Ici
@@ -4811,13 +4822,42 @@ const model3d = (() => {
     cumul += r;
     if (surTour) surTour(cumul);
   }
+  /* ---- retour à la verticale ----
+     Pendant le geste et tant que l'élan dure, la tête part où on l'a poussée,
+     à l'envers s'il le faut. Mais quand l'élan retombe et qu'elle reprend son
+     tour tranquille, elle se remet D'APLOMB : le cou en bas, le crâne en haut.
+     C'est ce qui fait la différence entre un objet qu'on manipule et un objet
+     qu'on a cassé — une tête laissée de travers pour toujours ne se lit pas
+     comme un choix, elle se lit comme un bogue.
+     Le redressement n'entre en jeu qu'une fois l'élan calmé (`CALME`), sans
+     quoi il tirerait contre le geste au moment même où celui-ci fait tout
+     l'effet. L'axe qui y ramène est le produit vectoriel de la verticale du
+     MODÈLE par celle de l'ÉCRAN : il est horizontal, mais quelconque dans le
+     plan de l'écran, d'où `rotAxe`. C'est aussi la rotation la plus COURTE, ce
+     qui veut dire que le lacet — la direction du regard — est préservé : la
+     tête se relève sans se retourner. */
+  const REDRESSE_MS = 900;            // le relèvement prend une seconde et demie environ
+  const CALME = V_MAX * 0.25;         // en dessous, l'élan est retombé et le relèvement peut agir
+  function versLaVerticale(dt, elan){
+    const k = 1 - Math.min(1, elan / CALME);
+    if (k <= 0.001) return;
+    const hx = orient[4], hy = orient[5], hz = orient[6];   // la verticale du modèle, vue de l'écran
+    const d = Math.max(-1, Math.min(1, hy));
+    if (d > 0.99999) return;                                // déjà d'aplomb
+    let ax = -hz, az = hx, l = Math.hypot(ax, az);          // (hx,hy,hz) × (0,1,0)
+    if (l < 1e-6){ ax = 1; az = 0; l = 1; }                 // pile à l'envers : n'importe quel axe horizontal ramène
+    const t = Math.acos(d) * k * (1 - Math.exp(-dt / REDRESSE_MS));
+    orient = redresser(mul(rotAxe(ax / l, 0, az / l, t), orient));
+  }
   function tournerLibre(dt){
     if (saisi){ const f = Math.exp(-dt / SUIVI_MS); vX *= f; vY *= f; return; } // la main mène
     const f = 1 - Math.exp(-dt / AMORTI_MS);
     vX += (0 - vX) * f;
     vY += (vRepos() - vY) * f;
-    compter((Math.abs(vX) + Math.abs(vY - vRepos())) * dt);   // l'élan compte, le tour de repos non
+    const elan = Math.abs(vX) + Math.abs(vY - vRepos());
+    compter(elan * dt);              // l'élan compte pour l'œuf de Pâques, le tour de repos non
     pivoter(vX * dt, vY * dt);
+    versLaVerticale(dt, elan);       // ... et le relèvement non plus : il n'est pas de la main
   }
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
   const shortest = d => Math.atan2(Math.sin(d), Math.cos(d)); // écart angulaire le plus court
@@ -5418,9 +5458,9 @@ const model3d = (() => {
 
 /* ---------------- l'œuf de Pâques de la tête ----------------
    Faire tourner la tête de la page Info assez longtemps ouvre une pièce
-   unique. QUATRE MILLE DEGRÉS, soit onze tours pleins : assez pour qu'on ne
-   tombe pas dessus en passant, assez peu pour que quelqu'un qui joue avec la
-   tête deux minutes finisse par y arriver sans le chercher — c'est là tout
+   unique. SEPT MILLE DEGRÉS, soit une vingtaine de tours pleins : assez pour
+   qu'on ne tombe pas dessus en passant, assez peu pour que quelqu'un qui joue
+   avec la tête finisse par y arriver sans le chercher — c'est là tout
    l'intérêt d'un œuf de Pâques, il doit se trouver, pas se mériter.
    Le compte est tenu par le module 3D, qui ne connaît que des radians ; le
    seuil et la récompense sont ici, du côté de la boutique. Seule la rotation
@@ -5428,7 +5468,7 @@ const model3d = (() => {
    Ce n'est pas un secret gardé : on peut lire le seuil dans le code de la
    page, et c'est très bien — il n'y a rien à protéger, seulement un plaisir à
    ménager pour qui ne lit pas le code. */
-const TOURNE_DEBLOQUE = 4000 * Math.PI / 180;
+const TOURNE_DEBLOQUE = 7000 * Math.PI / 180;
 const eggNote = document.getElementById('eggNote');
 let eggFin = 0;
 function annoncerDeverrouillage(titre, ou){
@@ -6260,11 +6300,13 @@ function fillPreview(){
     /* Pièce verrouillée : le prix reste affiché — on doit savoir ce qu'on
        joue — mais le bouton mène au jeu, pas au panier, et le guide des
        tailles attend que la pièce soit gagnée. Quand l'épreuve n'est PAS un
-       jeu (l'œuf de Pâques), le bouton n'a nulle part où mener : il s'éteint
-       plutôt que de promettre une action qui n'existe pas. */
+       jeu (l'œuf de Pâques), le bouton n'a nulle part où mener : il DISPARAÎT.
+       Un bouton éteint reste une promesse — il occupe la place d'une action et
+       laisse croire qu'elle viendra ; ici il n'y a rien à faire sur cette
+       fiche, seulement un prix à voir et une énigme à lire. */
     const jeuIci = verrou ? jeuDuVerrou(item) : null;
-    addBtn.textContent = verrou ? (jeuIci ? T('lockedPlay') : T('lockedWait')) : T('add');
-    addBtn.disabled = !!(verrou && !jeuIci);
+    addBtn.textContent = verrou ? T('lockedPlay') : T('add');
+    addBtn.hidden = !!(verrou && !jeuIci);
     infoBtn.hidden = !item.sz || verrou;
     infoBtn.textContent = T('moreInfo');
     // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
