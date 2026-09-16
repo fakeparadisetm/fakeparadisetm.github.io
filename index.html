@@ -2023,6 +2023,9 @@
   .dress-bt--3 input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
   .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:999px;}
   .dress-bt--4{background:#9be08a;border-color:#3d7a2e;box-shadow:0 3px 0 #3d7a2e;color:#22451a;}
+  /* Le bouton d'enregistrement vit dans la scène, en bas à gauche, sous le
+     mannequin : ce qu'on emporte, c'est LUI. */
+  .dress-save{position:absolute;left:16px;bottom:14px;z-index:3;}
   .dress-bt--4:hover{box-shadow:0 5px 0 #3d7a2e;}
   .dress-bt--4:active{box-shadow:0 1px 0 #3d7a2e;}
   /* La mention sur la photo : elle doit être LISIBLE, pas discrète. Quelqu'un
@@ -2449,6 +2452,9 @@
     <div class="dress-stage" id="dressStage">
       <canvas id="dressCv"></canvas>
       <div class="dress-titre" id="dressTitre"></div>
+      <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
+           qu'on emporte l'image, pas du portant. -->
+      <button class="dress-bt dress-bt--4 dress-save" id="dressSave"></button>
       <!-- Le portant et les outils : UNE colonne, pour que le cadre bleu ne
            vienne jamais mordre le cadre rose quand la mention s'allonge. -->
       <div class="dress-cote">
@@ -2467,7 +2473,6 @@
             <input type="color" id="dressPeau" value="#c89878" aria-labelledby="dressPeauTxt">
           </label>
           <button class="dress-bt dress-bt--2" id="dressNu"></button>
-          <button class="dress-bt dress-bt--4" id="dressSave"></button>
           <p class="dress-note" id="dressNote"></p>
         </div>
       </div>
@@ -5628,30 +5633,32 @@ const model3d = (() => {
       const gp = p.getContext('2d');
       const k = VISAGE_PIX / MAN_CASE;
       const y = yeuxDe(photo);
-      if (y){
-        /* LES YEUX SUR LES YEUX. On cherche l'agrandissement et le décalage
-           qui amènent les deux yeux de la photo sur les deux du mannequin :
-           deux points de part et d'autre suffisent, et l'échelle reste la
-           même dans les deux sens — un visage étiré en largeur se voit
-           immédiatement, alors qu'un cadrage un peu large ne se voit pas, la
-           case étant déjà remplie de peau. */
-        const e = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]) || 1;
-        const ech = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / e * k;
+      const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+      if (y && iw && ih){
+        /* LES YEUX SUR LES YEUX, ET LA CASE REMPLIE. Les yeux donnent la
+           position et la largeur : l'écartement de la photo vient se poser sur
+           l'écartement du mannequin, et la ligne des yeux sur la sienne. Mais
+           une photo n'a pas les proportions d'une case carrée, et s'en tenir
+           là laisserait des bandes de peau autour du visage.
+           On ÉTIRE donc jusqu'à remplir, séparément dans chaque sens, sans
+           jamais rétrécir en deçà de ce que les yeux demandent : le visage
+           couvre toute la case comme sur la tête du panneau Info, et ses yeux
+           restent exactement où il faut. L'étirement n'est que la différence
+           entre le cadrage de la photo et celui de la case. */
+        const ecart = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]) || 1;
         const mx = (y[0][0] + y[1][0]) / 2, my = (y[0][1] + y[1][1]) / 2;
         const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k;
-        const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
-        gp.drawImage(photo, cx - mx * ech, cy - my * ech, iw * ech, ih * ech);
+        let ex = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / ecart * k;
+        ex = Math.max(ex, cx / mx, (VISAGE_PIX - cx) / (iw - mx));       // couvrir à gauche et à droite
+        const ey = Math.max(cy / my, (VISAGE_PIX - cy) / (ih - my));     // couvrir en haut et en bas
+        gp.drawImage(photo, cx - mx * ex, cy - my * ey, iw * ex, ih * ey);
       } else {
         /* Pas d'yeux reconnaissables : on retombe sur la tache de peau, et à
-           défaut sur un simple placage — on remplit en gardant les
-           proportions et le haut, là où sont les yeux d'ordinaire. */
+           défaut sur la case remplie — comme la tête du panneau Info, qui
+           étire la photo dans sa texture sans rien y chercher. */
         const v = cadrerVisage(photo);
         if (v) gp.drawImage(photo, v.x, v.y, v.l, v.h, 0, 0, VISAGE_PIX, VISAGE_PIX);
-        else {
-          const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
-          const kk = Math.max(VISAGE_PIX / iw, VISAGE_PIX / ih), w = iw * kk, h = ih * kk;
-          gp.drawImage(photo, (VISAGE_PIX - w) / 2, (VISAGE_PIX - h) * 0.32, w, h);
-        }
+        else gp.drawImage(photo, 0, 0, VISAGE_PIX, VISAGE_PIX);
       }
       g.imageSmoothingEnabled = false;
       g.drawImage(p, 0, 0, 128, 128);
@@ -5749,8 +5756,15 @@ const model3d = (() => {
       const wx = p[2][0]-p[0][0], wy = p[2][1]-p[0][1], wz = p[2][2]-p[0][2];
       let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
       const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-      // un triangle est « visage » s'il est sur la tête ET tourné vers le spectateur
-      const haut = p.every(v => v[1] > hy), devant = nz > 0.25;
+      /* Un triangle est « visage » s'il est sur la tête, tourné vers le
+         spectateur, ET DANS LA LARGEUR DU VISAGE. Sans cette troisième
+         condition, les OREILLES — qui regardent devant elles et dépassent la
+         boîte du visage de moitié — prenaient l'image du visage, coordonnée
+         rabotée au bord, et se retrouvaient badigeonnées de la dernière
+         colonne de la photo. Elles reviennent à l'aplat de peau, qui est ce
+         qu'une oreille doit être. */
+      const dansVisage = p.every(v => Math.abs(v[0] / hauteur) <= V.x1);
+      const haut = p.every(v => v[1] > hy) && dansVisage, devant = nz > 0.25;
       const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0);
       const rim = Math.pow(1 - Math.max(nz, 0), 3);
       const fac = 0.74 + 0.34 * dif, ajout = rim * 0.07;
@@ -6913,7 +6927,35 @@ const model3d = (() => {
       if (d > chute){ chute = d; r2 = r; }
     }
     const hy = (r) => y0 + (r + 0.5) / RANGS * (y1 - y0);
-    const cx = (xmax + bord[r2]) / 2, cy = (hy(r1) + hy(r2)) / 2;
+    let cx = (xmax + bord[r2]) / 2;
+    const cy = (hy(r1) + hy(r2)) / 2;
+    /* ---- et si la manche PEND, on vise sa travée ----
+       Les deux coins qu'on vient de prendre sont deux points du bord DROIT :
+       pour une manche étendue sur le côté, ce sont bien le haut et le bas de
+       l'ouverture, et leur milieu en est le centre. Pour une manche qui tombe
+       le long du corps — un rendu porté —, l'ouverture est horizontale : ses
+       deux coins sont l'intérieur et l'extérieur, et le bord droit ne connaît
+       que l'extérieur. Le milieu de deux bords extérieurs tombe forcément
+       dehors, et la main sortait sur la tranche de la manche au lieu d'en
+       sortir par le milieu.
+       À la hauteur visée, on regarde donc si le vêtement forme là une travée
+       SÉPARÉE — une manche détachée du buste — et, si oui, on vise son centre.
+       Une manche encore collée au flanc ne donne pas de travée à part et rien
+       ne change : les t-shirts à plat gardent exactement la visée d'avant. */
+    const fy = (cy - boite.y) / boite.h;
+    if (fy > e.y0 && fy < e.y1){
+      const NB2 = 128, pas2 = (e.x1 - e.x0) / NB2 || 1, dents2 = new Uint8Array(NB2);
+      peigner(P, a.mesh, fy, dents2, e.x0, pas2);
+      for (let k = 0; k < NB2; k++){
+        if (!dents2[k] || (k && dents2[k-1])) continue;
+        let f = k; while (f < NB2 - 1 && dents2[f+1]) f++;
+        const g1 = boite.x + (e.x0 + k * pas2) * boite.l, d1 = boite.x + (e.x0 + (f + 1) * pas2) * boite.l;
+        if (g1 > 0.5 && d1 - g1 < (e.x1 - e.x0) * boite.l * 0.45 && cx >= g1 - 0.01 && cx <= d1 + 0.01){
+          cx = (g1 + d1) / 2;
+          break;
+        }
+      }
+    }
     const v = { angle: Math.atan2(cx - ep[0], cy - ep[1]), dist: Math.hypot(cx - ep[0], cy - ep[1]) };
     vises.set(cle, v);
     return v;
