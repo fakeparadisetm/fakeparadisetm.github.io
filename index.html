@@ -6134,13 +6134,10 @@ const model3d = (() => {
      une autre échelle que l'envergure. Ce qui compte, c'est où finit la
      manche, et que le bras y aille.
 
-     On repère donc les DEUX EXTRÉMITÉS de l'ouverture — le haut et le bas de
-     la bande la plus externe du vêtement, d'un côté — et on vise leur
-     entre-deux. Le plus LARGE, et non le plus éloigné de l'épaule : sur un
-     t-shirt l'ourlet est plus loin que la manche, et viser au plus loin
-     couchait les bras. Le calcul se fait sur les sommets projetés, dans la boîte du
-     corps, donc à l'échelle où la pièce sera vraiment posée. Un seul côté
-     suffit : tout est symétrique.
+     On repère donc les DEUX BOUTS DU POIGNET — le coin haut et le coin bas de
+     l'ouverture — et on vise leur entre-deux. Le calcul se fait sur les sommets
+     projetés, à l'échelle où la pièce sera vraiment posée ; un seul côté
+     suffit, l'autre est son miroir.
 
      C'est ce qui rend la pose automatique pour de bon. Un vêtement qu'on
      ajoute demain — photo à plat ou rendu porté — donne sa mesure tout seul,
@@ -6191,35 +6188,47 @@ const model3d = (() => {
              allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long) };
   };
   const vises = new Map();
+  const RANGS = 96;
   function viser(item, boite){
     const cle = keyOf(item) + '|' + boite.x.toFixed(3) + ',' + boite.y.toFixed(3) + ',' + boite.l.toFixed(3) + ',' + boite.h.toFixed(3);
     if (vises.has(cle)) return vises.get(cle);
     const a = ready.get(keyOf(item));
     if (!a) return null;                       // pas encore mesurable : on réessaiera
     const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh)), ep = BRAS_REPOS.ep, n = a.mesh.verts, e = empreinte(item);
-    const X = new Float64Array(n), Y = new Float64Array(n);
-    let xmax = -9;
+    /* Le BORD DROIT du vêtement, rangée par rangée, à l'échelle où il sera
+       posé. Tout se lit là-dessus : un seul côté suffit, l'autre est son
+       miroir. */
+    const y0 = boite.y + e.y0 * boite.h, y1 = boite.y + e.y1 * boite.h;
+    const bord = new Float64Array(RANGS).fill(-9);
     for (let i = 0; i < n; i++){
-      X[i] = boite.x + P.fx[i] * boite.l; Y[i] = boite.y + P.fy[i] * boite.h;
-      if (X[i] > xmax) xmax = X[i];
+      const x = boite.x + P.fx[i] * boite.l, y = boite.y + P.fy[i] * boite.h;
+      const r = Math.min(RANGS - 1, Math.max(0, Math.floor((y - y0) / (y1 - y0) * RANGS)));
+      if (x > bord[r]) bord[r] = x;
     }
+    for (let r = 1; r < RANGS; r++) if (bord[r] < -8) bord[r] = bord[r-1];
+    let r1 = 0;
+    for (let r = 0; r < RANGS; r++) if (bord[r] > bord[r1]) r1 = r;
+    const xmax = bord[r1];
     /* Y A-T-IL SEULEMENT UNE MANCHE ? Le point le plus large d'un débardeur est
        son propre flanc : viser « l'extrémité » le ferait pointer sur l'ourlet et
-       coucherait les bras le long du corps. On compare donc le point le plus
-       large au bord de l'OURLET — la seule mesure qui, par construction, ignore
-       les manches (voir `empreinte`). Sans écart, il n'y a pas de manche, et le
-       bras reste où il est. Comparer au bas du vêtement ne marchait pas : les
-       manches d'un sweat descendent jusqu'à l'ourlet, et il se déclarait alors
-       sans manches. */
-    const flanc = boite.x + e.o1 * boite.l;
-    if (xmax - flanc < 0.03){ vises.set(cle, null); return null; }
-    /* LES DEUX EXTRÉMITÉS de l'ouverture : les sommets de la bande la plus
-       externe, le plus haut et le plus bas. Leur entre-deux est le centre de la
-       manche, et c'est là que le bras doit pointer. */
-    const BANDE = 0.05;
-    let b0 = 9, b1 = -9;
-    for (let i = 0; i < n; i++) if (X[i] >= xmax - BANDE){ if (Y[i] < b0) b0 = Y[i]; if (Y[i] > b1) b1 = Y[i]; }
-    const cx = xmax - BANDE / 2, cy = (b0 + b1) / 2;
+       coucherait les bras le long du corps. On compare donc au bord de
+       l'OURLET — la seule mesure qui, par construction, ignore les manches. */
+    if (xmax - (boite.x + e.o1 * boite.l) < 0.03){ vises.set(cle, null); return null; }
+    /* LES DEUX BOUTS DU POIGNET. Le premier est le point le plus large : le
+       coin haut de l'ouverture. Le second est le coin bas, et il ne se trouve
+       PAS dans la même colonne — l'ouverture d'une manche descend vers
+       l'intérieur, en biais. On le prend là où le bord droit CHUTE le plus vite
+       en descendant : c'est exactement l'endroit où la manche s'arrête et où le
+       flanc reprend. Ne chercher que la colonne la plus large donnait un milieu
+       trop haut et trop dehors, et le bras se relevait de treize degrés au lieu
+       de rester où il est. */
+    let r2 = r1, chute = 0;
+    for (let r = r1 + 1; r < RANGS; r++){
+      const d = bord[r-1] - bord[r];
+      if (d > chute){ chute = d; r2 = r; }
+    }
+    const hy = (r) => y0 + (r + 0.5) / RANGS * (y1 - y0);
+    const cx = (xmax + bord[r2]) / 2, cy = (hy(r1) + hy(r2)) / 2;
     const v = { angle: Math.atan2(cx - ep[0], cy - ep[1]), dist: Math.hypot(cx - ep[0], cy - ep[1]) };
     vises.set(cle, v);
     return v;
