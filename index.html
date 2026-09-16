@@ -707,7 +707,7 @@
      qui s'arrêterait net juste au-dessus de lui tracerait un trait en travers
      du panneau et lui volerait la vedette : elle s'éteint donc AVANT, en
      fondu. L'arrondi du bas ne se voit plus — il n'a plus rien à border. */
-  .preview:not(.gallery) .slide-edge{
+  .preview:not(.gallery) .slide-edge::before{
     -webkit-mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
     mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
   }
@@ -743,16 +743,38 @@
      anciennes flèches. Invisibles au repos, elles s'allument sous la souris
      pour dire de quel côté on va. Elles se mesurent sur `.gallery-zone`, donc
      elles touchent les arêtes latérales et suivent l'arrondi du haut. */
+  /* LA ZONE SENSIBLE N'EST PAS LA LUEUR. Depuis que la lueur va d'une arête à
+     l'autre du panneau, prendre le bouton lui-même comme zone de survol
+     l'allumait dès qu'on approchait la souris du panneau, y compris bien
+     au-dessus ou bien en dessous de l'image — alors qu'avant elle ne
+     s'allumait qu'en allant au BORD du visuel.
+     Le bouton redevient donc une bande étroite, à la hauteur de l'image, et
+     c'est son `::before` qui peint la lueur en grand : elle remonte jusqu'au
+     coin arrondi du haut et redescend jusqu'en bas, que la souris n'y aille
+     jamais. Le geste retrouve sa taille d'avant, l'image garde la sienne. */
   .slide-edge{
-    position:absolute;top:0;bottom:0;
-    width:24%;
-    padding:0;border:none;
-    background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
+    position:absolute;
+    top:var(--pad);bottom:0;
+    width:16%;
+    padding:0;border:none;background:none;
     opacity:0;
     cursor:pointer;
     transition:opacity 0.22s ease;
     z-index:3;
   }
+  /* Repliée, la galerie descend jusqu'à l'arête : l'image s'arrête une marge
+     plus haut, et la zone sensible avec elle. */
+  .preview.gallery .slide-edge{bottom:var(--pad);}
+  .slide-edge::before{
+    content:'';
+    position:absolute;
+    /* elle DÉBORDE vers l'intérieur : la bande sensible fait 16 % de large, la
+       lueur en fait la moitié de plus — soit les 24 % qu'elle a toujours eus. */
+    top:calc(-1 * var(--pad));bottom:0;left:0;right:-50%;
+    background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
+    pointer-events:none;
+  }
+  .preview.gallery .slide-edge::before{bottom:calc(-1 * var(--pad));}
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
   .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
