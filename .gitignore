@@ -29,6 +29,10 @@ desktop.ini
 # versions web depuis icons/
 pictures/
 
+# Sources du salon d'essayage : les rendus en pleine resolution, dont le site
+# ne sert que les reductions posees a cote d'eux dans dressup/
+dressup/sources/
+
 # Modele source de la tete de la page Info : converti une fois et fige dans
 # index.html, le fichier lui-meme ne sert pas au site
 3Dmodels/

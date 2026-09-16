@@ -5413,7 +5413,8 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => item.mannequin ? 'mannequin|' + (item.visage || '')
+  const keyOf = item => item.ajuste ? item.ajuste          // copie deformee, deja nommee (voir ajuster)
+    : item.mannequin ? 'mannequin|' + (item.visage || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -5940,6 +5941,65 @@ const model3d = (() => {
     });
   };
 
+  /* Les sommets du maillage, projetés comme au rendu, en fractions de la
+     boîte : c'est le repère commun à tout ce qui suit — empreinte, silhouette
+     ligne par ligne, et ajustement au corps. */
+  function projeter(mesh){
+    const M = mul(PVrow, mul(rotX(BASCULE), ident())), d = mesh.data, n = mesh.verts;
+    const fx = new Float32Array(n), fy = new Float32Array(n);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (let i = 0; i < n; i++){
+      const x = d[i*STRIDE], y = d[i*STRIDE+1], z = d[i*STRIDE+2];
+      const w = M[3]*x + M[7]*y + M[11]*z + M[15];
+      const px = (M[0]*x + M[4]*y + M[8]*z + M[12]) / w, py = (M[1]*x + M[5]*y + M[9]*z + M[13]) / w;
+      fx[i] = (px + 1) / 2; fy[i] = (1 - py) / 2;     // y vers le bas, comme à l'écran
+      if (fx[i] < x0) x0 = fx[i]; if (fx[i] > x1) x1 = fx[i];
+      if (fy[i] < y0) y0 = fy[i]; if (fy[i] > y1) y1 = fy[i];
+    }
+    return { fx, fy, x0, x1, y0, y1 };
+  }
+  /* Le peigne : à la hauteur `li`, quelles dents le maillage couvre-t-il ?
+     On coupe chaque triangle de la face avant par la ligne et on marque son
+     abscisse — un nuage de sommets ne dirait pas où sont les TROUS (entre une
+     manche et le flanc, entre deux jambes), des arêtes si. */
+  function peigner(P, mesh, li, dents, xa, pas){
+    const NB = dents.length, idx = mesh.index, fx = P.fx, fy = P.fy;
+    dents.fill(0);
+    for (let t = 0; t + 2 < mesh.nFront; t += 3){
+      const p = idx[t], q = idx[t+1], s = idx[t+2], ya = fy[p], yb = fy[q], yc = fy[s];
+      if (Math.min(ya, yb, yc) > li || Math.max(ya, yb, yc) < li) continue;
+      let a0 = 1e9, a1 = -1e9, u;
+      if ((ya - li) * (yb - li) <= 0 && ya !== yb){ u = fx[p] + (fx[q] - fx[p]) * (li - ya) / (yb - ya); if (u < a0) a0 = u; if (u > a1) a1 = u; }
+      if ((yb - li) * (yc - li) <= 0 && yb !== yc){ u = fx[q] + (fx[s] - fx[q]) * (li - yb) / (yc - yb); if (u < a0) a0 = u; if (u > a1) a1 = u; }
+      if ((yc - li) * (ya - li) <= 0 && yc !== ya){ u = fx[s] + (fx[p] - fx[s]) * (li - yc) / (ya - yc); if (u < a0) a0 = u; if (u > a1) a1 = u; }
+      if (a1 < a0) continue;
+      const g = Math.max(0, Math.floor((a0 - xa) / pas)), d = Math.min(NB - 1, Math.floor((a1 - xa) / pas));
+      for (let k = g; k <= d; k++) dents[k] = 1;
+    }
+  }
+  // la travée qui contient l'axe, et l'étendue totale : [début, fin, tout début, tout fin]
+  /* La travée qui porte le CORPS, et l'étendue totale — quatre indices de
+     dents. Le corps se lit au nombre de travées, et non à celle qui contient
+     l'axe : UNE seule, c'est tout le corps ; DEUX, ce sont deux jambes ou deux
+     poignets, et le corps c'est les deux ensemble ; TROIS, c'est un buste
+     entre deux manches, et seule celle du milieu compte. Se fier à l'axe seul
+     faisait mesurer un caleçon sur une seule jambe — l'échancrure de
+     l'entrejambe tombe pile au milieu — et le posait de travers. */
+  function travee(dents, axe0){
+    const NB = dents.length;
+    let n = 0, e0 = -1, e1 = -1, g = -1, d = -1;
+    const c = Math.max(0, Math.min(NB - 1, axe0));
+    for (let k = 0; k < NB; k++){
+      if (!dents[k] || (k && dents[k-1])) continue;
+      let f = k; while (f < NB - 1 && dents[f+1]) f++;
+      n++; if (e0 < 0) e0 = k; e1 = f;
+      if (g < 0 && (k <= c && c <= f)){ g = k; d = f; }   // celle qui porte l'axe
+    }
+    if (!n) return null;
+    if (n === 2 || g < 0){ g = e0; d = e1; }
+    return [g, d, e0, e1];
+  }
+
   /* ---- empreinte : la place que PREND un modèle dans sa boîte ----
      Chaque photo de vêtement est normalisée sur sa SURFACE (voir AREA_UNIT),
      ce qui égalise la quantité de tissu mais pas la silhouette : un t-shirt
@@ -5947,77 +6007,209 @@ const model3d = (() => {
      un sweat 0,90 × 0,68. Les poser tous avec la même boîte, c'est les poser
      tous à une taille différente — c'est ce qui laissait le buste à nu dans le
      salon d'essayage. On mesure donc, une fois par article, ce que le modèle
-     couvre réellement à l'écran : on projette ses sommets avec la matrice du
-     rendu, rien de plus. Quelques centaines de multiplications, mises en cache
-     avec le maillage.
+     couvre réellement à l'écran.
 
-     `ourlet` : la largeur du corps du vêtement en bas, manches exclues (voir
-     plus bas). C'est la seule mesure qui dise quelque chose du buste — la
-     largeur totale, elle, ne distingue pas un débardeur « étroit parce que le
-     corps est étroit » d'un t-shirt « large parce que les manches sont
-     écartées ». */
+     `ourlet` : la largeur du corps du vêtement en bas, manches exclues. C'est
+     la seule mesure qui dise quelque chose du buste — la largeur totale, elle,
+     ne distingue pas un débardeur « étroit parce que le corps est étroit »
+     d'un t-shirt « large parce que les manches sont écartées ». On la prend
+     sur la TRAVÉE DU MILIEU du cinquième inférieur, ligne par ligne, puis on
+     en garde la MÉDIANE : la ligne du haut a parfois les manches encore
+     collées au corps, celles du bas ne sont qu'un ourlet qui se referme.
+     Ligne par ligne et non en bloc, sinon les lignes réunies rebouchent le
+     trou entre la manche et le flanc, et un sweat se mesure sur ses poignets. */
   const empreintes = new Map();
   function empreinte(item){
     const cle = keyOf(item);
     if (empreintes.has(cle)) return empreintes.get(cle);
     const a = ready.get(cle);
     if (!a) return null;                       // pas encore prêt : on remesurera
-    const M = mul(PVrow, mul(rotX(BASCULE), ident())), d = a.mesh.data, n = a.mesh.verts;
-    const fx = new Float32Array(n), fy = new Float32Array(n);
-    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-    for (let i = 0; i < n; i++){
-      const x = d[i*STRIDE], y = d[i*STRIDE+1], z = d[i*STRIDE+2];
-      const w = M[3]*x + M[7]*y + M[11]*z + M[15];
-      const px = (M[0]*x + M[4]*y + M[8]*z + M[12]) / w, py = (M[1]*x + M[5]*y + M[9]*z + M[13]) / w;
-      fx[i] = (px + 1) / 2; fy[i] = (1 - py) / 2;     // fractions de la boîte, y vers le bas
-      if (fx[i] < x0) x0 = fx[i]; if (fx[i] > x1) x1 = fx[i];
-      if (fy[i] < y0) y0 = fy[i]; if (fy[i] > y1) y1 = fy[i];
-    }
-    /* L'ourlet : la largeur du CORPS en bas, manches exclues. On balaie le
-       cinquième inférieur de la silhouette ligne par ligne — c'est là que les
-       manches se détachent du corps — et on ne garde de chaque ligne que la
-       TRAVÉE DU MILIEU. Ligne par ligne et non en bloc : réunies, les lignes
-       rebouchent le trou entre la manche et le flanc, et le vêtement se
-       mesure à nouveau sur ses poignets.
-       De chaque triangle de la face avant on prend l'abscisse où il coupe la
-       ligne : un nuage de sommets ne dirait pas où sont les trous, des arêtes
-       si. Puis la MÉDIANE des travées, pas la plus large : la ligne du haut
-       peut encore avoir les manches collées au corps, celles du bas ne sont
-       qu'un ourlet arrondi qui se referme. */
+    const P = projeter(a.mesh), x0 = P.x0, x1 = P.x1, y0 = P.y0, y1 = P.y1;
     const bas = y1 - (y1 - y0) / 5, NB = 128, NR = 21;
-    const pas = (x1 - x0) / NB || 1, dents = new Uint8Array(NB), idx = a.mesh.index;
-    const travees = [];
+    const pas = (x1 - x0) / NB || 1, dents = new Uint8Array(NB), larges = [];
     for (let r = 0; r < NR; r++){
-      const li = bas + (y1 - bas) * r / (NR - 1);
-      dents.fill(0);
-      for (let t = 0; t + 2 < a.mesh.nFront; t += 3){
-        const p = idx[t], q = idx[t+1], s = idx[t+2], ya = fy[p], yb = fy[q], yc = fy[s];
-        if (Math.min(ya, yb, yc) > li || Math.max(ya, yb, yc) < li) continue;
-        let a0 = 1e9, a1 = -1e9, u;
-        if ((ya - li) * (yb - li) <= 0 && ya !== yb){ u = fx[p] + (fx[q] - fx[p]) * (li - ya) / (yb - ya); if (u < a0) a0 = u; if (u > a1) a1 = u; }
-        if ((yb - li) * (yc - li) <= 0 && yb !== yc){ u = fx[q] + (fx[s] - fx[q]) * (li - yb) / (yc - yb); if (u < a0) a0 = u; if (u > a1) a1 = u; }
-        if ((yc - li) * (ya - li) <= 0 && yc !== ya){ u = fx[s] + (fx[p] - fx[s]) * (li - yc) / (ya - yc); if (u < a0) a0 = u; if (u > a1) a1 = u; }
-        if (a1 < a0) continue;
-        const g = Math.max(0, Math.floor((a0 - x0) / pas)), dd = Math.min(NB - 1, Math.floor((a1 - x0) / pas));
-        for (let k = g; k <= dd; k++) dents[k] = 1;
-      }
-      let c = NB >> 1;
-      while (c < NB && !dents[c]) c++;          // le milieu de la ligne peut tomber dans un trou
-      if (c >= NB) continue;
-      let ga = c, dt = c;
-      while (ga > 0 && dents[ga-1]) ga--;
-      while (dt < NB - 1 && dents[dt+1]) dt++;
-      travees.push([(dt + 1 - ga) * pas, x0 + (ga + dt + 1) / 2 * pas]);
+      peigner(P, a.mesh, bas + (y1 - bas) * r / (NR - 1), dents, x0, pas);
+      const t = travee(dents, NB >> 1);
+      if (t) larges.push([(t[1] + 1 - t[0]) * pas, x0 + (t[0] + t[1] + 1) / 2 * pas]);
     }
     let o0 = x0, o1 = x1;                       // silhouette illisible : la largeur totale
-    if (travees.length){
-      travees.sort((u, v) => u[0] - v[0]);
-      const m = travees[travees.length >> 1];
+    if (larges.length){
+      larges.sort((u, v) => u[0] - v[0]);
+      const m = larges[larges.length >> 1];
       o0 = m[1] - m[0] / 2; o1 = m[1] + m[0] / 2;
     }
     const e = { x0, x1, y0, y1, o0, o1 };
     empreintes.set(cle, e);
     return e;
+  }
+
+  /* Les travées d'une ligne, mesurées depuis l'axe : combien il y en a, la
+     demi-largeur de celle qui contient l'axe, et les deux bords de la plus
+     extérieure. On ne relève que le côté droit — tout est symétrique ici, et
+     deux relevés pour un seul chiffre coûteraient le double pour rien. */
+  function reperes(dents, xa, pas, axe){
+    const NB = dents.length, bord = k => xa + k * pas - axe;
+    let n = 0, p0 = -1, e0 = -1, e1 = -1, c = -1, cg = 0, cd = 0;
+    for (let k = 0; k < NB; k++){
+      if (!dents[k] || (k && dents[k-1])) continue;
+      let f = k; while (f < NB - 1 && dents[f+1]) f++;
+      n++; if (p0 < 0) p0 = k; e0 = k; e1 = f;   // la dernière vue est la plus à droite
+      if (bord(k) <= 0 && bord(f + 1) >= 0){ c = n; cg = k; cd = f; }
+    }
+    if (!n) return null;
+    // deux travées, ce sont deux jambes : le corps, c'est les deux ensemble
+    if (n === 2 || c < 0){ cg = p0; cd = e1; n = 1; }
+    return { n, corps: Math.max(-bord(cg), bord(cd + 1)), dedans: bord(e0), dehors: bord(e1 + 1) };
+  }
+
+  /* ---- ajustement : le vêtement épouse le corps ----
+     Une photo de vêtement, même portée, est une forme FIGÉE : elle a la
+     carrure de celui qui l'a portée pour la photo, pas celle du mannequin. Ça
+     se voit à deux endroits, et toujours aux deux mêmes — la TAILLE, qui ne se
+     resserre jamais, et les MANCHES, qui tombent droit quand le bras part de
+     biais. Les poser mieux ne suffit pas : il faut les plier.
+
+     On déforme donc le maillage, ligne par ligne, en faisant correspondre les
+     PARTIES et non les bords : le corps du vêtement va sur le buste, la manche
+     va sur le bras, et le vide entre les deux reste un vide. C'est tout le
+     point — envoyer simplement le bord de manche sur le bord de bras étalait
+     l'étoffe par-dessus l'espace qui sépare le bras du flanc, et la manche
+     devenait une toile d'araignée.
+
+     OÙ FINIT LE CORPS, QUAND LA MANCHE LE TOUCHE ENCORE ? Nulle part dans le
+     dessin : en haut du buste, manche et flanc ne font qu'une seule travée, et
+     prendre cette travée pour du corps revenait à écraser toute l'épaule sur
+     la largeur de la taille — d'où des manches en aiguille. On fait donc
+     PORTER la largeur du corps depuis le bas : celle de la dernière ligne où
+     les trois travées se voient encore vaut pour toutes les lignes au-dessus.
+     Un t-shirt garde la même largeur de corps de l'ourlet à l'épaule ; ce sont
+     ses manches, et elles seules, qui s'écartent. Le mannequin se lit de la
+     même façon, et l'épaule y devient naturellement le début du bras.
+
+     HORIZONTALEMENT SEULEMENT. C'est assez pour cintrer une taille et pour
+     plier une manche, et ça laisse l'ourlet et le col à la hauteur où les
+     ancrages les ont posés — deux réglages qui ne se marchent pas dessus.
+
+     `serre` dose, de 0 (la forme d'origine) à 1 (collé au corps). On reste en
+     dessous : un vêtement large doit RESTER large, il doit seulement savoir où
+     est la taille. `aisance` dit de combien il passe par-dessus le corps —
+     sans elle, un t-shirt serré à 1,00 serait peint sur la peau.
+
+     Le maillage déformé est une COPIE : seules les positions changent, les
+     indices, les coordonnées de texture et l'éclairage cuit restent partagés
+     avec l'original, qui continue de servir la boutique. Une copie par article
+     et par coupe, faite une fois. */
+  const gabarits = new Map(), ajustes = new Map();
+  const RANGS = 96, DENTS = 192, FENETRE = 1.2;
+  function profilCorps(mesh, axe, y0, y1){
+    const P = mesh.__P || (mesh.__P = projeter(mesh));
+    const b = new Float32Array(RANGS), i = new Float32Array(RANGS), o = new Float32Array(RANGS);
+    const brut = new Array(RANGS);
+    const dents = new Uint8Array(DENTS), xa = axe - FENETRE / 2, pas = FENETRE / DENTS;
+    for (let r = 0; r < RANGS; r++){
+      peigner(P, mesh, y0 + (y1 - y0) * (r + 0.5) / RANGS, dents, xa, pas);
+      brut[r] = reperes(dents, xa, pas, axe);
+    }
+    // du bas vers le haut : la largeur du corps se porte tant que les manches
+    // ne se détachent pas, et ce qui dépasse commence là où le corps finit
+    let porte = 0;
+    for (let r = RANGS - 1; r >= 0; r--){
+      const t = brut[r];
+      if (!t) continue;
+      if (t.n >= 3){ porte = t.corps; b[r] = t.corps; i[r] = t.dedans; o[r] = t.dehors; }
+      else { b[r] = porte ? Math.min(porte, t.corps) : t.corps; i[r] = b[r]; o[r] = Math.max(b[r], t.dehors); }
+    }
+    /* Aucune rangée ne doit rester vide : un sommet sans mesure resterait en
+       place pendant que ses voisins bougent, et le triangle qui les relie
+       partirait en drapeau. On recopie donc la mesure valide la plus proche —
+       au-dessus du crâne comme sous les pieds. */
+    for (let r = 1; r < RANGS; r++) if (!b[r] && b[r-1]){ b[r] = b[r-1]; i[r] = i[r-1]; o[r] = o[r-1]; }
+    for (let r = RANGS - 2; r >= 0; r--) if (!b[r] && b[r+1]){ b[r] = b[r+1]; i[r] = i[r+1]; o[r] = o[r+1]; }
+    /* Un LISSAGE vertical avant de s'en servir. Le trou entre la manche et le
+       flanc ne s'ouvre pas progressivement : d'une rangée à l'autre, le bord
+       intérieur saute du flanc au bras. Les deux sommets voisins de part et
+       d'autre de ce saut partaient alors chacun de son côté, et le triangle
+       qui les relie s'étirait en trait. Neuf rangées de moyenne — un dixième de
+       la hauteur — rendent la transition continue sans effacer la forme. */
+    const lisser = (v) => {
+      const s = new Float32Array(RANGS);
+      for (let r = 0; r < RANGS; r++){
+        let t = 0, m = 0;
+        for (let k = Math.max(0, r - 4); k <= Math.min(RANGS - 1, r + 4); k++) if (v[k] > 0){ t += v[k]; m++; }
+        s[r] = m ? t / m : v[r];
+      }
+      return s;
+    };
+    return { b: lisser(b), i: lisser(i), o: lisser(o), P };
+  }
+  function gabarit(item){
+    const a = ready.get(keyOf(item));
+    if (!a) return null;
+    if (!gabarits.has(a.mesh)) gabarits.set(a.mesh, profilCorps(a.mesh, 0.5, 0, 1));
+    return gabarits.get(a.mesh);
+  }
+  function ajuster(item, corpsItem, forme){
+    const source = keyOf(item), cle = source + '|' + forme.cle;
+    if (ajustes.has(cle)) return ajustes.get(cle);
+    const a = ready.get(source), G = gabarit(corpsItem);
+    if (!a || !G) return null;                 // pas encore mesurable : l'original fera l'affaire
+    /* L'axe est 0,5 et pas le milieu de l'ourlet : c'est celui de la
+       PROJECTION — le sommet d'abscisse nulle y tombe — et c'est autour de lui
+       qu'on réécrit les abscisses. Mesurer d'un côté et réécrire de l'autre
+       faisait exploser le rapport pour les sommets proches du milieu, les deux
+       axes étant distants de deux millièmes ; le vêtement partait en drapeau.
+       Le décalage entre l'ourlet et l'axe du corps, lui, est déjà dans la
+       boîte. */
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
+    const V = profilCorps(a.mesh, 0.5, P.y0, P.y1), d = a.mesh.data, n = a.mesh.verts, data = new Float32Array(d);
+    const L = forme.largeur, H = forme.hauteur, ac = forme.aisance;
+    const depuis = forme.depuis, jusqu = forme.jusqu || 1, fondu = 0.07;
+    for (let k = 0; k < n; k++){
+      const fx = P.fx[k], fy = P.fy[k], den = fx - 0.5;
+      if (Math.abs(den) < 1e-5) continue;                       // sur l'axe : rien à bouger
+      const ys = forme.y0 + (fy - P.y0) * H;                    // sa hauteur sur le corps
+      /* Rien au-dessus des épaules ni sous les mains. En haut le « corps » est
+         une tête, et un col ou une capuche s'y verraient rétrécis à la largeur
+         du crâne — or ce sont les deux endroits où le vêtement doit rester
+         ample. En bas il n'y a plus de bras à suivre : une manche longue s'y
+         repliait sur la cuisse, et le sweat finissait en bretelles. Entre les
+         deux, un fondu, pour qu'aucune marche ne se voie. */
+      const prise = forme.serre * Math.min(1, Math.max(0, (ys - depuis) / fondu + 1))
+                                * Math.min(1, Math.max(0, (jusqu - ys) / fondu + 1));
+      if (prise <= 0) continue;
+      const r = Math.min(RANGS - 1, Math.max(0, Math.floor((fy - P.y0) / (P.y1 - P.y0) * RANGS)));
+      const bv = V.b[r] * L, iv = Math.max(V.i[r] * L, bv);
+      if (bv < 1e-4) continue;
+      const rb = Math.min(RANGS - 1, Math.max(0, Math.floor(ys * RANGS)));
+      // le buste et le bord du bras, écartés de la même aisance depuis le même
+      // axe : les élargir chacun autour du sien refermait la manche
+      const bc = G.b[rb] * ac;
+      if (bc < 1e-4) continue;
+      /* Le bord du bras ne sert que là où le vêtement a VRAIMENT un trou entre
+         son corps et sa manche. Ailleurs — épaule, emmanchure fermée — l'étoffe
+         est continue, et l'envoyer d'un coup sur le bras ouvrirait une encoche
+         de peau à l'épaule : la matière ne peut pas sauter là où elle ne se
+         coupe pas. */
+      const ic = (iv - bv > 1e-4) ? Math.max(bc, G.i[rb] * ac) : bc;
+      const u = Math.abs(den) * L;
+      let v;
+      if (u <= bv) v = u * bc / bv;                                // le corps sur le buste
+      else if (u < iv) v = bc + (u - bv) * (ic - bc) / (iv - bv);  // le vide reste un vide
+      /* La manche se REPLACE, elle ne se comprime pas : on la fait partir du
+         bord du bras et on garde son ampleur telle quelle. L'écraser entre le
+         bras et son bord extérieur la raccourcissait à vue d'œil — un t-shirt
+         cintré finissait en manches courtes, alors qu'on demandait justement
+         qu'il couvre les bras. Le bras s'écartant en descendant, la manche
+         suit sa pente d'elle-même. */
+      else v = ic + (u - iv);
+      const vise = 0.5 + Math.sign(den) * v / L;                // où ce sommet doit atterrir
+      const cible = fx + (vise - fx) * prise;
+      data[k*STRIDE] = d[k*STRIDE] * (cible - 0.5) / den;
+    }
+    const proxy = { ajuste: cle };
+    ready.set(cle, Object.assign({}, a, { mesh: Object.assign({}, a.mesh, { data }) }));
+    ajustes.set(cle, proxy);
+    return proxy;
   }
 
   /* ---- scène du mini-jeu (voir le module `arena`) ----
@@ -6034,6 +6226,7 @@ const model3d = (() => {
       empreinte,                              // ce que l'article couvre dans sa boîte, mesuré une fois
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
+      ajuster,                                // une copie du vêtement déformée pour épouser le corps
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
       draw(item, ang, box, alpha, tint){
         const a = ready.get(keyOf(item));
@@ -8980,11 +9173,22 @@ const dressup = (() => {
     chapeau: { rang: 2 },
   };
   const ANCRAGES = {
-    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true },  // rendu porté : à l'échelle, capuche derrière la nuque, mains hors des manches
-    pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
-    chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
+    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556, serre: 0.70, aisance: 1.15, depuis: 0.235 },
+    /* Le sweat ne se serre qu'à moitié : ses manches, dans le rendu fourni,
+       tombent à vingt degrés de la verticale quand le bras du mannequin part à
+       quarante, et trop les tirer décousait l'emmanchure. Le corps, lui,
+       s'ajuste comme celui d'un t-shirt. */
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, serre: 0.35, aisance: 1.30, depuis: 0.235 },
+    pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960, serre: 0.60, aisance: 1.16, depuis: 0.235 },
+    culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618, serre: 0.70, aisance: 1.12, depuis: 0.235 },
+    chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },
   };
+  /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
+     vitrine n'est pas nu, et un jeu d'habillage ne demande à personne de le
+     déshabiller d'abord. Il est de catégorie `bas`, donc il tombe au premier
+     rang — sous les hauts, jamais par-dessus — et le jour où un pantalon
+     arrive, c'est la règle ordinaire qui l'enlève : une pièce par catégorie. */
+  const SOUS = { it: { img: 'dressup/undiesdefault.png' }, cat: 'bas', coupe: 'culotte' };
   /* ---- le guide des tailles décide de tout ----
      Une ligne par taille, et tout ce qui concerne cette taille y est. `sz`
      dit déjà les DIMENSIONS du vêtement — c'est sa définition même — donc
@@ -9137,8 +9341,9 @@ const dressup = (() => {
        travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
        papier n'a pas de volume, elle a des couches. */
     let capuche = false;
-    [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang)
-      .forEach(p => {
+    const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
+    if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
+    couches.forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
         const l = S * A.ourlet / (e.o1 - e.o0);
@@ -9148,9 +9353,16 @@ const dressup = (() => {
            à un vêtement déjà tombé, il ne corrige rien et allonge la capuche
            jusque par-dessus le crâne. */
         const hh = A.fidele ? l : S * (A.y1 - A.y0) / (e.y1 - e.y0);
+        // et le vêtement épouse le corps : taille cintrée, manches pliées le
+        // long des bras (voir `ajuster`). L'original sert tant que le corps
+        // n'est pas mesurable.
+        const porte = A.serre && scene.ajuster(vetu, mannequin, {
+          cle: p.coupe, y0: A.y0,
+          largeur: l / S, hauteur: hh / S,
+          serre: A.serre, aisance: A.aisance, depuis: A.depuis, jusqu: A.jusqu });
         scene.plan();
-        scene.draw(vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
-          y: MY + S * A.y0 - e.y0 * hh, s: l, h: hh }, 1);                 // et le haut posé sur y0
+        scene.draw(porte || vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
+          y: MY + S * A.y0 - e.y0 * hh, s: l, h: hh }, 1);                          // et le haut posé sur y0
         capuche = capuche || !!A.capuche;
       });
     /* Une capuche BAISSÉE se trouve derrière la nuque : sur une image, elle
@@ -9193,7 +9405,7 @@ const dressup = (() => {
     note.textContent = T('dressPrivacy');
     ang = cible = 0;         // on rouvre toujours de face, quel que soit l'angle laissé la fois d'avant
     if (!scene) scene = model3d.makeScene(cv);
-    if (scene) scene.load(mannequin);
+    if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
     garnir();
     overlay.classList.add('open');
     sfx.startup();
