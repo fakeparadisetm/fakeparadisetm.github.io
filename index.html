@@ -473,6 +473,7 @@
   /* ---------- product preview panel ---------- */
   .preview{
     --pad:32px;      /* padding ; repris par la sonde de mesure et la barre du descriptif */
+    --radius:16px;   /* arrondi du panneau ; la galerie s'y cale (voir .gallery-zone) */
     --reserve:436px; /* hauteur hors visuel : contenu fixe ≈ 240 px + barres haut/bas 160 px + marges 2×18 px */
     position:fixed;
     /* La fiche a grandi d'environ 17 % (demande utilisateur), et elle grandit
@@ -500,7 +501,7 @@
       inset 0 0 10px rgba(255,255,255,0.04),
       0 0 3px rgba(255,255,255,0.12),
       0 0 12px 2px rgba(255,255,255,0.045);
-    border-radius:16px;
+    border-radius:var(--radius);
     border-color:transparent;
     box-shadow:
       var(--soft-edge),
@@ -669,8 +670,26 @@
     z-index:3;
     pointer-events:none;
   }
-  .preview-swatch:not(.has-slides) .slide-dots,
-  .preview-swatch:not(.has-slides) .slide-edge{display:none;}
+  /* ---------- la zone de galerie ----------
+     Les deux lueurs de défilement étaient posées DANS le visuel : elles
+     s'arrêtaient donc à l'image, carrée et centrée, en laissant une bande
+     morte de chaque côté jusqu'au bord du panneau, et un angle droit là où le
+     panneau est arrondi.
+     Cette boîte les remet à leur place. Elle annule la marge intérieure du
+     panneau puis la rend aussitôt (`margin` négative, `padding` égale) : le
+     visuel ne bouge pas d'un pixel, mais la boîte, elle, va jusqu'aux bords.
+     Son arrondi reprend celui du panneau en haut seulement, et `overflow`
+     découpe les lueurs dedans — elles épousent donc le coin au lieu de le
+     déborder. Un seul nombre, `--radius`, pour les deux. */
+  .gallery-zone{
+    position:relative;
+    margin:calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0;
+    padding:var(--pad) var(--pad) 0;
+    border-radius:var(--radius) var(--radius) 0 0;
+    overflow:hidden;
+  }
+  .gallery-zone:not(.has-slides) .slide-dots,
+  .gallery-zone:not(.has-slides) .slide-edge{display:none;}
   .dot{
     position:relative;
     width:6px;height:6px;
@@ -697,9 +716,10 @@
   }
   @keyframes dotSweep{0%,72%,100%{opacity:0;}82%{opacity:0.55;}}
   @media (prefers-reduced-motion:reduce){ .dot::after{animation:none;} }
-  /* Zones de navigation : deux bandes sur les bords intérieurs du visuel, à la
-     place des anciennes flèches. Invisibles au repos, elles s'allument sous la
-     souris pour dire de quel côté on va. */
+  /* Zones de navigation : deux bandes sur les bords du PANNEAU, à la place des
+     anciennes flèches. Invisibles au repos, elles s'allument sous la souris
+     pour dire de quel côté on va. Elles se mesurent sur `.gallery-zone`, donc
+     elles touchent les arêtes latérales et suivent l'arrondi du haut. */
   .slide-edge{
     position:absolute;top:0;bottom:0;
     width:24%;
@@ -709,6 +729,14 @@
     cursor:pointer;
     transition:opacity 0.22s ease;
     z-index:3;
+  }
+  /* Le bas des lueurs S'ÉTEINT au lieu de se couper. Elles vont maintenant
+     d'un bord à l'autre du panneau : une coupe nette y traçait un trait en
+     travers, là où l'ancienne bande, large comme le visuel seulement, la
+     cachait presque. Le dégradé reste horizontal, c'est le masque qui fond. */
+  .slide-edge{
+    -webkit-mask-image:linear-gradient(to bottom, #000 78%, transparent 100%);
+    mask-image:linear-gradient(to bottom, #000 78%, transparent 100%);
   }
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
@@ -2246,15 +2274,21 @@
          vues sont posées en absolu dessus et le canvas 3D s'y mesure — mais il
          n'a plus ni fond, ni bord, ni ombre : l'image occupe directement la
          fiche. Les deux zones de bord remplacent les flèches. -->
-    <div class="preview-swatch" id="previewSwatch">
-      <div class="slide-dots" id="slideDots"></div>
-      <span id="previewInitial">F</span>
-      <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
-      <!-- teteFx : le calque 2D de l'éclat du piercing, posé SUR le rendu ; il
-           vient après dans le document, donc au-dessus, sans z-index à régler -->
-      <div class="slide slide-3d" data-slide="0"><canvas id="previewGL" hidden></canvas><canvas id="teteFx" hidden></canvas></div>
-      <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
-      <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
+    <!-- La zone de galerie va jusqu'aux bords du panneau ; le visuel, lui,
+         reste carré et centré dedans. Les deux lueurs de défilement sont
+         SŒURS du visuel et non dedans : c'est ce qui leur permet d'atteindre
+         les arêtes et de suivre l'arrondi du haut (voir .gallery-zone). -->
+    <div class="gallery-zone" id="galleryZone">
+      <div class="preview-swatch" id="previewSwatch">
+        <div class="slide-dots" id="slideDots"></div>
+        <span id="previewInitial">F</span>
+        <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
+        <!-- teteFx : le calque 2D de l'éclat du piercing, posé SUR le rendu ; il
+             vient après dans le document, donc au-dessus, sans z-index à régler -->
+        <div class="slide slide-3d" data-slide="0"><canvas id="previewGL" hidden></canvas><canvas id="teteFx" hidden></canvas></div>
+        <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
+        <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
+      </div>
       <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
       <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"></button>
     </div>
@@ -2491,6 +2525,10 @@
           <label class="dress-bt dress-bt--5" id="dressZoomBt" hidden>
             <span id="dressZoomTxt"></span>
             <input type="range" id="dressZoom" min="0.6" max="1.6" step="0.02" value="1" aria-labelledby="dressZoomTxt">
+          </label>
+          <label class="dress-bt dress-bt--5" id="dressHautBt" hidden>
+            <span id="dressHautTxt"></span>
+            <input type="range" id="dressHaut" min="-1" max="1" step="0.04" value="0" aria-labelledby="dressHautTxt">
           </label>
           <button class="dress-bt dress-bt--2" id="dressNu"></button>
           <p class="dress-note" id="dressNote"></p>
@@ -3005,7 +3043,7 @@ const STRINGS = {
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
     dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats",
-    dressSkin:"Skin tone", dressSave:"Save the look", dressFaceSize:"Face size",
+    dressSkin:"Skin tone", dressSave:"Save the look", dressFaceSize:"Face size", dressFaceY:"Face height",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
@@ -3062,7 +3100,7 @@ const STRINGS = {
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
     dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux",
-    dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage",
+    dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
@@ -5717,8 +5755,15 @@ const model3d = (() => {
      automatique reste le point de départ, et la main ne fait que l'ajuster.
      Le zoom s'applique autour des YEUX — le point d'ancrage ne bouge pas,
      seule la taille change, sinon régler la taille déréglerait la position. */
-  function atlasMannequin(photo, peau, zoom){
+  /* `haut` : la hauteur du visage, réglée à la main elle aussi. Un chiffre
+     entre −1 et 1, compté en demi-cases : il DÉPLACE la ligne des yeux visée
+     sur le mannequin, ce qui revient à faire monter ou descendre la photo.
+     Séparé du zoom exprès — corriger la taille et corriger la hauteur sont
+     deux gestes, et un réglage qui ferait les deux à la fois ne se maîtrise
+     pas. Vers le haut quand le chiffre monte, comme on s'y attend. */
+  function atlasMannequin(photo, peau, zoom, haut){
     const z = zoom > 0 ? zoom : 1;
+    const dy = (haut || 0) * VISAGE_PIX * 0.5;
     const c = document.createElement('canvas'); c.width = 256; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = peau || PEAU_DEFAUT; g.fillRect(0, 0, 256, 128);  // la peau, à droite comme à gauche
@@ -5741,7 +5786,7 @@ const model3d = (() => {
            entre le cadrage de la photo et celui de la case. */
         const ecart = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]) || 1;
         const mx = (y[0][0] + y[1][0]) / 2, my = (y[0][1] + y[1][1]) / 2;
-        const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k;
+        const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k - dy;
         /* L'étirement est PLAFONNÉ. Remplir la case coûte que coûte revenait à
            zoomer sans limite sur un cadrage large, et le visage sortait rogné
            à la mâchoire. Au-delà de `VISAGE_ETIRE` fois ce que les yeux
@@ -5767,7 +5812,9 @@ const model3d = (() => {
         const v = cadrerVisage(photo);
         const cadre = (x, y, l, h) => {
           const nl = l / z, nh = h / z;
-          gp.drawImage(photo, x + (l - nl) / 2, y + (h - nh) / 2, nl, nh, 0, 0, VISAGE_PIX, VISAGE_PIX);
+          // monter le visage, c'est descendre la découpe dans la photo : d'où le +
+          gp.drawImage(photo, x + (l - nl) / 2, y + (h - nh) / 2 + (haut || 0) * nh * 0.5,
+                       nl, nh, 0, 0, VISAGE_PIX, VISAGE_PIX);
         };
         if (v) cadre(v.x, v.y, v.l, v.h);
         else cadre(0, 0, iw, ih);
@@ -6095,7 +6142,7 @@ const model3d = (() => {
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
-    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
+    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.hautVisage || 0) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -6165,7 +6212,7 @@ const model3d = (() => {
       const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '');
       let mesh = meshes.get(cle);
       if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1, item.cache || '', item.coude || 0); meshes.set(cle, mesh); }
-      const tex = atlasMannequin(img, item.peau, item.zoomVisage);
+      const tex = atlasMannequin(img, item.peau, item.zoomVisage, item.hautVisage);
 
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
@@ -7603,7 +7650,8 @@ const slider = (() => {
       b.addEventListener('mousedown', (e) => e.preventDefault()); // pas de focus clavier : Entrée ne rejouerait pas le clic
       dotsEl.appendChild(b);
     });
-    swatch.classList.toggle('has-slides', avail.length > 1);
+    // la marque va sur la ZONE : c'est elle qui porte désormais les lueurs
+    document.getElementById('galleryZone').classList.toggle('has-slides', avail.length > 1);
     apply();
   }
   function apply(){
@@ -10475,6 +10523,9 @@ const dressup = (() => {
   const champZoom = document.getElementById('dressZoom');
   const btZoom = document.getElementById('dressZoomBt');
   const txtZoom = document.getElementById('dressZoomTxt');
+  const champHaut = document.getElementById('dressHaut');
+  const btHaut = document.getElementById('dressHautBt');
+  const txtHaut = document.getElementById('dressHautTxt');
   const btSave = document.getElementById('dressSave');
   const txtPeau = document.getElementById('dressPeauTxt');
   const btFaceTxt = document.getElementById('dressFaceTxt');
@@ -10639,11 +10690,12 @@ const dressup = (() => {
   let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let peau = null;            // teinte choisie au nuancier, ou rien (voir PEAU_DEFAUT)
   let zoomVisage = 1;         // taille du visage réglée à la main (voir atlasMannequin)
-  let mannequin = { mannequin: true, visage: null, peau: null, zoomVisage: 1 };
+  let hautVisage = 0;         // et sa hauteur, de -1 (bas) à 1 (haut)
+  let mannequin = { mannequin: true, visage: null, peau: null, zoomVisage: 1, hautVisage: 0 };
   // Le mannequin est décrit en UN endroit : trois champs qui bougent, et
   // autant d'occasions d'en oublier un si chacun le réécrit de son côté.
   const majMannequin = () => {
-    mannequin = { mannequin: true, visage: visageURL, peau, zoomVisage };
+    mannequin = { mannequin: true, visage: visageURL, peau, zoomVisage, hautVisage };
     if (scene) scene.load(mannequin);
   };
   /* L'ORDRE DU PORTANT EST CELUI DU CORPS : les hauts, puis les bas, puis les
@@ -10846,6 +10898,7 @@ const dressup = (() => {
        la précédente n'aurait aucun sens : il avait été fait pour un cadrage
        qui n'est plus là. */
     zoomVisage = 1; champZoom.value = '1';
+    hautVisage = 0; champHaut.value = '0';
     majMannequin();
     refletVisage();
     sfx.add();
@@ -10853,6 +10906,7 @@ const dressup = (() => {
   function oterVisage(){
     if (visageURL){ URL.revokeObjectURL(visageURL); visageURL = null; }
     zoomVisage = 1; champZoom.value = '1';
+    hautVisage = 0; champHaut.value = '0';
     majMannequin();
     refletVisage();
     champFace.value = '';
@@ -10862,6 +10916,7 @@ const dressup = (() => {
   function refletVisage(){
     btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
     btZoom.hidden = !visageURL;
+    btHaut.hidden = !visageURL;
   }
   /* Le curseur redessine à chaque cran. C'est tenable parce que seul l'ATLAS
      du mannequin est refait — le maillage ne bouge pas, c'est la clé de
@@ -10870,6 +10925,12 @@ const dressup = (() => {
     const z = Math.min(1.6, Math.max(0.6, Number(v) || 1));
     if (Math.abs(z - zoomVisage) < 0.001) return;
     zoomVisage = z;
+    majMannequin();
+  }
+  function poserHautVisage(v){
+    const h = Math.min(1, Math.max(-1, Number(v) || 0));
+    if (Math.abs(h - hautVisage) < 0.001) return;
+    hautVisage = h;
     majMannequin();
   }
 
@@ -11148,6 +11209,7 @@ const dressup = (() => {
     ouvert = true;
     titre.textContent = T('dressTitle');
     txtZoom.textContent = T('dressFaceSize');
+    txtHaut.textContent = T('dressFaceY');
     refletVisage();
     btNu.textContent = T('dressStrip');
     btSave.textContent = T('dressSave');
@@ -11271,6 +11333,7 @@ const dressup = (() => {
   btSave.addEventListener('click', enregistrer);
   champPeau.addEventListener('input', (e) => poserPeau(e.target.value));
   champZoom.addEventListener('input', (e) => poserZoomVisage(e.target.value));
+  champHaut.addEventListener('input', (e) => poserHautVisage(e.target.value));
   document.getElementById('dressClose').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
