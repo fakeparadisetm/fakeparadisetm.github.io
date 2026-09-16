@@ -6193,20 +6193,25 @@ const model3d = (() => {
     const a = ready.get(cle);
     if (!a) return null;                       // pas encore prêt : on remesurera
     const P = projeter(a.mesh), x0 = P.x0, x1 = P.x1, y0 = P.y0, y1 = P.y1;
-    const bas = y1 - (y1 - y0) / 5, NB = 128, NR = 21;
-    const pas = (x1 - x0) / NB || 1, dents = new Uint8Array(NB), larges = [];
-    for (let r = 0; r < NR; r++){
-      peigner(P, a.mesh, bas + (y1 - bas) * r / (NR - 1), dents, x0, pas);
-      const t = travee(dents, NB >> 1);
-      if (t) larges.push([(t[1] + 1 - t[0]) * pas, x0 + (t[0] + t[1] + 1) / 2 * pas]);
-    }
-    let o0 = x0, o1 = x1;                       // silhouette illisible : la largeur totale
-    if (larges.length){
+    const NB = 128, NR = 21, pas = (x1 - x0) / NB || 1, dents = new Uint8Array(NB);
+    /* Le même relevé aux deux bouts du vêtement : la largeur du corps sur un
+       CINQUIÈME de la hauteur, ligne par ligne, puis la MÉDIANE. En bas c'est
+       l'OURLET, la seule mesure qui parle du buste ; en haut c'est la
+       CEINTURE, celle qui doit tomber sur les hanches. */
+    const bande = (ya, yb) => {
+      const larges = [];
+      for (let r = 0; r < NR; r++){
+        peigner(P, a.mesh, ya + (yb - ya) * r / (NR - 1), dents, x0, pas);
+        const t = travee(dents, NB >> 1);
+        if (t) larges.push([(t[1] + 1 - t[0]) * pas, x0 + (t[0] + t[1] + 1) / 2 * pas]);
+      }
+      if (!larges.length) return [x0, x1];      // silhouette illisible : la largeur totale
       larges.sort((u, v) => u[0] - v[0]);
       const m = larges[larges.length >> 1];
-      o0 = m[1] - m[0] / 2; o1 = m[1] + m[0] / 2;
-    }
-    const e = { x0, x1, y0, y1, o0, o1 };
+      return [m[1] - m[0] / 2, m[1] + m[0] / 2];
+    };
+    const o = bande(y1 - (y1 - y0) / 5, y1), c = bande(y0, y0 + (y1 - y0) / 5);
+    const e = { x0, x1, y0, y1, o0: o[0], o1: o[1], c0: c[0], c1: c[1] };
     empreintes.set(cle, e);
     return e;
   }
@@ -9509,13 +9514,13 @@ const dressup = (() => {
        à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, y0: 0.162, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
+    tee:      { ourlet: 0.32, serre: 0.86, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
     /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.26, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { mini: 0.21, y0: 0.492, y1: 0.935 },     // de la taille (hanches 0,402-0,598) aux chevilles (0,88)
+    sweat:    { ourlet: 0.26, serre: 0.86, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
+    pantalon: { ceinture: 0.19, y0: 0.492, y1: 0.935 },  // la ceinture sur les hanches (0,170 de large), l'ourlet aux chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -9591,8 +9596,7 @@ const dressup = (() => {
   const portees = new Map();  // catégorie -> pièce
   let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let mannequin = { mannequin: true, visage: null };
-  let ang = 0, cible = 0;
-
+  // le mannequin ne tourne pas : il fait face au visiteur, toujours
   /* Le portant prend TOUTES les pièces achetables du catalogue, verrouillées
      comprises : le cadenas dit que l'article existe et qu'il se gagne, et il
      serait dommage de cacher la moitié de la boutique. Il ne se PORTE pas
@@ -9713,7 +9717,9 @@ const dressup = (() => {
 
        UN HAUT SE CALE SUR SON OURLET, la seule mesure qui parle du buste : la
        largeur totale ne distingue pas un débardeur étroit d'un t-shirt aux
-       manches écartées. La hauteur, elle, s'étire du col aux hanches.
+       manches écartées. La hauteur s'étire du col aux hanches, et `serre`
+       resserre la largeur pour qu'un vêtement porté ne fasse pas la largeur
+       d'un vêtement à plat.
 
        UN BAS SE CALE SUR SA LONGUEUR, et garde ses propres proportions. Les
        dix photos de pantalons sont des poses à plat, toutes cadrées
@@ -9725,11 +9731,8 @@ const dressup = (() => {
        LONGUEUR, elle, se compare : de la ceinture à l'ourlet, c'est la même
        chose sur les dix. On l'étale donc de la taille aux chevilles et on
        garde l'échelle pour la largeur — ainsi un jean baggy reste ample, un
-       legging reste moulant, et c'est la photo qui décide, pas nous.
-
-       `mini` est le seul garde-fou : un bas plus étroit que les hanches
-       laisserait la peau dépasser sur les côtés. On l'élargit alors juste
-       assez, et pas plus. */
+       legging reste moulant, et c'est la photo qui décide, pas nous. Seule la
+       CEINTURE est garantie : elle doit tomber sur les hanches. */
     const cadrer = (m, A, jambes) => {
       const e = scene.empreinte(m);
       if (!e) return null;
@@ -9742,15 +9745,36 @@ const dressup = (() => {
         if (!pi) return null;                 // pas encore mesurable : à l'image suivante
         A = Object.assign({}, A, { ourlet: (pi[1] - pi[0]) * A.pieds });
       }
-      if (A.mini){
-        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.mini / (e.x1 - e.x0));
-        return { x: 0.5 - (e.x0 + e.x1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
+      if (A.ceinture){
+        /* UN BAS SE CALE SUR SA LONGUEUR, et garde ses propres proportions
+           (voir plus bas), avec un seul garde-fou : sa CEINTURE ne peut pas
+           être plus étroite que les hanches. Elle l'était sur la moitié des
+           photos — 0,131 pour le jogger, 0,135 pour le cargo, contre 0,170 de
+           hanche — et le bassin débordait au-dessus du pantalon. On élargit
+           alors tout le vêtement juste assez, et pas plus. Le centrage se fait
+           sur la ceinture et non sur la boîte : celle du jogger tombe à 0,467
+           parce que ses jambes partent de biais, et le pantalon se posait de
+           travers. */
+        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0));
+        return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
       }
-      const l = A.ourlet / (e.o1 - e.o0);
+      /* `serre` : le RESSERREMENT horizontal, de manche à manche. Une photo à
+         plat est plus large qu'un vêtement porté — elle montre le tour de
+         buste mis à plat, donc une demi-circonférence là où le corps n'offre
+         qu'un diamètre — et le t-shirt tombait à 0,32 de large sur une taille
+         de 0,144. Maintenant que le buste disparaît sous le vêtement, plus
+         rien n'oblige à le couvrir largement.
+         La limite est l'ÉPAULE, et elle est mesurée : le trapèze du mannequin
+         fait 0,214 à la hauteur 0,20, et c'est la seule partie du buste qui
+         reste visible (au-dessus de MAN_BUSTE_HAUT, pour qu'on voie le cou
+         dans l'encolure). Les treize hauts couvrent cette largeur avec une
+         marge de 1,25 (cocorico) à 1,01 (le polo, le plus juste) ; au-delà de
+         ce resserrement, l'épaule du polo ressort. */
+      const l = A.ourlet / (e.o1 - e.o0) * (A.serre || 1);
       /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à l'échelle
          sans l'étirer. L'étirement n'existe que pour rattraper une photo à
          plat, large et courte, sur un buste haut et étroit. */
-      const h = A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0);
+      const h = A.fidele ? A.ourlet / (e.o1 - e.o0) : (A.y1 - A.y0) / (e.y1 - e.y0);
       return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
     };
     const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);
@@ -9769,7 +9793,7 @@ const dressup = (() => {
       bb ? scene.poseJambes(bas.porte || bas.it, bb) : { jambes: 0 },
       { cache: (haut ? 'b' : '') + (bas ? 'j' : '') + (portees.has('pieds') ? 'p' : '') });
     if (!scene.ready(corps)) scene.load(corps);
-    scene.draw(corps, ang, cadre, 1);
+    scene.draw(corps, 0, cadre, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
        `scene.plan()` remet la profondeur à zéro sans toucher à l'image, si
        bien que la couche qui vient recouvre entièrement celle d'en dessous.
@@ -9788,7 +9812,7 @@ const dressup = (() => {
         const modele = scene.encolure(vetu, corps, b0, p.coupe) || vetu;
         const b = cadrer(modele, A, corps.jambes) || b0;
         scene.plan();
-        scene.draw(modele, ang, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
+        scene.draw(modele, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
       });
     /* LE COL PASSE DEVANT LE COU, et c'est le vêtement lui-même qui le fait.
        On redessinait la tête et le cou par-dessus la capuche, dans une tranche
@@ -9811,7 +9835,6 @@ const dressup = (() => {
   }
   function boucle(t){
     raf = requestAnimationFrame(boucle);
-    ang += (cible - ang) * 0.12;
     dessiner(t);
   }
 
@@ -9822,7 +9845,6 @@ const dressup = (() => {
     btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
     btNu.textContent = T('dressStrip');
     note.textContent = T('dressPrivacy');
-    ang = cible = 0;         // on rouvre toujours de face, quel que soit l'angle laissé la fois d'avant
     if (!scene) scene = model3d.makeScene(cv);
     if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
     garnir();
@@ -9844,9 +9866,10 @@ const dressup = (() => {
   }
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
-    // le mannequin se tourne aux flèches ; le reste des touches revient au document
-    if (e.key === 'ArrowLeft'){ cible -= Math.PI / 6; e.preventDefault(); return true; }
-    if (e.key === 'ArrowRight'){ cible += Math.PI / 6; e.preventDefault(); return true; }
+    /* Les flèches sont AVALÉES sans rien faire. Le mannequin ne tourne plus —
+       il se regarde de face, comme une poupée sur son carton — mais les
+       laisser passer ferait défiler le XMB derrière la fenêtre. */
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown'){ e.preventDefault(); return true; }
     return false;
   }
   champFace.addEventListener('change', (e) => {
@@ -9923,7 +9946,7 @@ const dressup = (() => {
   const debug = (i) => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
-             visage: !!visageURL, ang: Math.round(ang * 180 / Math.PI) };
+             visage: !!visageURL };
   };
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug };
 })();
