@@ -1899,8 +1899,10 @@
      d'aide) : c'est le SITE, il ne change pas d'un jeu à l'autre. Ce qui
      change est à l'intérieur — un seul canvas, dessiné net en pleine
      résolution, là où Versus peint dans un tampon de 320 px. */
-  .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#0a0d18;}
-  #jumpCv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#5c94fc;}
+  /* Le tampon fait la moitié de la boîte et le navigateur l'agrandit au PLUS
+     PROCHE : c'est là que naît le gros pixel du jeu pirate. */
+  #jumpCv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;}
   .jump-hud{
     position:absolute;left:0;right:0;top:12px;
     display:flex;justify-content:center;gap:26px;
@@ -1928,6 +1930,51 @@
     white-space:pre-line;
   }
   .jump-card .arena-end-actions{margin-top:22px;}
+  /* ---- l'écran-titre ----
+     Il ne cache pas le jeu, il se pose DESSUS : le décor, le sol et le
+     personnage restent visibles derrière, comme sur l'écran d'accueil d'un jeu
+     pirate où l'on voit déjà le premier tableau. D'où l'absence de voile et de
+     flou, et le titre poussé vers le haut pour dégager le sol.
+     Le titre est en katakana : la police système japonaise est une grotesque
+     bien carrée, exactement ce qu'il faut, et le décalage plein d'une ombre
+     sans flou lui donne le relief découpé de l'époque. Rien de vectoriel ici
+     n'imite une œuvre : c'est la MISE EN PAGE du genre. */
+  .jump-card.titre{background:none;backdrop-filter:none;justify-content:flex-start;padding-top:4%;}
+  /* Le compteur de la partie n'a rien à faire sur l'écran-titre : il annonce
+     0 % et 0:00, ce qui ne dit rien et encombre le ciel. */
+  .jump-stage:has(.jump-card.titre:not([hidden])) .jump-hud{opacity:0;}
+  .jump-card.titre .jump-card-title{
+    font-family:"Yu Gothic","MS Gothic","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    font-size:clamp(34px,7vw,64px);
+    font-weight:800;letter-spacing:2px;
+    color:#f8a028;
+    -webkit-text-stroke:2px #401800;
+    text-shadow:5px 5px 0 #401800;
+  }
+  /* Le menu passe à la VERTICALE : une entrée par ligne, toutes de la même
+     largeur, et l'on descend dedans. Trois lignes en colonne se lisent d'un
+     coup d'œil là où trois boutons côte à côte se lisent de gauche à droite. */
+  /* Le menu se range JUSTE SOUS LE TITRE, et non au milieu de ce qui reste :
+     centré, il tombait sur le sol de briques et devenait illisible. Le ciel
+     n'occupe que la moitié haute du tableau, c'est là qu'il y a de la place. */
+  .jump-card.titre .arena-end-actions{
+    flex-direction:column;align-items:center;gap:7px;
+    margin-top:3%;margin-bottom:auto;
+  }
+  .jump-card.titre .arena-end-actions .preview-cta{min-width:224px;justify-content:center;padding:8px 18px;}
+  /* Les commandes, en bas de l'écran comme sur la borne : le sous-titre de la
+     carte quitte le centre et va s'y ranger. */
+  .jump-card.titre .jump-card-sub{
+    position:absolute;left:0;right:0;bottom:14px;
+    margin:0;max-width:none;
+    font-size:12px;line-height:1.6;
+    color:#ffffff;
+    text-shadow:2px 2px 0 rgba(0,0,0,0.75);
+  }
+  @media (max-height:520px){
+    .jump-card.titre{padding-top:3%;}
+    .jump-card.titre .arena-end-actions{margin-bottom:8%;gap:6px;}
+  }
   /* (le sous-titre de la carte de fin a été retiré le 15 sept. 2026 : le
      titre nomme le vainqueur, les trois boutons disent le reste) */
   .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
@@ -2231,6 +2278,7 @@
         <div class="jump-card-sub" id="jumpCardSub"></div>
         <div class="arena-end-actions" id="jumpActions">
           <button class="preview-cta" id="jumpGo"></button>
+          <button class="preview-cta preview-cta--secondary" id="jumpBest" hidden></button>
           <button class="preview-cta preview-cta--secondary" id="jumpAgain" hidden></button>
           <button class="preview-cta preview-cta--secondary" id="jumpQuit"></button>
         </div>
@@ -2507,7 +2555,7 @@ Date : ______<br>
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont celles de votre système : aucune ressource n'est chargée depuis un serveur tiers.</p>
-<p>Un seul élément est conservé sur votre terminal, dans le stockage local de votre navigateur : <strong>la liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent. Sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Cet élément ne contient aucune donnée personnelle, n'est jamais envoyé à un serveur et ne permet pas de vous suivre d'un site à l'autre ; il relève des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requiert donc pas votre consentement préalable. Vous pouvez l'effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Deux éléments sont conservés sur votre terminal, dans le stockage local de votre navigateur. Le premier est <strong>la liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans lui, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Le second est <strong>votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. Ces éléments ne contiennent aucune donnée personnelle, ne sont jamais envoyés à un serveur et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, et le record repart à zéro. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
 <h3>Paramétrage de votre navigateur</h3>
@@ -2696,7 +2744,7 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are those of your system: no resource is loaded from a third-party server.</p>
-<p>One single item is kept on your device, in your browser's local storage: <strong>the list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock. Without it, simply reloading the page would take back a reward you had already earned. It holds no personal data, is never sent to a server and cannot be used to track you across sites; it qualifies as strictly necessary for a service you explicitly requested, and therefore does not require your prior consent. You can erase it at any time by clearing your browser's site data — the reward would then have to be earned again. This is why no consent banner is displayed.</p>
+<p>Two items are kept on your device, in your browser's local storage. The first is <strong>the list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. The second is <strong>your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. They hold no personal data, are never sent to a server and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time by clearing your browser's site data — the reward would then have to be earned again, and the record starts over. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
 <h3>Browser settings</h3>
@@ -2733,6 +2781,13 @@ const STRINGS = {
     arenaBack:"Pick again", arenaQuit:"Close",
     // Mini-jeu « Jumper » (plateforme) et pièce verrouillée
     jumpReady:"READY?", jumpStart:"Start",
+    /* Le titre de l'écran d'accueil est en KATAKANA, et il est le même dans les
+       deux langues : c'est un jeu pirate, il n'a pas été traduit, il a été
+       copié tel quel. ジャンパー se lit « janpā » — la transcription japonaise
+       usuelle de « jumper ». */
+    jumpTitleJp:"ジャンパー",
+    jumpBest:"Best time", jumpBestTime:"Time", jumpNoBest:"No run finished yet.",
+    jumpNewBest:"New best time!", jumpBack:"Back",
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
     jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked tee is yours.",
     jumpSee:"See the item", jumpAgain:"Play again", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
@@ -2767,6 +2822,9 @@ const STRINGS = {
     arenaBack:"Retour au choix", arenaQuit:"Fermer",
     // Mini-jeu « Jumper » (plateforme) et pièce verrouillée
     jumpReady:"PRÊT ?", jumpStart:"Commencer",
+    jumpTitleJp:"ジャンパー",
+    jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
+    jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
     jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"Le t-shirt verrouillé est à vous.",
     jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
@@ -7660,6 +7718,7 @@ const jumper = (() => {
   const carte = document.getElementById('jumpCard');
   const carteT = document.getElementById('jumpCardTitle'), carteS = document.getElementById('jumpCardSub');
   const btGo = document.getElementById('jumpGo'), btAgain = document.getElementById('jumpAgain'), btQuit = document.getElementById('jumpQuit');
+  const btBest = document.getElementById('jumpBest');
   const hudP = document.getElementById('jumpProgress'), hudT = document.getElementById('jumpTime'), hudF = document.getElementById('jumpFalls');
 
   const VW = 960, VH = 480;        // fenêtre logique
@@ -7718,16 +7777,60 @@ const jumper = (() => {
     fin: { x: 14120, y: 300 },
   };
 
+  /* ---- la palette ----
+     Jumper ne cherche plus le verre et la nuit du site : il cherche le jeu de
+     plate-forme PIRATE, celui qu'on trouvait sur une cartouche sans étiquette
+     ou dans un exécutable partagé de main en main. Ce genre a son vocabulaire,
+     et c'est un vocabulaire, pas une œuvre : ciel bleu franc, nuages blancs
+     découpés, collines rondes, sol de briques, et un petit personnage clair
+     cerné de noir. Rien n'est repris de personne — ni silhouette, ni visage,
+     ni nom ; seulement la grammaire commune à toute une famille de jeux.
+     Les teintes sont plates et peu nombreuses, comme sur une machine qui n'en
+     tenait qu'une poignée à la fois. */
+  const PAL = {
+    ciel:'#5c94fc', nuage:'#ffffff', nuageBas:'#c8dcff',
+    colline:'#00a844', collineOmbre:'#007028', collineTrait:'#00401a',
+    brique:'#c06028', briqueHaut:'#e89848', briqueBas:'#803010', joint:'#000000',
+    pic:'#38c838', picOmbre:'#1a8020',
+    corps:'#ffffff', corpsOmbre:'#c8c8d8', trait:'#000000',
+    metal:'#e8e8f0', mat:'#f8d038',
+  };
+  const mmss = ms => Math.floor(ms / 60000) + ':' + String(Math.floor(ms / 1000) % 60).padStart(2, '0');
+  /* ---- le record ----
+     Un seul parcours, donc un seul record : le MEILLEUR TEMPS, et le nombre de
+     chutes de cette course-là. Pas un cumul de chutes sur toutes les parties —
+     ce serait un compteur de honte, pas un record, et il ne dirait rien de la
+     performance. Les deux nombres vont ensemble : finir vite en tombant vingt
+     fois et finir lentement sans tomber ne sont pas la même chose.
+     Même stockage que les déverrouillages, même prudence : toute lecture et
+     toute écriture sont protégées, un navigateur en navigation privée peut
+     refuser. La page « Cookies » déclare cette clé comme l'autre. */
+  const RECORD = (() => {
+    const CLE = 'fp.jumper';
+    const lire = () => {
+      try { const v = JSON.parse(localStorage.getItem(CLE) || 'null');
+        return (v && typeof v.ms === 'number' && v.ms > 0) ? v : null; } catch (e) { return null; }
+    };
+    return {
+      lire,
+      poser: (ms, chutes) => {          // vrai si c'est un nouveau record
+        const a = lire();
+        if (a && a.ms <= ms) return false;
+        try { localStorage.setItem(CLE, JSON.stringify({ ms, chutes })); } catch (e) {}
+        return true;
+      },
+    };
+  })();
   let ouvert = false, etat = 'carte', raf = 0, dernier = 0;
   let joueur = null, plaques = [], mobiles = [], friables = [];
   let cam = { x: 0, y: 0 }, vue = { s: 1, ox: 0, oy: 0 };
   let check = 0, chutes = 0, tempsMs = 0, secousse = 0;
   const touches = { gauche: false, droite: false, espace: false };
-  // étoiles du fond, tirées une fois pour toutes : elles ne doivent pas
-  // scintiller d'une partie à l'autre
-  const etoiles = (() => {
+  // nuages du fond, tirés une fois pour toutes : ils ne doivent pas se
+  // redistribuer d'une partie à l'autre
+  const nuages = (() => {
     let g = 1234567; const r = () => (g = (g * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    return Array.from({ length: 90 }, () => ({ x: r() * NIVEAU.longueur, y: r() * 360 - 60, t: 0.6 + r() * 1.4 }));
+    return Array.from({ length: 26 }, () => ({ x: r() * NIVEAU.longueur, y: -40 + r() * 190, s: 0.7 + r() * 0.9 }));
   })();
 
   function construire(){
@@ -7851,92 +7954,128 @@ const jumper = (() => {
     ctx.closePath();
   }
   const repere = (f) => ctx.setTransform(vue.s, 0, 0, vue.s, vue.ox - cam.x * f * vue.s, vue.oy - cam.y * f * vue.s);
+  /* Un sol ou une plateforme : des BRIQUES. Le motif est calé sur le monde et
+     non sur la plateforme (`% B` sur la coordonnée absolue), sinon deux blocs
+     voisins montreraient deux appareillages décalés et le sol se lirait comme
+     une suite de morceaux au lieu d'un mur continu. Le cerne noir est dessiné
+     en rectangles pleins plutôt qu'en trait : à cette définition, un trait de
+     un pixel se retrouve à cheval sur deux et devient gris. */
   function plateau(x, y, w, h){
-    ctx.fillStyle = 'rgba(8,6,20,0.35)';           // ombre portée, posée plus bas
-    rr(x + 3, y + 7, w, h, 7); ctx.fill();
-    ctx.fillStyle = '#e8ebff';
-    rr(x, y, w, h, 7); ctx.fill();
-    ctx.fillStyle = '#ffffff';                     // arête supérieure, plus claire
-    rr(x + 4, y + 2, w - 8, 3, 1.5); ctx.fill();
-    ctx.fillStyle = 'rgba(80,70,130,0.18)';        // bas plus sombre : le volume
-    rr(x + 4, y + h - 5, w - 8, 3, 1.5); ctx.fill();
+    const B = 32, R = 16;
+    ctx.fillStyle = PAL.brique; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = PAL.joint;
+    for (let jy = 0; jy < h - 1; jy += R){
+      ctx.fillRect(x, y + jy + R - 2, w, 2);                   // joint horizontal
+      const dec = (Math.floor((y + jy) / R) % 2) ? B / 2 : 0;  // une assise sur deux est décalée
+      for (let bx = Math.ceil((x - dec) / B) * B + dec; bx < x + w; bx += B)
+        if (bx > x) ctx.fillRect(bx, y + jy, 2, Math.min(R - 2, h - jy));
+    }
+    ctx.fillStyle = PAL.briqueHaut; ctx.fillRect(x, y, w, 3);
+    ctx.fillStyle = PAL.briqueBas; ctx.fillRect(x, y + h - 3, w, 3);
+    ctx.fillStyle = PAL.trait;                     // cerne
+    ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.fillRect(x, y, 2, h); ctx.fillRect(x + w - 2, y, 2, h);
   }
+  // Les pics : de simples dents vertes, cernées, plantées dans le sol.
   function pics(x, y, n){
-    ctx.fillStyle = '#ff6b6b';
-    ctx.beginPath();
     for (let i = 0; i < n; i++){
       const x0 = x + i * 22;
-      ctx.moveTo(x0, y); ctx.lineTo(x0 + 11, y - 20); ctx.lineTo(x0 + 22, y);
+      ctx.fillStyle = PAL.trait;
+      ctx.beginPath(); ctx.moveTo(x0 - 2, y + 2); ctx.lineTo(x0 + 11, y - 24); ctx.lineTo(x0 + 24, y + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PAL.pic;
+      ctx.beginPath(); ctx.moveTo(x0 + 2, y); ctx.lineTo(x0 + 11, y - 19); ctx.lineTo(x0 + 20, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = PAL.picOmbre;
+      ctx.beginPath(); ctx.moveTo(x0 + 12, y); ctx.lineTo(x0 + 11, y - 19); ctx.lineTo(x0 + 20, y); ctx.closePath(); ctx.fill();
     }
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.beginPath();
-    for (let i = 0; i < n; i++){ const x0 = x + i * 22; ctx.moveTo(x0 + 8, y); ctx.lineTo(x0 + 11, y - 20); ctx.lineTo(x0 + 13, y); }
-    ctx.fill();
   }
+  // Un point de passage : un piquet et un fanion, éteint tant qu'on ne l'a pas
+  // touché. Le fanion claque une fois allumé — c'est le seul mouvement.
   function drapeau(x, y, actif, t){
-    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
-    if (actif){                                     // le halo D'ABORD : derrière le drapeau, pas dessus
-      const h = ctx.createRadialGradient(x + 8, y - 44, 2, x + 8, y - 44, 44);
-      h.addColorStop(0, 'rgba(255,255,255,0.22)'); h.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = h;
-      ctx.beginPath(); ctx.arc(x + 8, y - 44, 44, 0, 7); ctx.fill();
-    }
-    ctx.fillStyle = actif ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.30)';
-    ctx.fillRect(x - 1.5, y - 54, 3, 54);
-    const flot = actif ? Math.sin(t / 220) * 4 : 0;  // il flotte une fois allumé
-    ctx.fillStyle = actif ? acc : 'rgba(255,255,255,0.22)';
-    ctx.beginPath();
-    ctx.moveTo(x + 1.5, y - 54); ctx.lineTo(x + 30, y - 45 + flot); ctx.lineTo(x + 1.5, y - 36);
-    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PAL.trait; ctx.fillRect(x - 3, y - 56, 6, 56);
+    ctx.fillStyle = PAL.metal; ctx.fillRect(x - 2, y - 55, 3, 54);
+    const flot = actif ? Math.round(Math.sin(t / 200) * 3) : 0;
+    ctx.fillStyle = PAL.trait;
+    ctx.beginPath(); ctx.moveTo(x + 1, y - 58); ctx.lineTo(x + 32, y - 46 + flot); ctx.lineTo(x + 1, y - 34); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = actif ? PAL.mat : '#8890a0';
+    ctx.beginPath(); ctx.moveTo(x + 3, y - 54); ctx.lineTo(x + 26, y - 46 + flot); ctx.lineTo(x + 3, y - 38); ctx.closePath(); ctx.fill();
   }
+  // L'arrivée : un mât et un grand fanion, la convention du genre.
   function arrivee(x, y, t){
-    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
-    ctx.save();
-    ctx.globalAlpha = 0.18 + Math.sin(t / 420) * 0.05;
-    ctx.fillStyle = acc;
-    rr(x - 46, y - 190, 92, 190, 46); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = '#ffffff';
-    rr(x - 30, y - 160, 60, 160, 30); ctx.fill();
-    ctx.fillStyle = acc;
-    rr(x - 18, y - 140, 36, 120, 18); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 15px "Inter", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('★', x, y - 72);
-    ctx.textAlign = 'left';
+    ctx.fillStyle = PAL.trait; ctx.fillRect(x - 5, y - 200, 10, 200);
+    ctx.fillStyle = PAL.metal; ctx.fillRect(x - 3, y - 198, 5, 197);
+    ctx.fillStyle = PAL.trait;
+    ctx.beginPath(); ctx.arc(x, y - 204, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = PAL.mat;
+    ctx.beginPath(); ctx.arc(x, y - 204, 6, 0, 7); ctx.fill();
+    const flot = Math.round(Math.sin(t / 260) * 5);
+    ctx.fillStyle = PAL.trait;
+    ctx.beginPath(); ctx.moveTo(x + 2, y - 192); ctx.lineTo(x + 76, y - 168 + flot); ctx.lineTo(x + 2, y - 144); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PAL.pic;
+    ctx.beginPath(); ctx.moveTo(x + 5, y - 188); ctx.lineTo(x + 66, y - 168 + flot); ctx.lineTo(x + 5, y - 148); ctx.closePath(); ctx.fill();
   }
+  /* ---- le personnage ----
+     Une petite bête claire, cernée de noir : deux oreilles pointues, deux yeux
+     ronds, un museau, deux pieds qui alternent à la marche. Elle n'est
+     empruntée à personne — ce sont les traits que TOUT ce genre partage, et
+     c'est justement ce qui la fait lire tout de suite comme la mascotte d'un
+     jeu pirate.
+     Elle garde l'écrasement du jeu d'origine : on se tasse à la charge, on
+     s'étire à l'envol. C'est ce qui rend le saut chargé lisible sans jauge. */
   function perso(t){
     const j = joueur;
     const c = j.charge / CHARGE;
-    // écrasement : à la charge on se tasse, à l'envol on s'étire
     const sy = 1 - c * 0.30 + j.etir * 0.22, sx = 1 + c * 0.22 - j.etir * 0.16;
     const w = JW * sx, h = JH * sy;
     const x = j.x - w / 2, y = j.y + JH / 2 - h;
-    ctx.fillStyle = 'rgba(8,6,20,0.30)';
-    ctx.beginPath(); ctx.ellipse(j.x, j.y + JH / 2 + 3, w * 0.55, 4, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    rr(x, y, w, h, 7); ctx.fill();
-    ctx.fillStyle = '#231a3a';                       // deux yeux, tournés vers la marche
-    const ox = j.face * 3.2;
+    const f = j.face;
+    const T = 2;                                     // épaisseur du cerne
+    // pieds : ils alternent quand on court au sol, se rangent en l'air
+    const marche = j.sol && Math.abs(j.vx) > 20 ? Math.sin(t / 70) : 0;
+    ctx.fillStyle = PAL.trait;
+    ctx.fillRect(x + 2, y + h - 2, 7, 5 + Math.max(0, marche) * 3);
+    ctx.fillRect(x + w - 9, y + h - 2, 7, 5 + Math.max(0, -marche) * 3);
+    // oreilles
     ctx.beginPath();
-    ctx.ellipse(j.x - 4.5 + ox, y + h * 0.42, 2.1, 2.8 - c * 1.2, 0, 0, 7);
-    ctx.ellipse(j.x + 4.5 + ox, y + h * 0.42, 2.1, 2.8 - c * 1.2, 0, 0, 7);
+    ctx.moveTo(x + 2, y + 6); ctx.lineTo(x + 5, y - 9); ctx.lineTo(x + 12, y + 4); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w - 2, y + 6); ctx.lineTo(x + w - 5, y - 9); ctx.lineTo(x + w - 12, y + 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PAL.corps;
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + 5); ctx.lineTo(x + 6, y - 4); ctx.lineTo(x + 11, y + 4); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w - 5, y + 5); ctx.lineTo(x + w - 6, y - 4); ctx.lineTo(x + w - 11, y + 4); ctx.closePath(); ctx.fill();
+    // corps
+    ctx.fillStyle = PAL.trait; rr(x, y, w, h, 6); ctx.fill();
+    ctx.fillStyle = PAL.corps; rr(x + T, y + T, w - T * 2, h - T * 2, 5); ctx.fill();
+    ctx.fillStyle = PAL.corpsOmbre;                  // le flanc opposé à la marche
+    rr(x + (f > 0 ? T : w - T - 5), y + h * 0.45, 5, h * 0.45, 2); ctx.fill();
+    // yeux : deux pastilles noires, qui se ferment à la charge
+    const ox = f * 2.5, oy = y + h * 0.40, ry = Math.max(0.8, 3 - c * 2.2);
+    ctx.fillStyle = PAL.trait;
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.32 + ox, oy, 2.4, ry, 0, 0, 7);
+    ctx.ellipse(x + w * 0.68 + ox, oy, 2.4, ry, 0, 0, 7);
     ctx.fill();
+    ctx.fillRect(x + w * 0.5 - 3 + ox, y + h * 0.62, 6, 2);   // museau
     if (c > 0.02){                                   // jauge de charge, au-dessus
       const L = 34;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      rr(j.x - L / 2, y - 14, L, 5, 2.5); ctx.fill();
-      ctx.fillStyle = c > 0.97 ? '#ffd166' : '#ffffff';
-      rr(j.x - L / 2, y - 14, L * c, 5, 2.5); ctx.fill();
+      ctx.fillStyle = PAL.trait; ctx.fillRect(j.x - L / 2 - 2, y - 16, L + 4, 9);
+      ctx.fillStyle = '#404040'; ctx.fillRect(j.x - L / 2, y - 14, L, 5);
+      ctx.fillStyle = c > 0.97 ? PAL.mat : PAL.corps; ctx.fillRect(j.x - L / 2, y - 14, L * c, 5);
     }
   }
   function dessiner(t){
     const r = cv.getBoundingClientRect();
-    const k = Math.min(2, window.devicePixelRatio || 1);
+    /* Tampon en BASSE DÉFINITION, agrandi au plus proche par le style : un
+       pixel de jeu pour deux pixels d'écran. C'est ce qui fait le gros pixel —
+       et il vaut mieux le fabriquer ainsi qu'à la main, dessin par dessin :
+       tout ce que trace ce module y tombe d'un coup, y compris ce qui sera
+       ajouté plus tard. Le rapport est fixe, donc le pixel garde la même
+       taille apparente quelle que soit la fenêtre. */
+    const k = 0.5;
     const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
     if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    ctx.imageSmoothingEnabled = false;
     /* Échelle : la plus PETITE des deux, pour que la fenêtre logique tienne
        toujours en entier. Sur un canvas large on voit alors davantage de
        monde à droite et à gauche, jamais moins de hauteur — l'inverse
@@ -7949,32 +8088,50 @@ const jumper = (() => {
     if (secousse > 0){ vue.ox += (Math.random() - 0.5) * 16 * secousse * vue.s; vue.oy += (Math.random() - 0.5) * 16 * secousse * vue.s; }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const ciel = ctx.createLinearGradient(0, 0, 0, cv.height);
-    ciel.addColorStop(0, '#0b0f2b'); ciel.addColorStop(0.45, '#241a44'); ciel.addColorStop(0.78, '#5b2a4e'); ciel.addColorStop(1, '#9c4a4a');
-    ctx.fillStyle = ciel; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = PAL.ciel; ctx.fillRect(0, 0, cv.width, cv.height);   // un bleu franc, sans dégradé
 
     // largeur et hauteur de monde réellement visibles (le canvas est plus
     // large que la fenêtre logique dès que le panneau l'est)
     const larg = cv.width / vue.s, haut = cv.height / vue.s;
-    repere(0.12);                                    // étoiles
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    for (const e of etoiles){
-      ctx.globalAlpha = 0.25 + 0.4 * Math.abs(Math.sin(t / 2600 + e.x));
-      ctx.fillRect(e.x, e.y, e.t, e.t);
+    /* Les nuages : trois bosses et un socle, comme on les découpait quand une
+       machine ne savait pas tracer un dégradé. Ils défilent très en arrière. */
+    repere(0.18);
+    for (const n of nuages){
+      const x = n.x, y = n.y, s = n.s;
+      if (x < cam.x * 0.18 - 220 || x > cam.x * 0.18 + larg + 220) continue;
+      ctx.fillStyle = PAL.nuage;
+      ctx.beginPath();
+      ctx.arc(x, y, 22 * s, Math.PI, 0);
+      ctx.arc(x + 26 * s, y, 30 * s, Math.PI, 0);
+      ctx.arc(x + 54 * s, y, 20 * s, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(x - 22 * s, y, 98 * s, 14 * s);
+      ctx.fillStyle = PAL.nuageBas;
+      ctx.fillRect(x - 22 * s, y + 9 * s, 98 * s, 5 * s);
     }
-    ctx.globalAlpha = 1;
-    // deux rangs de collines, l'un derrière l'autre
-    const collines = (f, col, ray, base) => {
+    // deux rangs de collines rondes, cernées, l'un derrière l'autre
+    const collines = (f, col, ray, base, tache) => {
       repere(f);
-      ctx.fillStyle = col;
       const x0 = cam.x * f - larg / 2, x1 = x0 + larg * 2;
       for (let x = Math.floor(x0 / 340) * 340; x < x1; x += 340){
+        ctx.fillStyle = PAL.collineTrait;
+        ctx.beginPath(); ctx.arc(x, base + 2, ray + 3, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = col;
         ctx.beginPath(); ctx.arc(x, base, ray, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = tache;                        // les trois mouchetures du genre
+        ctx.fillRect(x - ray * 0.34, base - ray * 0.30, 4, 7);
+        ctx.fillRect(x + ray * 0.20, base - ray * 0.46, 4, 7);
+        ctx.fillRect(x + ray * 0.46, base - ray * 0.14, 4, 7);
       }
-      ctx.fillRect(x0, base, x1 - x0, haut + 400);
+      ctx.fillStyle = PAL.collineTrait; ctx.fillRect(x0, base, x1 - x0, 3);
+      ctx.fillStyle = col; ctx.fillRect(x0, base + 3, x1 - x0, haut + 400);
     };
-    collines(0.30, '#2a1b44', 210, 430);
-    collines(0.55, '#3a2150', 150, 470);
+    /* Les collines sont posées sur la LIGNE DE SOL et restent basses : elles
+       bordent le tableau, elles ne le remplissent pas. Hautes, elles montaient
+       jusqu'aux plateformes et l'on ne distinguait plus ce sur quoi on saute de
+       ce qui n'est que décor — le défaut classique d'un fond trop vert. */
+    collines(0.30, PAL.collineOmbre, 120, 400, '#004c1c');
+    collines(0.55, PAL.colline, 82, 424, PAL.collineOmbre);
 
     repere(1);
     // pics, sols, plateformes, points de passage, arrivée
@@ -7989,7 +8146,7 @@ const jumper = (() => {
       }
       plateau(p.x, p.y, p.w, EP);
       if (p.fri){                                    // deux fissures : on voit qu'elle est fragile
-        ctx.fillStyle = 'rgba(60,50,100,0.45)';
+        ctx.fillStyle = PAL.trait;
         ctx.fillRect(p.x + p.w * 0.34, p.y + 3, 2, EP - 6);
         ctx.fillRect(p.x + p.w * 0.62, p.y + 3, 2, EP - 6);
       }
@@ -8018,21 +8175,38 @@ const jumper = (() => {
       cam.y += (cy - cam.y) * Math.min(1, dt * 4);
       const pct = Math.round(Math.max(0, Math.min(1, joueur.x / NIVEAU.fin.x)) * 100);
       hudP.textContent = pct + '%';
-      hudT.textContent = Math.floor(tempsMs / 60000) + ':' + String(Math.floor(tempsMs / 1000) % 60).padStart(2, '0');
+      hudT.textContent = mmss(tempsMs);
       hudF.textContent = chutes + ' ' + T('jumpFalls');
     }
     secousse = Math.max(0, secousse - dt * 3);
     dessiner(now);
   }
-  function montrerCarte(titre, sous, principal, rejouer){
+  /* `mode` : 'titre' pour l'écran d'accueil — grand titre, menu vertical,
+     commandes en bas, et le décor du jeu visible DERRIÈRE, sans voile ; tout
+     autre valeur pour les cartes de fin, qui gardent le fond sombre. C'est ce
+     qui distingue un écran-titre d'une interruption de partie. */
+  function montrerCarte(titre, sous, principal, rejouer, mode){
     carteT.textContent = titre;
     carteS.textContent = sous;
     btGo.textContent = principal;
     btAgain.hidden = !rejouer;
     if (rejouer) btAgain.textContent = rejouer;
+    btBest.hidden = mode !== 'titre';
+    if (mode === 'titre') btBest.textContent = T('jumpBest');
     btQuit.textContent = T('arenaQuit');
+    carte.classList.toggle('titre', mode === 'titre');
     carte.hidden = false;
     btGo.focus();
+  }
+  function ecranTitre(){
+    montrerCarte(T('jumpTitleJp'), T('jumpHow'), T('jumpStart'), null, 'titre');
+  }
+  function montrerRecord(){
+    const r = RECORD.lire();
+    montrerCarte(T('jumpBest'),
+      r ? T('jumpBestTime') + ' : ' + mmss(r.ms) + '\n' + T('jumpFalls') + ' : ' + r.chutes
+        : T('jumpNoBest'),
+      T('jumpBack'), null, 'record');
   }
   function commencer(){
     carte.hidden = true;
@@ -8045,8 +8219,12 @@ const jumper = (() => {
     if (etat !== 'jeu') return;
     etat = 'gagne';
     DEBLOQUE.ajouter('jumper');       // la pièce unique s'ouvre, et le reste
+    const mieux = RECORD.poser(tempsMs, chutes);   // meilleur temps : écrit seulement s'il l'est
     sfx.win();
-    montrerCarte(T('jumpWin'), T('jumpWinSub') + '\n' + T('jumpFalls') + ' : ' + chutes, T('jumpSee'), T('jumpAgain'));
+    montrerCarte(T('jumpWin'),
+      T('jumpWinSub') + '\n' + T('jumpBestTime') + ' : ' + mmss(tempsMs) + '   ' + T('jumpFalls') + ' : ' + chutes
+        + (mieux ? '\n' + T('jumpNewBest') : ''),
+      T('jumpSee'), T('jumpAgain'), 'fin');
   }
   function ouvrir(){
     if (ouvert) return;
@@ -8056,7 +8234,7 @@ const jumper = (() => {
     overlay.classList.add('open');
     sfx.startup();
     sfx.combat(true, 'saut');   // la nappe du menu se tait, le motif de Jumper prend la main
-    montrerCarte(T('jumpReady'), T('jumpHow'), T('jumpStart'), null);
+    ecranTitre();
     cancelAnimationFrame(raf);
     dernier = performance.now();
     raf = requestAnimationFrame(boucle);
@@ -8107,7 +8285,16 @@ const jumper = (() => {
       touches.espace = false;
     }
   }
-  btGo.addEventListener('click', () => { if (etat === 'gagne') versArticle(); else commencer(); });
+  /* Le bouton principal change de rôle selon la carte : voir l'article après
+     une victoire, revenir au titre depuis le record, commencer partout
+     ailleurs. C'est la même place à l'écran et la même touche, ce qui évite un
+     menu qui se réorganise sous la main. */
+  btGo.addEventListener('click', () => {
+    if (etat === 'gagne') versArticle();
+    else if (etat === 'record'){ etat = 'carte'; ecranTitre(); }
+    else commencer();
+  });
+  btBest.addEventListener('click', () => { etat = 'record'; montrerRecord(); });
   btAgain.addEventListener('click', commencer);
   btQuit.addEventListener('click', fermer);
   document.getElementById('jumpClose').addEventListener('click', fermer);
@@ -8131,28 +8318,61 @@ const jumper = (() => {
     g.clearRect(0, 0, bc.width, bc.height);
     fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
     const W = bc.width, H = bc.height, s = H / 300;
-    const ciel = g.createLinearGradient(0, 0, 0, H);
-    ciel.addColorStop(0, '#0b0f2b'); ciel.addColorStop(0.45, '#241a44'); ciel.addColorStop(0.78, '#5b2a4e'); ciel.addColorStop(1, '#9c4a4a');
-    g.fillStyle = ciel; g.fillRect(0, 0, W, H);
-    g.fillStyle = 'rgba(255,255,255,0.5)';
-    for (let i = 0; i < 26; i++) g.fillRect((i * 97 % 100) / 100 * W, (i * 53 % 40) / 100 * H, 2, 2);
-    const colline = (col, ray, base) => { g.fillStyle = col; for (let x = -ray; x < W + ray; x += ray * 1.7){ g.beginPath(); g.arc(x, base, ray, Math.PI, 0); g.fill(); } g.fillRect(0, base, W, H); };
-    colline('#2a1b44', 90 * s, H * 0.82);
-    colline('#3a2150', 62 * s, H * 0.95);
-    const pl = (x, y, w, h) => { g.fillStyle = 'rgba(8,6,20,0.35)'; g.fillRect(x + 2 * s, y + 5 * s, w, h); g.fillStyle = '#e8ebff'; g.fillRect(x, y, w, h); g.fillStyle = '#fff'; g.fillRect(x + 3 * s, y + 2 * s, w - 6 * s, 2 * s); };
-    pl(W * 0.06, H * 0.74, W * 0.22, 10 * s);
-    pl(W * 0.40, H * 0.60, W * 0.17, 10 * s);
-    pl(W * 0.72, H * 0.46, W * 0.22, 10 * s);
+    g.fillStyle = PAL.ciel; g.fillRect(0, 0, W, H);
+    const nuage = (x, y, e) => {
+      g.fillStyle = PAL.nuage;
+      g.beginPath();
+      g.arc(x, y, 9 * e, Math.PI, 0); g.arc(x + 11 * e, y, 12 * e, Math.PI, 0); g.arc(x + 23 * e, y, 8 * e, Math.PI, 0);
+      g.fill();
+      g.fillRect(x - 9 * e, y, 40 * e, 6 * e);
+      g.fillStyle = PAL.nuageBas; g.fillRect(x - 9 * e, y + 4 * e, 40 * e, 2 * e);
+    };
+    nuage(W * 0.14, H * 0.20, s * 1.5); nuage(W * 0.66, H * 0.13, s * 1.1);
+    const colline = (col, ray, base, tache) => {
+      for (let x = -ray; x < W + ray; x += ray * 1.7){
+        g.fillStyle = PAL.collineTrait; g.beginPath(); g.arc(x, base + 2 * s, ray + 2 * s, Math.PI, 0); g.fill();
+        g.fillStyle = col; g.beginPath(); g.arc(x, base, ray, Math.PI, 0); g.fill();
+        g.fillStyle = tache;
+        g.fillRect(x - ray * 0.3, base - ray * 0.32, 3 * s, 5 * s);
+        g.fillRect(x + ray * 0.28, base - ray * 0.18, 3 * s, 5 * s);
+      }
+      g.fillStyle = PAL.collineTrait; g.fillRect(0, base, W, 2 * s);
+      g.fillStyle = col; g.fillRect(0, base + 2 * s, W, H);
+    };
+    colline(PAL.collineOmbre, 64 * s, H * 0.80, '#004c1c');
+    colline(PAL.colline, 44 * s, H * 0.92, PAL.collineOmbre);
+    // plateformes de briques, mêmes couleurs et même cerne que dans le jeu
+    const pl = (x, y, w, h) => {
+      g.fillStyle = PAL.brique; g.fillRect(x, y, w, h);
+      g.fillStyle = PAL.joint;
+      for (let bx = x + 14 * s; bx < x + w; bx += 14 * s) g.fillRect(bx, y, 1.5 * s, h);
+      g.fillStyle = PAL.briqueHaut; g.fillRect(x, y, w, 1.5 * s);
+      g.fillStyle = PAL.trait;
+      g.fillRect(x, y, w, 1.5 * s); g.fillRect(x, y + h - 1.5 * s, w, 1.5 * s);
+      g.fillRect(x, y, 1.5 * s, h); g.fillRect(x + w - 1.5 * s, y, 1.5 * s, h);
+    };
+    pl(W * 0.06, H * 0.74, W * 0.22, 11 * s);
+    pl(W * 0.40, H * 0.60, W * 0.17, 11 * s);
+    pl(W * 0.72, H * 0.46, W * 0.22, 11 * s);
     // le personnage, en plein saut entre deux plateformes
-    const px = W * 0.345, py = H * 0.50, pw = 17 * s, ph = 22 * s;
-    g.fillStyle = '#fff'; g.fillRect(px - pw / 2, py - ph / 2, pw, ph);
-    g.fillStyle = '#231a3a';
-    g.fillRect(px - 1 * s, py - 3 * s, 3 * s, 4 * s); g.fillRect(px + 4 * s, py - 3 * s, 3 * s, 4 * s);
-    // le drapeau d'arrivée, tout à droite
-    const acc = getComputedStyle(document.documentElement).getPropertyValue('--blue').trim() || '#6cf';
-    const fx = W * 0.88, fy = H * 0.46;
-    g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(fx - 1.5 * s, fy - 42 * s, 3 * s, 42 * s);
-    g.fillStyle = acc; g.beginPath(); g.moveTo(fx + 1.5 * s, fy - 42 * s); g.lineTo(fx + 26 * s, fy - 33 * s); g.lineTo(fx + 1.5 * s, fy - 24 * s); g.closePath(); g.fill();
+    const px = W * 0.345, py = H * 0.50, pw = 17 * s, ph = 21 * s;
+    const bx0 = px - pw / 2, by0 = py - ph / 2;
+    g.fillStyle = PAL.trait;
+    g.beginPath(); g.moveTo(bx0 + 1 * s, by0 + 5 * s); g.lineTo(bx0 + 3 * s, by0 - 6 * s); g.lineTo(bx0 + 9 * s, by0 + 3 * s); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(bx0 + pw - 1 * s, by0 + 5 * s); g.lineTo(bx0 + pw - 3 * s, by0 - 6 * s); g.lineTo(bx0 + pw - 9 * s, by0 + 3 * s); g.closePath(); g.fill();
+    g.fillRect(bx0, by0, pw, ph);
+    g.fillStyle = PAL.corps; g.fillRect(bx0 + 1.5 * s, by0 + 1.5 * s, pw - 3 * s, ph - 3 * s);
+    g.fillStyle = PAL.trait;
+    g.fillRect(bx0 + 4 * s, by0 + 7 * s, 2.5 * s, 4 * s); g.fillRect(bx0 + 10 * s, by0 + 7 * s, 2.5 * s, 4 * s);
+    g.fillRect(bx0 + 6 * s, by0 + 14 * s, 5 * s, 1.5 * s);
+    // le mât d'arrivée, tout à droite
+    const fx2 = W * 0.88, fy2 = H * 0.46;
+    g.fillStyle = PAL.trait; g.fillRect(fx2 - 2.5 * s, fy2 - 44 * s, 5 * s, 44 * s);
+    g.fillStyle = PAL.metal; g.fillRect(fx2 - 1.5 * s, fy2 - 43 * s, 2.5 * s, 42 * s);
+    g.fillStyle = PAL.trait;
+    g.beginPath(); g.moveTo(fx2 + 1 * s, fy2 - 44 * s); g.lineTo(fx2 + 28 * s, fy2 - 34 * s); g.lineTo(fx2 + 1 * s, fy2 - 24 * s); g.closePath(); g.fill();
+    g.fillStyle = PAL.pic;
+    g.beginPath(); g.moveTo(fx2 + 3 * s, fy2 - 41 * s); g.lineTo(fx2 + 23 * s, fy2 - 34 * s); g.lineTo(fx2 + 3 * s, fy2 - 27 * s); g.closePath(); g.fill();
   }
 
   /* Contrôle, dans l'esprit de model3d.debug() : l'état courant, et la
