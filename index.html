@@ -403,60 +403,6 @@
     transition:transform 0.45s cubic-bezier(.2,.8,.2,1), opacity 0.45s ease, color 0.35s ease, text-shadow 0.35s ease;
     will-change:transform;
   }
-  /* Lignes à icône (mini-jeux, pièce verrouillée) : MÊME boîte que les
-     aperçus 3D — 88 px, centrée, sans texte — pour que toutes les listes du
-     site se mesurent pareil ; le nom reste dans la fiche et en info-bulle.
-     Et même traitement : l'icône non sélectionnée s'efface et se voile
-     légèrement, la sélectionnée s'allume avec une lueur qui épouse sa forme.
-     La lueur reprend le procédé des icônes de la barre — une copie du glyphe
-     en masque, floutée une seule fois, dont seule l'opacité s'anime : aucun
-     filtre n'est recalculé pendant les déplacements. */
-  .xmb-item.has-icon{
-    width:88px;height:88px;
-    padding:0;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:5px;
-    overflow:visible;
-  }
-  .xmb-item .xmb-ico{
-    position:relative;z-index:1;
-    width:56px;height:56px;
-    filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) blur(0.7px);
-    opacity:0.55;
-    transition:opacity 0.35s ease, filter 0.35s ease;
-  }
-  .xmb-item.selected .xmb-ico{opacity:1;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55));}
-  /* le nom, en petit sous l'icône : deux glyphes abstraits ne se reconnaissent
-     pas d'emblée, et le libellé tient dans la boîte sans la changer de taille */
-  .xmb-nom{
-    position:relative;z-index:1;
-    max-width:88px;
-    font-size:10px;line-height:12px;
-    letter-spacing:0.8px;
-    text-transform:uppercase;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    color:var(--white-35);
-    text-shadow:0 2px 4px rgba(0,0,0,0.6);
-    transition:color 0.35s ease;
-  }
-  .xmb-item.selected .xmb-nom{color:var(--white);}
-  .xmb-ico-glow{
-    position:absolute;left:50%;top:50%;margin-top:-6px;
-    width:56px;height:56px;
-    transform:translate(-50%,-50%) scale(1.22);
-    filter:blur(6px);
-    opacity:0;
-    transition:opacity 0.35s ease;
-    z-index:0;pointer-events:none;
-  }
-  .xmb-ico-glow i{
-    position:absolute;inset:0;
-    background:rgba(var(--accent-rgb),0.6); /* même intensité que la lueur des icônes de la barre */
-    -webkit-mask:var(--icon) center/contain no-repeat;
-    mask:var(--icon) center/contain no-repeat;
-  }
-  .xmb-item.selected .xmb-ico-glow{opacity:1;}
-  .xmb-item.has-icon .tag{position:absolute;right:-4px;top:2px;margin:0;font-size:11px;line-height:1;}
   .item-column.fast .xmb-item{transition-duration:0.18s;} /* défilement rapide (voir noteStep) */
   .xmb-item:hover{color:var(--white-60);}
   .xmb-item.selected{
@@ -797,6 +743,17 @@
      — posé hors du bouton par outline-offset — cesse d'être coupé par le bord
      de la boîte (voir le transitionend qui pose cette classe). */
   .preview-info.libre,.size-picker.libre{overflow:visible;}
+  /* ... et TANT QUE ça rogne, le liseré ne se montre pas du tout. Le rendre
+     visible à la fin ne suffisait pas : pendant la demi-seconde d'ouverture on
+     voyait un cadre blanc amputé de son bord bas — mesuré, le bouton est à RAS
+     du bas de la boîte, il n'y a pas un pixel de marge. Plutôt que de lui
+     ménager une place (ce qui déplacerait toute la fiche), on le laisse venir
+     en fondu une fois l'ouverture finie. Les panneaux de texte en sont exclus :
+     ils n'ont pas de plafond animé, donc rien ne les rogne jamais, et ils ne
+     reçoivent pas la classe `libre`. */
+  .preview-cta.focus,.pill.focus{transition:all 0.25s ease, outline-color 0.2s ease;}
+  .preview:not(.info) .preview-info:not(.libre) .preview-cta.focus,
+  .size-picker:not(.libre) .pill.focus{outline-color:transparent;}
   /* En-tête compact : le nom et le prix sur UNE ligne, au même corps, et le
      bouton de dépliage du descriptif au bout. Deux lignes gagnées, rendues au
      visuel. */
@@ -3007,10 +2964,13 @@ const DATA = [
        texte et son bouton de repli disparaissent quand `d` manque. */
     /* `img` : la ligne de la liste montre un MODÈLE 3D de cette image, comme
        un vêtement ou le cadenas d'une pièce verrouillée — même détourage, même
-       maillage, même balancement. `icon` reste en secours : sans WebGL, c'est
-       le glyphe plat qui s'affiche, avec le nom dessous. */
-    { n:"Jumper", jeu:"jumper", icon:"jumper icon.svg", img:"icons/jumper icon.png" },
-    { n:"Item versus", jeu:"versus", icon:"versus icon.svg", img:"icons/itemversus icon.png" },
+       maillage, même balancement. Il n'y a plus de glyphe plat en secours : le
+       WebGL manque à si peu de monde que deux fichiers de plus à servir, à
+       maintenir et à retirer avant la mise en ligne coûtaient plus qu'ils ne
+       rapportaient. Sans lui, la ligne montre le nom, comme une pièce sans
+       photo. */
+    { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
+    { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
@@ -3911,11 +3871,24 @@ function recalerIcones(){ requestAnimationFrame(majIconesCachees); }
 // (par getElementById et non par la const previewInfo : elle est déclarée plus
 // bas dans le fichier, et une const n'existe pas avant sa ligne)
 [document.getElementById('previewInfo'), sizePicker].forEach(el => {
-  el.addEventListener('transitionend', (e) => {
-    if (e.target !== el || e.propertyName !== 'max-height') return;
+  let filet = 0;
+  const poser = () => {
     const ouvert = el === sizePicker ? el.classList.contains('open')
                                      : !previewEl.classList.contains('gallery');
     el.classList.toggle('libre', ouvert);
+  };
+  el.addEventListener('transitionend', (e) => {
+    if (e.target !== el || e.propertyName !== 'max-height') return;
+    clearTimeout(filet); poser();
+  });
+  /* Filet. Une transition interrompue — ouvrir puis refermer aussitôt — ne
+     rend pas toujours son `transitionend`, et le liseré de focus resterait
+     alors invisible jusqu'à la prochaine ouverture propre. Un rendez-vous
+     posé au départ, un peu plus long que la transition, garantit que la
+     classe finit par tomber quoi qu'il arrive. */
+  el.addEventListener('transitionstart', (e) => {
+    if (e.target !== el || e.propertyName !== 'max-height') return;
+    clearTimeout(filet); filet = setTimeout(poser, 520);
   });
 });
 /* Vol vers le panier : c'est le MODÈLE 3D qui part, pas la photo. Il tourne sur
@@ -5722,18 +5695,9 @@ function build(){
         row.classList.add('has-3d');
         row.title = vu === item ? L(item.n) : T('locked'); // le cadenas ne dit pas ce qu'il garde
         if (item.was){ const t = document.createElement('span'); t.className = 'tag'; t.textContent = T('sale'); row.appendChild(t); }
-      } else if (item.icon){
-        /* Mini-jeux : une icône à la place du nom, comme un produit montre son
-           aperçu — et le nom en petit dessous, deux glyphes abstraits ne se
-           reconnaissant pas d'emblée. */
-        const nom = L(item.n);
-        row.classList.add('has-icon');
-        row.title = nom;
-        const u = encodeURI('icons/' + item.icon);
-        row.innerHTML = `<span class="xmb-ico-glow"><i style="--icon:url('${u}')"></i></span>`
-                      + `<img class="xmb-ico" src="${u}" alt="">`
-                      + `<span class="xmb-nom">${esc(nom)}</span>`;
       } else {
+        // sans aperçu 3D (pas de photo, ou pas de WebGL) : le nom, comme une ligne de texte
+
         row.innerHTML = esc(L(item.n)) + (item.was ? `<span class="tag">${T('sale')}</span>` : '');
       }
       row.addEventListener('click', (e)=>{
@@ -6089,7 +6053,7 @@ function render(){
     const place = rows.map((row, ii) => {
       const dist = Math.abs(ii - sel), has3d = row.classList.contains('has-3d');
       // boîte carrée de 88 px : aperçu 3D d'un produit, ou icône d'un mini-jeu
-      const carre = has3d || row.classList.contains('has-icon');
+      const carre = has3d;
       row.classList.toggle('selected', ii === sel);
       row.style.opacity = fade(dist, ii > sel);
       if (!carre && row._w === undefined) row._w = row.offsetWidth;
