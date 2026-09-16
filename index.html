@@ -1906,6 +1906,24 @@
   .dress-case.porte{background:#fff2c2;border-color:#ffb020;box-shadow:inset 0 0 0 2px #ffdf8a;}
   .dress-case.porte::after{content:"\2713";position:absolute;right:4px;top:2px;color:#e07800;font-weight:800;font-size:14px;}
   .dress-case:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;}
+  /* Refus : la case tremble, elle ne se coche pas. Un article verrouillé reste
+     dans le portant — le cadenas dit qu'il existe et qu'il se gagne — mais il
+     ne se pose pas sur le mannequin. Le tremblement est court et sec, et la
+     case rougit le temps de la secousse : deux signaux pour la même chose,
+     parce qu'un mouvement seul se rate si l'œil est ailleurs. */
+  @keyframes dressRefus{
+    0%,100%{transform:translateX(0);}
+    15%{transform:translateX(-5px) rotate(-2deg);}
+    30%{transform:translateX(5px) rotate(2deg);}
+    45%{transform:translateX(-4px) rotate(-1.5deg);}
+    60%{transform:translateX(4px) rotate(1.5deg);}
+    80%{transform:translateX(-2px);}
+  }
+  .dress-case.refus{
+    animation:dressRefus 0.36s ease;
+    border-color:#e0405c;background:rgba(255,215,220,0.9);
+  }
+  .dress-case.refus:hover{transform:none;}
   .dress-outils{
     position:absolute;right:10px;bottom:10px;width:min(52%,430px);
     display:flex;flex-wrap:wrap;align-items:center;gap:8px;
@@ -3853,6 +3871,16 @@ const sfx = (() => {
     note(t, 880, 660, 0.05, 0.075, 'sine', 0.002);
     note(t + 0.004, 220, 200, 0.03, 0.06, 'triangle', 0.002);
   };
+  /* Refus : deux notes qui DESCENDENT, là où `select` monte. C'est le seul
+     contraste qui se lise sans qu'on l'ait appris — on n'a pas besoin d'un
+     buzzer, qui ferait faute dans un site où tout le reste est doux. Sourd et
+     court : ce n'est pas une punition, c'est une porte fermée. */
+  api.refus = () => {
+    const c = audio(); if (!c) return; const t = at();
+    note(t, 330, 300, 0.055, 0.10, 'triangle', 0.003);
+    note(t + 0.085, 233, 210, 0.055, 0.14, 'triangle', 0.003);
+    burst(t, { freq: 300, q: 1.1, peak: 0.03, attack: 0.002, decay: 0.06, lp: 1200 });
+  };
   // Fin du duel : une petite fanfare, quatre notes qui montent. Plus large que
   // l'ajout au panier, mais du même bois — on reste dans la sonorité du site.
   api.win = () => {
@@ -4399,6 +4427,16 @@ const model3d = (() => {
     }
     const warm = a => { if (a && !perdu){ texture(a.texF); texture(a.texB); bufs(a.mesh); } }; // envoi anticipé : pas d'à-coup au premier rendu
     function clear(){ if (perdu) return; gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); }
+    /* `plan` : un NOUVEAU PLAN de découpage. Efface la seule profondeur, sans
+       toucher à l'image. C'est ce qui fait d'une poupée de papier une poupée
+       de papier : chaque couche recouvre entièrement celle d'en dessous, sans
+       qu'on ait à se demander laquelle des deux surfaces est « devant ».
+       Sans lui, l'épaule du mannequin ressort au travers de la manche et la
+       cuisse au travers de l'ourlet — deux surfaces cousues à la même
+       profondeur, c'est le tampon de profondeur qui tranche, et il tranche
+       au petit bonheur. Le ciseau (scissor) est coupé d'abord : autrement
+       l'effacement se limiterait à la dernière boîte dessinée. */
+    function plan(){ if (perdu) return; gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); gl.clear(gl.DEPTH_BUFFER_BIT); }
     // dessine un modèle sur tout le canvas, ou dans le carré box = { x, y, s } (pixels du
     // canvas, y vers le bas, fractions permises : la fenêtre de rendu est entière et un
     // peu plus large, le décalage restant passe dans la projection → aucun tremblement)
@@ -4422,7 +4460,14 @@ const model3d = (() => {
         const bh = box.h || box.s;
         const H = cv.height, x0 = Math.floor(box.x) - 1, y0 = Math.floor(box.y) - 1, x1 = Math.ceil(box.x + box.s) + 1, y1 = Math.ceil(box.y + bh) + 1;
         const vw = x1 - x0, vh = y1 - y0;
-        gl.viewport(x0, H - y1, vw, vh); gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, H - y1, vw, vh);
+        /* `box.clip` = [haut, bas] en pixels du canvas : la FENÊTRE reste la
+           boîte — donc le cadrage et l'échelle ne bougent pas — mais le ciseau
+           se resserre sur une tranche. Sert à ne redessiner du mannequin que
+           sa tête et son cou, par-dessus la capuche d'un sweat, pour que le
+           visage se voie au travers comme si la capuche était portée. */
+        const sy0 = box.clip ? Math.max(y0, Math.floor(box.clip[0])) : y0;
+        const sy1 = box.clip ? Math.min(y1, Math.ceil(box.clip[1])) : y1;
+        gl.viewport(x0, H - y1, vw, vh); gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, H - sy1, vw, Math.max(0, sy1 - sy0));
         const sx = box.s / vw, sy = bh / vh, ox = (2 * (box.x - x0) + box.s) / vw - 1, oy = (2 * (y1 - box.y) - bh) / vh - 1;
         MVP = mul(new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, ox,oy,0,1]), MVP);
       } else { gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); }
@@ -4444,7 +4489,7 @@ const model3d = (() => {
       if (side !== 'back'){ gl.bindTexture(gl.TEXTURE_2D, texture(a.texF)); gl.drawElements(gl.TRIANGLES, a.mesh.nFront, gl.UNSIGNED_SHORT, 0); }
       if (side !== 'front'){ gl.bindTexture(gl.TEXTURE_2D, texture(a.texB)); gl.drawElements(gl.TRIANGLES, a.mesh.nBack, gl.UNSIGNED_SHORT, a.mesh.nFront * 2); }
     }
-    return { gl, canvas: cv, clear, render, warm };
+    return { gl, canvas: cv, clear, plan, render, warm };
   }
   const panel = fileMode ? null : makeRenderer(canvas, 0, false);
   if (!panel){
@@ -5988,6 +6033,7 @@ const model3d = (() => {
       ready: item => !!ready.get(keyOf(item)),
       empreinte,                              // ce que l'article couvre dans sa boîte, mesuré une fois
       clear: r.clear,
+      plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
       draw(item, ang, box, alpha, tint){
         const a = ready.get(keyOf(item));
@@ -8894,14 +8940,28 @@ const dressup = (() => {
   const btNu = document.getElementById('dressNu');
   const note = document.getElementById('dressNote');
 
-  /* ---- les ancrages ----
+  /* ---- catégories et coupes ----
+     Deux choses qu'on confondait sous un seul nom.
+
+     La CATÉGORIE dit où va la pièce sur le corps, donc ce qu'elle REMPLACE :
+     un seul haut, un seul bas, un seul chapeau. En choisir un autre dans la
+     même catégorie retire le précédent. C'est la règle de tous les jeux
+     d'habillage, et elle dispense de se demander ce qui passe par-dessus
+     quoi. Le rang donne l'ordre de dessin. Seuls les hauts existent
+     aujourd'hui dans la boutique ; les deux autres attendent leurs articles,
+     et il n'y aura rien à rebrancher le jour où ils arriveront.
+
+     La COUPE dit comment la pièce TOMBE. Un sweat et un t-shirt vont au même
+     endroit mais n'ont pas la même silhouette à plat, donc pas le même
+     ancrage : `y0`/`y1` la tranche de corps à couvrir, `ourlet` la largeur
+     que doit avoir le bas du vêtement une fois posé. Le reste est calculé —
+     le module 3D mesure ce que l'article couvre dans sa propre boîte (voir
+     `empreinte`) et on résout la boîte qui l'amène là.
+
      Relevés sur le mannequin, en fractions de sa boîte, le haut du cadre à 0 :
-     épaules 0,185, buste large de 0,41 à 0,59, hanches 0,40 à 0,60,
-     entrejambe 0,540. Un ancrage dit donc simplement OÙ VA LE VÊTEMENT :
-     `y0`/`y1` la tranche de corps qu'il doit couvrir, `ourlet` la largeur que
-     doit avoir son bas une fois posé. Le reste est calculé : le module 3D
-     mesure ce que l'article couvre dans sa propre boîte (voir `empreinte`) et
-     on résout la boîte qui l'amène là.
+     sommet du crâne 0,047, menton 0,130, épaules 0,185, buste large de 0,41 à
+     0,59, hanches 0,40 à 0,60, entrejambe 0,540, chevilles 0,95, envergure des
+     bras 0,181 à 0,818.
 
      LARGEUR ET HAUTEUR SE RÈGLENT SÉPARÉMENT, et c'est tout l'intérêt : un
      t-shirt photographié à plat est bien plus large que haut (0,88 × 0,56),
@@ -8913,27 +8973,40 @@ const dressup = (() => {
 
      Pourquoi l'ourlet plutôt que la largeur totale : un débardeur est étroit
      parce qu'il n'a pas de manches, un t-shirt est large parce que les
-     siennes sont écartées. Seul le bas du vêtement dit la largeur du corps.
-     Le rang décide de l'ordre de dessin : une veste passe sur un haut. */
-  const ANCRAGES = {
-    haut:  { ourlet: 0.28, y0: 0.168, y1: 0.556, rang: 1 },  // t-shirts, polos, débardeurs : épaules → hanches
-    veste: { ourlet: 0.30, y0: 0.150, y1: 0.590, rang: 2 },  // sweats : plus large que le haut qu'ils couvrent, et plus longs
-    bas:   { ourlet: 0.26, y0: 0.500, y1: 0.960, rang: 0 },  // pantalons et jupes, quand il y en aura
+     siennes sont écartées. Seul le bas du vêtement dit la largeur du corps. */
+  const CATEGORIES = {
+    bas:     { rang: 0 },
+    haut:    { rang: 1 },
+    chapeau: { rang: 2 },
   };
-  // à quelle place du corps va un article, d'après son guide des tailles
-  const PLACE = { hoodie: 'veste' };
-  const placeDe = (it) => PLACE[it.sz] || 'haut';
+  const ANCRAGES = {
+    tee:      { ourlet: 0.28, y0: 0.150, y1: 0.556 },   // t-shirts, polos, débardeurs : col au ras du cou, ourlet aux hanches
+    sweat:    { ourlet: 0.25, y0: 0.045, y1: 0.585, capuche: true },  // la capuche encadre la tête : le vêtement monte au ras du crâne, manches jusqu'aux mains
+    pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
+    chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
+  };
+  /* Du guide des tailles vers [catégorie, coupe]. Tout ce qui n'est pas listé
+     est un haut de coupe t-shirt : c'est le cas de `tee`, `polo`, `tank`,
+     `raglan` et des tailles propres à un article. */
+  const TAILLES = {
+    hoodie: ['haut', 'sweat'],
+    pants:  ['bas', 'pantalon'],  jeans: ['bas', 'pantalon'],  skirt: ['bas', 'pantalon'],
+    cap:    ['chapeau', 'chapeau'],  beanie: ['chapeau', 'chapeau'],
+  };
+  const rangerDe = (it) => TAILLES[it.sz] || ['haut', 'tee'];
+  const TETE_COU = [0, 0.185];   // du haut du cadre à la naissance des épaules
 
   let ouvert = false, scene = null, raf = 0;
-  let pieces = [];            // le portant : { it, place, el }
-  const portees = new Map();  // place -> pièce
+  let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
+  const portees = new Map();  // catégorie -> pièce
   let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let mannequin = { mannequin: true, visage: null };
   let ang = 0, cible = 0;
 
   /* Le portant prend TOUTES les pièces achetables du catalogue, verrouillées
-     comprises — un cadenas se pose aussi bien qu'un t-shirt, et il serait
-     dommage de priver le salon d'essayage de la moitié de la boutique. */
+     comprises : le cadenas dit que l'article existe et qu'il se gagne, et il
+     serait dommage de cacher la moitié de la boutique. Il ne se PORTE pas
+     pour autant — voir `basculer`. */
   function garnir(){
     pieces = [];
     rack.innerHTML = '';
@@ -8947,20 +9020,34 @@ const dressup = (() => {
         el.tabIndex = 0;
         el.setAttribute('role', 'option');
         el.title = vu === it ? L(it.n) : T('locked');
-        const p = { it: vu, nom: el.title, place: placeDe(it), verrou: vu !== it, el };
+        const [categorie, coupe] = rangerDe(it);
+        const p = { it: vu, nom: el.title, cat: categorie, coupe, verrou: vu !== it, el };
         el.addEventListener('click', () => basculer(p));
         el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
+        el.addEventListener('animationend', () => el.classList.remove('refus'));
         rack.appendChild(el);
         pieces.push(p);
         if (scene) scene.load(vu);
       });
     });
   }
+  /* Une pièce par catégorie : la choisir retire celle qu'elle remplace, la
+     rechoisir la retire tout court. Une pièce VERROUILLÉE, elle, ne se pose
+     pas — sa case tremble et refuse. Poser un cadenas sur le mannequin
+     n'apprenait rien à personne ; le refus, lui, dit qu'il y a là quelque
+     chose à débloquer. */
   function basculer(p){
-    const dedans = portees.get(p.place);
-    if (dedans === p) portees.delete(p.place);
-    else portees.set(p.place, p);
-    pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.place) === q));
+    if (p.verrou){
+      p.el.classList.remove('refus');
+      void p.el.offsetWidth;          // relance l'animation même sur un clic répété
+      p.el.classList.add('refus');
+      sfx.refus();
+      return;
+    }
+    const dedans = portees.get(p.cat);
+    if (dedans === p) portees.delete(p.cat);
+    else portees.set(p.cat, p);
+    pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.cat) === q));
     sfx.select();
   }
   function deshabiller(){
@@ -9008,19 +9095,37 @@ const dressup = (() => {
     const libre = Math.min(r.width * 0.46, r.height * 0.92);
     const S = libre * k;
     const MX = (r.width * 0.045) * k, MY = ((r.height - libre) / 2) * k;
-    scene.draw(mannequin, ang, { x: MX, y: MY, s: S }, 1);
-    // les pièces portées, dans l'ordre des rangs
-    [...portees.values()].sort((a, b) => ANCRAGES[a.place].rang - ANCRAGES[b.place].rang)
+    const cadre = { x: MX, y: MY, s: S };
+    scene.draw(mannequin, ang, cadre, 1);
+    /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
+       `scene.plan()` remet la profondeur à zéro sans toucher à l'image, si
+       bien que la couche qui vient recouvre entièrement celle d'en dessous.
+       Sans lui, le vêtement et le corps sont deux surfaces cousues à la même
+       profondeur : l'épaule ressortait au travers de la manche, la cuisse au
+       travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
+       papier n'a pas de volume, elle a des couches. */
+    let capuche = false;
+    [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang)
       .forEach(p => {
-        const A = ANCRAGES[p.place], e = scene.empreinte(p.it);
+        const A = ANCRAGES[p.coupe], e = scene.empreinte(p.it);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
-        let l = S * A.ourlet / (e.o1 - e.o0), hh = S * (A.y1 - A.y0) / (e.y1 - e.y0);
-        // un cadenas n'est pas un vêtement : il ne s'étire pas, il se loge
-        if (p.verrou) l = hh = Math.min(l, hh);
-        const cx = p.verrou ? (e.x0 + e.x1) / 2 : (e.o0 + e.o1) / 2;   // l'ourlet centré sur l'axe du corps
-        scene.draw(p.it, ang, { x: MX + S * 0.5 - cx * l,
+        const l = S * A.ourlet / (e.o1 - e.o0), hh = S * (A.y1 - A.y0) / (e.y1 - e.y0);
+        scene.plan();
+        scene.draw(p.it, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
           y: MY + S * (A.y0 + A.y1) / 2 - (e.y0 + e.y1) / 2 * hh, s: l, h: hh }, 1);
+        capuche = capuche || !!A.capuche;
       });
+    /* Une capuche se PORTE, elle ne se pose pas : la tête et le cou repassent
+       par-dessus le sweat, dans une tranche de découpe qui s'arrête à la
+       naissance des épaules. Ce qui reste du vêtement autour — le bord au-
+       dessus du crâne, les deux côtés le long des joues — devient le bord de
+       la capuche, exactement là où il tomberait. Rien n'est dessiné en plus :
+       c'est le mannequin lui-même, redessiné dans une fente. */
+    if (capuche){
+      scene.plan();
+      scene.draw(mannequin, ang, { ...cadre, clip: [MY + S * TETE_COU[0], MY + S * TETE_COU[1]] }, 1);
+    }
+    scene.plan();
     // le portant : chaque aperçu à la place de sa case
     const rr = rack.getBoundingClientRect();
     pieces.forEach((p, i) => {
