@@ -5429,7 +5429,7 @@ const model3d = (() => {
      trapèze, le cou et la tête, qui doivent rester — c'est par là qu'on voit
      le cou dans l'encolure. Les bras ne se cachent jamais : la main doit
      ressortir au bout de la manche. */
-  const MAN_CHEVILLE = 0.08, MAN_BUSTE_HAUT = 0.80;
+  const MAN_CHEVILLE = 0.08, MAN_BUSTE_HAUT = 0.775;
   /* ---- où est le visage dans la photo déposée ? ----
      La photo arrive cadrée n'importe comment : un selfie serré, un portrait en
      pied, une photo de groupe rognée. Posée telle quelle dans la case du
@@ -7029,9 +7029,17 @@ const model3d = (() => {
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
-      draw(item, ang, box, alpha, tint){
+      /*  : ne dessiner que le DEVANT. Un vêtement est un coussin à deux
+         faces, et le dos est texturé par la photo EN MIROIR faute de vue
+         arrière ; là où la surface se met de chant — le bout d'une manche, un
+         ourlet — il affleure et pose une facette prise à l'autre bout de
+         l'image, d'où ces bouts de manche en biseau sombre sur les sweats. Le
+         mannequin ne tournant plus, le dos n'a plus rien à montrer : on ne le
+         dessine pas. Les vignettes du portant, elles, se balancent encore et
+         le gardent. */
+      draw(item, ang, box, alpha, tint, face){
         const a = ready.get(keyOf(item));
-        if (a) r.render(a, ang, PVrow, alpha == null ? 1 : alpha, box, '', tint);
+        if (a) r.render(a, ang, PVrow, alpha == null ? 1 : alpha, box, face || '', tint);
       },
     };
   }
@@ -9994,13 +10002,13 @@ const dressup = (() => {
        à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, serre: 0.80, effile: 0.80, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
+    tee:      { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
     /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
     sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ceinture: 0.19, y0: 0.465, y1: 0.935 },  // la ceinture sur la crête des hanches (le corps s'y échancre dès 0,483)
+    pantalon: { ceinture: 0.19, chevilles: 0.92, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ourlet: 0.205, y0: 0.468, y1: 0.618 },  // le sous-vêtement : 0,205 contre 0,170 de hanche, il ne s'évase plus en jupe
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -10087,7 +10095,7 @@ const dressup = (() => {
      lit comme une penderie, et l'on voit d'un coup d'œil ce qui manque. */
   const GROUPES = [
     { cat: 'haut',  cle: 'dressCatTop' },
-    { cat: 'bas',   cle: 'dressCatBottom' },
+    { cat: 'bas',   cle: 'dressCatBottom', dort: () => !portees.has('haut') },
     { cat: 'pieds', cle: 'dressCatShoes', dort: () => !portees.has('bas') },
   ];
   /* Un groupe EN SOMMEIL se voit avant qu'on clique : les chaussures attendent
@@ -10150,13 +10158,18 @@ const dressup = (() => {
      pas — sa case tremble et refuse. Poser un cadenas sur le mannequin
      n'apprenait rien à personne ; le refus, lui, dit qu'il y a là quelque
      chose à débloquer. */
+  /* ON S'HABILLE DANS L'ORDRE : un haut, puis un bas, puis des chaussures. Une
+     paire de baskets sur un corps sans pantalon ne ressemble à rien, un
+     pantalon sans haut non plus, et le refus le dit mieux qu'une case grisée :
+     la pièce existe, elle attend celle d'avant. Retirer une pièce emporte ce
+     qui reposait dessus — on ne garde pas des chaussures sur un corps qu'on
+     vient de déshabiller. */
+  const DEPEND = { bas: 'haut', pieds: 'bas' };
   function basculer(p){
-    /* ON NE SE CHAUSSE PAS AVANT DE S'ÊTRE HABILLÉ. Une paire de baskets sur
-       un corps sans pantalon ne ressemble à rien, et le refus le dit mieux
-       qu'une case grisée : la chaussure existe, elle attend son bas. Même
-       tremblement que pour un article verrouillé — un seul geste de refus dans
-       tout le salon, il se reconnaît tout de suite. */
-    const refus = p.verrou || (p.cat === 'pieds' && !portees.has('bas') && !portees.has(p.cat));
+    /* Même tremblement que pour un article verrouillé : un seul geste de refus
+       dans tout le salon, il se reconnaît tout de suite. */
+    const attend = DEPEND[p.cat];
+    const refus = p.verrou || (attend && !portees.has(attend) && !portees.has(p.cat));
     if (refus){
       p.el.classList.remove('refus');
       void p.el.offsetWidth;          // relance l'animation même sur un clic répété
@@ -10167,8 +10180,8 @@ const dressup = (() => {
     const dedans = portees.get(p.cat);
     if (dedans === p) portees.delete(p.cat);
     else portees.set(p.cat, p);
-    // le bas s'en va : les chaussures suivent, elles ne tiennent pas seules
-    if (p.cat === 'bas' && !portees.has('bas')) portees.delete('pieds');
+    if (!portees.has('haut')) portees.delete('bas');
+    if (!portees.has('bas')) portees.delete('pieds');
     refletEtat();
     if (dedans === p) sfx.retirer(); else sfx.select();
   }
@@ -10310,6 +10323,18 @@ const dressup = (() => {
         A = Object.assign({}, A, { ourlet: (p[1] - p[0]) * A.pieds });
       }
       if (A.ceinture){
+        /* Et l'OURLET ne peut pas être plus étroit que l'écart des deux pieds :
+           sinon le pied sort à côté du bas de jambe au lieu d'en sortir, et il
+           a l'air posé là. Le legging, le loose et le washed étaient dans ce
+           cas — leurs jambes se rejoignent bien plus que celles du mannequin,
+           qui ne peuvent plus se fermer autant depuis qu'on empêche les pieds
+           de se croiser. Deux garde-fous, un à chaque bout : la ceinture sur
+           les hanches, l'ourlet sur les chevilles. */
+        let pieds = 0;
+        if (A.chevilles){
+          const pi = sc.empreintePieds(corps ? corps.jambes : 0);
+          if (pi) pieds = A.chevilles * (pi.d[1] - pi.g[0]) / (e.o1 - e.o0);
+        }
         /* Un bas ne peut pas avoir la ceinture plus étroite que les hanches.
            Elle l'était sur la moitié des photos — 0,131 pour le jogger, 0,135
            pour le cargo, contre 0,170 de hanche — et le bassin débordait
@@ -10317,7 +10342,7 @@ const dressup = (() => {
            assez, et pas plus. Le centrage se fait sur la ceinture et non sur
            la boîte : celle du jogger tombe à 0,467 parce que ses jambes
            partent de biais, et le pantalon se posait de travers. */
-        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0));
+        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0), pieds);
         return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
       }
       const base = A.ourlet / (e.o1 - e.o0);
@@ -10363,7 +10388,7 @@ const dressup = (() => {
     // le pantalon est posé : ses deux bas de jambe donnent l'axe des chaussures
     if (bas && bb) jambesBas = sc.ourletsBas(bas.porte || bas.it, bb);
     if (!sc.ready(corps)) sc.load(corps);
-    sc.draw(corps, 0, { x: MX, y: MY, s: S }, 1);
+    sc.draw(corps, 0, { x: MX, y: MY, s: S }, 1, null, 'front');
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
        `sc.plan()` remet la profondeur à zéro sans toucher à l'image, si bien
        que la couche qui vient recouvre entièrement celle d'en dessous. Sans
@@ -10378,7 +10403,7 @@ const dressup = (() => {
       /* Le maillage effilé se dessine dans la boîte du maillage d'ORIGINE :
          c'est ce qui laisse l'épaule où elle est (voir `effiler`). */
       sc.draw(sc.effiler(modele, A.effile, cle) || modele, 0,
-              { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
+              { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
     };
     couches.forEach(p => {
       const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
