@@ -5439,6 +5439,98 @@ const model3d = (() => {
      le cou dans l'encolure. Les bras ne se cachent jamais : la main doit
      ressortir au bout de la manche. */
   const MAN_CHEVILLE = 0.08, MAN_BUSTE_HAUT = 0.775;
+  /* ---- LES YEUX SONT LE REPÈRE ----
+     Un visage ne se cale ni sur son menton ni sur sa boîte : il se cale sur
+     ses YEUX. Deux photos du même visage, l'une serrée l'autre de loin, ont
+     des boîtes très différentes et des yeux au même endroit du visage ; poser
+     les yeux sur les yeux, c'est poser le visage sur le visage, et le reste
+     suit tout seul.
+     On les trouve sans rien connaître du visage : dans la tache de peau, les
+     yeux sont les deux taches SOMBRES de la moitié haute, à peu près à la
+     même hauteur et de part et d'autre de l'axe. Les sourcils sont sombres
+     eux aussi et se collent souvent aux yeux — le barycentre tombe alors un
+     peu haut, d'où le léger décalage vers le bas appliqué à la fin ; c'est
+     mesuré sur des visages où l'œil et le sourcil se touchent.
+     Sans yeux reconnaissables — un dessin, un animal, un cadrage de dos — on
+     ne renvoie rien, et le cadrage par la tache de peau reprend la main. */
+  const YEUX_SOMBRE = 0.66, YEUX_PART = [0.0008, 0.06], YEUX_BAS = 0.10;
+  function yeuxDe(photo){
+    const N = 96;
+    const c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+    if (!iw || !ih) return null;
+    g.drawImage(photo, 0, 0, N, N);
+    let d;
+    try { d = g.getImageData(0, 0, N, N).data; } catch (e){ return null; }
+    const lum = new Float32Array(N * N), peau = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++){
+      const r = d[i*4], v = d[i*4+1], b = d[i*4+2];
+      lum[i] = 0.299 * r + 0.587 * v + 0.114 * b;
+      const mx = Math.max(r, v, b), mn = Math.min(r, v, b);
+      peau[i] = (r > 95 && v > 40 && b > 20 && mx - mn > 15 && r - v > 15 && r > b) ? 1 : 0;
+    }
+    // la boîte du visage : la plus grande tache de peau
+    const vu = new Uint8Array(N * N);
+    let lot = null, mieux = 0;
+    for (let s = 0; s < N * N; s++){
+      if (!peau[s] || vu[s]) continue;
+      const st = [s], l = [s]; vu[s] = 1;
+      while (st.length){ const i = st.pop(), x = i % N, y = (i - x) / N;
+        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
+        for (const j of nb) if (peau[j] && !vu[j]){ vu[j] = 1; st.push(j); l.push(j); } }
+      if (l.length > mieux){ mieux = l.length; lot = l; }
+    }
+    if (!lot || mieux < N * N * 0.012) return null;
+    let x0 = N, x1 = 0, y0 = N, y1 = 0, somme = 0;
+    for (const i of lot){ const x = i % N, y = (i - x) / N;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      somme += lum[i]; }
+    const clair = somme / mieux, seuil = clair * YEUX_SOMBRE;
+    const lg = x1 + 1 - x0, ht = y1 + 1 - y0;
+    if (lg < 8 || ht < 8) return null;
+    // les taches sombres de la moitié haute de ce visage
+    const noir = new Uint8Array(N * N);
+    for (let y = y0; y <= y0 + ht * 0.6; y++)
+      for (let x = x0; x <= x1; x++){ const i = (y | 0) * N + x; if (lum[i] < seuil) noir[i] = 1; }
+    const vu2 = new Uint8Array(N * N), taches = [];
+    for (let s = 0; s < N * N; s++){
+      if (!noir[s] || vu2[s]) continue;
+      const st = [s], l = [s]; vu2[s] = 1;
+      while (st.length){ const i = st.pop(), x = i % N, y = (i - x) / N;
+        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
+        for (const j of nb) if (noir[j] && !vu2[j]){ vu2[j] = 1; st.push(j); l.push(j); } }
+      const aire = l.length / (lg * ht);
+      if (aire < YEUX_PART[0] || aire > YEUX_PART[1]) continue;
+      let sx = 0, sy = 0;
+      for (const i of l){ const x = i % N; sx += x; sy += (i - x) / N; }
+      taches.push({ x: sx / l.length, y: sy / l.length, n: l.length });
+    }
+    if (taches.length < 2) return null;
+    /* LA PAIRE, et non les deux plus grosses : une narine, une mèche ou une
+       ombre de nez sont sombres aussi. On choisit le couple qui ressemble le
+       plus à deux yeux — même hauteur, de part et d'autre de l'axe, écartés
+       d'une fraction plausible de la largeur du visage — et la taille ne sert
+       qu'à départager. */
+    const axe = x0 + lg / 2;
+    let paire = null, note = -1;
+    for (let a = 0; a < taches.length; a++) for (let b = a + 1; b < taches.length; b++){
+      const g1 = taches[a].x < taches[b].x ? taches[a] : taches[b];
+      const d1 = taches[a].x < taches[b].x ? taches[b] : taches[a];
+      if (g1.x >= axe || d1.x <= axe) continue;                   // les deux du même côté
+      const ec = (d1.x - g1.x) / lg;
+      if (ec < 0.22 || ec > 0.80) continue;                        // écart invraisemblable
+      const dh = Math.abs(d1.y - g1.y) / ht;
+      if (dh > 0.10) continue;                                     // pas à la même hauteur
+      const sym = Math.abs((g1.x + d1.x) / 2 - axe) / lg;
+      const n = (g1.n + d1.n) / (lg * ht) - dh * 2 - sym * 2;
+      if (n > note){ note = n; paire = [g1, d1]; }
+    }
+    if (!paire) return null;
+    const bas = ht * YEUX_BAS;
+    return [[paire[0].x / N * iw, (paire[0].y + bas) / N * ih],
+            [paire[1].x / N * iw, (paire[1].y + bas) / N * ih]];
+  }
   /* ---- où est le visage dans la photo déposée ? ----
      La photo arrive cadrée n'importe comment : un selfie serré, un portrait en
      pied, une photo de groupe rognée. Posée telle quelle dans la case du
@@ -5523,23 +5615,43 @@ const model3d = (() => {
      triangles est la seule chose qui trahisse l'époque ; ces quarante pixels
      la remettent dans le même grain que le reste. */
   const VISAGE_PIX = 40;
+  /* Les deux yeux du mannequin dans sa case de visage, en pixels de l'atlas :
+     ce sont les deux rectangles que peint le visage sans photo, et c'est sur
+     eux qu'on vient poser ceux de la photo. */
+  const MAN_OEIL = [[43, 57], [85, 57]], MAN_CASE = 128;
   function atlasMannequin(photo, peau){
     const c = document.createElement('canvas'); c.width = 256; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = peau || PEAU_DEFAUT; g.fillRect(0, 0, 256, 128);  // la peau, à droite comme à gauche
     if (photo){
-      /* Le visage détecté remplit la case : on l'ÉTIRE au besoin, une tête de
-         mannequin n'ayant pas les proportions d'une photo. Sans détection, on
-         retombe sur l'ancien cadrage — on remplit en gardant les proportions
-         et le haut, là où sont les yeux. */
       const p = document.createElement('canvas'); p.width = p.height = VISAGE_PIX;
       const gp = p.getContext('2d');
-      const v = cadrerVisage(photo);
-      if (v) gp.drawImage(photo, v.x, v.y, v.l, v.h, 0, 0, VISAGE_PIX, VISAGE_PIX);
-      else {
+      const k = VISAGE_PIX / MAN_CASE;
+      const y = yeuxDe(photo);
+      if (y){
+        /* LES YEUX SUR LES YEUX. On cherche l'agrandissement et le décalage
+           qui amènent les deux yeux de la photo sur les deux du mannequin :
+           deux points de part et d'autre suffisent, et l'échelle reste la
+           même dans les deux sens — un visage étiré en largeur se voit
+           immédiatement, alors qu'un cadrage un peu large ne se voit pas, la
+           case étant déjà remplie de peau. */
+        const e = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]) || 1;
+        const ech = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / e * k;
+        const mx = (y[0][0] + y[1][0]) / 2, my = (y[0][1] + y[1][1]) / 2;
+        const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k;
         const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
-        const k = Math.max(VISAGE_PIX / iw, VISAGE_PIX / ih), w = iw * k, h = ih * k;
-        gp.drawImage(photo, (VISAGE_PIX - w) / 2, (VISAGE_PIX - h) * 0.32, w, h);
+        gp.drawImage(photo, cx - mx * ech, cy - my * ech, iw * ech, ih * ech);
+      } else {
+        /* Pas d'yeux reconnaissables : on retombe sur la tache de peau, et à
+           défaut sur un simple placage — on remplit en gardant les
+           proportions et le haut, là où sont les yeux d'ordinaire. */
+        const v = cadrerVisage(photo);
+        if (v) gp.drawImage(photo, v.x, v.y, v.l, v.h, 0, 0, VISAGE_PIX, VISAGE_PIX);
+        else {
+          const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+          const kk = Math.max(VISAGE_PIX / iw, VISAGE_PIX / ih), w = iw * kk, h = ih * kk;
+          gp.drawImage(photo, (VISAGE_PIX - w) / 2, (VISAGE_PIX - h) * 0.32, w, h);
+        }
       }
       g.imageSmoothingEnabled = false;
       g.drawImage(p, 0, 0, 128, 128);
@@ -7108,20 +7220,48 @@ const model3d = (() => {
       }
     }
     if (!coupes){ encolures.set(cle, null); return null; }
-    /* ---- on ne laisse pas de MIETTES derrière la découpe ----
-       Couper en rond au poignet détache presque toujours un éclat : le bout
-       d'ourlet de la manche, qui plonge sous le rayon de coupe puis en
-       ressort, se retrouve séparé du reste. Gonflé par le coussin, cet éclat
-       devient l'épine noire qu'on voyait sortir du poignet des sweats — un
-       trait de deux pixels de large, planté dans le vide, identique sur les
-       trois sweats puisqu'ils partagent le même rendu porté.
-       On ne garde donc que les morceaux qui PÈSENT : sous un centième de la
-       silhouette, c'est une miette, pas un vêtement. Même raisonnement que
-       pour les poussières du détourage, à l'autre bout de la chaîne. */
-    const MIETTE = 0.01;
+    /* ---- on ne laisse ni ÉPERON ni MIETTE derrière la découpe ----
+       Couper en rond au poignet laisse deux sortes de débris, et il faut les
+       deux outils.
+       L'ÉPERON d'abord : le coin bas de la manche plonge sous le rayon de
+       coupe puis en ressort, et il reste RATTACHÉ au reste par un filet de
+       trois pixels. C'est le triangle noir qui sortait du poignet des sweats.
+       Aucun comptage de morceaux ne l'attrape, justement parce qu'il tient
+       encore ; c'est une OUVERTURE qui l'enlève — on ronge de deux pixels,
+       puis on regonfle d'autant. Tout ce qui était plus fin que la brosse a
+       disparu au premier temps et ne revient pas au second ; le reste
+       retrouve sa forme, et le regonflement est bridé par le masque d'origine
+       pour qu'aucun pixel ne renaisse hors du vêtement.
+       LES MIETTES ensuite : ce que la coupe a franchement détaché. Sous un
+       centième de la silhouette, c'est un débris, pas un vêtement. */
+    const RONGE = 2, MIETTE = 0.01;
+    const ronge = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++){
+      if (!troue[i]) continue;
+      const x = i % N, y = (i - x) / N;
+      let plein = 1;
+      for (let dy = -RONGE; dy <= RONGE && plein; dy++)
+        for (let dx = -RONGE; dx <= RONGE; dx++){
+          const X = x + dx, Y = y + dy;
+          if (X < 0 || Y < 0 || X >= N || Y >= N || !troue[Y * N + X]){ plein = 0; break; }
+        }
+      ronge[i] = plein;
+    }
+    const gonfle = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++){
+      if (!ronge[i]) continue;
+      const x = i % N, y = (i - x) / N;
+      for (let dy = -RONGE; dy <= RONGE; dy++)
+        for (let dx = -RONGE; dx <= RONGE; dx++){
+          const X = x + dx, Y = y + dy;
+          if (X >= 0 && Y >= 0 && X < N && Y < N && troue[Y * N + X]) gonfle[Y * N + X] = 1;
+        }
+    }
+    troue.set(gonfle);
     const vue = new Uint8Array(N * N), lots = [];
     let aire = 0;
     for (let i = 0; i < N * N; i++) if (troue[i]) aire++;
+    if (!aire){ encolures.set(cle, null); return null; }
     for (let s = 0; s < N * N; s++){
       if (!troue[s] || vue[s]) continue;
       const st = [s], lot = [s]; vue[s] = 1;
@@ -10212,23 +10352,17 @@ const dressup = (() => {
      La taille donne un rendu porté par COUPE : les trois sweats partagent
      `hoodie-front.png`, qui tombe parfaitement sur le mannequin — capuche
      derrière la nuque, manches le long des bras, ourlet aux hanches — mais ne
-     connaît qu'un imprimé. Cette table le remplace ARTICLE PAR ARTICLE, dès
-     qu'une photo portée du bon sweat existe. Une ligne par photo, rien d'autre
-     à toucher, et la coupe `sweat` s'applique telle quelle : c'est le même
-     vêtement, donc les mêmes proportions.
+     connaît qu'un imprimé. Un article peut donc porter le sien, dans son champ
+     `porte`, et le panneau d'administration sait le déposer ; il n'est JAMAIS
+     exigé — sans lui, le rendu de la coupe s'applique, et sans rendu de coupe
+     c'est la photo à plat qui sert, comme pour un t-shirt.
 
      ESSAYÉ ET ÉCARTÉ, pour ne pas y revenir : garder la géométrie du rendu
      commun et lui repeindre l'étoffe de chaque photo de boutique. Peindre la
      photo à plat À TRAVERS le masque porté met du blanc plein la capuche — à
      cet endroit-là, la photo à plat n'a que son fond. La poser PAR-DESSUS
      marche mieux mais laisse la capuche et les épaules à la couleur du sweat
-     d'origine. Une vraie photo portée par article règle tout, et c'était le
-     plan depuis le début. */
-  const PORTES = {
-    // 'products/csco-hoodie.jpg':     'dressup/csco-hoodie-porte.png',
-    // 'products/csco-hoodie-alt.jpg': 'dressup/csco-hoodie-alt-porte.png',
-    // 'products/fisc-hoodie.jpg':     'dressup/fisc-hoodie-porte.png',
-  };
+     d'origine. Une vraie photo portée par article règle tout. */
   const TAILLES = {
     hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png' } },
     pants:  { cat: 'bas', coupe: 'pantalon' },
@@ -10298,8 +10432,8 @@ const dressup = (() => {
         /* Deux visuels pour une même pièce : la CASE du portant montre la
            photo de boutique, seule à distinguer un sweat d'un autre, et le
            MANNEQUIN porte le rendu porté que la taille déclare — ou celui, plus
-           précis, que `PORTES` donne à cet article-là. */
-        const rendu = PORTES[it.img] || (r.porte && r.porte.img);
+           précis, que l'article déclare dans son champ `porte`. */
+        const rendu = it.porte || (r.porte && r.porte.img);
         tout.push({ it: vu, porte: (vu === it && rendu) ? { img: rendu } : null,
                     nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
       });
