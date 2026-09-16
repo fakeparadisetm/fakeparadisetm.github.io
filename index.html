@@ -4447,9 +4447,11 @@ const model3d = (() => {
      n'est calculé à l'affichage.
 
      ---- comment la refabriquer, si les photos changent ----
-     La recette a été exécutée une fois ; elle vit désormais dans l'historique
-     (commit « Deux eclats, un par boule, et les deux planches enfin d'accord »)
-     et tient en cinq temps :
+     L'outil est dans `pictures/planches/refaire-atlas.html` — hors du dépôt,
+     comme les planches. Il faut le SERVIR depuis le serveur de gestion
+     (`admin-server.ps1 -Port 8791`) pour qu'il ait le droit d'écrire le
+     fichier, l'écriture exigeant la même origine. La recette tient en six
+     temps :
        1. deux planches cylindriques cousues, décrites chacune par quatre
           nombres — u0 et ku (où tombe le milieu du visage, et de combien u
           avance par radian : ce sont les OREILLES qui le donnent, elles sont à
@@ -4466,7 +4468,17 @@ const model3d = (() => {
        4. composition avec fondu sur les bords ET à l'approche du vide, puis
           comblement par dilatation bouclée en u, puis lissage des seules
           jointures ;
-       5. réduction à 192 × 96 avec lissage, et quantification en 15 bits avec
+       5. PROLONGEMENT DE LA CHEVELURE sur les côtés et l'arrière : les
+          planches montrent de la peau au-dessus et derrière l'oreille, là où
+          une vraie tête a des cheveux courts — le dépliage étire cette zone et
+          la coupe dégradée y est presque rase, si bien qu'elle passe pour du
+          crâne nu. On y descend la bande de chevelure, colonne par colonne, en
+          l'ÉTIRANT depuis le haut : c'est de la vraie chevelure qu'on
+          prolonge, pas un aplat. La limite visée dépend de l'angle et ne monte
+          jamais — rien de face (la racine vient de la photo), juste au-dessus
+          de l'oreille sur le côté pour ne pas la recouvrir, et jusqu'à la base
+          du crâne dans la nuque ;
+       6. réduction à 192 × 96 avec lissage, et quantification en 15 bits avec
           trame ordonnée 4 × 4 à 45 % d'amplitude. */
   const PLANCHE_Y = { haut: 0.525, bas: -0.525 }; // ce que l'atlas couvre en hauteur
   const PS1_W = 192, PS1_H = 96;        // l'atlas, et tout ce que le site publie de ce visage
