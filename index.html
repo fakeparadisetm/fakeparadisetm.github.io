@@ -3294,7 +3294,13 @@ function applyCatalogue(j){
   j.categories.forEach(c => {
     const cat = DATA.find(d => d.id === c.id);
     if (!cat || !Array.isArray(c.items)) return;
-    cat.items = c.items.map(it => {
+    /* UN BROUILLON NE S'AFFICHE PAS. Le gestionnaire garde dans le catalogue
+       les articles qu'on prépare — `publie: false` —, et le site les saute.
+       L'absence de clé vaut PUBLIÉ : tout ce qui existait avant cet
+       interrupteur reste en vente sans qu'on y touche.
+       Ce n'est pas un secret : catalogue.json est servi tel quel et les photos
+       sont en ligne. C'est « pas montré », pas « caché ». */
+    cat.items = c.items.filter(it => it.publie !== false).map(it => {
       const item = Object.assign({}, it);
       const v = it.v ? '?v=' + encodeURIComponent(it.v) : '';
       if (item.img) item.img += v;
