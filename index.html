@@ -1856,6 +1856,86 @@
      d'aide) : c'est le SITE, il ne change pas d'un jeu à l'autre. Ce qui
      change est à l'intérieur — un seul canvas, dessiné net en pleine
      résolution, là où Versus peint dans un tampon de 320 px. */
+  /* ---------- mini-jeu « Dress Up » ----------
+     La fenêtre reste celle du site ; dedans, on change d'époque. Les jeux
+     d'habillage en Flash de la fin des années 2000 avaient tous la même
+     grammaire : un fond pastel en dégradé, des cadres arrondis en pointillés,
+     un titre cerné de blanc et posé de travers, des boutons bonbon à ombre
+     franche. C'est joyeusement laid, et c'est la citation. */
+  .dress-stage{
+    position:relative;flex:1 1 auto;min-height:0;overflow:hidden;
+    background:linear-gradient(160deg,#ffd7ef 0%,#ffe9c9 38%,#d6f2ff 100%);
+    font-family:"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif;
+  }
+  /* les étoiles du fond : deux motifs répétés, rien de plus */
+  .dress-stage::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(circle at 12% 18%, rgba(255,255,255,0.9) 0 3px, transparent 4px),
+                     radial-gradient(circle at 78% 62%, rgba(255,255,255,0.75) 0 2px, transparent 3px);
+    background-size:130px 130px, 90px 90px;
+    opacity:0.8;
+  }
+  #dressCv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .dress-titre{
+    position:absolute;left:16px;top:10px;
+    font-size:clamp(20px,3.4vw,34px);font-weight:800;
+    color:#ff4fa3;
+    -webkit-text-stroke:3px #ffffff;
+    paint-order:stroke fill;
+    text-shadow:3px 3px 0 rgba(120,20,80,0.35);
+    transform:rotate(-4deg);
+    pointer-events:none;letter-spacing:1px;
+  }
+  /* Le portant. Fond blanc translucide, pointillés, et une case par pièce —
+     l'aperçu 3D y est dessiné par le canvas du dessous, à la position de la
+     case : aucune image n'est recopiée par vignette. */
+  .dress-rack{
+    position:absolute;right:10px;top:10px;bottom:96px;width:min(52%,430px);
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+    grid-auto-rows:74px;gap:7px;
+    padding:10px;overflow-y:auto;
+    background:rgba(255,255,255,0.58);
+    border:3px dashed #ff8ec4;border-radius:18px;
+  }
+  .dress-case{
+    position:relative;border:2px solid rgba(255,120,180,0.45);border-radius:12px;
+    background:rgba(255,255,255,0.5);
+    cursor:pointer;transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+  }
+  .dress-case:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 5px 0 rgba(255,120,180,0.5);background:rgba(255,255,255,0.85);}
+  .dress-case.porte{background:#fff2c2;border-color:#ffb020;box-shadow:inset 0 0 0 2px #ffdf8a;}
+  .dress-case.porte::after{content:"\2713";position:absolute;right:4px;top:2px;color:#e07800;font-weight:800;font-size:14px;}
+  .dress-case:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;}
+  .dress-outils{
+    position:absolute;right:10px;bottom:10px;width:min(52%,430px);
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+    padding:9px 12px;
+    background:rgba(255,255,255,0.72);
+    border:3px dashed #7fd0f0;border-radius:16px;
+  }
+  .dress-bt{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:8px 15px;border:2px solid #b0307a;border-radius:999px;
+    background:#ff77b8;color:#fff;font:inherit;font-size:12.5px;font-weight:700;
+    cursor:pointer;box-shadow:0 3px 0 #b0307a;
+    transition:transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .dress-bt:hover{transform:translateY(-2px);box-shadow:0 5px 0 #b0307a;}
+  .dress-bt:active{transform:translateY(2px);box-shadow:0 1px 0 #b0307a;}
+  .dress-bt--2{background:#7fd0f0;border-color:#1d7ea8;box-shadow:0 3px 0 #1d7ea8;}
+  .dress-bt--2:hover{box-shadow:0 5px 0 #1d7ea8;}
+  .dress-bt--2:active{box-shadow:0 1px 0 #1d7ea8;}
+  /* La mention sur la photo : elle doit être LISIBLE, pas discrète. Quelqu'un
+     à qui on demande son visage a le droit de savoir en deux lignes ce qu'il
+     en advient, sans aller chercher une page de mentions légales. */
+  .dress-note{
+    flex:1 1 100%;margin:0;
+    font-size:10.5px;line-height:1.45;color:#7a4a66;
+  }
+  @media (max-width:820px){
+    .dress-rack,.dress-outils{width:calc(100% - 20px);right:10px;}
+    .dress-rack{top:auto;height:34%;bottom:120px;}
+  }
   .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#5c94fc;}
   /* Le tampon fait la moitié de la boîte et le navigateur l'agrandit au PLUS
      PROCHE : c'est là que naît le gros pixel du jeu pirate. */
@@ -2244,6 +2324,43 @@
     <div class="legal-hint">
       <span><span class="key">←</span><span class="key">→</span> <span data-i18n="jumpMove">move</span></span>
       <span><span class="key wide">space</span> <span data-i18n="jumpJump">charge jump</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Mini-jeu « Dress Up » =====
+     Un salon d'essayage : un mannequin à gauche, un portant à droite, on prend
+     une pièce et on la pose. Le cadre est celui des deux autres jeux (même
+     verre, même en-tête, même barre d'aide) ; l'intérieur, lui, imite les jeux
+     d'habillage en Flash de la fin des années 2000 — fond sucré, cadres en
+     pointillés, titre cerné et de travers.
+     Le mannequin comme les vêtements sont les MÊMES modèles 3D que partout
+     ailleurs sur le site ; ils se superposent, ils ne s'enfilent pas. Voir le
+     module `dressup`. -->
+<div class="arena-overlay" id="dressOverlay" role="dialog" aria-modal="true" aria-labelledby="dressTitle">
+  <div class="arena-panel glass">
+    <div class="arena-head">
+      <h2 id="dressTitle">DRESS UP</h2>
+      <button class="legal-close" id="dressClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="dress-stage" id="dressStage">
+      <canvas id="dressCv"></canvas>
+      <div class="dress-titre" id="dressTitre"></div>
+      <!-- le portant : rempli par le script, une case par pièce -->
+      <div class="dress-rack" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
+      <div class="dress-outils">
+        <label class="dress-bt" id="dressFaceBt">
+          <span id="dressFaceTxt"></span>
+          <input type="file" id="dressFace" accept="image/*" hidden>
+        </label>
+        <button class="dress-bt dress-bt--2" id="dressNu"></button>
+        <p class="dress-note" id="dressNote"></p>
+      </div>
+    </div>
+    <div class="legal-hint">
+      <span><span class="key">clic</span> <span data-i18n="dressPick">pick a piece</span></span>
+      <span><span class="key wide">clic</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
   </div>
@@ -2743,6 +2860,14 @@ const STRINGS = {
        copié tel quel. ジャンパー se lit « janpā » — la transcription japonaise
        usuelle de « jumper ». */
     jumpTitleJp:"ジャンパー",
+    // Mini-jeu « Dress Up »
+    dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
+    dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Take it all off",
+    /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
+       l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
+       pas (entraîner quoi que ce soit). L'ordre compte — la première question
+       que se pose quelqu'un à qui on demande son visage est « ça part où ? ». */
+    dressPrivacy:"Your photo stays on your device: it is never uploaded, never stored, and it is gone when you close this window or reload the page. It is not used to train any AI.",
     jumpBest:"Best time", jumpBestTime:"Time", jumpNoBest:"No run finished yet.",
     jumpNewBest:"New best time!", jumpBack:"Back",
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
@@ -2780,6 +2905,10 @@ const STRINGS = {
     // Mini-jeu « Jumper » (plateforme) et pièce verrouillée
     jumpReady:"PRÊT ?", jumpStart:"Commencer",
     jumpTitleJp:"ジャンパー",
+    // Mini-jeu « Dress Up »
+    dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
+    dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout enlever",
+    dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
@@ -2971,6 +3100,7 @@ const DATA = [
        photo. */
     { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
     { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
+    { n:"Dress Up", jeu:"dressup", img:"icons/dressup icon.png" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
@@ -4831,6 +4961,216 @@ const model3d = (() => {
     return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
   }
 
+  /* ---- 3 ter. le mannequin du salon d'essayage ----
+     `3Dmodels/PSX_Char_Male_Base.fbx`, figé ici comme la tête : 283 sommets,
+     562 triangles après triangulation des quadrilatères. Le fichier porte
+     aussi un squelette de vingt os et ses courbes d'animation — on n'en prend
+     rien. Un mannequin de vitrine ne bouge pas, et la pose de repos du modèle
+     est exactement celle qu'il faut : debout, bras écartés du corps, de quoi
+     poser un vêtement dessus sans qu'un bras le traverse.
+     Repère après normalisation : pieds à y = 0, sommet du crâne à y = 1, x et
+     z centrés — les mains vont à ±0,34, l'épaisseur du corps à ±0,10. Tout ce
+     qui suit (les points d'accrochage des vêtements) se lit dans ce repère.
+     Les deux tableaux qui suivent sortent du fichier une fois pour toutes,
+     comme pour la tête : lire un FBX à l'exécution coûterait deux cents lignes
+     d'analyseur pour produire à chaque visite ce qui tient ici. */
+  const MANNEQUIN_XYZ = [
+    0.0741,0,-0.0433, 0.0873,0,0.0932, 0.0804,0.0553,-0.0318, 0.0872,0.0147,0.0929, 0.1193,0,-0.0488, 0.1432,0,0.0654,
+    0.1134,0.0561,-0.0354, 0.1391,0.0172,0.066, 0.0967,0.0546,-0.0464, 0.1171,0.0217,0.095, 0.0967,0,-0.0572, 0.1185,0,0.0943,
+    0.0794,0,0.0068, 0.0814,0.0557,0.0006, 0.1205,0.0552,-0.005, 0.1261,0,-0.0086, 0.1028,0,-0.0038, 0.1032,0.0539,0.0081,
+    0.0611,0.186,-0.0302, 0.1148,0.1925,-0.0361, 0.0942,0.1879,-0.0542, 0.0627,0.1867,0.0088, 0.1267,0.1922,-0.0004, 0.0986,0.1873,0.0212,
+    0.0136,0.4366,-0.0292, 0.1055,0.4569,-0.0223, 0.0657,0.4501,-0.0606, 0.0151,0.4382,0.0291, 0.1093,0.4591,0.0357, 0.0685,0.4475,0.0573,
+    0,0.4654,-0.0348, 0,0.4701,0.0254, 0,0.4948,-0.0756, 0.0559,0.51,-0.0715, 0.0395,0.589,-0.0513, 0.0932,0.5173,-0.0285,
+    0.0985,0.5239,0.0288, 0.0754,0.5912,-0.0284, 0.0761,0.5953,0.021, 0,0.5037,0.0507, 0,0.5833,0.0577, 0.0454,0.5049,0.0491,
+    0.0407,0.5884,0.0459, 0,0.5925,-0.0503, 0.0368,0.6309,-0.0513, 0.0727,0.6315,-0.0284, 0.0734,0.6304,0.016, 0,0.6309,0.0528,
+    0.038,0.6312,0.0409, 0,0.6319,-0.0503, 0.0723,0.745,-0.0858, 0.0993,0.7478,-0.047, 0.0952,0.7453,0.016, 0,0.7458,0.0452,
+    0.0598,0.746,0.0533, 0,0.7468,-0.095, 0.0843,0.7067,0.016, 0.0489,0.7074,0.0438, 0.0584,0.7066,-0.0765, 0,0.7082,-0.079,
+    0,0.723,0.0528, 0.0914,0.7051,-0.0379, 0,0.8245,-0.0007, 0.0589,0.7997,0.0264, 0,0.7984,0.0289, 0.1083,0.7934,-0.0044,
+    0.0902,0.7859,-0.0853, 0,0.8107,-0.0827, 0,0.8559,-0.0639, 0.1236,0.719,-0.047, 0.1465,0.7441,-0.0194, 0.1425,0.7391,-0.0805,
+    0.1149,0.8245,-0.0264, 0.1063,0.8257,-0.0617, 0.159,0.7606,-0.0625, 0.1583,0.7605,-0.0373, 0.0386,0.8389,-0.0234, 0.0321,0.8578,-0.0552,
+    0.0526,0.8089,-0.0886, 0.2801,0.5999,0.0027, 0.2823,0.616,0.0203, 0.2994,0.6068,-0.0103, 0.3029,0.6217,0.0011, 0.2954,0.6253,0.0134,
+    0.3086,0.5465,0.0481, 0.3119,0.5748,0.0773, 0.3308,0.5518,0.0365, 0.3356,0.5851,0.0682, 0.2855,0.5991,0.069, 0.3073,0.6102,0.0566,
+    0.3194,0.5733,0.0007, 0.2797,0.5591,0.0275, 0.3314,0.617,0.0372, 0,0.861,0.0034, 0,0.9004,-0.0615, 0.0308,0.8837,-0.02,
+    0.0275,0.9017,-0.05, 0,0.9529,-0.0753, 0.0378,0.9487,-0.0616, 0,0.8602,0.0284, 0.0191,0.866,0.0296, 0,0.8683,0.036,
+    0.0171,0.8904,0.0315, 0,0.8888,0.0373, 0.0327,0.8934,0.0151, 0.0115,0.9086,0.0356, 0,0.9036,0.0422, 0,0.911,0.0512,
+    0.0057,0.9318,0.036, 0,0.933,0.0404, 0.0334,0.9341,0.0229, 0.035,0.9104,0.0205, 0.044,0.9334,-0.0188, 0.0511,0.9415,-0.0407,
+    0.0494,0.9115,-0.0377, 0.0362,0.9241,-0.0594, 0.044,0.9373,-0.0373, 0.0423,0.9136,-0.0352, 0,0.9229,-0.0727, 0.041,0.906,-0.0197,
+    0,0.9825,-0.065, 0.0373,0.9755,-0.0546, 0,0.9978,-0.0435, 0.0249,0.99,-0.0402, 0.0227,0.9704,0.0268, 0.0207,0.9852,0.0165,
+    0,0.9911,0.0197, 0.0421,0.9684,-0.0146, 0,0.9734,0.0371, 0,0.9426,0.0438, 0.0229,0.9432,0.036, 0.0222,0.9934,-0.009,
+    0.0204,0.8648,-0.0034, 0.032,0.9702,0.0121, 0,1,-0.0071, 0.0473,0.2919,-0.0103, 0.0507,0.2724,-0.0112, 0.1043,0.2789,-0.0159,
+    0.1033,0.2986,-0.0141, 0.0818,0.293,-0.0333, 0.0839,0.2735,-0.034, 0.0505,0.2828,0.0301, 0.1154,0.2884,0.0214, 0.087,0.2834,0.043,
+    0.1817,0.6679,-0.0512, 0.1983,0.6844,-0.0269, 0.1837,0.6991,-0.0292, 0.203,0.6845,-0.0742, 0.2113,0.7067,-0.0604, 0.198,0.717,-0.0426,
+    0.2126,0.7022,-0.0391, 0.0437,0.535,0.0479, 0.049,0.5429,-0.0631, 0.089,0.5544,0.0255, 0,0.5344,-0.0653, 0.0848,0.552,-0.0285,
+    0.1697,0.6785,-0.0503, 0.1985,0.7199,-0.0609, -0.0741,0,-0.0433, -0.0873,0,0.0932, -0.0804,0.0553,-0.0318, -0.0872,0.0147,0.0929,
+    -0.1193,0,-0.0488, -0.1432,0,0.0654, -0.1134,0.0561,-0.0354, -0.1391,0.0172,0.066, -0.0967,0.0546,-0.0464, -0.1171,0.0217,0.095,
+    -0.0967,0,-0.0572, -0.1185,0,0.0943, -0.0794,0,0.0068, -0.0814,0.0557,0.0006, -0.1205,0.0552,-0.005, -0.1261,0,-0.0086,
+    -0.1028,0,-0.0038, -0.1032,0.0539,0.0081, -0.0611,0.186,-0.0302, -0.1148,0.1925,-0.0361, -0.0942,0.1879,-0.0542, -0.0627,0.1867,0.0088,
+    -0.1267,0.1922,-0.0004, -0.0986,0.1873,0.0212, -0.0136,0.4366,-0.0292, -0.1055,0.4569,-0.0223, -0.0657,0.4501,-0.0606, -0.0151,0.4382,0.0291,
+    -0.1093,0.4591,0.0357, -0.0685,0.4475,0.0573, -0.0559,0.51,-0.0715, -0.0395,0.589,-0.0513, -0.0932,0.5173,-0.0285, -0.0985,0.5239,0.0288,
+    -0.0754,0.5912,-0.0284, -0.0761,0.5953,0.021, -0.0454,0.5049,0.0491, -0.0407,0.5884,0.0459, -0.0368,0.6309,-0.0513, -0.0727,0.6315,-0.0284,
+    -0.0734,0.6304,0.016, -0.038,0.6312,0.0409, -0.0723,0.745,-0.0858, -0.0993,0.7478,-0.047, -0.0952,0.7453,0.016, -0.0598,0.746,0.0533,
+    -0.0843,0.7067,0.016, -0.0489,0.7074,0.0438, -0.0584,0.7066,-0.0765, -0.0914,0.7051,-0.0379, -0.0589,0.7997,0.0264, -0.1083,0.7934,-0.0044,
+    -0.0902,0.7859,-0.0853, -0.1236,0.719,-0.047, -0.1465,0.7441,-0.0194, -0.1425,0.7391,-0.0805, -0.1149,0.8245,-0.0264, -0.1063,0.8257,-0.0617,
+    -0.159,0.7606,-0.0625, -0.1583,0.7605,-0.0373, -0.0386,0.8389,-0.0234, -0.0321,0.8578,-0.0552, -0.0526,0.8089,-0.0886, -0.2801,0.5999,0.0027,
+    -0.2823,0.616,0.0203, -0.2994,0.6068,-0.0103, -0.3029,0.6217,0.0011, -0.2954,0.6253,0.0134, -0.3086,0.5465,0.0481, -0.3119,0.5748,0.0773,
+    -0.3308,0.5518,0.0365, -0.3356,0.5851,0.0682, -0.2855,0.5991,0.069, -0.3073,0.6102,0.0566, -0.3194,0.5733,0.0007, -0.2797,0.5591,0.0275,
+    -0.3314,0.617,0.0372, -0.0308,0.8837,-0.02, -0.0275,0.9017,-0.05, -0.0378,0.9487,-0.0616, -0.0191,0.866,0.0296, -0.0171,0.8904,0.0315,
+    -0.0327,0.8934,0.0151, -0.0115,0.9086,0.0356, -0.0057,0.9318,0.036, -0.0334,0.9341,0.0229, -0.035,0.9104,0.0205, -0.044,0.9334,-0.0188,
+    -0.0511,0.9415,-0.0407, -0.0494,0.9115,-0.0377, -0.0362,0.9241,-0.0594, -0.044,0.9373,-0.0373, -0.0423,0.9136,-0.0352, -0.041,0.906,-0.0197,
+    -0.0373,0.9755,-0.0546, -0.0249,0.99,-0.0402, -0.0227,0.9704,0.0268, -0.0207,0.9852,0.0165, -0.0421,0.9684,-0.0146, -0.0229,0.9432,0.036,
+    -0.0222,0.9934,-0.009, -0.0204,0.8648,-0.0034, -0.032,0.9702,0.0121, -0.0473,0.2919,-0.0103, -0.0507,0.2724,-0.0112, -0.1043,0.2789,-0.0159,
+    -0.1033,0.2986,-0.0141, -0.0818,0.293,-0.0333, -0.0839,0.2735,-0.034, -0.0505,0.2828,0.0301, -0.1154,0.2884,0.0214, -0.087,0.2834,0.043,
+    -0.1817,0.6679,-0.0512, -0.1983,0.6844,-0.0269, -0.1837,0.6991,-0.0292, -0.203,0.6845,-0.0742, -0.2113,0.7067,-0.0604, -0.198,0.717,-0.0426,
+    -0.2126,0.7022,-0.0391, -0.0437,0.535,0.0479, -0.049,0.5429,-0.0631, -0.089,0.5544,0.0255, -0.0848,0.552,-0.0285, -0.1697,0.6785,-0.0503,
+    -0.1985,0.7199,-0.0609, 
+  ];
+  const MANNEQUIN_TRI = [
+    12,1,3,12,3,13,17,9,7,17,7,14,14,7,5,14,5,15,16,11,1,16,1,12,
+    8,6,4,8,4,10,9,3,1,9,1,11,7,9,11,7,11,5,2,8,10,2,10,0,
+    15,5,11,15,11,16,13,3,9,13,9,17,6,8,20,6,20,19,4,15,16,4,16,10,
+    10,16,12,10,12,0,6,14,15,6,15,4,2,13,21,2,21,18,0,12,13,0,13,2,
+    17,14,22,17,22,23,14,6,19,14,19,22,13,17,23,13,23,21,8,2,18,8,18,20,
+    141,143,29,141,29,27,18,21,141,18,141,136,139,135,24,139,24,26,143,142,28,143,28,29,
+    138,139,26,138,26,25,20,18,136,20,136,140,23,22,142,23,142,143,19,20,140,19,140,137,
+    142,138,25,142,25,28,21,23,143,21,143,141,22,19,137,22,137,142,24,27,31,24,31,30,
+    33,26,24,33,24,32,24,30,32,28,25,35,28,35,36,25,26,33,25,33,35,36,35,155,
+    36,155,153,29,41,31,29,31,27,36,153,151,36,151,41,41,29,28,41,28,36,34,43,49,
+    34,49,44,37,45,46,37,46,38,40,42,48,40,48,47,37,34,44,37,44,45,42,38,46,
+    42,46,48,57,56,52,57,52,54,61,58,50,61,50,51,58,59,55,58,55,50,60,57,54,
+    60,54,53,61,51,52,61,52,56,33,152,155,33,155,35,45,61,56,45,56,46,47,48,57,
+    47,57,60,44,49,59,44,59,58,45,44,58,45,58,61,48,46,56,48,56,57,76,72,73,
+    76,73,77,53,54,63,53,63,64,51,65,52,51,50,66,78,50,55,51,69,70,51,70,65,
+    76,63,65,76,65,72,51,66,71,51,71,69,66,73,74,66,74,71,65,63,54,65,54,52,
+    64,63,76,64,76,62,65,70,75,65,75,72,67,78,55,50,78,66,72,75,74,72,74,73,
+    66,78,77,66,77,73,77,78,67,77,67,68,148,150,83,148,83,82,144,147,81,144,81,79,
+    147,148,82,147,82,81,150,145,80,150,80,83,147,157,148,145,146,156,145,156,144,71,74,157,
+    71,157,147,75,70,146,75,146,149,156,147,144,89,88,85,89,85,87,91,90,86,91,86,84,
+    90,92,87,90,87,86,92,89,87,88,91,84,88,84,85,80,79,91,80,91,88,82,83,89,
+    82,89,92,81,82,92,81,92,90,79,81,90,79,90,91,83,80,88,83,88,89,84,86,87,
+    84,87,85,77,68,94,77,94,96,76,77,96,76,96,95,62,76,132,62,132,93,115,118,97,
+    115,97,98,93,132,100,93,100,99,99,100,101,101,100,102,101,102,103,103,102,105,103,105,106,
+    106,105,107,107,105,108,107,108,109,109,108,130,109,130,129,108,105,111,108,111,110,111,119,112,
+    111,112,110,119,114,113,119,113,112,119,117,114,114,117,116,114,116,113,95,96,117,95,117,119,
+    113,116,112,96,94,118,96,118,115,96,115,117,116,117,115,116,115,98,98,97,120,98,120,121,
+    121,120,122,121,122,123,131,134,126,131,126,125,133,125,124,125,126,128,125,128,124,124,128,129,
+    124,129,130,130,108,110,116,98,121,116,121,127,116,127,112,127,121,123,127,123,131,123,122,134,
+    123,134,131,104,102,100,111,105,102,111,102,104,119,111,104,119,104,95,95,104,100,100,132,95,
+    132,76,95,110,133,124,110,124,130,133,110,112,133,112,127,133,127,131,133,131,125,32,154,152,
+    32,152,33,141,135,136,140,136,135,140,135,139,142,137,138,137,140,139,137,139,138,135,141,27,
+    135,27,24,157,149,150,157,150,148,150,149,146,150,146,145,156,146,70,156,70,69,145,144,79,
+    145,79,80,41,151,39,41,39,31,152,154,43,152,43,34,39,151,42,39,42,40,155,152,34,
+    155,34,37,151,153,38,151,38,42,153,155,37,153,37,38,149,157,74,149,74,75,69,71,147,
+    69,147,156,170,171,161,170,161,159,175,172,165,175,165,167,172,173,163,172,163,165,174,170,159,
+    174,159,169,166,168,162,166,162,164,167,169,159,167,159,161,165,163,169,165,169,167,160,158,168,
+    160,168,166,173,174,169,173,169,163,171,175,167,171,167,161,164,177,178,164,178,166,162,168,174,
+    162,174,173,168,158,170,168,170,174,164,162,173,164,173,172,160,176,179,160,179,171,158,160,171,
+    158,171,170,175,181,180,175,180,172,172,180,177,172,177,164,171,179,181,171,181,175,166,178,176,
+    166,176,160,267,185,187,267,187,269,176,262,267,176,267,179,265,184,182,265,182,261,269,187,186,
+    269,186,268,264,183,184,264,184,265,178,266,262,178,262,176,181,269,268,181,268,180,177,263,266,
+    177,266,178,268,186,183,268,183,264,179,267,269,179,269,181,180,268,263,180,263,177,182,30,31,
+    182,31,185,188,32,182,188,182,184,182,32,30,186,191,190,186,190,183,183,190,188,183,188,184,
+    191,279,280,191,280,190,187,185,31,187,31,194,191,194,277,191,277,279,194,191,186,194,186,187,
+    189,196,49,189,49,43,192,193,198,192,198,197,40,47,199,40,199,195,192,197,196,192,196,189,
+    195,199,198,195,198,193,205,203,202,205,202,204,207,201,200,207,200,206,206,200,55,206,55,59,
+    60,53,203,60,203,205,207,204,202,207,202,201,188,190,280,188,280,278,197,198,204,197,204,207,
+    47,60,205,47,205,199,196,206,59,196,59,49,197,207,206,197,206,196,199,205,204,199,204,198,
+    218,219,215,218,215,214,53,64,208,53,208,203,201,202,209,201,210,200,220,55,200,201,209,212,
+    201,212,211,218,214,209,218,209,208,201,211,213,201,213,210,210,213,216,210,216,215,209,202,203,
+    209,203,208,64,62,218,64,218,208,209,214,217,209,217,212,67,55,220,200,210,220,214,215,216,
+    214,216,217,210,215,219,210,219,220,219,68,67,219,67,220,274,224,225,274,225,276,270,221,223,
+    270,223,273,273,223,224,273,224,274,276,225,222,276,222,271,273,274,282,271,270,281,271,281,272,
+    213,273,282,213,282,216,217,275,272,217,272,212,281,270,273,231,229,227,231,227,230,233,226,228,
+    233,228,232,232,228,229,232,229,234,234,229,231,230,227,226,230,226,233,222,230,233,222,233,221,
+    224,234,231,224,231,225,223,232,234,223,234,224,221,233,232,221,232,223,225,231,230,225,230,222,
+    226,227,229,226,229,228,219,236,94,219,94,68,218,235,236,218,236,219,62,93,259,62,259,218,
+    248,237,97,248,97,118,93,99,238,93,238,259,99,101,238,101,103,239,101,239,238,103,106,241,
+    103,241,239,106,107,241,107,109,242,107,242,241,109,129,257,109,257,242,242,243,244,242,244,241,
+    244,243,245,244,245,251,251,245,246,251,246,247,251,247,250,247,246,249,247,249,250,235,251,250,
+    235,250,236,246,245,249,236,248,118,236,118,94,236,250,248,249,237,248,249,248,250,237,252,120,
+    237,120,97,252,253,122,252,122,120,258,255,126,258,126,134,260,254,255,255,254,128,255,128,126,
+    254,257,129,254,129,128,257,243,242,249,245,256,249,256,252,249,252,237,256,258,253,256,253,252,
+    253,258,134,253,134,122,240,238,239,244,240,239,244,239,241,251,235,240,251,240,244,235,238,240,
+    238,235,259,259,235,218,243,257,254,243,254,260,260,256,245,260,245,243,260,255,258,260,258,256,
+    32,188,278,32,278,154,267,262,261,266,265,261,266,261,262,268,264,263,263,264,265,263,265,266,
+    261,182,185,261,185,267,282,274,276,282,276,275,276,271,272,276,272,275,281,211,212,281,212,272,
+    271,222,221,271,221,270,194,31,39,194,39,277,278,189,43,278,43,154,39,40,195,39,195,277,
+    280,192,189,280,189,278,277,195,193,277,193,279,279,193,192,279,192,280,275,217,216,275,216,282,
+    211,281,273,211,273,213,
+  ];
+  /* Le mannequin porte DEUX matières et pas une texture : la peau, et le
+     visage quand le visiteur en dépose un. L'atlas les met côte à côte —
+     moitié gauche le visage, moitié droite un aplat de peau — et chaque
+     TRIANGLE va chercher dans l'une ou dans l'autre. Les sommets sont donc
+     dédoublés par face, comme pour la tête : un sommet du bord du visage
+     appartient à la fois au devant (visage) et au côté (peau), il ne peut pas
+     porter une seule paire de coordonnées.
+     Le visage est projeté à PLAT depuis l'avant, pas déplié : c'est un jeu
+     d'habillage, pas un portrait, et une photo de face posée sur un visage de
+     face suffit à faire ressemblance. */
+  const MAN_TETE_Y = 0.865;          // au-dessus : la tête (relevé sur les tranches du modèle)
+  const MAN_VISAGE = { x0: -0.052, x1: 0.052, y0: 0.872, y1: 0.985 };  // la boîte du visage
+  function atlasMannequin(photo){
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#c89878'; g.fillRect(0, 0, 256, 128);          // la peau, à droite comme à gauche
+    if (photo){
+      /* La photo remplit la moitié gauche en CONSERVANT ses proportions et en
+         rognant ce qui dépasse : une photo étirée fait un visage de fête
+         foraine. On garde le haut, c'est là que sont les yeux. */
+      const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+      const k = Math.max(128 / iw, 128 / ih);
+      const w = iw * k, h = ih * k;
+      g.drawImage(photo, (128 - w) / 2, (128 - h) * 0.32, w, h);
+    } else {
+      g.fillStyle = '#b8876a';                                     // sans photo : deux yeux et une bouche
+      g.fillRect(36, 52, 14, 10); g.fillRect(78, 52, 14, 10);
+      g.fillRect(50, 88, 28, 6);
+    }
+    c.brut = false;
+    return c;
+  }
+  /* Le modèle sort du fichier les PIEDS À ZÉRO, comme tout personnage de jeu ;
+     ici tout est centré sur l'origine, comme un vêtement, parce que c'est ce
+     que la caméra regarde. On retire donc une demi-hauteur, et on garde à
+     part les coordonnées d'origine (0 en bas, 1 en haut) pour lire le visage :
+     ses repères sont plus parlants ainsi. */
+  function buildMannequin(hauteur){
+    const som = i => [MANNEQUIN_XYZ[i*3] * hauteur, (MANNEQUIN_XYZ[i*3+1] - 0.5) * hauteur, MANNEQUIN_XYZ[i*3+2] * hauteur];
+    const nT = MANNEQUIN_TRI.length / 3, nV = nT * 3;
+    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
+    const V = MAN_VISAGE, hy = (MAN_TETE_Y - 0.5) * hauteur;
+    const brut = v => v[1] / hauteur + 0.5;          // retour au repère « 0 aux pieds, 1 au sommet »
+    let k = 0, zmin = 9, zmax = -9;
+    for (let t = 0; t < nT; t++){
+      const p = [som(MANNEQUIN_TRI[t*3]), som(MANNEQUIN_TRI[t*3+1]), som(MANNEQUIN_TRI[t*3+2])];
+      const ux = p[1][0]-p[0][0], uy = p[1][1]-p[0][1], uz = p[1][2]-p[0][2];
+      const wx = p[2][0]-p[0][0], wy = p[2][1]-p[0][1], wz = p[2][2]-p[0][2];
+      let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
+      const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      // un triangle est « visage » s'il est sur la tête ET tourné vers le spectateur
+      const haut = p.every(v => v[1] > hy), devant = nz > 0.25;
+      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0);
+      const rim = Math.pow(1 - Math.max(nz, 0), 3);
+      const fac = 0.74 + 0.34 * dif, ajout = rim * 0.07;
+      for (let j = 0; j < 3; j++){
+        const v = p[j], o = k * STRIDE;
+        let u, w2;
+        if (haut && devant){          // moitié GAUCHE de l'atlas : le visage, projeté à plat
+          u = (v[0] / hauteur - V.x0) / (V.x1 - V.x0) * 0.5;
+          w2 = (V.y1 - brut(v)) / (V.y1 - V.y0);
+          u = Math.max(0.004, Math.min(0.496, u)); w2 = Math.max(0.004, Math.min(0.996, w2));
+        } else { u = 0.75; w2 = 0.5; }  // moitié DROITE : l'aplat de peau
+        data[o] = v[0]; data[o+1] = v[1]; data[o+2] = v[2];
+        data[o+3] = u; data[o+4] = w2;
+        data[o+5] = fac; data[o+6] = ajout;
+        if (v[2] < zmin) zmin = v[2];
+        if (v[2] > zmax) zmax = v[2];
+        index[k] = k; k++;
+      }
+    }
+    return { data, index, nFront: nV, nBack: 0, tris: nT, verts: nV, zmin, zmax, relief: true };
+  }
+
   /* L'atlas part au GPU tel quel : il est déjà à la bonne taille et déjà
      quantifié, il n'y a rien à lui faire. Il passe seulement par une toile, le
      temps de garantir ses dimensions et de poser le drapeau qui interdit tout
@@ -5022,7 +5362,8 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.atlas || '')
+  const keyOf = item => item.mannequin ? 'mannequin|' + (item.visage || '')
+    : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -5081,9 +5422,27 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
+  /* Le mannequin. `visage` est une URL d'objet (le fichier déposé par le
+     visiteur, jamais envoyé nulle part) ou rien ; elle entre dans la clé, donc
+     changer de photo refait l'atlas et laisse l'ancien se faire ramasser. Le
+     MAILLAGE, lui, est le même quelle que soit la photo : on le met en cache
+     sous une clé à part, il ne dépend que de la hauteur. */
+  function prepareMannequin(item, key){
+    const p = (item.visage ? loadPhoto(item.visage) : Promise.resolve(null)).then(img => {
+      let mesh = meshes.get('mannequin');
+      if (!mesh){ mesh = buildMannequin(1); meshes.set('mannequin', mesh); }
+      const tex = atlasMannequin(img);
+      const a = { mesh, texF: tex, texB: tex };
+      ready.set(key, a);
+      if (list) list.warm(a);
+      return a;
+    }).catch(() => { ready.set(key, null); return null; });
+    assets.set(key, p); return p;
+  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
+    if (item.mannequin) return prepareMannequin(item, key);
     if (item.tete) return prepareTete(item, key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
     const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
@@ -6330,7 +6689,11 @@ function fillPreview(){
     const change = teaserJeu !== jeu;
     teaserJeu = jeu;
     document.getElementById('teaserGL').style.opacity = jeu === 'versus' ? '1' : '0';
-    requestAnimationFrame(() => { if (jeu === 'versus') arena.apercu(change); else jumper.apercu(change); });
+    requestAnimationFrame(() => {
+      if (jeu === 'versus') arena.apercu(change);
+      else if (jeu === 'dressup') dressup.apercu(change);
+      else jumper.apercu(change);
+    });
   }
   if (isInfo) model3d.hide();
   // photo produit si le produit en a une (item.img), sinon l'initiale ;
@@ -6554,7 +6917,9 @@ addBtn.addEventListener('click', ()=>{
   // Mini-jeux : le bouton lance celui qui est choisi dans la liste
   if (cat.kind === 'game'){
     const jeu = cat.items[activeItem] && cat.items[activeItem].jeu;
-    if (jeu === 'jumper') jumper.open(); else arena.open();
+    if (jeu === 'jumper') jumper.open();
+    else if (jeu === 'dressup') dressup.open();
+    else arena.open();
     return;
   }
   if (cat.kind !== 'shop') return;
@@ -8405,11 +8770,286 @@ const jumper = (() => {
 
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu: apercu, debug: debug };
 })();
+
+/* ---------------- mini-jeu « Dress Up » ----------------
+   Un salon d'essayage, dans la grammaire des jeux d'habillage en Flash de la
+   fin des années 2000 : un mannequin d'un côté, un portant de l'autre, on
+   clique une pièce et elle se pose.
+
+   Trois choix de fond, qui expliquent tout le reste.
+
+   1. RIEN N'EST DESSINÉ DEUX FOIS. Le mannequin et les vêtements sont les
+      mêmes modèles 3D que partout ailleurs sur le site, rendus par le même
+      moteur, dans UN seul canvas — celui du fond. Le portant n'est qu'une
+      grille de cases vides en HTML : le canvas dessine l'aperçu de chaque
+      pièce À LA POSITION de sa case. Aucune vignette n'est recopiée, aucune
+      image n'est engendrée, et la mise en page reste au navigateur.
+
+   2. LES VÊTEMENTS SE SUPERPOSENT, ILS NE S'ENFILENT PAS. Un t-shirt en
+      coussin ne s'ajuste pas sur un corps, et ce n'est pas ce qu'on demande à
+      un jeu de papier : on veut que la pièce tombe à la bonne place. Chaque
+      catégorie a donc son ANCRAGE — une taille et un centre, exprimés en
+      fractions de la boîte du mannequin — et la pièce s'y colle.
+
+   3. LA PHOTO DU VISITEUR NE SORT PAS DE SA MACHINE. Elle est lue par
+      `URL.createObjectURL`, c'est-à-dire qu'elle ne quitte jamais le
+      navigateur ; elle n'est ni envoyée, ni enregistrée, ni gardée d'une
+      visite à l'autre, et l'URL est révoquée à la fermeture. La mention le
+      dit en toutes lettres à l'écran, pas dans une page de mentions légales.
+*/
+const dressup = (() => {
+  const overlay = document.getElementById('dressOverlay');
+  const cv = document.getElementById('dressCv');
+  const rack = document.getElementById('dressRack');
+  const titre = document.getElementById('dressTitre');
+  const champFace = document.getElementById('dressFace');
+  const btFaceTxt = document.getElementById('dressFaceTxt');
+  const btNu = document.getElementById('dressNu');
+  const note = document.getElementById('dressNote');
+
+  /* ---- les ancrages ----
+     Relevés sur le modèle : épaules à 0,78 de sa hauteur, taille à 0,52,
+     hanches à 0,46, tête au-dessus de 0,87 (pieds 0, sommet 1). `t` est la
+     taille de la pièce rapportée à celle du mannequin, `y` la hauteur de son
+     CENTRE dans le même repère. Le rang décide de l'ordre de dessin : une
+     veste passe sur un haut, jamais dessous. */
+  const ANCRAGES = {
+    haut:  { t: 0.36, y: 0.645, rang: 1 },   // t-shirts, polos, débardeurs
+    veste: { t: 0.41, y: 0.635, rang: 2 },   // sweats à capuche : plus grand, par-dessus
+    bas:   { t: 0.32, y: 0.36,  rang: 0 },   // pantalons et jupes, quand il y en aura
+  };
+  // à quelle place du corps va un article, d'après son guide des tailles
+  const PLACE = { hoodie: 'veste' };
+  const placeDe = (it) => PLACE[it.sz] || 'haut';
+
+  let ouvert = false, scene = null, raf = 0;
+  let pieces = [];            // le portant : { it, place, el }
+  const portees = new Map();  // place -> pièce
+  let visageURL = null;       // URL d'objet de la photo déposée, ou rien
+  let mannequin = { mannequin: true, visage: null };
+  let ang = 0, cible = 0;
+
+  /* Le portant prend TOUTES les pièces achetables du catalogue, verrouillées
+     comprises — un cadenas se pose aussi bien qu'un t-shirt, et il serait
+     dommage de priver le salon d'essayage de la moitié de la boutique. */
+  function garnir(){
+    pieces = [];
+    rack.innerHTML = '';
+    DATA.forEach(cat => {
+      if (cat.kind !== 'shop') return;
+      cat.items.forEach(it => {
+        const vu = visuelDe(it);
+        if (!vu.img) return;
+        const el = document.createElement('div');
+        el.className = 'dress-case';
+        el.tabIndex = 0;
+        el.setAttribute('role', 'option');
+        el.title = vu === it ? L(it.n) : T('locked');
+        const p = { it: vu, nom: el.title, place: placeDe(it), el };
+        el.addEventListener('click', () => basculer(p));
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
+        rack.appendChild(el);
+        pieces.push(p);
+        if (scene) scene.load(vu);
+      });
+    });
+  }
+  function basculer(p){
+    const dedans = portees.get(p.place);
+    if (dedans === p) portees.delete(p.place);
+    else portees.set(p.place, p);
+    pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.place) === q));
+    sfx.select();
+  }
+  function deshabiller(){
+    portees.clear();
+    pieces.forEach(q => q.el.classList.remove('porte'));
+    sfx.move();
+  }
+
+  /* ---- la photo du visage ----
+     Lue sur place, jamais transmise. On révoque l'URL précédente à chaque
+     changement : une URL d'objet retient le fichier en mémoire tant qu'elle
+     vit, et en accumuler une par essai ferait grossir la page sans raison. */
+  function poserVisage(fichier){
+    if (!fichier) return;
+    if (visageURL) URL.revokeObjectURL(visageURL);
+    visageURL = URL.createObjectURL(fichier);
+    mannequin = { mannequin: true, visage: visageURL };
+    if (scene) scene.load(mannequin);
+    btFaceTxt.textContent = T('dressFaceOff');
+    sfx.add();
+  }
+  function oterVisage(){
+    if (visageURL){ URL.revokeObjectURL(visageURL); visageURL = null; }
+    mannequin = { mannequin: true, visage: null };
+    if (scene) scene.load(mannequin);
+    btFaceTxt.textContent = T('dressFace');
+    champFace.value = '';
+  }
+
+  /* ---- le dessin ----
+     Un seul passage : le mannequin dans sa boîte, les pièces portées dans la
+     leur, puis chaque case du portant. Les boîtes des cases sont LUES dans le
+     document — une mesure par image et par case, et seulement quand le jeu est
+     ouvert : c'est le prix d'une grille dont la mise en page reste au
+     navigateur, et il est très inférieur à celui d'un canvas par case. */
+  function dessiner(t){
+    if (!scene) return;
+    const r = cv.getBoundingClientRect();
+    if (!r.width) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
+    if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    scene.clear();
+    // le mannequin : à gauche, aussi haut que la scène le permet
+    const libre = Math.min(r.width * 0.46, r.height * 0.92);
+    const S = libre * k;
+    const MX = (r.width * 0.045) * k, MY = ((r.height - libre) / 2) * k;
+    scene.draw(mannequin, ang, { x: MX, y: MY, s: S }, 1);
+    // les pièces portées, dans l'ordre des rangs
+    [...portees.values()].sort((a, b) => ANCRAGES[a.place].rang - ANCRAGES[b.place].rang)
+      .forEach(p => {
+        const A = ANCRAGES[p.place];
+        const s = S * A.t;
+        scene.draw(p.it, ang, { x: MX + (S - s) / 2, y: MY + S * (1 - A.y) - s / 2, s }, 1);
+      });
+    // le portant : chaque aperçu à la place de sa case
+    const rr = rack.getBoundingClientRect();
+    pieces.forEach((p, i) => {
+      const b = p.el.getBoundingClientRect();
+      if (b.bottom < rr.top || b.top > rr.bottom) return;   // sorti du cadre par le défilement
+      const s = Math.min(b.width, b.height) * 0.92;
+      scene.draw(p.it, Math.sin(t / 1400 + i) * 0.5, {
+        x: (b.left - r.left + (b.width - s) / 2) * k,
+        y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k }, 1);
+    });
+  }
+  function boucle(t){
+    raf = requestAnimationFrame(boucle);
+    ang += (cible - ang) * 0.12;
+    dessiner(t);
+  }
+
+  function ouvrir(){
+    if (ouvert) return;
+    ouvert = true;
+    titre.textContent = T('dressTitle');
+    btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
+    btNu.textContent = T('dressStrip');
+    note.textContent = T('dressPrivacy');
+    if (!scene) scene = model3d.makeScene(cv);
+    if (scene) scene.load(mannequin);
+    garnir();
+    overlay.classList.add('open');
+    sfx.startup();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(boucle);
+  }
+  function fermer(){
+    if (!ouvert) return;
+    ouvert = false;
+    cancelAnimationFrame(raf); raf = 0;
+    overlay.classList.remove('open');
+    oterVisage();          // la photo ne survit pas à la fermeture, même en mémoire
+    // on revient sur la tuile du jeu, comme en quittant une application
+    const ci = DATA.findIndex(c => c.kind === 'game');
+    const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'dressup') : -1;
+    if (ci >= 0 && ii >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = ii; render(); }
+  }
+  function touche(e){
+    if (e.key === 'Escape'){ fermer(); return true; }
+    // le mannequin se tourne aux flèches ; le reste des touches revient au document
+    if (e.key === 'ArrowLeft'){ cible -= Math.PI / 6; e.preventDefault(); return true; }
+    if (e.key === 'ArrowRight'){ cible += Math.PI / 6; e.preventDefault(); return true; }
+    return false;
+  }
+  champFace.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) poserVisage(f); else oterVisage();
+  });
+  document.getElementById('dressFaceBt').addEventListener('click', (e) => {
+    // le bouton sert aussi à RETIRER la photo : deuxième clic, on l'enlève
+    if (visageURL){ e.preventDefault(); oterVisage(); }
+  });
+  btNu.addEventListener('click', deshabiller);
+  document.getElementById('dressClose').addEventListener('click', fermer);
+  overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
+
+  /* ---- aperçu du panneau ----
+     Celui-ci est en DEUX dimensions et rien d'autre : le calque 3D de la boîte
+     appartient au mini-jeu Versus, deux moteurs ne peuvent pas se partager un
+     canvas, et un salon d'essayage se raconte très bien avec son fond sucré,
+     son portant en pointillés et une robe. C'est d'ailleurs ce que montraient
+     les vignettes de ces jeux-là. */
+  const vig = { taille: '' };
+  function apercu(force){
+    const box = document.getElementById('arenaTeaser');
+    const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
+    if (!box || !bc) return;
+    const r = box.getBoundingClientRect();
+    if (!r.width) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (!force && vig.taille === cle) return;
+    vig.taille = cle;
+    [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
+    const g = bc.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
+    const W = bc.width, H = bc.height, s = H / 300;
+    const fond = g.createLinearGradient(0, 0, W, H);
+    fond.addColorStop(0, '#ffd7ef'); fond.addColorStop(0.42, '#ffe9c9'); fond.addColorStop(1, '#d6f2ff');
+    g.fillStyle = fond; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    for (let i = 0; i < 14; i++){
+      const x = (i * 97 % 100) / 100 * W, y = (i * 61 % 100) / 100 * H, t = (1 + i % 3) * s;
+      g.beginPath(); g.arc(x, y, t, 0, 7); g.fill();
+    }
+    // le portant, à droite : un cadre en pointillés et quatre cases
+    g.setLineDash([7 * s, 5 * s]); g.lineWidth = 3 * s; g.strokeStyle = '#ff8ec4';
+    g.strokeRect(W * 0.46, H * 0.10, W * 0.46, H * 0.72);
+    g.setLineDash([]);
+    g.strokeStyle = 'rgba(255,120,180,0.5)'; g.lineWidth = 2 * s;
+    for (let i = 0; i < 4; i++){
+      const cx = W * (0.51 + (i % 2) * 0.21), cy = H * (0.19 + Math.floor(i / 2) * 0.31);
+      g.strokeRect(cx, cy, W * 0.17, H * 0.26);
+    }
+    // le mannequin, à gauche : une silhouette simple, la citation suffit
+    const mx = W * 0.23, sol = H * 0.88, ht = H * 0.72;
+    g.fillStyle = '#c89878';
+    g.beginPath(); g.arc(mx, sol - ht * 0.90, ht * 0.10, 0, 7); g.fill();
+    g.fillRect(mx - ht * 0.035, sol - ht * 0.80, ht * 0.07, ht * 0.10);
+    g.fillRect(mx - ht * 0.15, sol - ht * 0.72, ht * 0.30, ht * 0.34);
+    g.fillRect(mx - ht * 0.22, sol - ht * 0.70, ht * 0.07, ht * 0.30);
+    g.fillRect(mx + ht * 0.15, sol - ht * 0.70, ht * 0.07, ht * 0.30);
+    g.fillRect(mx - ht * 0.13, sol - ht * 0.38, ht * 0.10, ht * 0.38);
+    g.fillRect(mx + ht * 0.03, sol - ht * 0.38, ht * 0.10, ht * 0.38);
+    g.fillStyle = '#ff77b8';                       // la robe, posée dessus
+    g.beginPath();
+    g.moveTo(mx - ht * 0.15, sol - ht * 0.70);
+    g.lineTo(mx + ht * 0.15, sol - ht * 0.70);
+    g.lineTo(mx + ht * 0.24, sol - ht * 0.30);
+    g.lineTo(mx - ht * 0.24, sol - ht * 0.30);
+    g.closePath(); g.fill();
+  }
+
+  // contrôle : l'état du salon, et de quoi poser une pièce sans la cliquer
+  const debug = (i) => {
+    if (i != null && pieces[i]) basculer(pieces[i]);
+    return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
+             visage: !!visageURL, ang: Math.round(ang * 180 / Math.PI) };
+  };
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug };
+})();
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
   // Mini-jeu ouvert : il prend toutes les touches (voir arena.key / jumper.key).
   if (arena.isOpen()){ arena.key(e); return; }
   if (jumper.isOpen()){ jumper.key(e); return; }
+  // Dress Up rend les touches dont il ne fait rien : le salon d'essayage se
+  // joue à la souris, seules Échap et les flèches l'intéressent.
+  if (dressup.isOpen() && dressup.key(e)) return;
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
   if (infoOverlay.classList.contains('open')){
     if (e.key === 'Escape') closeInfo();
