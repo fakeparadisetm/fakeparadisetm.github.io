@@ -3211,13 +3211,19 @@ const DATA = [
      énigme. Ce qui reste se règle tout seul : voir `jeuDuVerrou`, qui regarde
      si un mini-jeu porte le nom du verrou et fait disparaître le bouton sinon.
      Photo à venir : sans `img`, la fiche montre l'initiale et la ligne de
-     liste son nom, comme n'importe quel produit sans visuel. */
+     liste son nom, comme n'importe quel produit sans visuel.
+     `provisoire` : ces deux-là sont des MARQUE-PLACES. Ils tiennent la
+     récompense d'une épreuve tant que le vêtement définitif n'existe pas, et
+     s'effacent d'eux-mêmes dès que le catalogue en déclare un qui porte la
+     même épreuve (voir `applyCatalogue`). UNE SEULE PIÈCE PAR ÉPREUVE : sans
+     cela le visiteur verrait deux cadenas pour une seule récompense, et le
+     jeu en ouvrirait deux. */
   { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[
     // PROVISOIRE : nom, prix et photos à remplacer par la vraie pièce.
-    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", max:1,
+    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", max:1, provisoire:true,
       d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
          fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"} },
-    { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1,
+    { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1, provisoire:true,
       d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
          fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"} },
   ]},
@@ -3296,6 +3302,23 @@ function applyCatalogue(j){
       return item;
     });
     changed = true;
+  });
+  /* LE CADENAS PROVISOIRE S'EFFACE DEVANT LA VRAIE PIÈCE. Dès que le catalogue
+     déclare un vêtement qui porte la même épreuve, le marque-place n'a plus
+     lieu d'être : deux articles verrouillés par le même mini-jeu, ce sont deux
+     cadenas en boutique et deux récompenses pour une partie gagnée.
+     La vraie pièce l'emporte, où que son auteur l'ait rangée — c'est l'épreuve
+     qui fait l'unicité, pas la catégorie. Et rien n'est perdu : si le catalogue
+     cesse de réclamer l'épreuve, le marque-place revient de lui-même au
+     chargement suivant, puisqu'il n'est effacé que dans la liste en mémoire. */
+  const reclames = new Set();
+  DATA.forEach(c => Array.isArray(c.items) && c.items.forEach(it => {
+    if (it.verrou && !it.provisoire) reclames.add(it.verrou);
+  }));
+  if (reclames.size) DATA.forEach(c => {
+    if (!Array.isArray(c.items)) return;
+    const reste = c.items.filter(it => !(it.provisoire && reclames.has(it.verrou)));
+    if (reste.length !== c.items.length){ c.items = reste; changed = true; }
   });
   return changed;
 }
@@ -10189,9 +10212,18 @@ const jumper = (() => {
   }
   function versArticle(){          // « Voir l'article » : la pièce unique, débloquée
     fermer();
-    const ci = DATA.findIndex(c => c.id === 'unique');
+    /* ON CHERCHE LA PIÈCE PAR SON ÉPREUVE, on ne la compte plus. Elle était
+       prise à sa place — première ligne des pièces uniques —, ce qui ne tient
+       plus dès qu'une vraie pièce arrive : elle est rangée dans la catégorie
+       que son auteur a choisie, et le marque-place qui occupait cette première
+       ligne s'est justement effacé devant elle. Sans quoi « Voir l'article »
+       menait à la pièce d'à côté. */
+    let ci = -1, ii = -1;
+    DATA.forEach((c, i) => Array.isArray(c.items) && c.items.forEach((it, j) => {
+      if (ci < 0 && it.verrou === 'jumper'){ ci = i; ii = j; }
+    }));
     if (ci < 0) return;
-    activeCat = ci; activeItem = 0;
+    activeCat = ci; activeItem = ii;
     render();
     setTimeout(() => ouvrirFiche(false), 220);   // même délai que l'arène : le panneau se remplit d'abord
   }
