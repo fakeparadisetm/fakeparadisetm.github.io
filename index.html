@@ -5430,6 +5430,70 @@ const model3d = (() => {
      le cou dans l'encolure. Les bras ne se cachent jamais : la main doit
      ressortir au bout de la manche. */
   const MAN_CHEVILLE = 0.08, MAN_BUSTE_HAUT = 0.80;
+  /* ---- où est le visage dans la photo déposée ? ----
+     La photo arrive cadrée n'importe comment : un selfie serré, un portrait en
+     pied, une photo de groupe rognée. Posée telle quelle dans la case du
+     visage, elle mettait un menton sur un front une fois sur deux. On CHERCHE
+     donc le visage avant de le poser.
+
+     Sans bibliothèque et sans réseau : on cherche la plus grande TACHE DE PEAU.
+     Le test est celui, classique, de la teinte chair en RVB — rouge dominant,
+     écart franc entre les canaux — et la plus grande composante connexe d'une
+     photo de portrait, c'est le visage et le cou. On rogne ensuite ce que la
+     tache ne dit pas : elle commence à la racine des cheveux, alors qu'un
+     visage se lit avec un peu de front au-dessus, et elle finit sur le cou,
+     qui n'a rien à faire dans la case. Les marges sont mesurées sur la tache
+     elle-même, jamais en pixels : une photo de 200 pixels et une de 4 000
+     doivent donner le même cadrage.
+
+     ÉCHEC PRÉVU ET SANS CONSÉQUENCE : sur une photo où rien ne ressemble à de
+     la peau — un dessin, un chat, une pièce trop sombre — on ne renvoie rien
+     et l'ancien cadrage « au centre, en gardant le haut » reprend la main. Une
+     détection qui se trompe est pire qu'une détection qui s'abstient. */
+  const VISAGE_MARGES = { haut: 0.30, bas: 0.10, cote: 0.12, minPart: 0.012 };
+  function cadrerVisage(photo){
+    const N = 72;
+    const c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+    if (!iw || !ih) return null;
+    g.drawImage(photo, 0, 0, N, N);
+    let d;
+    try { d = g.getImageData(0, 0, N, N).data; } catch (e){ return null; }
+    const m = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++){
+      const r = d[i*4], v = d[i*4+1], b = d[i*4+2];
+      const mx = Math.max(r, v, b), mn = Math.min(r, v, b);
+      m[i] = (r > 95 && v > 40 && b > 20 && mx - mn > 15 && r - v > 15 && r > b) ? 1 : 0;
+    }
+    const vu = new Uint8Array(N * N);
+    let grand = null, taille = 0;
+    for (let s = 0; s < N * N; s++){
+      if (!m[s] || vu[s]) continue;
+      const st = [s], lot = [s]; vu[s] = 1;
+      while (st.length){
+        const i = st.pop(), x = i % N, y = (i - x) / N;
+        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
+        for (const j of nb) if (m[j] && !vu[j]){ vu[j] = 1; st.push(j); lot.push(j); }
+      }
+      if (lot.length > taille){ taille = lot.length; grand = lot; }
+    }
+    if (!grand || taille < N * N * VISAGE_MARGES.minPart) return null;
+    let x0 = N, x1 = 0, y0 = N, y1 = 0;
+    for (const i of grand){ const x = i % N, y = (i - x) / N;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const lg = x1 + 1 - x0, ht = y1 + 1 - y0;
+    if (lg < 4 || ht < 4) return null;
+    const M = VISAGE_MARGES;
+    /* La boîte est RAMENÉE dans la photo : au bord d'un cadrage serré, la marge
+       du haut irait chercher du fond, et on poserait un morceau de mur sur le
+       front. La déformation étant déjà acceptée ici, rogner ne coûte rien de
+       plus. */
+    const bx0 = Math.max(0, (x0 - lg * M.cote) / N), by0 = Math.max(0, (y0 - ht * M.haut) / N);
+    const bx1 = Math.min(1, (x1 + 1 + lg * M.cote) / N), by1 = Math.min(1, (y1 + 1 - ht * M.bas) / N);
+    if (bx1 - bx0 < 0.05 || by1 - by0 < 0.05) return null;
+    return { x: bx0 * iw, y: by0 * ih, l: (bx1 - bx0) * iw, h: (by1 - by0) * ih };
+  }
   /* ---- la couleur de peau ----
      Elle se choisit dans le salon, et c'est tout ce qu'il faut changer : le
      modèle n'a qu'un aplat de peau sur la moitié droite de son atlas, et le
@@ -5444,18 +5508,33 @@ const model3d = (() => {
     const v = [n >> 16 & 255, n >> 8 & 255, n & 255].map(c => Math.max(0, Math.round(c * k)));
     return 'rgb(' + v.join(',') + ')';
   }
+  /* La photo passe par une TOILE DE 40 PIXELS avant d'arriver dans l'atlas, et
+     remonte sans lissage : elle sort en gros carrés, comme tout le reste de la
+     console. Une photographie nette au milieu d'un modèle à deux cents
+     triangles est la seule chose qui trahisse l'époque ; ces quarante pixels
+     la remettent dans le même grain que le reste. */
+  const VISAGE_PIX = 40;
   function atlasMannequin(photo, peau){
     const c = document.createElement('canvas'); c.width = 256; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = peau || PEAU_DEFAUT; g.fillRect(0, 0, 256, 128);  // la peau, à droite comme à gauche
     if (photo){
-      /* La photo remplit la moitié gauche en CONSERVANT ses proportions et en
-         rognant ce qui dépasse : une photo étirée fait un visage de fête
-         foraine. On garde le haut, c'est là que sont les yeux. */
-      const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
-      const k = Math.max(128 / iw, 128 / ih);
-      const w = iw * k, h = ih * k;
-      g.drawImage(photo, (128 - w) / 2, (128 - h) * 0.32, w, h);
+      /* Le visage détecté remplit la case : on l'ÉTIRE au besoin, une tête de
+         mannequin n'ayant pas les proportions d'une photo. Sans détection, on
+         retombe sur l'ancien cadrage — on remplit en gardant les proportions
+         et le haut, là où sont les yeux. */
+      const p = document.createElement('canvas'); p.width = p.height = VISAGE_PIX;
+      const gp = p.getContext('2d');
+      const v = cadrerVisage(photo);
+      if (v) gp.drawImage(photo, v.x, v.y, v.l, v.h, 0, 0, VISAGE_PIX, VISAGE_PIX);
+      else {
+        const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height;
+        const k = Math.max(VISAGE_PIX / iw, VISAGE_PIX / ih), w = iw * k, h = ih * k;
+        gp.drawImage(photo, (VISAGE_PIX - w) / 2, (VISAGE_PIX - h) * 0.32, w, h);
+      }
+      g.imageSmoothingEnabled = false;
+      g.drawImage(p, 0, 0, 128, 128);
+      g.imageSmoothingEnabled = true;
     } else {
       g.fillStyle = assombrir(peau, 0.72);                          // sans photo : deux yeux et une bouche
       g.fillRect(36, 52, 14, 10); g.fillRect(78, 52, 14, 10);
@@ -5464,6 +5543,7 @@ const model3d = (() => {
     c.brut = false;
     return c;
   }
+
   /* Le modèle sort du fichier les PIEDS À ZÉRO, comme tout personnage de jeu ;
      ici tout est centré sur l'origine, comme un vêtement, parce que c'est ce
      que la caméra regarde. On retire donc une demi-hauteur, et on garde à
@@ -5821,6 +5901,7 @@ const model3d = (() => {
       let mesh = meshes.get(cle);
       if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1, item.cache || ''); meshes.set(cle, mesh); }
       const tex = atlasMannequin(img, item.peau);
+
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
       if (list) list.warm(a);
@@ -6509,6 +6590,49 @@ const model3d = (() => {
     pieds.set(cle, e);
     return e;
   }
+  /* ---- où tombe chaque bas de jambe ----
+     La chaussure se pose sur le pied quand la jambe est nue, mais sur le BAS
+     DE JAMBE dès qu'un pantalon est porté : c'est lui qu'on voit, et une
+     basket qui dépasse à l'intérieur du pantalon se remarque tout de suite.
+     Même idée qu'au bras, où la manche décide où va la main.
+     On relève donc les deux ouvertures du bas, chacune de son côté : deux
+     travées quand les jambes sont séparées, et les deux moitiés de la travée
+     unique quand la photo a les jambes jointes. Médiane sur quelques rangées,
+     pour la même raison qu'ailleurs — la toute dernière n'est qu'un ourlet qui
+     se referme. Le résultat est en fractions de la BOÎTE, prêt à servir
+     d'axe. */
+  const ourlets = new Map();
+  function ourletsBas(item, boite){
+    /* En cache comme `viser` : le relevé peigne le maillage sept fois, et il est
+       demandé à CHAQUE image tant qu'un pantalon est porté. Sans cache, le
+       salon tombait de 165 à 2 images par seconde. */
+    const cle = keyOf(item) + '|o|' + boite.x.toFixed(3) + ',' + boite.l.toFixed(3);
+    if (ourlets.has(cle)) return ourlets.get(cle);
+    const a = ready.get(keyOf(item)), e = empreinte(item);
+    if (!a || !e) return null;
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
+    const NB = 128, pas = (e.x1 - e.x0) / NB || 1, dents = new Uint8Array(NB);
+    const pris = { g: [], d: [] };
+    for (let r = 0; r < CHEVILLE_RANGS; r++){
+      peigner(P, a.mesh, e.y1 - (e.y1 - e.y0) * 0.05 * r / CHEVILLE_RANGS, dents, e.x0, pas);
+      const runs = [];
+      for (let k = 0; k < NB; k++){
+        if (!dents[k] || (k && dents[k-1])) continue;
+        let f = k; while (f < NB - 1 && dents[f+1]) f++;
+        if ((f + 1 - k) * pas > 0.01) runs.push([k, f + 1]);
+      }
+      if (!runs.length) continue;
+      const G = runs.length >= 2 ? runs[0] : [runs[0][0], (runs[0][0] + runs[0][1]) / 2];
+      const D = runs.length >= 2 ? runs[runs.length - 1] : [(runs[0][0] + runs[0][1]) / 2, runs[0][1]];
+      pris.g.push((G[0] + G[1]) / 2); pris.d.push((D[0] + D[1]) / 2);
+    }
+    if (!pris.g.length){ ourlets.set(cle, null); return null; }
+    const med = (v) => { const s = v.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+    const enBoite = (k) => boite.x + (e.x0 + med(k) * pas) * boite.l;
+    const r = { g: enBoite(pris.g), d: enBoite(pris.d) };
+    ourlets.set(cle, r);
+    return r;
+  }
   /* ---- une chaussure, pas une paire ----
      Les photos de chaussures sont des PAIRES : deux souliers côte à côte sur
      une seule image. Posée telle quelle sur un mannequin, la paire doit
@@ -6543,9 +6667,27 @@ const model3d = (() => {
     return proxy;
   }
   const CHEVILLE_RANGS = 7;                 // le dernier vingtième du vêtement
+  /* Les deux pieds ne se croisent pas. Le legging galaxie, photographié jambes
+     serrées, demandait 10,1° de fermeture : les pieds passaient d'un écart de
+     0,129 à **moins vingt et un millièmes** — ils se chevauchaient, et les deux
+     chaussures avec. On rouvre donc juste assez, par dichotomie sur l'angle :
+     c'est le plus grand angle qui laisse encore passer une paire. Relevé des
+     autres bas : 3,7° à 6,3°, soit 0,035 à 0,074 d'écart, tous au-dessus du
+     seuil et donc inchangés. */
+  const ECART_PIEDS = 0.045;
   const poseJambes = (item, boite) => {
     const v = viserJambe(item, boite);
-    return { jambes: v ? JAMBE_REPOS.angle - v.angle : 0 };
+    let a = v ? JAMBE_REPOS.angle - v.angle : 0;
+    const ecart = (x) => { const p = empreintePieds(x); return p ? p.d[0] - p.g[1] : 9; };
+    if (a > 0 && ecart(a) < ECART_PIEDS){
+      let bas = 0, haut = a;
+      for (let i = 0; i < 12; i++){
+        const mi = (bas + haut) / 2;
+        if (ecart(mi) >= ECART_PIEDS) bas = mi; else haut = mi;
+      }
+      a = bas;
+    }
+    return { jambes: a };
   };
   const visesJ = new Map();
   function viserJambe(item, boite){
@@ -6602,9 +6744,12 @@ const model3d = (() => {
        PAS dans la même colonne — l'ouverture d'une manche descend vers
        l'intérieur, en biais. On le prend là où le bord droit CHUTE le plus vite
        en descendant : c'est exactement l'endroit où la manche s'arrête et où le
-       flanc reprend. Ne chercher que la colonne la plus large donnait un milieu
-       trop haut et trop dehors, et le bras se relevait de treize degrés au lieu
-       de rester où il est. */
+       flanc reprend.
+       (Essayé et écarté : prendre la rangée où la manche a rendu la MOITIÉ de
+       sa saillie. C'est plus stable en théorie, mais ce point est bien plus
+       haut que le vrai coin — les treize hauts passaient de +6° à −8°, bras
+       relevés, un basculement de quinze degrés. La dérivée dit mieux où finit
+       la manche que la position.) */
     let r2 = r1, chute = 0;
     for (let r = r1 + 1; r < RANGS; r++){
       const d = bord[r-1] - bord[r];
@@ -6877,6 +7022,7 @@ const model3d = (() => {
       poseJambes,                             // de combien serrer les jambes pour entrer dans ce pantalon
       empreintePieds,                         // l'écart de chaque pied, jambes tournées
       demiChaussure,                          // la moitié gauche ou droite d'une photo de paire
+      ourletsBas,                             // où tombe chaque bas de jambe : la chaussure s'y centre
       encolure,                               // une copie du vêtement, col ouvert sur le cou
       effiler,                                // une copie resserrée sous les emmanchures
       couvrirEpaules,                         // de combien élargir pour que l'épaule ne sorte pas
@@ -9856,7 +10002,7 @@ const dressup = (() => {
     sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ceinture: 0.19, y0: 0.465, y1: 0.935 },  // la ceinture sur la crête des hanches (le corps s'y échancre dès 0,483)
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
-    culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
+    culotte:  { ourlet: 0.205, y0: 0.468, y1: 0.618 },  // le sous-vêtement : 0,205 contre 0,170 de hanche, il ne s'évase plus en jupe
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
   /* ---- le vestiaire du salon ----
@@ -10067,6 +10213,19 @@ const dressup = (() => {
     deg.addColorStop(0, '#ffd7ef'); deg.addColorStop(0.38, '#ffe9c9'); deg.addColorStop(1, '#d6f2ff');
     g.fillStyle = deg; g.fillRect(0, 0, N, N);
     g.drawImage(cvShot, 0, 0);
+    /* La marque, en bas. L'image quitte le site : autant qu'elle dise d'où
+       elle vient, dans la même écriture que le titre du salon — rose cerné de
+       blanc, posé de travers. Assez gros pour se lire sur un téléphone, assez
+       discret pour ne pas manger le personnage. */
+    g.save();
+    g.translate(N * 0.5, N * 0.945);
+    g.rotate(-3 * Math.PI / 180);
+    g.font = '700 ' + Math.round(N * 0.052) + 'px "Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    g.lineJoin = 'round'; g.lineWidth = Math.round(N * 0.014);
+    g.strokeStyle = '#ffffff'; g.strokeText('FakeParadise™', 0, 0);
+    g.fillStyle = '#ff4fa3'; g.fillText('FakeParadise™', 0, 0);
+    g.restore();
     const a = document.createElement('a');
     a.download = 'fakeparadise-dressup.png';
     a.href = sortie.toDataURL('image/png');
@@ -10142,7 +10301,12 @@ const dressup = (() => {
         const pi = sc.empreintePieds(corps ? corps.jambes : 0);
         if (!pi) return null;                 // pas encore mesurable : à l'image suivante
         const p = cote ? pi[cote] : pi.paire;
+        /* La TAILLE vient du pied — une basket ne grossit pas parce que le
+           pantalon est ample — mais la PLACE vient du bas de jambe dès qu'il y
+           en a un : c'est lui qu'on voit, et une chaussure qui dépasse à
+           l'intérieur du pantalon se remarque tout de suite. */
         axe = (p[0] + p[1]) / 2;
+        if (cote && jambesBas && jambesBas[cote] != null) axe = jambesBas[cote];
         A = Object.assign({}, A, { ourlet: (p[1] - p[0]) * A.pieds });
       }
       if (A.ceinture){
@@ -10181,6 +10345,7 @@ const dressup = (() => {
       return pose();
     };
     const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);   // la pose : pas de pieds à caler ici
+    let jambesBas = null;      // où tombent les deux bas de jambe du pantalon porté
     /* LA POSE VIENT DES VÊTEMENTS, ET ELLE SE MESURE aux deux bouts : le haut
        dit où sont les bras, le bas où sont les jambes. Le mannequin est seul à
        avoir un squelette, c'est donc lui qui se plie — aucun vêtement n'est
@@ -10195,6 +10360,8 @@ const dressup = (() => {
       bh ? sc.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1 },
       bb ? sc.poseJambes(bas.porte || bas.it, bb) : { jambes: 0 },
       { cache: (haut ? 'b' : '') + (bas ? 'j' : '') + (portees.has('pieds') ? 'p' : '') });
+    // le pantalon est posé : ses deux bas de jambe donnent l'axe des chaussures
+    if (bas && bb) jambesBas = sc.ourletsBas(bas.porte || bas.it, bb);
     if (!sc.ready(corps)) sc.load(corps);
     sc.draw(corps, 0, { x: MX, y: MY, s: S }, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
