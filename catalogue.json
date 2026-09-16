@@ -422,6 +422,176 @@
      ]
     }
    ]
+  },
+  "pants": {
+   "unit": "cm",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "rows": [
+    {
+     "label": {
+      "en": "Waist",
+      "fr": "Taille"
+     },
+     "values": [
+      38,
+      40,
+      42,
+      44,
+      46
+     ]
+    },
+    {
+     "label": {
+      "en": "Hip",
+      "fr": "Hanches"
+     },
+     "values": [
+      52,
+      54,
+      56,
+      58,
+      60
+     ]
+    },
+    {
+     "label": {
+      "en": "Inseam",
+      "fr": "Entrejambe"
+     },
+     "values": [
+      74,
+      76,
+      78,
+      80,
+      82
+     ]
+    },
+    {
+     "label": {
+      "en": "Length",
+      "fr": "Longueur"
+     },
+     "values": [
+      100,
+      103,
+      106,
+      109,
+      112
+     ]
+    }
+   ]
+  },
+  "jeans": {
+   "unit": "cm",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "rows": [
+    {
+     "label": {
+      "en": "Waist",
+      "fr": "Taille"
+     },
+     "values": [
+      40,
+      42,
+      44,
+      46,
+      48
+     ]
+    },
+    {
+     "label": {
+      "en": "Hip",
+      "fr": "Hanches"
+     },
+     "values": [
+      54,
+      56,
+      58,
+      60,
+      62
+     ]
+    },
+    {
+     "label": {
+      "en": "Inseam",
+      "fr": "Entrejambe"
+     },
+     "values": [
+      76,
+      78,
+      80,
+      82,
+      84
+     ]
+    },
+    {
+     "label": {
+      "en": "Length",
+      "fr": "Longueur"
+     },
+     "values": [
+      103,
+      106,
+      109,
+      112,
+      115
+     ]
+    }
+   ]
+  },
+  "cap": {
+   "unit": "cm",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "rows": [
+    {
+     "label": {
+      "en": "Head circumference",
+      "fr": "Tour de tête"
+     },
+     "values": [
+      55,
+      57,
+      59
+     ]
+    }
+   ]
+  },
+  "beanie": {
+   "unit": "cm",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "rows": [
+    {
+     "label": {
+      "en": "Head circumference",
+      "fr": "Tour de tête"
+     },
+     "values": [
+      54,
+      56,
+      58
+     ]
+    }
+   ]
   }
  },
  "categories": [
@@ -628,6 +798,53 @@
      "img": "products/fisc-hoodie.jpg",
      "img2": "products/fisc-hoodie-2.jpg",
      "sz": "hoodie"
+    }
+   ]
+  },
+  {
+   "id": "unique",
+   "name": {
+    "en": "Unique Items",
+    "fr": "Pièces uniques"
+   },
+   "items": [
+    {
+     "n": "LOUSY TEE",
+     "p": 20,
+     "d": {
+      "en": "280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print",
+      "fr": "280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée"
+     },
+     "sz": "tee",
+     "verrou": "jumper",
+     "max": 1,
+     "img": "products/lousy-tee.jpg",
+     "img2": "products/lousy-tee-2.jpg",
+     "v": 1789581250893
+    },
+    {
+     "n": "VERTIGO TEE",
+     "p": 40,
+     "d": {
+      "en": "Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
+      "fr": "Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"
+     },
+     "sz": "tee",
+     "verrou": "vertige",
+     "max": 1,
+     "provisoire": true
+    },
+    {
+     "n": "JUMPER TEE",
+     "p": 40,
+     "d": {
+      "en": "Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
+      "fr": "Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"
+     },
+     "sz": "tee",
+     "verrou": "jumper",
+     "max": 1,
+     "provisoire": true
     }
    ]
   }
