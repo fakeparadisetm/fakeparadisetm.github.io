@@ -7793,7 +7793,14 @@ const jumper = (() => {
     brique:'#c06028', briqueHaut:'#e89848', briqueBas:'#803010', joint:'#000000',
     // la brique friable : la même, lavée et grisée — une maçonnerie qui a pris l'eau
     briqueFri:'#b0765a', briqueFriHaut:'#d0a488', briqueFriBas:'#74463a',
-    pic:'#38c838', picOmbre:'#1a8020',
+    /* Les pics sont ROUGES, et c'est une question de lisibilité avant d'être
+       une question de goût : verts, ils avaient la couleur des collines et du
+       sol qui les portent, et une pointe qui tue ne doit pas partager sa teinte
+       avec le décor. Le rouge n'apparaît nulle part ailleurs dans le tableau.
+       Le fanion d'arrivée garde sa propre couleur — sans quoi il aurait viré au
+       rouge avec eux, et l'on ne confond pas la sortie avec un piège. */
+    pic:'#e02820', picOmbre:'#a01010',
+    fanion:'#30c030',
     corps:'#ffffff', corpsOmbre:'#c8c8d8', trait:'#000000',
     metal:'#e8e8f0', mat:'#f8d038',
   };
@@ -7956,20 +7963,24 @@ const jumper = (() => {
     ctx.closePath();
   }
   const repere = (f) => ctx.setTransform(vue.s, 0, 0, vue.s, vue.ox - cam.x * f * vue.s, vue.oy - cam.y * f * vue.s);
-  /* Un sol ou une plateforme : des BRIQUES. Le motif est calé sur le monde et
-     non sur la plateforme (`% B` sur la coordonnée absolue), sinon deux blocs
-     voisins montreraient deux appareillages décalés et le sol se lirait comme
-     une suite de morceaux au lieu d'un mur continu. Le cerne noir est dessiné
-     en rectangles pleins plutôt qu'en trait : à cette définition, un trait de
-     un pixel se retrouve à cheval sur deux et devient gris. */
+  /* Un sol ou une plateforme : des BRIQUES. Le motif est calé sur la
+     PLATEFORME et non sur le monde. Calé sur le monde, il restait immobile
+     pendant que la plateforme, elle, bougeait : l'appareil semblait glisser
+     sous elle, et une plateforme qui monte changeait d'assise à chaque pixel —
+     un grouillement très laid. Rien ne se perd à l'ancrer ici : aucune
+     plateforme de ce niveau n'en touche une autre, la continuité d'un mur à
+     l'autre n'a donc jamais rien eu à montrer.
+     Le cerne noir est dessiné en rectangles pleins plutôt qu'en trait : à
+     cette définition, un trait de un pixel se retrouve à cheval sur deux et
+     devient gris. */
   function plateau(x, y, w, h, fri){
     const B = 32, R = 16;
     ctx.fillStyle = fri ? PAL.briqueFri : PAL.brique; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = PAL.joint;
     for (let jy = 0; jy < h - 1; jy += R){
-      ctx.fillRect(x, y + jy + R - 2, w, 2);                   // joint horizontal
-      const dec = (Math.floor((y + jy) / R) % 2) ? B / 2 : 0;  // une assise sur deux est décalée
-      for (let bx = Math.ceil((x - dec) / B) * B + dec; bx < x + w; bx += B)
+      ctx.fillRect(x, y + jy + R - 2, w, 2);        // joint horizontal
+      const dec = ((jy / R) % 2) ? B / 2 : 0;       // une assise sur deux est décalée, comptée DEPUIS LE HAUT du bloc
+      for (let bx = x + dec; bx < x + w; bx += B)
         if (bx > x) ctx.fillRect(bx, y + jy, 2, Math.min(R - 2, h - jy));
     }
     ctx.fillStyle = fri ? PAL.briqueFriHaut : PAL.briqueHaut; ctx.fillRect(x, y, w, 3);
@@ -8036,7 +8047,7 @@ const jumper = (() => {
     const flot = Math.round(Math.sin(t / 260) * 5);
     ctx.fillStyle = PAL.trait;
     ctx.beginPath(); ctx.moveTo(x + 2, y - 192); ctx.lineTo(x + 76, y - 168 + flot); ctx.lineTo(x + 2, y - 144); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = PAL.pic;
+    ctx.fillStyle = PAL.fanion;
     ctx.beginPath(); ctx.moveTo(x + 5, y - 188); ctx.lineTo(x + 66, y - 168 + flot); ctx.lineTo(x + 5, y - 148); ctx.closePath(); ctx.fill();
   }
   /* ---- le personnage ----
@@ -8393,7 +8404,7 @@ const jumper = (() => {
     g.fillStyle = PAL.metal; g.fillRect(fx2 - 1.5 * s, fy2 - 43 * s, 2.5 * s, 42 * s);
     g.fillStyle = PAL.trait;
     g.beginPath(); g.moveTo(fx2 + 1 * s, fy2 - 44 * s); g.lineTo(fx2 + 28 * s, fy2 - 34 * s); g.lineTo(fx2 + 1 * s, fy2 - 24 * s); g.closePath(); g.fill();
-    g.fillStyle = PAL.pic;
+    g.fillStyle = PAL.fanion;
     g.beginPath(); g.moveTo(fx2 + 3 * s, fy2 - 41 * s); g.lineTo(fx2 + 23 * s, fy2 - 34 * s); g.lineTo(fx2 + 3 * s, fy2 - 27 * s); g.closePath(); g.fill();
   }
 
