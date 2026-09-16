@@ -5859,7 +5859,7 @@ const model3d = (() => {
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
     : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
-    : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
+    : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '') + (item.teinte ? '|t:' + encodeURI(item.teinte) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
      remplace le gonflement en coussin par le vrai relief du sujet — sur un
@@ -5936,13 +5936,64 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
+  /* ---- teinter : le MODÈLE de l'un, l'ÉTOFFE de l'autre ----
+     Les trois sweats sont le même vêtement, photographié porté une seule fois.
+     Ce rendu porté tombe parfaitement sur le mannequin — c'est lui qui donne
+     la capuche derrière la nuque, les manches le long des bras, l'ourlet aux
+     hanches — mais il ne connaît qu'un imprimé, et les trois arrivaient donc
+     identiques sur le corps.
+     On garde donc sa géométrie et on lui repeint l'étoffe. La photo de
+     boutique est posée PAR-DESSUS le rendu porté, calée silhouette sur
+     silhouette et découpée par la sienne : le corps, les manches et l'imprimé
+     viennent de l'article, et tout ce que la photo à plat ne montre pas — la
+     capuche, au premier chef — reste celui du rendu porté.
+     C'EST L'ORDRE QUI COMPTE. L'essai inverse, peindre la photo de boutique à
+     travers le masque du rendu porté (`extendTexture`, comme pour une photo de
+     dos), mettait du BLANC plein la capuche : à cet endroit-là, la photo à
+     plat n'a que son fond, et aucune extension de tissu ne va le chercher
+     assez loin. Le rendu porté, lui, a toujours la bonne réponse. */
+  function teinter(f, t){
+    const N = MASK_N, W = f.canvas.width, H = f.canvas.height, k = W / N;
+    const boite = (m) => { let x0 = N, x1 = -1, y0 = N, y1 = -1;
+      for (let i = 0; i < N * N; i++) if (m[i]){ const x = i % N, y = (i - x) / N;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      return x1 < 0 ? null : [x0, y0, x1 - x0 + 1, y1 - y0 + 1]; };
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.drawImage(f.canvas, 0, 0);
+    const A = boite(f.mask), B = boite(t.mask);
+    if (!A || !B){ c.brut = f.canvas.brut; return c; }
+    const s = document.createElement('canvas'); s.width = s.height = N;
+    const gs = s.getContext('2d', { willReadFrequently:true });
+    gs.drawImage(t.img, 0, 0, N, N);
+    const d = gs.getImageData(0, 0, N, N);
+    /* Le masque est RONGÉ d'un pixel avant de servir d'alpha : le bord d'une
+       photo détourée est un dégradé vers le fond, et ce liseré clair, posé sur
+       l'étoffe sombre du rendu porté, dessinait un contour blanc tout autour
+       des épaules et de la capuche. */
+    const net = new Uint8Array(N * N);
+    for (let i = 0; i < N * N; i++){
+      if (!t.mask[i]) continue;
+      const x = i % N, y = (i - x) / N;
+      if (x && y && x < N-1 && y < N-1 && t.mask[i-1] && t.mask[i+1] && t.mask[i-N] && t.mask[i+N]) net[i] = 1;
+    }
+    for (let i = 0; i < N * N; i++) if (!net[i]) d.data[i*4+3] = 0;   // hors silhouette : rien
+    gs.putImageData(d, 0, 0);
+    g.drawImage(s, B[0], B[1], B[2], B[3], A[0] * k, A[1] * k, A[2] * k, A[3] * k);
+    c.brut = f.canvas.brut;
+    return c;
+  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
     if (item.mannequin) return prepareMannequin(item, key);
     if (item.tete) return prepareTete(item, key);
+    // `teinte` : la photo dont on prend l'ÉTOFFE, le maillage restant celui
+    // d'`img` (voir `teinter`)
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
-    const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
+    const teinte = item.teinte ? encodeURI(item.teinte) : null;
+    const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null,
+                           teinte ? loadImage(teinte) : null]).then(([f, b, prof, t]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
       if (bMask && maskArea(bMask) < 0.7 * maskArea(f.mask)){
         bMask = mirrorMask(f.mask);
@@ -5950,9 +6001,16 @@ const model3d = (() => {
         if (!altSrc.has(k2)) altSrc.set(k2, extendTexture(b.img, bMask, b.mask));
         texB = altSrc.get(k2);
       }
+      let texF = f.canvas;
+      if (t){
+        const k3 = front + '|teint:' + teinte;
+        if (!altSrc.has(k3)) altSrc.set(k3, teinter(f, t));
+        texF = altSrc.get(k3);
+        texB = texF;
+      }
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front), prof, PORTE.test(front)); meshes.set(key, mesh); }
-      const a = mesh ? { mesh, texF: f.canvas, texB } : null;
+      const a = mesh ? { mesh, texF, texB } : null;
       ready.set(key, a);
       if (list) list.warm(a); // la ligne s'affiche dès que possible, sans à-coup
       return a;
@@ -10144,7 +10202,7 @@ const dressup = (() => {
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.118, y1: 0.546 },  // la capuche occupe le haut de la photo : le vêtement part plus haut qu'un t-shirt
+    sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ceinture: 0.19, chevilles: 0.95, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ceinture: 0.175, y0: 0.468, y1: 0.618 },  // le sous-vêtement : sa ceinture sur la taille (0,170), comme un bas
@@ -10209,7 +10267,7 @@ const dressup = (() => {
      ici, et un ancrage de plus si ses proportions diffèrent vraiment. Rien
      d'autre à toucher. */
   const TAILLES = {
-    hoodie: { cat: 'haut', coupe: 'sweat' },
+    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png' } },
     pants:  { cat: 'bas', coupe: 'pantalon' },
     jeans:  { cat: 'bas', coupe: 'pantalon' },
     cap:    { cat: 'chapeau', coupe: 'chapeau' },
@@ -10274,7 +10332,9 @@ const dressup = (() => {
         /* Deux visuels pour une même pièce : la CASE du portant montre la
            photo de boutique, seule à distinguer un sweat d'un autre, et le
            MANNEQUIN porte le rendu porté quand la taille en déclare un. */
-        tout.push({ it: vu, porte: (vu === it && r.porte) || null,
+        /* Le rendu porté est COMMUN aux trois sweats, sa texture ne l'est pas :
+           chacun y passe sa propre photo (voir `teinte` dans `prepare`). */
+        tout.push({ it: vu, porte: (vu === it && r.porte) ? Object.assign({}, r.porte, { teinte: it.img }) : null,
                     nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
       });
     });
