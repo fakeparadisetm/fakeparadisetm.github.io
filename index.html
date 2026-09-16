@@ -2905,26 +2905,17 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    /* Une tête low poly en va-et-vient de ±20°, vue verrouillée : le modèle de
-       `3Dmodels/`, figé dans le module (voir TETE_XYZ), et pour texture la
-       planche de `pictures/`, convertie en WebP dans `icons/`.
-       `planches` : les textures de la tête, des cartes CYLINDRIQUES — cheveux
-       en haut, visage au milieu, une oreille de chaque côté, cou en bas. Elles
-       sont RACCORDÉES dans l'ordre : la première a la priorité partout où elle
-       porte, les suivantes comblent le reste (voir atlasTete). Ici la première
-       tient bien le devant mais s'arrête derrière les oreilles, la seconde va
-       jusqu'à la nuque.
-       Quatre nombres par planche, relevés dessus : `u0` et `ku`, où tombe le
-       milieu du visage et de combien u avance par radian — ce sont les
-       OREILLES qui donnent ku, elles sont à ±90° du visage ; `v0` et `kv`, la
-       hauteur de la ligne des yeux et de combien v avance par unité du modèle,
-       le second repère étant le bas du menton.
-       Sans planche, la tête reste en argile. */
-    panel:{ n:"FakeParadise™", tete:true, seule3D:true,
-      planches:[
-        { img:"icons/tete-texture.webp",          u0:0.500, ku:0.2604, v0:0.420, kv:0.834 },
-        { img:"icons/tete-texture-arriere.webp",  u0:0.3843, ku:0.1600, v0:0.4702, kv:0.7280 },
-      ],
+    /* Une tête low poly qui fait le tour en dix secondes, et que le visiteur
+       peut retourner à la souris : le modèle de `3Dmodels/`, figé dans le
+       module (voir TETE_XYZ).
+       `atlas` : la texture de la tête, en coordonnées ÉQUIRECTANGULAIRES — un
+       tour complet en largeur, la hauteur de la tête en hauteur. Elle est
+       livrée DÉJÀ réduite et quantifiée : le visage est celui de
+       l'utilisateur, et la photo d'avant pixellisation ne doit se trouver
+       nulle part dans les fichiers en ligne. Les planches d'origine restent
+       hors du dépôt, dans `pictures/planches/` ; la recette pour refabriquer
+       l'atlas est en tête du module. Sans atlas, la tête reste en argile. */
+    panel:{ n:"FakeParadise™", tete:true, seule3D:true, atlas:"icons/tete-atlas.png",
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -3918,6 +3909,9 @@ const model3d = (() => {
      (bras, jambes), et avec le rayon des vêtements il n'atteignait jamais son
      épaisseur, ce qui le laissait plat comme une découpe de carton. */
   const INFL_DOUX = 0.075;
+  // Aucune photo ne s'y range aujourd'hui : le portrait qui l'avait fait naître a
+  // cédé la place à la tête 3D, et son fichier est sorti du dépôt. Le réglage
+  // reste, il coûte une ligne et servira à la prochaine silhouette fine.
   const COUSSIN_DOUX = /aboutme/;
 
   // ---- matrices (colonnes) ----
@@ -4441,37 +4435,42 @@ const model3d = (() => {
   ];
   const HAUTEUR_TETE = 1.05;  // le modèle occupe le cadre comme un vêtement
 
-  /* ---- la texture, cousue de DEUX planches ----
-     L'utilisateur en a fourni plusieurs, et il vaut la peine de dire pourquoi
-     celles-ci et pas les autres. La première était un visage seul ; la
-     deuxième, une planche à îlots séparés dont les UV ne correspondaient PAS à
-     ceux du FBX (vérifié : aucune des quatre orientations ne les fait
-     coïncider). Les deux retenues sont COUSUES, sans blanc entre les morceaux,
-     et se lisent chacune comme une carte CYLINDRIQUE de la tête : cheveux en
-     haut, visage au milieu, une oreille de chaque côté, cou en bas. La
-     première couvre bien le devant mais s'arrête un peu derrière les oreilles ;
-     la seconde va jusqu'à la nuque, épi compris.
+  /* ---- la texture de la tête ----
+     Le site ne publie qu'UNE image, `icons/tete-atlas.png`, 192 × 96, déjà
+     réduite et quantifiée. C'est une demande expresse : le visage est celui de
+     l'utilisateur, et la photo d'avant pixellisation ne doit se trouver nulle
+     part dans les fichiers en ligne. Les planches d'origine restent donc hors
+     du dépôt, dans `pictures/planches/`, et ne servent qu'à fabriquer celle-ci.
 
-     On les RACCORDE donc dans un même repère équirectangulaire — un tour
-     complet en u, la hauteur de la tête en v — la première ayant la priorité
-     partout où elle porte, la seconde comblant le reste. Il ne reste plus un
-     seul aplat déduit : chaque point du crâne vient d'une photo.
+     Elle est en coordonnées ÉQUIRECTANGULAIRES : un tour complet en u, la
+     hauteur de la tête en v. Le dépliage se réduit donc à deux lignes, et rien
+     n'est calculé à l'affichage.
 
-     Chaque planche est décrite par quatre nombres, relevés dessus :
-       u0, ku — où tombe le milieu du visage, et de combien u avance par radian.
-                Les OREILLES donnent ku : elles sont à ±90° du visage, il suffit
-                de lire leur écart en u. (Planche 1 : 0,09 et 0,91 autour de
-                0,50. Planche 2 : 0,10 et 0,65 autour de 0,375.)
-       v0, kv — la hauteur de la LIGNE DES YEUX sur la planche, et de combien v
-                avance par unité du modèle. Le second repère est le BAS DU
-                MENTON. Calé sur la racine des cheveux à la place, les yeux
-                tombaient trop bas sur le visage. */
-  const Y_OEIL = 0.1175;                        // la ligne des yeux sur le modèle, à mi-chemin du sommet et du menton
+     ---- comment la refabriquer, si les photos changent ----
+     La recette a été exécutée une fois ; elle vit désormais dans l'historique
+     (commit « Deux eclats, un par boule, et les deux planches enfin d'accord »)
+     et tient en cinq temps :
+       1. deux planches cylindriques cousues, décrites chacune par quatre
+          nombres — u0 et ku (où tombe le milieu du visage, et de combien u
+          avance par radian : ce sont les OREILLES qui le donnent, elles sont à
+          ±90° du visage), v0 et kv (hauteur de la ligne des yeux, et de combien
+          v avance par unité du modèle, le second repère étant le bas du
+          menton). Relevés : planche de face 0,500 / 0,2604 / 0,420 / 0,834 ;
+          planche arrière 0,3843 / 0,160 / 0,4702 / 0,728 ;
+       2. la seconde est RECALÉE sur la première par descente sur ces quatre
+          nombres, en minimisant l'écart de couleur sur la zone commune — c'est
+          ce qui recolle la chevelure au-dessus de l'oreille, trois pour cent
+          d'écart en hauteur suffisant à montrer du crâne d'un côté et de la
+          peau de l'autre ;
+       3. accord des tons, voie par voie, sur cette même zone commune ;
+       4. composition avec fondu sur les bords ET à l'approche du vide, puis
+          comblement par dilatation bouclée en u, puis lissage des seules
+          jointures ;
+       5. réduction à 192 × 96 avec lissage, et quantification en 15 bits avec
+          trame ordonnée 4 × 4 à 45 % d'amplitude. */
   const PLANCHE_Y = { haut: 0.525, bas: -0.525 }; // ce que l'atlas couvre en hauteur
-  const ATLAS_MULT = 3;                 // l'atlas est bâti à trois fois la taille finale, puis réduit
-  const PS1_W = 256, PS1_H = 128;       // ce qui part au GPU. Un tour complet tient maintenant dedans, là
-                                        // où 128 ne couvraient que ±110° : le visage garde sa finesse
-  const ARGILE = [196, 158, 138];
+  const PS1_W = 192, PS1_H = 96;        // l'atlas, et tout ce que le site publie de ce visage
+  const ARGILE = [196, 158, 138];       // sans atlas : une argile chaude, le modèle reste présentable
   const uDe = th => 0.5 + th / (2 * Math.PI);
   const vDe = y => (PLANCHE_Y.haut - y) / (PLANCHE_Y.haut - PLANCHE_Y.bas);
 
@@ -4534,162 +4533,21 @@ const model3d = (() => {
     return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
   }
 
-  // une planche prête à être lue : ses pixels, sa calibration, son accord de ton
-  function lirePlanche(img, cal){
-    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d', { willReadFrequently:true }); g.drawImage(img, 0, 0);
-    return { d: g.getImageData(0, 0, w, h).data, w, h, cal, gain: [1, 1, 1] };
-  }
-  /* Couleur d'un point de la tête sur une planche, et le poids qu'on lui
-     accorde. Trois essais d'angle : l'angle lui-même, puis son MIROIR, puis le
-     tour opposé. Le miroir sert au coin arrière-gauche, que la seconde planche
-     ne couvre pas alors qu'elle couvre son symétrique — sur une nuque, la
-     symétrie ne se voit pas. Il ne peut pas retourner un visage par accident :
-     on ne l'essaie que si l'angle direct est tombé hors planche, ce qui
-     n'arrive jamais devant.
-     Le poids s'éteint sur les bords — et pas seulement sur ceux de l'image :
-     aussi à l'approche du VIDE, ce noir qui entoure le sujet sur une planche
-     dépliée. Sans cela la première planche gardait la priorité jusqu'à son
-     dernier texel utile, et la seconde reprenait d'un coup. */
-  const BORD = 0.16, SONDE = 3;
-  function surPlanche(p, th, y, brut){
-    const v = p.cal.v0 + (Y_OEIL - y) * p.cal.kv;
-    if (v < -0.02 || v > 1.02) return null;
-    const vide = (i, j) => { const s = ((Math.min(p.h-1, Math.max(0, j)) * p.w + Math.min(p.w-1, Math.max(0, i))) * 4);
-      return p.d[s+3] < 128 || (p.d[s] < 20 && p.d[s+1] < 20 && p.d[s+2] < 20); };
-    for (const t of [th, -th, th > 0 ? th - 2*Math.PI : th + 2*Math.PI]){
-      const u = p.cal.u0 + t * p.cal.ku;
-      if (u < 0 || u > 1) continue;
-      const i = Math.min(p.w - 1, Math.max(0, Math.round(u * p.w - 0.5)));
-      const j = Math.min(p.h - 1, Math.max(0, Math.round(v * p.h - 0.5)));
-      if (vide(i, j)) continue;
-      // à combien de texels du vide ou du bord ? c'est cela qui fait le fondu
-      let libre = SONDE;
-      for (let d = 1; d <= SONDE; d++){
-        if (vide(i-d, j) || vide(i+d, j) || vide(i, j-d) || vide(i, j+d)){ libre = d - 1; break; }
-      }
-      const s = (j * p.w + i) * 4;
-      const bord = Math.min(u, 1 - u, v, 1 - v);
-      const poids = Math.max(0, Math.min(1, bord / BORD)) * (libre / SONDE);
-      const c = [p.d[s], p.d[s+1], p.d[s+2]];
-      return { c: brut ? c : [c[0]*p.gain[0], c[1]*p.gain[1], c[2]*p.gain[2]], poids };
-    }
-    return null;
-  }
-  /* Accord des tons : une planche photographiée à part n'a ni la même
-     exposition ni la même balance que la précédente, et l'écart se voit comme
-     une marche à la jointure. On compare les deux sur leur ZONE COMMUNE et on
-     ramène la seconde sur la première, voie par voie. Mesuré ici : 0,98 / 0,95
-     / 0,96 — trois à cinq pour cent, assez pour qu'une joue change de teinte au
-     passage. L'écart est borné : au-delà, c'est que le recalage est faux, et
-     mieux vaut une marche qu'une planche repeinte de travers. */
-  function accorderTon(ref, autre){
-    let n = 0; const sa = [0,0,0], sb = [0,0,0];
-    for (let t = -1.6; t <= 1.6; t += 0.04) for (let y = -0.30; y <= 0.45; y += 0.02){
-      const a = surPlanche(ref, t, y, true), b = surPlanche(autre, t, y, true);
-      if (!a || !b) continue;
-      for (let c = 0; c < 3; c++){ sa[c] += a.c[c]; sb[c] += b.c[c]; }
-      n++;
-    }
-    if (n < 200) return [1, 1, 1];
-    return sa.map((v, c) => Math.max(0.8, Math.min(1.25, (v / n) / Math.max(1, sb[c] / n))));
-  }
-  /* L'atlas : les planches raccordées dans un repère équirectangulaire, comblé
-     puis lissé, et enfin passé en texture de console. La RÉDUCTION se fait avec
-     lissage, comme le faisait l'infographiste avant de livrer sa planche — le
-     gros texel carré viendra de l'agrandissement au plus proche, à l'affichage.
-     Puis la QUANTIFICATION en 15 bits, cinq par voie, avec une trame ordonnée
-     4 × 4 : sans elle un dégradé de peau se casse en larges bandes. À 45 %
-     d'amplitude seulement — la console tramait en SORTIE, un texel pour un
-     pixel, alors qu'ici la texture est agrandie plusieurs fois. */
-  function atlasTete(planches){
-    const AW = PS1_W * ATLAS_MULT, AH = PS1_H * ATLAS_MULT;
-    const gros = document.createElement('canvas'); gros.width = AW; gros.height = AH;
-    const gg = gros.getContext('2d');
-    const src = (planches || []).filter(Boolean).map(p => lirePlanche(p.img, p.cal));
-    for (let k = 1; k < src.length; k++) src[k].gain = accorderTon(src[0], src[k]);
-    const img = gg.createImageData(AW, AH), o = img.data;
-    const etat = new Uint8Array(AW * AH);   // 2 = une planche à plein, 1 = transition, 0 = vide
-    for (let j = 0; j < AH; j++){
-      const y = PLANCHE_Y.haut - (j + 0.5) / AH * (PLANCHE_Y.haut - PLANCHE_Y.bas);
-      for (let i = 0; i < AW; i++){
-        const th = ((i + 0.5) / AW - 0.5) * 2 * Math.PI;
-        let reste = 1; const acc = [0, 0, 0];
-        for (const p of src){
-          const e = surPlanche(p, th, y);
-          if (!e || e.poids <= 0) continue;
-          const part = Math.min(e.poids, reste);
-          acc[0] += e.c[0]*part; acc[1] += e.c[1]*part; acc[2] += e.c[2]*part;
-          reste -= part;
-          if (reste <= 0.002) break;
-        }
-        const k = j*AW + i, t = k*4;
-        if (reste < 0.999){
-          const g2 = 1 / (1 - reste);
-          o[t] = acc[0]*g2; o[t+1] = acc[1]*g2; o[t+2] = acc[2]*g2; o[t+3] = 255;
-          etat[k] = reste < 0.02 ? 2 : 1;
-        }
-      }
-    }
-    /* COMBLEMENT : ce qu'aucune planche ne couvre est rempli par ses voisins,
-       de proche en proche et en bouclant sur u — la nuque est un cylindre, son
-       bord gauche touche son bord droit. Le modèle est ainsi couvert partout,
-       sans le moindre aplat inventé. */
-    let vides = 0; for (let k = 0; k < AW*AH; k++) if (!etat[k]) vides++;
-    const dep = etat.slice();
-    for (let passe = 0; vides && passe < 64; passe++){
-      const avant = etat.slice();
-      for (let j = 0; j < AH; j++) for (let i = 0; i < AW; i++){
-        const k = j*AW + i; if (avant[k]) continue;
-        let n = 0; const s = [0, 0, 0];
-        for (const [di, dj] of [[-1,0],[1,0],[0,-1],[0,1]]){
-          const jj = j + dj; if (jj < 0 || jj >= AH) continue;
-          const kk = jj*AW + ((i + di + AW) % AW);
-          if (!avant[kk]) continue;
-          s[0] += o[kk*4]; s[1] += o[kk*4+1]; s[2] += o[kk*4+2]; n++;
-        }
-        if (!n) continue;
-        o[k*4] = s[0]/n; o[k*4+1] = s[1]/n; o[k*4+2] = s[2]/n; o[k*4+3] = 255;
-        etat[k] = 1; vides--;
-      }
-    }
-    /* LISSAGE des seules jointures : les texels où deux planches se partagent
-       le travail, et ceux qui viennent d'être comblés. Le visage, couvert par
-       une seule planche à plein régime, n'y touche pas — c'est ce qui distingue
-       un raccord d'un flou général. */
-    const tmp = new Uint8ClampedArray(o);
-    for (let passe = 0; passe < 2; passe++){
-      tmp.set(o);
-      for (let j = 0; j < AH; j++) for (let i = 0; i < AW; i++){
-        const k = j*AW + i; if (dep[k] === 2) continue;
-        for (let c = 0; c < 3; c++){
-          let s = 0, n = 0;
-          for (let dj = -1; dj <= 1; dj++){ const jj = j + dj; if (jj < 0 || jj >= AH) continue;
-            for (let di = -1; di <= 1; di++){ s += tmp[(jj*AW + ((i+di+AW)%AW))*4+c]; n++; } }
-          o[k*4+c] = s / n;
-        }
-      }
-    }
-    gg.putImageData(img, 0, 0);
-    const CH = 32 / 256;
-    const BAYER = [ 0, 8, 2,10, 12, 4,14, 6, 3,11, 1, 9, 15, 7,13, 5];
+  /* L'atlas part au GPU tel quel : il est déjà à la bonne taille et déjà
+     quantifié, il n'y a rien à lui faire. Il passe seulement par une toile, le
+     temps de garantir ses dimensions et de poser le drapeau qui interdit tout
+     lissage — la console ne filtrait pas ses textures, et c'est de là que
+     viennent ses gros texels carrés. */
+  function atlasTete(img){
     const pc = document.createElement('canvas'); pc.width = PS1_W; pc.height = PS1_H;
-    const g = pc.getContext('2d', { willReadFrequently:true });
-    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-    g.drawImage(gros, 0, 0, PS1_W, PS1_H);
-    const pix = g.getImageData(0, 0, PS1_W, PS1_H), q = pix.data;
-    for (let j = 0; j < PS1_H; j++) for (let i = 0; i < PS1_W; i++){
-      const t = (j*PS1_W + i)*4, seuil = (BAYER[(j & 3)*4 + (i & 3)] / 16 - 0.5) * CH * 255 * 0.45;
-      for (let ch = 0; ch < 3; ch++){
-        const v = Math.max(0, Math.min(255, q[t+ch] + seuil));
-        q[t+ch] = Math.round(v / 255 * 31) / 31 * 255;
-      }
-      q[t+3] = 255;
+    const g = pc.getContext('2d');
+    if (img){ g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, PS1_W, PS1_H); }
+    else for (let j = 0; j < PS1_H; j++){
+      const f = 1 - 0.22 * (j / PS1_H);
+      g.fillStyle = `rgb(${Math.round(ARGILE[0]*f)},${Math.round(ARGILE[1]*f)},${Math.round(ARGILE[2]*f)})`;
+      g.fillRect(0, j, PS1_W, 1);
     }
-    g.putImageData(pix, 0, 0);
     pc.brut = true;        // texture() : aucun lissage, aucun rééchantillonnage
-    pc.vides = vides;      // contrôle : doit valoir zéro, le modèle est couvert partout
     return pc;
   }
   // ---- photos, textures étendues (canvas) et maillages en cache (clé : chemin de la photo) ----
@@ -4726,7 +4584,7 @@ const model3d = (() => {
   let current = null, active = false, raf = 0, last = 0, token = 0;
   let angle = 0, hover = false, target = 0, tap = 0, rowAngle = 0, rows = [], fading = [], listDrawn = false;
   let tourne = 0;        // tour continu, pour les modèles marqués `tourne` (la tête de la page Info)
-  const TOUR_MS = 16000; // un tour complet ; plus vite, on ne voit plus les facettes passer
+  const TOUR_MS = 10000; // un tour complet
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
@@ -4771,7 +4629,7 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => item.tete ? 'tete|' + (item.planches || []).map(p => encodeURI(p.img)).join('+')
+  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -4816,11 +4674,10 @@ const model3d = (() => {
      `visage`, ou si le fichier manque, atlasTete peint son argile — le modèle
      reste présentable, seul le visage manque. */
   function prepareTete(item, key){
-    const liste = item.planches || [];
-    const p = Promise.all(liste.map(pl => loadPhoto(encodeURI(pl.img)))).then(imgs => {
+    const p = (item.atlas ? loadPhoto(encodeURI(item.atlas)) : Promise.resolve(null)).then(img => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
-      const tex = atlasTete(imgs.map((img, i) => img && { img, cal: liste[i] }));
+      const tex = atlasTete(img);
       // tourne : tour continu, repris par la souris ; ps1 : grille de sommets et placage affine (voir uPS1)
       const a = { mesh, texF: tex, texB: tex, tourne: true, ps1: true, eclat3d: true };
       ready.set(key, a);
@@ -4851,16 +4708,20 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
-  /* DEUX éclats, un par boule du barbell, et chacun son rythme. Le même
-     battement sur les deux en faisait une paire de phares : il faut qu'ils se
-     répondent, pas qu'ils s'allument ensemble. Chacun a donc ses deux périodes
-     et son décalage, tous premiers entre eux — les coïncidences sont rares et
-     jamais régulières.
-     Les hauteurs viennent des deux boules relevées sur la planche du visage
-     (v 0,370 et 0,415 pour u 0,655). */
+  /* TROIS éclats, et chacun son rythme : les deux boules du barbell de
+     l'arcade, et la boucle au lobe de l'oreille gauche. Le même battement sur
+     plusieurs en ferait une rampe de phares — il faut qu'ils se répondent, pas
+     qu'ils s'allument ensemble. Chacun a donc ses deux périodes et son
+     décalage, tous premiers entre eux : les coïncidences sont rares et jamais
+     régulières.
+     Les hauteurs viennent des repères relevés sur les planches d'origine — le
+     barbell à v 0,370 et 0,415 pour u 0,655 sur celle du visage, le lobe à
+     v 0,595 pour u 0,635 sur celle de l'arrière, soit très exactement le côté
+     de la tête (θ = π/2). */
   const ECLATS = [
-    { th: 0.600, y: 0.178, lent: 430, vif: 173, phase: 0.0 },   // la boule du haut
-    { th: 0.600, y: 0.124, lent: 610, vif: 241, phase: 2.3 },   // celle du bas
+    { th: 0.600, y: 0.178, lent: 430, vif: 173, phase: 0.0 },   // arcade, la boule du haut
+    { th: 0.600, y: 0.124, lent: 610, vif: 241, phase: 2.3 },   // arcade, celle du bas
+    { th: 1.570, y: -0.055, lent: 790, vif: 311, phase: 4.1 },  // le lobe de l'oreille gauche
   ];
   const ECLAT_FORCE = 0.5;   // moitié moins visible qu'au premier jet
   // point et normale de la surface à un endroit donné, calculés une fois par maillage
@@ -5165,8 +5026,7 @@ const model3d = (() => {
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
   // contrôle : déplacer l'éclat et vider le point en cache, pour le régler à vue
   const debugEclat = (i, th, y) => { ECLATS[i].th = th; ECLATS[i].y = y; meshes.forEach(m => { if (m) delete m.eclats; }); draw(); return ECLATS.map(e => ({ th:e.th, y:e.y })); };
-  const debugAtlas = liste => Promise.all((liste || []).map(pl => loadPhoto(encodeURI(pl.img))))
-    .then(imgs => atlasTete(imgs.map((img, i) => img && { img, cal: liste[i] })).toDataURL('image/png'));
+  const debugAtlas = url => (url ? loadPhoto(encodeURI(url)) : Promise.resolve(null)).then(img => atlasTete(img).toDataURL('image/png'));
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
   const debugTexture = url => loadImage(url).then(e => e.canvas); // contrôle : texture étendue d'une photo
   const debugSnapshot = () => { draw(); return canvas.toDataURL('image/png'); }; // contrôle : image du rendu courant
