@@ -6699,6 +6699,9 @@ const model3d = (() => {
   // de combien la main doit dépasser le bout de la manche : une demi-main,
   // assez pour qu'on la voie sortir, trop peu pour qu'elle ait l'air arrachée
   const MAIN_DEHORS = 0.045;
+  // de combien une manche peut RELEVER le bras : au-delà, c'est une erreur de
+  // mesure et non un vêtement (voir `poseBras`)
+  const BRAS_LEVE = 6 * Math.PI / 180;
   /* Ce que le vêtement demande au bras : un ANGLE, pour viser le milieu de
      l'ouverture, et une LONGUEUR, pour que la main ressorte au bout de la
      manche. L'angle ne peut rien contre une manche plus longue que le bras —
@@ -6717,8 +6720,22 @@ const model3d = (() => {
        L'allongement ne sert donc plus qu'à faire ressortir la main d'une
        manche COURTE ; une manche longue est coupée un demi-poing avant le
        poignet, et le bras n'a plus rien à rallonger du tout. */
+    /* UN VÊTEMENT NE LÈVE PAS LES BRAS DE PLUS DE SIX DEGRÉS. Une manche peut
+       les baisser le long du corps autant qu'elle veut, et les relever un peu
+       — le t-shirt hollandais le demande, trois degrés et demi, et il a
+       raison. Mais au-delà, ce n'est plus un vêtement particulier : c'est la
+       visée qui s'est trompée de rangée.
+       CE GARDE-FOU EXISTE PARCE QUE LE MASQUE N'EST PAS LE MÊME PARTOUT. Il
+       vient d'un `drawImage` qui réduit la photo à 192 pixels, et chaque
+       moteur a son filtre de réduction : quelques pixels de contour diffèrent,
+       ce qui ne se voit nulle part ailleurs mais suffit à déplacer la rangée
+       où le bord chute le plus vite — celle qui donne l'angle. Sur Firefox,
+       les bras du polo sortaient par le haut.
+       Relevé des quatorze hauts sur ce navigateur-ci : de −3,4 à +22,5 degrés.
+       Le plancher ne touche donc AUCUN d'eux, et il rend l'accident
+       impossible partout ailleurs. */
     const bout = Math.min(v.dist, BRAS_REPOS.long - MAIN_DEHORS);
-    return { bras: BRAS_REPOS.angle - v.angle,
+    return { bras: Math.max(-BRAS_LEVE, BRAS_REPOS.angle - v.angle),
              allonge: Math.max(1, (bout + MAIN_DEHORS) / BRAS_REPOS.long),
              coude: v.dist < BRAS_REPOS.long * COUDE_SEUIL ? COUDE_ANGLE : 0 };
   };
@@ -6921,6 +6938,14 @@ const model3d = (() => {
       if (x > bord[r]) bord[r] = x;
     }
     for (let r = 1; r < RANGS; r++) if (bord[r] < -8) bord[r] = bord[r-1];
+    /* ESSAYÉ ET ÉCARTÉ : lisser le bord sur trois rangées avant d'y chercher la
+       chute. C'est la correction qu'on attend d'une dérivée sensible au bruit,
+       et elle n'est pas gratuite ici — mesurée sur les quatorze hauts, elle
+       déplace la rangée retenue sur HUIT d'entre eux, dont le t-shirt du
+       poisson qui passait de six degrés de descente à zéro. Le relevé brut est
+       celui qui a été réglé et validé à l'œil ; on ne le remplace pas pour
+       corriger un cas. Le garde-fou de `poseBras` s'en charge sans rien
+       déplacer ailleurs. */
     let r1 = 0;
     for (let r = 0; r < RANGS; r++) if (bord[r] > bord[r1]) r1 = r;
     const xmax = bord[r1];
