@@ -2923,7 +2923,7 @@ const DATA = [
     panel:{ n:"FakeParadise™", tete:true, seule3D:true,
       planches:[
         { img:"icons/tete-texture.webp",          u0:0.500, ku:0.2604, v0:0.420, kv:0.834 },
-        { img:"icons/tete-texture-arriere.webp",  u0:0.375, ku:0.1750, v0:0.450, kv:0.810 },
+        { img:"icons/tete-texture-arriere.webp",  u0:0.3843, ku:0.1600, v0:0.4702, kv:0.7280 },
       ],
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
@@ -4534,12 +4534,12 @@ const model3d = (() => {
     return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
   }
 
-  // une planche prête à être lue : ses pixels et sa calibration
+  // une planche prête à être lue : ses pixels, sa calibration, son accord de ton
   function lirePlanche(img, cal){
     const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently:true }); g.drawImage(img, 0, 0);
-    return { d: g.getImageData(0, 0, w, h).data, w, h, cal };
+    return { d: g.getImageData(0, 0, w, h).data, w, h, cal, gain: [1, 1, 1] };
   }
   /* Couleur d'un point de la tête sur une planche, et le poids qu'on lui
      accorde. Trois essais d'angle : l'angle lui-même, puis son MIROIR, puis le
@@ -4547,58 +4547,128 @@ const model3d = (() => {
      ne couvre pas alors qu'elle couvre son symétrique — sur une nuque, la
      symétrie ne se voit pas. Il ne peut pas retourner un visage par accident :
      on ne l'essaie que si l'angle direct est tombé hors planche, ce qui
-     n'arrive jamais devant. Le poids s'éteint sur les bords, pour que la
-     planche suivante prenne le relais sans marche. */
-  const BORD = 0.07;
-  function surPlanche(p, th, y){
+     n'arrive jamais devant.
+     Le poids s'éteint sur les bords — et pas seulement sur ceux de l'image :
+     aussi à l'approche du VIDE, ce noir qui entoure le sujet sur une planche
+     dépliée. Sans cela la première planche gardait la priorité jusqu'à son
+     dernier texel utile, et la seconde reprenait d'un coup. */
+  const BORD = 0.16, SONDE = 3;
+  function surPlanche(p, th, y, brut){
     const v = p.cal.v0 + (Y_OEIL - y) * p.cal.kv;
-    if (v < 0 || v > 1) return null;
+    if (v < -0.02 || v > 1.02) return null;
+    const vide = (i, j) => { const s = ((Math.min(p.h-1, Math.max(0, j)) * p.w + Math.min(p.w-1, Math.max(0, i))) * 4);
+      return p.d[s+3] < 128 || (p.d[s] < 20 && p.d[s+1] < 20 && p.d[s+2] < 20); };
     for (const t of [th, -th, th > 0 ? th - 2*Math.PI : th + 2*Math.PI]){
       const u = p.cal.u0 + t * p.cal.ku;
       if (u < 0 || u > 1) continue;
       const i = Math.min(p.w - 1, Math.max(0, Math.round(u * p.w - 0.5)));
       const j = Math.min(p.h - 1, Math.max(0, Math.round(v * p.h - 0.5)));
+      if (vide(i, j)) continue;
+      // à combien de texels du vide ou du bord ? c'est cela qui fait le fondu
+      let libre = SONDE;
+      for (let d = 1; d <= SONDE; d++){
+        if (vide(i-d, j) || vide(i+d, j) || vide(i, j-d) || vide(i, j+d)){ libre = d - 1; break; }
+      }
       const s = (j * p.w + i) * 4;
-      if (p.d[s+3] < 128 || (p.d[s] < 20 && p.d[s+1] < 20 && p.d[s+2] < 20)) continue;  // hors sujet
       const bord = Math.min(u, 1 - u, v, 1 - v);
-      return { c: [p.d[s], p.d[s+1], p.d[s+2]], poids: Math.max(0, Math.min(1, bord / BORD)) };
+      const poids = Math.max(0, Math.min(1, bord / BORD)) * (libre / SONDE);
+      const c = [p.d[s], p.d[s+1], p.d[s+2]];
+      return { c: brut ? c : [c[0]*p.gain[0], c[1]*p.gain[1], c[2]*p.gain[2]], poids };
     }
     return null;
   }
-  /* L'atlas : les planches raccordées dans un repère équirectangulaire, puis le
-     passage en texture de console. La RÉDUCTION se fait avec lissage, comme le
-     faisait l'infographiste avant de livrer sa planche — le gros texel carré
-     viendra de l'agrandissement au plus proche, à l'affichage. Puis la
-     QUANTIFICATION en 15 bits, cinq par voie, avec une trame ordonnée 4 × 4 :
-     sans elle un dégradé de peau se casse en larges bandes. À 45 % d'amplitude
-     seulement — la console tramait en SORTIE, un texel pour un pixel, alors
-     qu'ici la texture est agrandie plusieurs fois. */
+  /* Accord des tons : une planche photographiée à part n'a ni la même
+     exposition ni la même balance que la précédente, et l'écart se voit comme
+     une marche à la jointure. On compare les deux sur leur ZONE COMMUNE et on
+     ramène la seconde sur la première, voie par voie. Mesuré ici : 0,98 / 0,95
+     / 0,96 — trois à cinq pour cent, assez pour qu'une joue change de teinte au
+     passage. L'écart est borné : au-delà, c'est que le recalage est faux, et
+     mieux vaut une marche qu'une planche repeinte de travers. */
+  function accorderTon(ref, autre){
+    let n = 0; const sa = [0,0,0], sb = [0,0,0];
+    for (let t = -1.6; t <= 1.6; t += 0.04) for (let y = -0.30; y <= 0.45; y += 0.02){
+      const a = surPlanche(ref, t, y, true), b = surPlanche(autre, t, y, true);
+      if (!a || !b) continue;
+      for (let c = 0; c < 3; c++){ sa[c] += a.c[c]; sb[c] += b.c[c]; }
+      n++;
+    }
+    if (n < 200) return [1, 1, 1];
+    return sa.map((v, c) => Math.max(0.8, Math.min(1.25, (v / n) / Math.max(1, sb[c] / n))));
+  }
+  /* L'atlas : les planches raccordées dans un repère équirectangulaire, comblé
+     puis lissé, et enfin passé en texture de console. La RÉDUCTION se fait avec
+     lissage, comme le faisait l'infographiste avant de livrer sa planche — le
+     gros texel carré viendra de l'agrandissement au plus proche, à l'affichage.
+     Puis la QUANTIFICATION en 15 bits, cinq par voie, avec une trame ordonnée
+     4 × 4 : sans elle un dégradé de peau se casse en larges bandes. À 45 %
+     d'amplitude seulement — la console tramait en SORTIE, un texel pour un
+     pixel, alors qu'ici la texture est agrandie plusieurs fois. */
   function atlasTete(planches){
     const AW = PS1_W * ATLAS_MULT, AH = PS1_H * ATLAS_MULT;
     const gros = document.createElement('canvas'); gros.width = AW; gros.height = AH;
     const gg = gros.getContext('2d');
     const src = (planches || []).filter(Boolean).map(p => lirePlanche(p.img, p.cal));
+    for (let k = 1; k < src.length; k++) src[k].gain = accorderTon(src[0], src[k]);
     const img = gg.createImageData(AW, AH), o = img.data;
+    const etat = new Uint8Array(AW * AH);   // 2 = une planche à plein, 1 = transition, 0 = vide
     for (let j = 0; j < AH; j++){
       const y = PLANCHE_Y.haut - (j + 0.5) / AH * (PLANCHE_Y.haut - PLANCHE_Y.bas);
       for (let i = 0; i < AW; i++){
         const th = ((i + 0.5) / AW - 0.5) * 2 * Math.PI;
-        let c = null, reste = 1, acc = [0, 0, 0];
+        let reste = 1; const acc = [0, 0, 0];
         for (const p of src){
           const e = surPlanche(p, th, y);
-          if (!e) continue;
+          if (!e || e.poids <= 0) continue;
           const part = Math.min(e.poids, reste);
           acc[0] += e.c[0]*part; acc[1] += e.c[1]*part; acc[2] += e.c[2]*part;
           reste -= part;
-          if (reste <= 0.002){ c = acc; break; }
-          c = acc;   // gardée au cas où aucune planche ne complète : on normalisera
+          if (reste <= 0.002) break;
         }
-        const t = (j*AW + i)*4;
-        if (c && reste < 0.999){ const k = 1 / (1 - reste);
-          o[t] = c[0]*k; o[t+1] = c[1]*k; o[t+2] = c[2]*k; }
-        else { const f = 1 - 0.22 * (j / AH);   // aucune planche ici : une argile chaude
-          o[t] = ARGILE[0]*f; o[t+1] = ARGILE[1]*f; o[t+2] = ARGILE[2]*f; }
-        o[t+3] = 255;
+        const k = j*AW + i, t = k*4;
+        if (reste < 0.999){
+          const g2 = 1 / (1 - reste);
+          o[t] = acc[0]*g2; o[t+1] = acc[1]*g2; o[t+2] = acc[2]*g2; o[t+3] = 255;
+          etat[k] = reste < 0.02 ? 2 : 1;
+        }
+      }
+    }
+    /* COMBLEMENT : ce qu'aucune planche ne couvre est rempli par ses voisins,
+       de proche en proche et en bouclant sur u — la nuque est un cylindre, son
+       bord gauche touche son bord droit. Le modèle est ainsi couvert partout,
+       sans le moindre aplat inventé. */
+    let vides = 0; for (let k = 0; k < AW*AH; k++) if (!etat[k]) vides++;
+    const dep = etat.slice();
+    for (let passe = 0; vides && passe < 64; passe++){
+      const avant = etat.slice();
+      for (let j = 0; j < AH; j++) for (let i = 0; i < AW; i++){
+        const k = j*AW + i; if (avant[k]) continue;
+        let n = 0; const s = [0, 0, 0];
+        for (const [di, dj] of [[-1,0],[1,0],[0,-1],[0,1]]){
+          const jj = j + dj; if (jj < 0 || jj >= AH) continue;
+          const kk = jj*AW + ((i + di + AW) % AW);
+          if (!avant[kk]) continue;
+          s[0] += o[kk*4]; s[1] += o[kk*4+1]; s[2] += o[kk*4+2]; n++;
+        }
+        if (!n) continue;
+        o[k*4] = s[0]/n; o[k*4+1] = s[1]/n; o[k*4+2] = s[2]/n; o[k*4+3] = 255;
+        etat[k] = 1; vides--;
+      }
+    }
+    /* LISSAGE des seules jointures : les texels où deux planches se partagent
+       le travail, et ceux qui viennent d'être comblés. Le visage, couvert par
+       une seule planche à plein régime, n'y touche pas — c'est ce qui distingue
+       un raccord d'un flou général. */
+    const tmp = new Uint8ClampedArray(o);
+    for (let passe = 0; passe < 2; passe++){
+      tmp.set(o);
+      for (let j = 0; j < AH; j++) for (let i = 0; i < AW; i++){
+        const k = j*AW + i; if (dep[k] === 2) continue;
+        for (let c = 0; c < 3; c++){
+          let s = 0, n = 0;
+          for (let dj = -1; dj <= 1; dj++){ const jj = j + dj; if (jj < 0 || jj >= AH) continue;
+            for (let di = -1; di <= 1; di++){ s += tmp[(jj*AW + ((i+di+AW)%AW))*4+c]; n++; } }
+          o[k*4+c] = s / n;
+        }
       }
     }
     gg.putImageData(img, 0, 0);
@@ -4619,6 +4689,7 @@ const model3d = (() => {
     }
     g.putImageData(pix, 0, 0);
     pc.brut = true;        // texture() : aucun lissage, aucun rééchantillonnage
+    pc.vides = vides;      // contrôle : doit valoir zéro, le modèle est couvert partout
     return pc;
   }
   // ---- photos, textures étendues (canvas) et maillages en cache (clé : chemin de la photo) ----
@@ -4780,131 +4851,124 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
-  /* ---- l'éclat du piercing ----
-     Il y a un barbell à l'arcade sur la photo, et à 256 × 128 de texture il ne
-     reste de lui qu'un texel un peu clair. On lui rend son métal par-dessus, en
-     DEUX DIMENSIONS : une étoile et quelques grains peints sur un calque posé
-     au-dessus du rendu, à l'endroit où le point du modèle tombe à l'écran.
-     Pourquoi en 2D plutôt qu'en relief : un scintillement n'est pas un objet,
-     c'est un accident de lumière — il n'a ni volume ni face arrière, il doit
-     rester net quelle que soit la distance, et une croix de lumière de quatre
-     pixels ne se modélise pas. Les jeux de l'époque faisaient exactement cela,
-     un sprite collé sur un point du personnage.
-
-     Où : θ et hauteur relevés sur la planche QUI PORTE LE VISAGE, c'est-à-dire
-     la première — c'est elle qui a la priorité devant, et un repère pris sur
-     la seconde tombait à côté. Le barbell y court de v 0,37 à 0,415 autour de
-     u 0,655, ce qui donne 0,52 radian et 0,150 une fois passé par sa
-     calibration. Le POINT du modèle s'obtient ensuite
-     par un lancer de rayon horizontal depuis l'axe : soixante triangles, on
-     garde l'intersection la plus lointaine, c'est-à-dire la surface.
-     Quand : seulement quand la facette qui le porte regarde le spectateur, et
-     en s'éteignant à mesure qu'elle se détourne — sinon l'éclat traverserait la
-     tête et brillerait à travers la nuque. */
-  const ECLAT = { th: 0.520, y: 0.150 };
-  // point et normale de la surface à cet endroit, calculés une fois par maillage
-  function pointEclat(mesh){
-    if (mesh.eclat !== undefined) return mesh.eclat;
-    const ox = 0, oy = ECLAT.y, oz = 0;
-    const dx = Math.sin(ECLAT.th), dz = Math.cos(ECLAT.th);
-    let best = null;
-    for (let k = 0; k < TETE_TRI.length; k += 6){
-      const A = TETE_TRI[k]*3, B = TETE_TRI[k+2]*3, C = TETE_TRI[k+4]*3;
-      const ax = TETE_XYZ[A], ay = TETE_XYZ[A+1], az = TETE_XYZ[A+2];
-      const ex1 = TETE_XYZ[B]-ax, ey1 = TETE_XYZ[B+1]-ay, ez1 = TETE_XYZ[B+2]-az;
-      const ex2 = TETE_XYZ[C]-ax, ey2 = TETE_XYZ[C+1]-ay, ez2 = TETE_XYZ[C+2]-az;
-      // Möller–Trumbore, avec un rayon horizontal (dy = 0)
-      const px = -dz*ey2, py = dz*ex2 - dx*ez2, pz = dx*ey2;
-      const det = ex1*px + ey1*py + ez1*pz;
-      if (Math.abs(det) < 1e-9) continue;
-      const inv = 1/det, tx = ox-ax, ty = oy-ay, tz = oz-az;
-      const u = (tx*px + ty*py + tz*pz) * inv;
-      if (u < 0 || u > 1) continue;
-      const qx = ty*ez1 - tz*ey1, qy = tz*ex1 - tx*ez1, qz = tx*ey1 - ty*ex1;
-      const v = (dx*qx + dz*qz) * inv;
-      if (v < 0 || u + v > 1) continue;
-      const t = (ex2*qx + ey2*qy + ez2*qz) * inv;
-      if (t <= 0) continue;
-      if (!best || t > best.t){
-        let nx = ey1*ez2 - ez1*ey2, ny = ez1*ex2 - ex1*ez2, nz = ex1*ey2 - ey1*ex2;
-        const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-        if (nx*dx + nz*dz < 0){ nx = -nx; ny = -ny; nz = -nz; }   // vers l'extérieur
-        best = { t, p:[ox + dx*t, oy, oz + dz*t], n:[nx, ny, nz] };
+  /* DEUX éclats, un par boule du barbell, et chacun son rythme. Le même
+     battement sur les deux en faisait une paire de phares : il faut qu'ils se
+     répondent, pas qu'ils s'allument ensemble. Chacun a donc ses deux périodes
+     et son décalage, tous premiers entre eux — les coïncidences sont rares et
+     jamais régulières.
+     Les hauteurs viennent des deux boules relevées sur la planche du visage
+     (v 0,370 et 0,415 pour u 0,655). */
+  const ECLATS = [
+    { th: 0.600, y: 0.178, lent: 430, vif: 173, phase: 0.0 },   // la boule du haut
+    { th: 0.600, y: 0.124, lent: 610, vif: 241, phase: 2.3 },   // celle du bas
+  ];
+  const ECLAT_FORCE = 0.5;   // moitié moins visible qu'au premier jet
+  // point et normale de la surface à un endroit donné, calculés une fois par maillage
+  function pointsEclat(mesh){
+    if (mesh.eclats !== undefined) return mesh.eclats;
+    mesh.eclats = ECLATS.map(E => {
+      const oy = E.y, dx = Math.sin(E.th), dz = Math.cos(E.th);
+      let best = null;
+      for (let k = 0; k < TETE_TRI.length; k += 6){
+        const A = TETE_TRI[k]*3, B = TETE_TRI[k+2]*3, C = TETE_TRI[k+4]*3;
+        const ax = TETE_XYZ[A], ay = TETE_XYZ[A+1], az = TETE_XYZ[A+2];
+        const ex1 = TETE_XYZ[B]-ax, ey1 = TETE_XYZ[B+1]-ay, ez1 = TETE_XYZ[B+2]-az;
+        const ex2 = TETE_XYZ[C]-ax, ey2 = TETE_XYZ[C+1]-ay, ez2 = TETE_XYZ[C+2]-az;
+        // Möller–Trumbore, avec un rayon horizontal (dy = 0) parti de l'axe
+        const px = -dz*ey2, py = dz*ex2 - dx*ez2, pz = dx*ey2;
+        const det = ex1*px + ey1*py + ez1*pz;
+        if (Math.abs(det) < 1e-9) continue;
+        const inv = 1/det, tx = -ax, ty = oy-ay, tz = -az;
+        const u = (tx*px + ty*py + tz*pz) * inv;
+        if (u < 0 || u > 1) continue;
+        const qx = ty*ez1 - tz*ey1, qy = tz*ex1 - tx*ez1, qz = tx*ey1 - ty*ex1;
+        const v = (dx*qx + dz*qz) * inv;
+        if (v < 0 || u + v > 1) continue;
+        const t = (ex2*qx + ey2*qy + ez2*qz) * inv;
+        if (t <= 0) continue;
+        if (!best || t > best.t){
+          let nx = ey1*ez2 - ez1*ey2, ny = ez1*ex2 - ex1*ez2, nz = ex1*ey2 - ey1*ex2;
+          const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+          if (nx*dx + nz*dz < 0){ nx = -nx; ny = -ny; nz = -nz; }   // vers l'extérieur
+          best = { t, p:[dx*t, oy, dz*t], n:[nx, ny, nz] };
+        }
       }
-    }
-    mesh.eclat = best && { p: best.p.map(v => v * HAUTEUR_TETE / 1.05), n: best.n };
-    return mesh.eclat;
+      return best && { E, p: best.p.map(v => v * HAUTEUR_TETE / 1.05), n: best.n };
+    }).filter(Boolean);
+    return mesh.eclats;
   }
   /* Le calque : un canvas 2D posé sur celui du rendu, dans la même case. Il est
-     effacé à chaque image et ne porte jamais que l'éclat — rien d'autre du
+     effacé à chaque image et ne porte jamais que les éclats — rien d'autre du
      modèle n'a de raison d'y monter. */
   const fx = document.getElementById('teteFx');
   const fxg = fx ? fx.getContext('2d') : null;
   let grains = [];
   function peindreEclat(a, ang){
     if (!fxg) return;
-    const e = (a && a.eclat3d && a.mesh) ? pointEclat(a.mesh) : null;
+    const liste = (a && a.eclat3d && a.mesh) ? pointsEclat(a.mesh) : null;
     // on dessine en pixels CSS, le tampon suivant la densité de l'écran
     const w = swatchW || swatch.clientWidth, k = dprCap(), px = Math.round(w * k);
     if (!w) return;
     if (fx.width !== px){ fx.width = fx.height = px; }
     fxg.setTransform(k, 0, 0, k, 0, 0);
     fxg.clearRect(0, 0, w, w);
-    if (!e){ fx.hidden = true; grains.length = 0; return; }
+    if (!liste || !liste.length){ fx.hidden = true; grains.length = 0; return; }
     fx.hidden = false;
     const M = mul(rotX(0.14), rotY(ang)), MVP = mul(PV, M);
     const pt = (m, x, y, z, wp) => [m[0]*x + m[4]*y + m[8]*z + m[12]*wp,
                                     m[1]*x + m[5]*y + m[9]*z + m[13]*wp,
                                     m[2]*x + m[6]*y + m[10]*z + m[14]*wp,
                                     m[3]*x + m[7]*y + m[11]*z + m[15]*wp];
-    const c = pt(MVP, e.p[0], e.p[1], e.p[2], 1);
-    if (c[3] <= 0) return;
-    const nx = pt(M, e.n[0], e.n[1], e.n[2], 0);
-    // la facette regarde-t-elle le spectateur ? l'éclat s'éteint en s'en allant
-    const face = Math.max(0, Math.min(1, (nx[2] - 0.10) / 0.45));
-    if (face <= 0.001) return;
-    const sx = (c[0]/c[3] * 0.5 + 0.5) * w, sy = (0.5 - c[1]/c[3] * 0.5) * w;
-    /* Scintillement : deux sinusoïdes de périodes premières entre elles, pour
-       qu'on n'entende jamais le cycle, et une puissance qui garde l'éclat
-       longtemps discret et brièvement vif — c'est cela qui fait « métal » et
-       non « lampe qui clignote ». */
-    const t = performance.now();
-    const bat = Math.pow(0.5 + 0.5*Math.sin(t/430), 3) * 0.75 + Math.pow(0.5 + 0.5*Math.sin(t/173 + 1.7), 6) * 0.45;
-    const force = face * Math.min(1, 0.25 + bat);
-    const R = Math.max(3, w * 0.013);
+    const t = performance.now(), R = Math.max(3, w * 0.013);
     fxg.save();
     fxg.globalCompositeOperation = 'lighter';
-    // le halo
-    const h = fxg.createRadialGradient(sx, sy, 0, sx, sy, R * 2.6);
-    h.addColorStop(0, `rgba(255,252,242,${0.55*force})`);
-    h.addColorStop(0.35, `rgba(224,232,255,${0.22*force})`);
-    h.addColorStop(1, 'rgba(180,200,255,0)');
-    fxg.fillStyle = h; fxg.beginPath(); fxg.arc(sx, sy, R*2.6, 0, 7); fxg.fill();
-    // la croix de lumière, deux traits dégradés
-    const branche = (dx, dy, L) => {
-      const g2 = fxg.createLinearGradient(sx - dx*L, sy - dy*L, sx + dx*L, sy + dy*L);
-      g2.addColorStop(0, 'rgba(255,255,255,0)');
-      g2.addColorStop(0.5, `rgba(255,255,255,${0.85*force})`);
-      g2.addColorStop(1, 'rgba(255,255,255,0)');
-      fxg.strokeStyle = g2; fxg.lineWidth = Math.max(1, R*0.30); fxg.lineCap = 'round';
-      fxg.beginPath(); fxg.moveTo(sx - dx*L, sy - dy*L); fxg.lineTo(sx + dx*L, sy + dy*L); fxg.stroke();
-    };
-    branche(1, 0, R * (2.2 + 2.4*bat));
-    branche(0, 1, R * (1.6 + 1.8*bat));
-    /* Les GRAINS : quelques étincelles qui naissent sur l'éclat, s'écartent et
-       s'éteignent. Elles ne sont ni simulées ni mémorisées d'une fiche à
-       l'autre — une poignée suffit, et un tableau qui se vide tout seul évite
-       d'avoir à le nettoyer quand on quitte la page. */
-    if (grains.length < 7 && Math.random() < 0.22 * force)
-      grains.push({ a: Math.random()*7, v: 0.35 + Math.random()*0.9, t0: t, vie: 420 + Math.random()*520 });
-    grains = grains.filter(gr => {
-      const p = (t - gr.t0) / gr.vie;
-      if (p >= 1) return false;
-      const d = R * gr.v * 3.2 * p, al = (1 - p) * (1 - p) * 0.9 * force;
-      fxg.fillStyle = `rgba(255,250,236,${al})`;
-      fxg.beginPath(); fxg.arc(sx + Math.cos(gr.a)*d, sy + Math.sin(gr.a)*d - d*0.25, Math.max(0.6, R*0.20*(1-p)), 0, 7);
-      fxg.fill();
-      return true;
+    liste.forEach((e, idx) => {
+      const c = pt(MVP, e.p[0], e.p[1], e.p[2], 1);
+      if (c[3] <= 0) return;
+      const nx = pt(M, e.n[0], e.n[1], e.n[2], 0);
+      // la facette regarde-t-elle le spectateur ? l'éclat s'éteint en s'en allant
+      const face = Math.max(0, Math.min(1, (nx[2] - 0.10) / 0.45));
+      if (face <= 0.001) return;
+      const sx = (c[0]/c[3] * 0.5 + 0.5) * w, sy = (0.5 - c[1]/c[3] * 0.5) * w;
+      /* Scintillement : deux sinusoïdes de périodes premières entre elles, pour
+         qu'on n'entende jamais le cycle, et une puissance qui garde l'éclat
+         longtemps discret et brièvement vif — c'est cela qui fait « métal » et
+         non « lampe qui clignote ». */
+      const E = e.E;
+      const bat = Math.pow(0.5 + 0.5*Math.sin(t/E.lent + E.phase), 3) * 0.75
+                + Math.pow(0.5 + 0.5*Math.sin(t/E.vif + E.phase*1.7), 6) * 0.45;
+      const force = face * Math.min(1, 0.25 + bat) * ECLAT_FORCE;
+      const h = fxg.createRadialGradient(sx, sy, 0, sx, sy, R * 2.6);
+      h.addColorStop(0, `rgba(255,252,242,${0.55*force})`);
+      h.addColorStop(0.35, `rgba(224,232,255,${0.22*force})`);
+      h.addColorStop(1, 'rgba(180,200,255,0)');
+      fxg.fillStyle = h; fxg.beginPath(); fxg.arc(sx, sy, R*2.6, 0, 7); fxg.fill();
+      const branche = (dx, dy, L) => {
+        const g2 = fxg.createLinearGradient(sx - dx*L, sy - dy*L, sx + dx*L, sy + dy*L);
+        g2.addColorStop(0, 'rgba(255,255,255,0)');
+        g2.addColorStop(0.5, `rgba(255,255,255,${0.85*force})`);
+        g2.addColorStop(1, 'rgba(255,255,255,0)');
+        fxg.strokeStyle = g2; fxg.lineWidth = Math.max(1, R*0.30); fxg.lineCap = 'round';
+        fxg.beginPath(); fxg.moveTo(sx - dx*L, sy - dy*L); fxg.lineTo(sx + dx*L, sy + dy*L); fxg.stroke();
+      };
+      branche(1, 0, R * (2.2 + 2.4*bat));
+      branche(0, 1, R * (1.6 + 1.8*bat));
+      /* Les GRAINS : quelques étincelles qui naissent sur l'éclat, s'écartent et
+         s'éteignent. Elles ne sont ni simulées ni mémorisées d'une fiche à
+         l'autre — une poignée suffit, et un tableau qui se vide tout seul évite
+         d'avoir à le nettoyer quand on quitte la page. */
+      if (grains.length < 8 && Math.random() < 0.18 * force)
+        grains.push({ b: idx, a: Math.random()*7, v: 0.35 + Math.random()*0.9, t0: t, vie: 420 + Math.random()*520 });
+      grains = grains.filter(gr => {
+        if (gr.b !== idx) return true;
+        const p = (t - gr.t0) / gr.vie;
+        if (p >= 1) return false;
+        const d = R * gr.v * 3.2 * p, al = (1 - p) * (1 - p) * 0.9 * force;
+        fxg.fillStyle = `rgba(255,250,236,${al})`;
+        fxg.beginPath(); fxg.arc(sx + Math.cos(gr.a)*d, sy + Math.sin(gr.a)*d - d*0.25, Math.max(0.6, R*0.20*(1-p)), 0, 7);
+        fxg.fill();
+        return true;
+      });
     });
     fxg.restore();
   }
@@ -5027,7 +5091,7 @@ const model3d = (() => {
   }
   function hide(){
     active = false; current = null; canvas.hidden = true;
-    if (fx){ fx.hidden = true; grains.length = 0; }   // l'éclat ne survit pas au visuel qu'il décore
+    if (fx){ fx.hidden = true; grains.length = 0; }   // les éclats ne survivent pas au visuel qu'ils décorent
     if (!rows.length && !fading.length && raf){ cancelAnimationFrame(raf); raf = 0; }
   }
   // Lignes de la liste ouverte, décrites par render() en pixels CSS dans le
@@ -5100,7 +5164,7 @@ const model3d = (() => {
   // contrôle : part de la photo reconnue comme vêtement (tests)
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
   // contrôle : déplacer l'éclat et vider le point en cache, pour le régler à vue
-  const debugEclat = (th, y) => { ECLAT.th = th; ECLAT.y = y; meshes.forEach(m => { if (m) delete m.eclat; }); draw(); return { th, y }; };
+  const debugEclat = (i, th, y) => { ECLATS[i].th = th; ECLATS[i].y = y; meshes.forEach(m => { if (m) delete m.eclats; }); draw(); return ECLATS.map(e => ({ th:e.th, y:e.y })); };
   const debugAtlas = liste => Promise.all((liste || []).map(pl => loadPhoto(encodeURI(pl.img))))
     .then(imgs => atlasTete(imgs.map((img, i) => img && { img, cal: liste[i] })).toDataURL('image/png'));
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
