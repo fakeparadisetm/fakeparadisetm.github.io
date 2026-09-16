@@ -6163,35 +6163,30 @@ const model3d = (() => {
     const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
     const V = profilCorps(a.mesh, 0.5, P.y0, P.y1), d = a.mesh.data, n = a.mesh.verts, data = new Float32Array(d);
     const L = forme.largeur, H = forme.hauteur, ac = forme.aisance;
-    const depuis = forme.depuis, jusqu = forme.jusqu || 1, fondu = 0.07;
+    const depuis = forme.depuis, fondu = 0.07;
     for (let k = 0; k < n; k++){
       const fx = P.fx[k], fy = P.fy[k], den = fx - 0.5;
-      if (Math.abs(den) < 1e-5) continue;                       // sur l'axe : rien à bouger
       const ys = forme.y0 + (fy - P.y0) * H;                    // sa hauteur sur le corps
-      /* Rien au-dessus des épaules ni sous les mains. En haut le « corps » est
-         une tête, et un col ou une capuche s'y verraient rétrécis à la largeur
-         du crâne — or ce sont les deux endroits où le vêtement doit rester
-         ample. En bas il n'y a plus de bras à suivre : une manche longue s'y
-         repliait sur la cuisse, et le sweat finissait en bretelles. Entre les
-         deux, un fondu, pour qu'aucune marche ne se voie. */
-      const prise = forme.serre * Math.min(1, Math.max(0, (ys - depuis) / fondu + 1))
-                                * Math.min(1, Math.max(0, (jusqu - ys) / fondu + 1));
-      if (prise <= 0) continue;
       const r = Math.min(RANGS - 1, Math.max(0, Math.floor((fy - P.y0) / (P.y1 - P.y0) * RANGS)));
-      const bv = V.b[r] * L, iv = Math.max(V.i[r] * L, bv);
-      if (bv < 1e-4) continue;
+      const bv = V.b[r] * L, iv = Math.max(V.i[r] * L, bv), u = Math.abs(den) * L;
+      if (Math.abs(den) < 1e-5 || bv < 1e-4) continue;
+      /* Rien au-dessus de `depuis`. Pour un t-shirt c'est sous les emmanchures :
+         seul le bas du buste se cintre, et les épaules comme les manches
+         gardent exactement la pose qu'elles avaient. Pour un sweat c'est sous
+         les épaules, parce que là on veut justement que la manche suive le
+         bras. Au-dessus, dans les deux cas, le « corps » du gabarit est une
+         tête, et un col ou une capuche s'y verraient rétrécis au crâne. */
+      const prise = forme.serre * Math.min(1, Math.max(0, (ys - depuis) / fondu + 1));
+      if (prise <= 0) continue;
       const rb = Math.min(RANGS - 1, Math.max(0, Math.floor(ys * RANGS)));
-      // le buste et le bord du bras, écartés de la même aisance depuis le même
-      // axe : les élargir chacun autour du sien refermait la manche
       const bc = G.b[rb] * ac;
-      if (bc < 1e-4) continue;
+      if (bc < 1e-4) continue;                                  // au-dessus de la tête ou sous les pieds
       /* Le bord du bras ne sert que là où le vêtement a VRAIMENT un trou entre
          son corps et sa manche. Ailleurs — épaule, emmanchure fermée — l'étoffe
          est continue, et l'envoyer d'un coup sur le bras ouvrirait une encoche
          de peau à l'épaule : la matière ne peut pas sauter là où elle ne se
          coupe pas. */
       const ic = (iv - bv > 1e-4) ? Math.max(bc, G.i[rb] * ac) : bc;
-      const u = Math.abs(den) * L;
       let v;
       if (u <= bv) v = u * bc / bv;                                // le corps sur le buste
       else if (u < iv) v = bc + (u - bv) * (ic - bc) / (iv - bv);  // le vide reste un vide
@@ -9173,12 +9168,16 @@ const dressup = (() => {
     chapeau: { rang: 2 },
   };
   const ANCRAGES = {
-    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556, serre: 0.70, aisance: 1.15, depuis: 0.235 },
-    /* Le sweat ne se serre qu'à moitié : ses manches, dans le rendu fourni,
-       tombent à vingt degrés de la verticale quand le bras du mannequin part à
-       quarante, et trop les tirer décousait l'emmanchure. Le corps, lui,
-       s'ajuste comme celui d'un t-shirt. */
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, serre: 0.35, aisance: 1.30, depuis: 0.235 },
+    /* Le t-shirt ne se cintre que SOUS LES EMMANCHURES : au-dessus, épaules et
+       manches gardent la pose qui allait bien, et seul le bas du buste se
+       resserre. Toucher au haut les décalait vers l'intérieur et découvrait
+       l'épaule — le vêtement suivait le corps au lieu de l'habiller. */
+    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556, serre: 0.70, aisance: 1.15, depuis: 0.335 },
+    /* Le sweat, lui, se serre DEPUIS LES ÉPAULES : c'est là qu'on veut que la
+       manche prenne la pente du bras. Une fois posée dessus elle s'arrête
+       d'elle-même au poignet, et la main ressort — il n'y a plus rien à couper
+       au bout. */
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, serre: 0.60, aisance: 1.30, depuis: 0.235 },
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960, serre: 0.60, aisance: 1.16, depuis: 0.235 },
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618, serre: 0.70, aisance: 1.12, depuis: 0.235 },
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },
@@ -9359,7 +9358,7 @@ const dressup = (() => {
         const porte = A.serre && scene.ajuster(vetu, mannequin, {
           cle: p.coupe, y0: A.y0,
           largeur: l / S, hauteur: hh / S,
-          serre: A.serre, aisance: A.aisance, depuis: A.depuis, jusqu: A.jusqu });
+          serre: A.serre, aisance: A.aisance, depuis: A.depuis });
         scene.plan();
         scene.draw(porte || vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
           y: MY + S * A.y0 - e.y0 * hh, s: l, h: hh }, 1);                          // et le haut posé sur y0
