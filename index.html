@@ -1957,7 +1957,9 @@
     background:rgba(255,255,255,0.5);
     cursor:pointer;transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
   }
-  .dress-case:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 5px 0 rgba(255,120,180,0.5);background:rgba(255,255,255,0.85);}
+  /* Le survol grossit franchement : le portant ne tourne plus ses aperçus, il
+     lui faut un autre signe de vie. */
+  .dress-case:hover{transform:translateY(-5px) scale(1.16);z-index:2;box-shadow:0 7px 0 rgba(255,120,180,0.55);background:rgba(255,255,255,0.9);}
   .dress-case.porte{background:#fff2c2;border-color:#ffb020;box-shadow:inset 0 0 0 2px #ffdf8a;}
   .dress-case.porte::after{content:"\2713";position:absolute;right:4px;top:2px;color:#e07800;font-weight:800;font-size:14px;}
   .dress-case:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;}
@@ -5568,10 +5570,12 @@ const model3d = (() => {
      l'allongement se fait le long du bras SEULEMENT, pour que la main avance
      sans grossir. Les deux sont dosés par la part du membre dans chaque
      sommet. */
-  function buildMannequin(hauteur, bras, jambes, allonge, cache){
+  function buildMannequin(hauteur, bras, jambes, allonge, cache, coude){
     const membres = [[bras || 0, MANNEQUIN_BRAS, EPAULE], [jambes || 0, MANNEQUIN_JAMBES, HANCHE]]
       .filter(m => m[0]).map(m => [Math.cos(m[0]), Math.sin(m[0]), m[1], m[2]]);
     const etire = allonge > 1.001 ? allonge : 0, dir = BRAS_REPOS.dir;
+    const plie = coude ? [Math.cos(coude), Math.sin(coude)] : null;
+    const cd0 = (COUDE_PART - COUDE_FONDU) * BRAS_REPOS.mlong, cd1 = (COUDE_PART + COUDE_FONDU) * BRAS_REPOS.mlong;
     const som = i => {
       let x = MANNEQUIN_XYZ[i*3], y = MANNEQUIN_XYZ[i*3+1];
       if (etire){
@@ -5581,6 +5585,22 @@ const model3d = (() => {
           const le = dx * dir[0] * cote + dy * dir[1];       // part le long du bras
           x += cote * dir[0] * le * (etire - 1) * a;
           y += dir[1] * le * (etire - 1) * a;
+        }
+      }
+      /* L'AVANT-BRAS PLIE AVANT QUE L'ÉPAULE NE TOURNE : c'est l'ordre d'un
+         squelette, l'enfant d'abord, le parent ensuite. L'inverse ferait
+         pivoter l'avant-bras autour d'un coude resté à sa place de repos. */
+      if (plie){
+        const a = MANNEQUIN_BRAS[i] / 100;
+        if (a){
+          const cote = x < 0 ? -1 : 1, dx = x - cote * EPAULE.x, dy = y - EPAULE.y;
+          const le = dx * dir[0] * cote + dy * dir[1];
+          const w = a * Math.max(0, Math.min(1, (le - cd0) / (cd1 - cd0)));
+          if (w > 0){
+            const ex = cote * COUDE.x, ey = COUDE.y, rx = x - ex, ry = y - ey;
+            x += (ex + rx * plie[0] + ry * plie[1] * cote - x) * w;
+            y += (ey - rx * plie[1] * cote + ry * plie[0] - y) * w;
+          }
         }
       }
       for (const [c, s, poids, art] of membres){
@@ -5837,7 +5857,7 @@ const model3d = (() => {
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
-    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.cache || '')
+    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -5904,9 +5924,9 @@ const model3d = (() => {
      sous une clé à part, il ne dépend que de la hauteur. */
   function prepareMannequin(item, key){
     const p = (item.visage ? loadPhoto(item.visage) : Promise.resolve(null)).then(img => {
-      const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.cache || '');
+      const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '');
       let mesh = meshes.get(cle);
-      if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1, item.cache || ''); meshes.set(cle, mesh); }
+      if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1, item.cache || '', item.coude || 0); meshes.set(cle, mesh); }
       const tex = atlasMannequin(img, item.peau);
 
       const a = { mesh, texF: tex, texB: tex };
@@ -6518,8 +6538,28 @@ const model3d = (() => {
     const gx = moy(p => MANNEQUIN_XYZ[p[2]*3]) - EPAULE.x, gy = moy(p => MANNEQUIN_XYZ[p[2]*3+1]) - EPAULE.y;
     const n = Math.hypot(gx, gy) || 1;
     return { ep, angle: Math.atan2(mx - ep[0], my - ep[1]),   // 0 = bras le long du corps
-             long: Math.hypot(mx - ep[0], my - ep[1]), dir: [gx / n, gy / n] };
+             long: Math.hypot(mx - ep[0], my - ep[1]), dir: [gx / n, gy / n], mlong: n };
   })();
+  /* ---- le COUDE, déduit comme l'épaule ----
+     Le modèle n'a que deux poids, le bras et la jambe : aucun coude n'y est
+     écrit. Mais on n'en a pas besoin — le bras est une droite, le coude est à
+     sa moitié, et `BRAS_REPOS` connaît déjà sa direction et sa longueur dans
+     le repère du maillage. On le place donc là, et l'avant-bras est tout ce
+     qui, le long de cette droite, se trouve au-delà.
+     La bascule se fait en FONDU sur un cinquième du bras, de part et d'autre :
+     un poids qui saute de 0 à 1 d'un sommet au suivant ferait un pli net au
+     milieu de l'avant-bras, exactement comme les vieux jeux où le coude se
+     casse. Le fondu remplace ici le lissage de peau qu'un vrai squelette
+     apporterait. */
+  const COUDE_PART = 0.50, COUDE_FONDU = 0.10;
+  const COUDE = { x: EPAULE.x + BRAS_REPOS.dir[0] * BRAS_REPOS.mlong * COUDE_PART,
+                  y: EPAULE.y + BRAS_REPOS.dir[1] * BRAS_REPOS.mlong * COUDE_PART };
+  /* Manche courte : le bras sort à découvert et reste raide comme un piquet.
+     On lui plie le coude de quelques degrés — c'est le geste qu'on ne remarque
+     pas, et c'est justement pour ça qu'il faut le faire. Une manche longue,
+     elle, tient déjà l'avant-bras : on n'y touche pas, la pose générale ne
+     bouge d'un iota dans aucun des deux cas. */
+  const COUDE_SEUIL = 0.78, COUDE_ANGLE = 0.20;
   // de combien la main doit dépasser le bout de la manche : une demi-main,
   // assez pour qu'on la voie sortir, trop peu pour qu'elle ait l'air arrachée
   const MAIN_DEHORS = 0.045;
@@ -6532,9 +6572,10 @@ const model3d = (() => {
      le bras là où il est, pas le raccourcir. */
   const poseBras = (item, boite) => {
     const v = viser(item, boite);
-    if (!v) return { bras: 0, allonge: 1 };
+    if (!v) return { bras: 0, allonge: 1, coude: 0 };
     return { bras: BRAS_REPOS.angle - v.angle,
-             allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long) };
+             allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long),
+             coude: v.dist < BRAS_REPOS.long * COUDE_SEUIL ? COUDE_ANGLE : 0 };
   };
   /* ---- viser le milieu de la jambe du pantalon ----
      La même règle qu'au bras, à l'autre bout du corps : la jambe doit pointer
@@ -6700,20 +6741,17 @@ const model3d = (() => {
   function viserJambe(item, boite){
     const cle = keyOf(item) + '|j|' + boite.x.toFixed(3) + ',' + boite.y.toFixed(3) + ',' + boite.l.toFixed(3) + ',' + boite.h.toFixed(3);
     if (visesJ.has(cle)) return visesJ.get(cle);
-    const a = ready.get(keyOf(item));
-    if (!a) return null;                       // pas encore mesurable : on réessaiera
-    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh)), e = empreinte(item);
-    const NB = 128, pas = (e.x1 - e.x0) / NB || 1, dents = new Uint8Array(NB), cx = [];
-    /* Plusieurs rangées et la MÉDIANE : la toute dernière n'est qu'un ourlet
-       qui se referme, et une seule ligne se laisse emporter par un pli. */
-    for (let r = 0; r < CHEVILLE_RANGS; r++){
-      peigner(P, a.mesh, e.y1 - (e.y1 - e.y0) * 0.05 * r / CHEVILLE_RANGS, dents, e.x0, pas);
-      const t = travee(dents, NB >> 1);
-      if (t) cx.push(e.x0 + (t[0] + 3 * (t[1] + 1)) / 4 * pas);   // milieu de la moitié droite
-    }
-    if (!cx.length){ visesJ.set(cle, null); return null; }
-    cx.sort((u, v) => u - v);
-    const x = boite.x + cx[cx.length >> 1] * boite.l, y = boite.y + e.y1 * boite.h;
+    /* La cheville vise le milieu de SA jambe de pantalon, exactement là où se
+       posera la chaussure : `ourletsBas` relève les deux ouvertures une bonne
+       fois, chacune de son côté, et les deux mesures ne peuvent plus diverger.
+       Auparavant on prenait le milieu de la MOITIÉ DROITE de l'étendue totale,
+       ce qui revient au même pour deux jambes serrées mais se décale de plus
+       en plus à mesure qu'elles s'écartent : sur le loose, la visée tombait à
+       0,555 quand le bas de jambe était à 0,592, et le pied ressortait sur la
+       tranche intérieure de l'ourlet. */
+    const ob = ourletsBas(item, boite), e = empreinte(item);
+    if (!ob || !e){ visesJ.set(cle, null); return null; }
+    const x = ob.d, y = boite.y + e.y1 * boite.h;
     const v = { angle: Math.atan2(x - JAMBE_REPOS.ha[0], y - JAMBE_REPOS.ha[1]), dist: Math.hypot(x - JAMBE_REPOS.ha[0], y - JAMBE_REPOS.ha[1]) };
     visesJ.set(cle, v);
     return v;
@@ -7070,6 +7108,31 @@ const model3d = (() => {
       }
     }
     if (!coupes){ encolures.set(cle, null); return null; }
+    /* ---- on ne laisse pas de MIETTES derrière la découpe ----
+       Couper en rond au poignet détache presque toujours un éclat : le bout
+       d'ourlet de la manche, qui plonge sous le rayon de coupe puis en
+       ressort, se retrouve séparé du reste. Gonflé par le coussin, cet éclat
+       devient l'épine noire qu'on voyait sortir du poignet des sweats — un
+       trait de deux pixels de large, planté dans le vide, identique sur les
+       trois sweats puisqu'ils partagent le même rendu porté.
+       On ne garde donc que les morceaux qui PÈSENT : sous un centième de la
+       silhouette, c'est une miette, pas un vêtement. Même raisonnement que
+       pour les poussières du détourage, à l'autre bout de la chaîne. */
+    const MIETTE = 0.01;
+    const vue = new Uint8Array(N * N), lots = [];
+    let aire = 0;
+    for (let i = 0; i < N * N; i++) if (troue[i]) aire++;
+    for (let s = 0; s < N * N; s++){
+      if (!troue[s] || vue[s]) continue;
+      const st = [s], lot = [s]; vue[s] = 1;
+      while (st.length){
+        const i = st.pop(), x = i % N, y = (i - x) / N;
+        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
+        for (const j of nb) if (troue[j] && !vue[j]){ vue[j] = 1; st.push(j); lot.push(j); }
+      }
+      lots.push(lot);
+    }
+    lots.forEach(lot => { if (lot.length < aire * MIETTE) for (const i of lot) troue[i] = 0; });
     troue.bg = m.bg; troue.alphaMode = m.alphaMode;
     const mesh = buildMesh(troue, null, COUSSIN_DOUX.test(encodeURI(item.img)), null, a.mesh.plat);
     if (!mesh){ encolures.set(cle, null); return null; }
@@ -10082,7 +10145,7 @@ const dressup = (() => {
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
     sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ceinture: 0.19, chevilles: 0.92, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
+    pantalon: { ceinture: 0.19, chevilles: 1.08, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet par-dessus les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ceinture: 0.175, y0: 0.468, y1: 0.618 },  // le sous-vêtement : sa ceinture sur la taille (0,170), comme un bas
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -10101,7 +10164,7 @@ const dressup = (() => {
      Pour en ajouter une : une image dans `dressup/`, une ligne en haut de son
      groupe. La coupe dit où elle se pose, le reste se mesure. */
   const VESTIAIRE = [
-    { img: 'dressup/galaxylegging1.webp',nom: 'Galaxy leggings', cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/galaxylegging2.png', nom: 'Galaxy leggings', cat: 'bas',   coupe: 'pantalon' },
     { img: 'dressup/pyjamapants1.webp',  nom: 'Pyjama pants',    cat: 'bas',   coupe: 'pantalon' },
     { img: 'dressup/pants1.webp',        nom: 'Cargo pants',     cat: 'bas',   coupe: 'pantalon' },
     { img: 'dressup/jogger2.webp',       nom: 'Grey jogger',     cat: 'bas',   coupe: 'pantalon' },
@@ -10467,7 +10530,7 @@ const dressup = (() => {
     const haut = portees.get('haut'), bh = haut && boiteDe(haut);
     const bas = portees.get('bas'), bb = bas && boiteDe(bas);
     const corps = Object.assign({}, mannequin,
-      bh ? sc.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1 },
+      bh ? sc.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1, coude: 0 },
       bb ? sc.poseJambes(bas.porte || bas.it, bb) : { jambes: 0 },
       { cache: (haut ? 'b' : '') + (bas ? 'j' : '') + (portees.has('pieds') ? 'p' : '') });
     // le pantalon est posé : ses deux bas de jambe donnent l'axe des chaussures
