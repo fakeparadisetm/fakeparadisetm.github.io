@@ -4067,11 +4067,10 @@ const model3d = (() => {
      aucun effet sur les vêtements.
      .xy — la grille d'accrochage des sommets. La console calculait ses
      coordonnées à l'écran en entiers, sans précision sous-pixel : les sommets
-     sautaient d'un pixel à l'autre au lieu de glisser, et c'est ce frémissement
-     qu'on reconnaît d'abord. La grille, c'est le TAMPON lui-même (sa moitié,
-     puisqu'on accroche en coordonnées normalisées, qui vont de −1 à 1) : un
-     sommet tombe ainsi exactement sur un pixel rendu, ni plus fin — le saut
-     serait invisible — ni plus grossier.
+     sautaient d'un pixel à l'autre au lieu de glisser. La grille, c'est le
+     TAMPON lui-même (sa moitié, puisqu'on accroche en coordonnées normalisées,
+     qui vont de −1 à 1). Il est ÉTEINT depuis qu'on peut faire tourner la tête
+     à la main : il hachait la rotation — voir `PS1_GRILLE`, qui le rallume.
      .z — le placage AFFINE. Le matériel ne corrigeait pas la perspective : la
      texture était interpolée droit en coordonnées d'écran, d'où ce glissement
      des motifs sur les faces vues de biais. Le rastériseur, lui, interpole
@@ -4130,6 +4129,26 @@ const model3d = (() => {
       gl_FragColor=vec4(c*uAlpha,uAlpha);
     }`;
   const STRIDE = 7;      // flottants par sommet : position (3), uv (2), éclairage (2)
+  /* ---- l'accrochage des sommets, et pourquoi il est ÉTEINT ----
+     C'était la troisième signature de la machine : ses sommets tombaient sur
+     des pixels entiers, d'où ce frémissement qu'on reconnaît d'abord. Mais il
+     fige le modèle tant qu'un sommet n'a pas parcouru un pixel entier, puis le
+     fait sauter d'un coup — et à un pixel de tampon pour deux pixels d'écran,
+     cela se voit. Mesuré, centre de gravité du rendu image par image pendant
+     un lancer qui ralentit : quatre à cinq images à 0,01 pixel près, puis un
+     bond de 0,3 ; la rotation ne glissait pas, elle cliquetait. Le seuil est
+     franchi dès que le modèle tourne moins vite qu'un pixel par image, c'est-
+     à-dire pendant presque toute la retombée d'un lancer, et tout le temps au
+     repos.
+     La même mesure dit que le tampon, lui, n'y est pour rien : il résout des
+     déplacements de trois centièmes de pixel — l'anticrénelage garde la
+     position sous-pixel des arêtes. Éteindre l'accrochage suffit donc à rendre
+     la rotation lisse SANS toucher à la définition, et les autres signatures
+     restent : texture de 128 × 64 en 256 couleurs, tampon minuscule agrandi au
+     plus proche, trame de sortie, placage affine.
+     Pour le rallumer : `PS1_GRILLE = true`. Le chemin est intact dans le
+     nuanceur de sommets, il ne coûte qu'un test par sommet. */
+  const PS1_GRILLE = false;
   const LIGHT = (() => { const l = Math.hypot(0.35, 0.5, 0.8); return [0.35 / l, 0.5 / l, 0.8 / l]; })();
 
   // ---- un contexte WebGL par canvas : la fiche (canvas du cadre) et la liste
@@ -4235,8 +4254,11 @@ const model3d = (() => {
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
       gl.uniform4f(uTint, tint ? tint[0] : 0, tint ? tint[1] : 0, tint ? tint[2] : 0, tint ? tint[3] : 0);
-      // la grille d'accrochage, c'est le tampon lui-même : un sommet tombe sur un pixel
-      gl.uniform3f(uPS1, a.ps1 ? cv.width/2 : 0, a.ps1 ? cv.height/2 : 0, a.ps1 ? 1 : 0);
+      /* Grille d'accrochage à ZÉRO : l'accrochage des sommets est éteint, il
+         hachait la rotation (voir PS1_GRILLE). Le placage affine et la trame
+         de sortie, eux, restent allumés pour la tête. */
+      const grille = (a.ps1 && PS1_GRILLE) ? 1 : 0;
+      gl.uniform3f(uPS1, grille * cv.width/2, grille * cv.height/2, a.ps1 ? 1 : 0);
       const b = bufs(a.mesh), S = STRIDE * 4;
       gl.bindBuffer(gl.ARRAY_BUFFER, b.vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, S, 0);
