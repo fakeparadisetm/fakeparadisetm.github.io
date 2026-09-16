@@ -4178,6 +4178,7 @@ const model3d = (() => {
      L'espace du nom de fichier arrive encodé (« lock%20icon ») : le motif doit
      prévoir les deux. */
   const TROUS_OK = /(lock|jumper|itemversus)(%20|\s)icon/;
+  const PORTE = /^dressup\//;   // rendus du vêtement PORTÉ : leur encolure est une ouverture
   const INSET = 2.5;     // texture prise plus à l'intérieur au contour (px du masque), dégressif jusqu'au bout du gonflement
   const AREA_UNIT = 0.637; // √(surface du vêtement, px) par unité : même surface pour tous, un tee ≈ 0,95 de large
   /* Plafond de HAUTEUR, calé sur le plus haut des vêtements (le hoodie). À
@@ -4574,14 +4575,39 @@ const model3d = (() => {
        qu'on s'y fie les yeux fermés. Le seuil TROU écarte tout de même les
        petits détails d'une image autorisée — un trou de serrure fait 1,5 % et
        doit rester plein, c'est un dessin, pas une ouverture. */
+    /* LE COL EST UN TROU, et il se reconnaît à SA PLACE. C'est ce qui manquait
+       pour sortir de la liste blanche : une poche de fond enfermée dans un
+       vêtement est presque toujours un défaut de détourage — le raglan blanc
+       sur blanc en a 13 % en plein milieu du tissu — mais une poche EN HAUT ET
+       AU MILIEU d'un rendu porté n'a qu'un sens possible : l'encolure, par
+       laquelle on doit voir le cou. La position tranche là où la taille seule
+       n'y arrivait pas.
+       `troue` vaut donc 'objet' pour un objet, où toute grande poche est un
+       vrai trou (l'anse d'un cadenas), et 'col' pour un vêtement porté, où
+       seule celle de l'encolure en est un. Le jour où une photo arrive avec
+       son encolure évidée, le cou se voit au travers sans une ligne de code de
+       plus. */
     const vue = troue ? new Uint8Array(N*N) : null;
+    let bx0 = N, bx1 = 0, by0 = N, by1 = 0;
+    if (troue === 'col') for (let i = 0; i < N*N; i++) if (mask[i]){
+      const x = i % N, y = (i - x) / N;
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+    const COL = { part: 0.01, large: 0.16, haut: 0.25 };   // seuils de l'encolure
     for (let s = 0; troue && s < N*N; s++){
       if (!mask[s] || !bg[s] || vue[s]) continue;
       const st = [s], poche = [s]; vue[s] = 1;
       while (st.length){ const i = st.pop(), x = i % N, y = (i-x)/N;
         const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
         for (const j of nb) if (mask[j] && bg[j] && !vue[j]){ vue[j] = 1; st.push(j); poche.push(j); } }
-      if (poche.length > aire * TROU) for (const i of poche) mask[i] = 0;
+      let garder = poche.length > aire * TROU;
+      if (troue === 'col'){
+        let sx = 0, sy = 0;
+        poche.forEach(i => { const x = i % N; sx += x; sy += (i - x) / N; });
+        const cx = (sx / poche.length - bx0) / (bx1 - bx0 || 1), cy = (sy / poche.length - by0) / (by1 - by0 || 1);
+        garder = poche.length > aire * COL.part && Math.abs(cx - 0.5) < COL.large && cy < COL.haut;
+      }
+      if (garder) for (const i of poche) mask[i] = 0;
     }
     mask.bg = [r, g, b]; mask.alphaMode = a < 30; // repris par extendTexture (jugement pixel par pixel au contour)
     return mask;
@@ -5334,7 +5360,9 @@ const model3d = (() => {
       .then(blob => new Promise((res, rej) => { entry.blobURL = URL.createObjectURL(blob); img.onload = () => res(); img.onerror = rej; img.src = entry.blobURL; }))
       .then(() => {
         const carre = carrer(img);                     // le module travaille en carré (voir carrer)
-        entry.mask = silhouette(carre, TROUS_OK.test(url)); // silhouette : sert au maillage (photo de face) et à l'extension de texture
+        // 'objet' : toute grande poche est un trou (l'anse d'un cadenas).
+        // 'col' : seule celle de l'encolure en est un (voir silhouette).
+        entry.mask = silhouette(carre, TROUS_OK.test(url) ? 'objet' : PORTE.test(url) ? 'col' : ''); // sert au maillage et à l'extension de texture
         entry.canvas = extendTexture(carre, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
         return entry;
       });
