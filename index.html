@@ -6295,23 +6295,25 @@ const model3d = (() => {
      Deux garde-fous, tous deux payés pour. La bande s'arrête AVANT les épaules
      (0,185) : en dessous, la travée centrale du mannequin n'est déjà plus une
      nuque mais une carrure, elle passe de 0,03 à 0,13 en quelques millièmes et
-     la découpe emportait la moitié du buste. Et chaque rangée est PLAFONNÉE à
-     une fois et demie la plus mince : une rangée aberrante — un menton qui
-     rentre dans le relevé, une épaule qui commence tôt — ne peut plus ouvrir le
-     vêtement en grand, elle est simplement ramenée dans la forme. Le plafond
-     vaut un cinquième de plus que le plus mince, parce que c'est ce que fait un
-     vrai cou : relevé rangée par rangée, il vaut 0,047 sous la mâchoire, 0,029
-     au plus mince, et 0,066 aux épaules — les deux bouts sont déjà du menton
-     et de la carrure, et c'est le milieu qui donne la mesure.
-     La marge suit : elle est passée de 1,45 à 1,25 quand la largeur a cessé
-     d'être constante, pour que l'ouverture la plus large reste la même.
+     la découpe emportait la moitié du buste. Et chaque rangée est PLAFONNÉE en
+     part de la plus mince : une rangée aberrante — un menton qui rentre dans le
+     relevé, une épaule qui commence tôt — ne peut plus ouvrir le vêtement en
+     grand, elle est simplement ramenée dans la forme. Relevé rangée par rangée,
+     le cou vaut 0,047 sous la mâchoire, 0,029 au plus mince, 0,066 aux épaules :
+     les deux bouts sont déjà du menton et de la carrure, c'est le milieu qui
+     donne la mesure.
+
+     LE PLAFOND EST SOUS UN, et c'est lui qui règle la proximité : plafond ×
+     marge vaut 0,98, donc l'étoffe vient buter contre le cou au lieu de le
+     border à distance. C'est ce qu'on veut — un col touche le cou. Le desserrer
+     éloigne le vêtement, le resserrer le fait mordre sur la peau.
 
      Puis l'encolure creuse en demi-ellipse sous les épaules, en repartant de la
      dernière largeur relevée. Un col ne s'arrête pas à la naissance du cou : il
      descend sur le haut de la poitrine et se referme en arrondi — c'est ce qui
      distingue une encolure d'un trou de nuque. */
   const COU_BANDE = [0.112, 0.185], COU_CREUX = 0.042, COU_RANGS = 20;
-  const COU_MARGE = 1.25, COU_PLAFOND = 1.2;
+  const COU_MARGE = 1.25, COU_PLAFOND = 0.78;
   let couProfil = null;
   function profilCou(corpsItem){
     if (couProfil) return couProfil;
