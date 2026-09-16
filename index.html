@@ -3141,17 +3141,31 @@ let cart = [];
    dans chaque requête vers le serveur, elle ne regarde que le navigateur.
    Elle ne contient aucune donnée personnelle, seulement le nom du jeu gagné.
    La page « Cookies » le déclare ; toute lecture ou écriture est protégée, un
-   navigateur en navigation privée peut refuser l'accès au stockage. */
+   navigateur en navigation privée peut refuser l'accès au stockage.
+   Tout cela est SUSPENDU tant que `RELOCK` vaut vrai, le temps des essais —
+   voir juste en dessous. La page « Cookies » n'est pas touchée pour autant :
+   elle annonce ce que le site fera, et déclarer plus que ce qu'on garde n'a
+   jamais posé de problème à personne ; l'inverse, si. */
 const DEBLOQUE = (() => {
   const CLE = 'fp.debloque';
+  /* PROVISOIRE (16 sept. 2026, demande de l'utilisateur : « pour que je puisse
+     beta test, fais que pour l'instant, dès que je reload la page, les
+     unlockables se re-lock »). À `true`, rien n'est lu ni écrit : chaque
+     chargement repart de zéro, ce qui permet de refaire l'épreuve autant de
+     fois qu'on veut sans vider les données du navigateur à la main.
+     POUR RÉTABLIR : `RELOCK = false` ci-dessous, et rien d'autre.
+     On ne SUPPRIME pas la valeur déjà enregistrée, on l'ignore : effacer
+     reprendrait à un visiteur une pièce qu'il a réellement gagnée, et le jour
+     où ce drapeau retombe, chacun retrouve ce qu'il avait. */
+  const RELOCK = true;
   let jeux = new Set();
-  try { const v = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(v)) jeux = new Set(v); } catch (e) {}
+  if (!RELOCK) try { const v = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(v)) jeux = new Set(v); } catch (e) {}
   return {
     a: (nom) => !nom || jeux.has(nom),          // pas de verrou = toujours accessible
     ajouter: (nom) => {
       if (jeux.has(nom)) return;
       jeux.add(nom);
-      try { localStorage.setItem(CLE, JSON.stringify([...jeux])); } catch (e) {}
+      if (!RELOCK) try { localStorage.setItem(CLE, JSON.stringify([...jeux])); } catch (e) {}
       build();                                   // la liste change : le nom masqué tombe
       render();
     },
