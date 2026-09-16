@@ -5158,6 +5158,48 @@ const model3d = (() => {
      Le visage est projeté à PLAT depuis l'avant, pas déplié : c'est un jeu
      d'habillage, pas un portrait, et une photo de face posée sur un visage de
      face suffit à faire ressemblance. */
+  /* ---- les bras du mannequin, et rien d'autre ----
+     Le modèle porte un squelette de vingt os et quatre-vingt-treize courbes
+     d'animation ; on n'en garde QUE ceci : pour chacun des 283 sommets, la
+     part de son mouvement qui revient au bras — épaule, avant-bras et main
+     réunis — en centièmes. Le côté se lit au signe de l'abscisse, les deux
+     bras étant symétriques : inutile de stocker deux fois le même chiffre.
+
+     Pourquoi cela suffit. Faire pivoter TOUT le bras autour de l'épaule, ce
+     n'est pas animer un squelette : c'est appliquer UNE seule matrice à tous
+     les os concernés. La formule de la peau se réduit alors à un mélange entre
+     le sommet au repos et le sommet tourné, dosé par cette part-là. Ni
+     hiérarchie, ni matrices de liaison, ni pose de référence à traîner.
+
+     Le pesage est presque binaire — 217 sommets à zéro, 56 à un, dix entre les
+     deux : c'est un modèle à facettes, l'épaule y plie net. Tant mieux, on
+     n'attend pas de pli souple d'un mannequin de vitrine.
+
+     L'ARTICULATION n'est pas stockée, elle se DÉDUIT : c'est le barycentre des
+     sommets à demi tenus par le bras, c'est-à-dire l'endroit précis où
+     l'influence bascule — donc l'épaule, par construction. Relevé : 0,104 de
+     côté, 0,796 de hauteur. Rien à tenir à jour si le modèle change. */
+  const MANNEQUIN_BRAS = [
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,4,40,5,0,0,0,0,0,0,0,0,3,0,0,0,47,48,0,0,100,99,100,50,50,100,100,0,0,0,100,
+    100,100,100,100,100,100,100,100,100,100,100,100,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,98,100,99,100,100,100,100,0,0,0,0,0,99,100,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    4,40,5,0,0,0,0,3,0,47,48,100,99,100,50,50,100,100,0,0,0,100,100,100,100,100,100,100,100,100,100,100,100,100,100,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,98,100,99,100,100,100,100,0,0,0,
+    0,99,100];
+  /* L'épaule, déduite une fois pour toutes des poids eux-mêmes : le barycentre
+     de la zone de fondu. Deux côtés symétriques, donc une seule abscisse. */
+  const EPAULE = (() => {
+    let sx = 0, sy = 0, n = 0;
+    for (let i = 0; i < MANNEQUIN_BRAS.length; i++){
+      const a = MANNEQUIN_BRAS[i];
+      if (a <= 15 || a >= 85) continue;
+      sx += Math.abs(MANNEQUIN_XYZ[i*3]); sy += MANNEQUIN_XYZ[i*3+1]; n++;
+    }
+    return n ? { x: sx / n, y: sy / n } : { x: 0.104, y: 0.796 };
+  })();
+
   const MAN_TETE_Y = 0.865;          // au-dessus : la tête (relevé sur les tranches du modèle)
   const MAN_VISAGE = { x0: -0.052, x1: 0.052, y0: 0.872, y1: 0.985 };  // la boîte du visage
   function atlasMannequin(photo){
@@ -5185,8 +5227,25 @@ const model3d = (() => {
      que la caméra regarde. On retire donc une demi-hauteur, et on garde à
      part les coordonnées d'origine (0 en bas, 1 en haut) pour lire le visage :
      ses repères sont plus parlants ainsi. */
-  function buildMannequin(hauteur){
-    const som = i => [MANNEQUIN_XYZ[i*3] * hauteur, (MANNEQUIN_XYZ[i*3+1] - 0.5) * hauteur, MANNEQUIN_XYZ[i*3+2] * hauteur];
+  /* `bras` : de combien on BAISSE les deux bras, en radians. Le mannequin sort
+     du fichier bras écartés à quarante degrés de la verticale ; les manches
+     d'un sweat, elles, tombent à vingt. Plutôt que de tordre le vêtement pour
+     qu'il rejoigne le bras, on descend le bras jusqu'au vêtement — c'est la
+     seule des deux pièces qui ait un squelette pour le faire proprement.
+     La rotation se fait dans le plan face-caméra, autour de l'épaule, dosée
+     par la part du bras dans chaque sommet (voir MANNEQUIN_BRAS). */
+  function buildMannequin(hauteur, bras){
+    const c = Math.cos(bras || 0), s = Math.sin(bras || 0);
+    const som = i => {
+      let x = MANNEQUIN_XYZ[i*3], y = MANNEQUIN_XYZ[i*3+1];
+      const a = MANNEQUIN_BRAS[i] / 100;
+      if (a && bras){
+        const cote = x < 0 ? -1 : 1, dx = x - cote * EPAULE.x, dy = y - EPAULE.y;
+        x += (cote * EPAULE.x + dx * c + dy * s * cote - x) * a;
+        y += (EPAULE.y - dx * s * cote + dy * c - y) * a;
+      }
+      return [x * hauteur, (y - 0.5) * hauteur, MANNEQUIN_XYZ[i*3+2] * hauteur];
+    };
     const nT = MANNEQUIN_TRI.length / 3, nV = nT * 3;
     const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
     const V = MAN_VISAGE, hy = (MAN_TETE_Y - 0.5) * hauteur;
@@ -5414,7 +5473,7 @@ const model3d = (() => {
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
   const keyOf = item => item.ajuste ? item.ajuste          // copie deformee, deja nommee (voir ajuster)
-    : item.mannequin ? 'mannequin|' + (item.visage || '')
+    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.bras || 0)
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -5481,8 +5540,9 @@ const model3d = (() => {
      sous une clé à part, il ne dépend que de la hauteur. */
   function prepareMannequin(item, key){
     const p = (item.visage ? loadPhoto(item.visage) : Promise.resolve(null)).then(img => {
-      let mesh = meshes.get('mannequin');
-      if (!mesh){ mesh = buildMannequin(1); meshes.set('mannequin', mesh); }
+      const cle = 'mannequin|' + (item.bras || 0);
+      let mesh = meshes.get(cle);
+      if (!mesh){ mesh = buildMannequin(1, item.bras || 0); meshes.set(cle, mesh); }
       const tex = atlasMannequin(img);
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
@@ -9173,11 +9233,12 @@ const dressup = (() => {
        resserre. Toucher au haut les décalait vers l'intérieur et découvrait
        l'épaule — le vêtement suivait le corps au lieu de l'habiller. */
     tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556, serre: 0.70, aisance: 1.15, depuis: 0.335 },
-    /* Le sweat, lui, se serre DEPUIS LES ÉPAULES : c'est là qu'on veut que la
-       manche prenne la pente du bras. Une fois posée dessus elle s'arrête
-       d'elle-même au poignet, et la main ressort — il n'y a plus rien à couper
-       au bout. */
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, serre: 0.60, aisance: 1.30, depuis: 0.235 },
+    /* Le sweat ne se déforme PAS : c'est le mannequin qui BAISSE LES BRAS pour
+       venir dans ses manches. Le modèle sort du fichier bras à quarante degrés
+       de la verticale, les manches de ce sweat tombent à vingt : on descend le
+       bras de vingt degrés et la manche l'habille sans qu'on y touche. Des
+       deux pièces, c'est la seule qui ait un squelette. */
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, bras: 20 },
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960, serre: 0.60, aisance: 1.16, depuis: 0.235 },
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618, serre: 0.70, aisance: 1.12, depuis: 0.235 },
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },
@@ -9331,7 +9392,20 @@ const dressup = (() => {
     const S = libre * k;
     const MX = (r.width * 0.045) * k, MY = ((r.height - libre) / 2) * k;
     const cadre = { x: MX, y: MY, s: S };
-    scene.draw(mannequin, ang, cadre, 1);
+    const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
+    if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
+    /* LA POSE VIENT DU VÊTEMENT. Un sweat dont les manches tombent le long du
+       corps ne peut pas habiller un mannequin bras écartés ; on a longtemps
+       essayé de tordre la manche vers le bras, et ça revenait à coudre un
+       vêtement sur une statue. C'est le mannequin qui baisse les bras — lui
+       seul a un squelette. La pièce la plus exigeante commande, le corps
+       s'aligne, et plus rien n'est déformé.
+       Le maillage posé est mis en cache comme les autres : changer de pose ne
+       le recalcule qu'une fois. */
+    const pose = couches.reduce((m, p) => Math.max(m, ANCRAGES[p.coupe].bras || 0), 0);
+    const corps = pose ? Object.assign({}, mannequin, { bras: pose * Math.PI / 180 }) : mannequin;
+    if (!scene.ready(corps)) scene.load(corps);
+    scene.draw(corps, ang, cadre, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
        `scene.plan()` remet la profondeur à zéro sans toucher à l'image, si
        bien que la couche qui vient recouvre entièrement celle d'en dessous.
@@ -9340,8 +9414,6 @@ const dressup = (() => {
        travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
        papier n'a pas de volume, elle a des couches. */
     let capuche = false;
-    const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
-    if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
     couches.forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
@@ -9355,8 +9427,8 @@ const dressup = (() => {
         // et le vêtement épouse le corps : taille cintrée, manches pliées le
         // long des bras (voir `ajuster`). L'original sert tant que le corps
         // n'est pas mesurable.
-        const porte = A.serre && scene.ajuster(vetu, mannequin, {
-          cle: p.coupe, y0: A.y0,
+        const porte = A.serre && scene.ajuster(vetu, corps, {
+          cle: p.coupe + '/' + pose, y0: A.y0,
           largeur: l / S, hauteur: hh / S,
           serre: A.serre, aisance: A.aisance, depuis: A.depuis });
         scene.plan();
@@ -9375,7 +9447,7 @@ const dressup = (() => {
        en plus : c'est le mannequin lui-même, dans une fente. */
     if (capuche){
       scene.plan();
-      scene.draw(mannequin, ang, { ...cadre, clip: [MY + S * TETE_COU[0], MY + S * TETE_COU[1]] }, 1);
+      scene.draw(corps, ang, { ...cadre, clip: [MY + S * TETE_COU[0], MY + S * TETE_COU[1]] }, 1);
     }
     scene.plan();
     // le portant : chaque aperçu à la place de sa case
