@@ -4549,20 +4549,36 @@ const model3d = (() => {
     for (let y = 0; y < N; y++){ push(y*N); push(y*N+N-1); }
     while (stack.length){ const i = stack.pop(), x = i % N, y = (i-x)/N;
       if (x > 0) push(i-1); if (x < N-1) push(i+1); if (y > 0) push(i-N); if (y < N-1) push(i+N); }
-    const label = new Int32Array(N*N).fill(-1); // plus grande forme non extérieure
-    let best = -1, bestSize = 0, k = 0;
+    /* LA PLUS GRANDE FORME, ET CELLES QUI LUI RESSEMBLENT. Ne garder que la
+       plus grande écarte les poussières et les reflets, mais coupait aussi les
+       PAIRES en deux : les deux Converse de shoes2 ne se touchent pas, et une
+       seule survivait — une chaussure haute, étroite, qu'on écrasait ensuite
+       aux proportions d'une paire, d'où ce disque à rayures à la place des
+       pieds. Une forme qui fait le quart de la plus grande n'est pas une
+       poussière ; c'est l'autre chaussure, ou l'autre moitié d'un vêtement
+       blanc sur blanc que le détourage a fendu. Relevé sur les trente et une
+       photos de la boutique et les douze du vestiaire : une seule forme
+       partout, sauf la paire (99,6 %) et le dos du raglan (94,6 %) — entre ces
+       deux-là et la plus grosse poussière (9,1 %), le seuil est large. */
+    const PAIRE = 0.25;
+    const label = new Int32Array(N*N).fill(-1); // les formes non extérieures
+    const tailles = [];
+    let k = 0;
     for (let s = 0; s < N*N; s++){
       if (outside[s] || label[s] >= 0) continue;
       let size = 0; const st = [s]; label[s] = k;
       while (st.length){ const i = st.pop(); size++; const x = i % N, y = (i-x)/N;
         const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
         for (const j of nb) if (!outside[j] && label[j] < 0){ label[j] = k; st.push(j); } }
-      if (size > bestSize){ bestSize = size; best = k; }
+      tailles.push(size);
       k++;
     }
+    let grande = 0;
+    for (const t of tailles) if (t > grande) grande = t;
+    const garde = tailles.map(t => t >= grande * PAIRE);
     const mask = new Uint8Array(N*N);
     let aire = 0;
-    for (let i = 0; i < N*N; i++){ mask[i] = label[i] === best ? 1 : 0; if (mask[i]) aire++; }
+    for (let i = 0; i < N*N; i++){ mask[i] = label[i] >= 0 && garde[label[i]] ? 1 : 0; if (mask[i]) aire++; }
     /* Poches de fond ENFERMÉES dans la forme. L'étiquetage ci-dessus les a
        absorbées, et c'est ce qu'il faut pour un VÊTEMENT : une poche y vient
        presque toujours d'un détourage imparfait — le raglan blanc sur blanc a
@@ -4575,25 +4591,29 @@ const model3d = (() => {
        qu'on s'y fie les yeux fermés. Le seuil TROU écarte tout de même les
        petits détails d'une image autorisée — un trou de serrure fait 1,5 % et
        doit rester plein, c'est un dessin, pas une ouverture. */
-    /* LE COL EST UN TROU, et il se reconnaît à SA PLACE. C'est ce qui manquait
-       pour sortir de la liste blanche : une poche de fond enfermée dans un
-       vêtement est presque toujours un défaut de détourage — le raglan blanc
-       sur blanc en a 13 % en plein milieu du tissu — mais une poche EN HAUT ET
-       AU MILIEU d'un rendu porté n'a qu'un sens possible : l'encolure, par
-       laquelle on doit voir le cou. La position tranche là où la taille seule
-       n'y arrivait pas.
+    /* LE TROU SE RECONNAÎT À SA PLACE : AU MILIEU, ET À UN BOUT. C'est ce qui
+       manquait pour sortir de la liste blanche. Une poche de fond enfermée
+       dans un vêtement est presque toujours un défaut de détourage — le raglan
+       blanc sur blanc en a 13 % en plein milieu du tissu — mais une poche
+       CENTRÉE et qui touche une EXTRÉMITÉ du vêtement n'a qu'un sens possible :
+       en haut, c'est l'encolure, par laquelle on doit voir le cou ; en bas,
+       c'est l'entrejambe, entre les deux jambes d'un pantalon. Un défaut, lui,
+       flotte au milieu de l'étoffe et ne touche ni l'un ni l'autre.
+       Sans la seconde moitié de la règle, le jogger — deux jambes très larges
+       dont les ourlets se frôlent — se refermait en jupe : 46 % de silhouette
+       au lieu de 30 %, et l'extension de texture remplissait l'entrejambe de
+       blocs d'étoffe en miroir, une frange blanche festonnée le long des
+       cuisses.
        `troue` vaut donc 'objet' pour un objet, où toute grande poche est un
        vrai trou (l'anse d'un cadenas), et 'col' pour un vêtement porté, où
-       seule celle de l'encolure en est un. Le jour où une photo arrive avec
-       son encolure évidée, le cou se voit au travers sans une ligne de code de
-       plus. */
+       seules celles des deux extrémités en sont. */
     const vue = troue ? new Uint8Array(N*N) : null;
     let bx0 = N, bx1 = 0, by0 = N, by1 = 0;
     if (troue === 'col') for (let i = 0; i < N*N; i++) if (mask[i]){
       const x = i % N, y = (i - x) / N;
       if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
     }
-    const COL = { part: 0.01, large: 0.16, haut: 0.25 };   // seuils de l'encolure
+    const COL = { part: 0.01, large: 0.16, haut: 0.25, bord: 0.10 };   // seuils du col et de l'entrejambe
     for (let s = 0; troue && s < N*N; s++){
       if (!mask[s] || !bg[s] || vue[s]) continue;
       const st = [s], poche = [s]; vue[s] = 1;
@@ -4602,10 +4622,12 @@ const model3d = (() => {
         for (const j of nb) if (mask[j] && bg[j] && !vue[j]){ vue[j] = 1; st.push(j); poche.push(j); } }
       let garder = poche.length > aire * TROU;
       if (troue === 'col'){
-        let sx = 0, sy = 0;
-        poche.forEach(i => { const x = i % N; sx += x; sy += (i - x) / N; });
-        const cx = (sx / poche.length - bx0) / (bx1 - bx0 || 1), cy = (sy / poche.length - by0) / (by1 - by0 || 1);
-        garder = poche.length > aire * COL.part && Math.abs(cx - 0.5) < COL.large && cy < COL.haut;
+        let sx = 0, sy = 0, pb = 0;
+        poche.forEach(i => { const x = i % N, y = (i - x) / N; sx += x; sy += y; if (y > pb) pb = y; });
+        const H = by1 - by0 || 1;
+        const cx = (sx / poche.length - bx0) / (bx1 - bx0 || 1), cy = (sy / poche.length - by0) / H;
+        garder = poche.length > aire * COL.part && Math.abs(cx - 0.5) < COL.large
+                 && (cy < COL.haut || (pb - by0) / H > 1 - COL.bord);
       }
       if (garder) for (const i of poche) mask[i] = 0;
     }
@@ -5523,7 +5545,7 @@ const model3d = (() => {
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
-    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0)
+    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1)
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -6216,6 +6238,63 @@ const model3d = (() => {
     return { bras: BRAS_REPOS.angle - v.angle,
              allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long) };
   };
+  /* ---- viser le milieu de la jambe du pantalon ----
+     La même règle qu'au bras, à l'autre bout du corps : la jambe doit pointer
+     vers le CENTRE de l'ouverture du bas de jambe. Ce qui change, c'est la
+     manière de lire l'ouverture. Une manche part sur le côté et se reconnaît à
+     sa pointe, la plus large ; deux jambes de pantalon descendent côte à côte,
+     et selon la photo elles sont séparées (deux travées) ou jointes (une
+     seule, le tissu se touchant). Prendre le MILIEU DE LA MOITIÉ DROITE de ce
+     qui est là traite les deux cas d'un seul geste : deux jambes écartées
+     donnent le centre de celle de droite, une colonne jointe donne le milieu
+     de son côté droit — c'est-à-dire, dans les deux cas, où le pantalon veut
+     la cheville.
+     Sans ça le legging galaxie, photographié jambes serrées, laissait les
+     mollets dehors de part et d'autre : il n'y avait aucune échelle capable de
+     couvrir deux jambes écartées avec une seule colonne d'étoffe. Ce n'est pas
+     au vêtement de s'ouvrir, c'est aux jambes de se joindre. */
+  const JAMBE_REPOS = (() => {
+    const ha = pointBoite(HANCHE.x, HANCHE.y - 0.5, 0);
+    const pris = [];
+    for (let i = 0; i < MANNEQUIN_JAMBES.length; i++){
+      if (MANNEQUIN_JAMBES[i] < 85 || MANNEQUIN_XYZ[i*3] < 0) continue;
+      const p = pointBoite(MANNEQUIN_XYZ[i*3], MANNEQUIN_XYZ[i*3+1] - 0.5, MANNEQUIN_XYZ[i*3+2]);
+      pris.push([Math.hypot(p[0] - ha[0], p[1] - ha[1]), p]);
+    }
+    pris.sort((a, b) => b[0] - a[0]);
+    const loin = pris.slice(0, Math.max(1, Math.round(pris.length / 4)));
+    const moy = (f) => loin.reduce((s, p) => s + f(p), 0) / loin.length;
+    const mx = moy(p => p[1][0]), my = moy(p => p[1][1]);
+    return { ha, angle: Math.atan2(mx - ha[0], my - ha[1]), long: Math.hypot(mx - ha[0], my - ha[1]) };
+  })();
+  const CHEVILLE_RANGS = 7;                 // le dernier vingtième du vêtement
+  const poseJambes = (item, boite) => {
+    const v = viserJambe(item, boite);
+    return { jambes: v ? JAMBE_REPOS.angle - v.angle : 0 };
+  };
+  const visesJ = new Map();
+  function viserJambe(item, boite){
+    const cle = keyOf(item) + '|j|' + boite.x.toFixed(3) + ',' + boite.y.toFixed(3) + ',' + boite.l.toFixed(3) + ',' + boite.h.toFixed(3);
+    if (visesJ.has(cle)) return visesJ.get(cle);
+    const a = ready.get(keyOf(item));
+    if (!a) return null;                       // pas encore mesurable : on réessaiera
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh)), e = empreinte(item);
+    const NB = 128, pas = (e.x1 - e.x0) / NB || 1, dents = new Uint8Array(NB), cx = [];
+    /* Plusieurs rangées et la MÉDIANE : la toute dernière n'est qu'un ourlet
+       qui se referme, et une seule ligne se laisse emporter par un pli. */
+    for (let r = 0; r < CHEVILLE_RANGS; r++){
+      peigner(P, a.mesh, e.y1 - (e.y1 - e.y0) * 0.05 * r / CHEVILLE_RANGS, dents, e.x0, pas);
+      const t = travee(dents, NB >> 1);
+      if (t) cx.push(e.x0 + (t[0] + 3 * (t[1] + 1)) / 4 * pas);   // milieu de la moitié droite
+    }
+    if (!cx.length){ visesJ.set(cle, null); return null; }
+    cx.sort((u, v) => u - v);
+    const x = boite.x + cx[cx.length >> 1] * boite.l, y = boite.y + e.y1 * boite.h;
+    const v = { angle: Math.atan2(x - JAMBE_REPOS.ha[0], y - JAMBE_REPOS.ha[1]), dist: Math.hypot(x - JAMBE_REPOS.ha[0], y - JAMBE_REPOS.ha[1]) };
+    visesJ.set(cle, v);
+    return v;
+  }
+
   const vises = new Map();
   const RANGS = 96;
   function viser(item, boite){
@@ -6399,6 +6478,7 @@ const model3d = (() => {
       ready: item => !!ready.get(keyOf(item)),
       empreinte,                              // ce que l'article couvre dans sa boîte, mesuré une fois
       poseBras,                               // de combien baisser les bras pour entrer dans cette manche
+      poseJambes,                             // de combien serrer les jambes pour entrer dans ce pantalon
       encolure,                               // une copie du vêtement, col ouvert sur le cou
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
@@ -9342,6 +9422,19 @@ const dressup = (() => {
      Pourquoi l'ourlet plutôt que la largeur totale : un débardeur est étroit
      parce qu'il n'a pas de manches, un t-shirt est large parce que les
      siennes sont écartées. Seul le bas du vêtement dit la largeur du corps. */
+  /* ---- les catégories ----
+     Où va la pièce sur le corps, donc ce qu'elle REMPLACE : un seul bas, un
+     seul haut, une seule paire. En choisir une autre dans la même catégorie
+     retire la précédente ; c'est la règle de tous les jeux d'habillage, et
+     elle dispense de se demander ce qui passe par-dessus quoi.
+     Le rang donne l'ordre de dessin. Les chaussures passent EN DESSOUS de
+     tout : l'ourlet d'un pantalon retombe sur la basket, et non l'inverse. */
+  const CATEGORIES = {
+    pieds:   { rang: 0 },
+    bas:     { rang: 1 },
+    haut:    { rang: 2 },
+    chapeau: { rang: 3 },
+  };
   /* Un ancrage ne dit plus QUE l'endroit : `y0`/`y1` la tranche de corps à
      couvrir, `ourlet` la largeur que doit avoir le bas du vêtement une fois
      posé, et `bras`/`jambes` de combien le mannequin vient s'y loger. Plus
@@ -9357,10 +9450,35 @@ const dressup = (() => {
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
     sweat:    { ourlet: 0.26, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
+    pantalon: { mini: 0.21, y0: 0.492, y1: 0.935 },     // de la taille (hanches 0,402-0,598) aux chevilles (0,88)
+    chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
+  /* ---- le vestiaire du salon ----
+     Des HABILLAGES, pas des produits. Ils n'existent que dans le jeu : ils ne
+     sont pas au catalogue, ne se vendent pas, ne se verrouillent pas et ne
+     paraissent nulle part ailleurs sur le site. Ils vivent donc ici, à côté du
+     sous-vêtement, et non dans DATA — la boutique ne les voit jamais, et il n'y
+     a rien à filtrer pour qu'elle les ignore.
+
+     Pour en ajouter un : une image dans `dressup/`, une ligne ici. La coupe dit
+     où il se pose, le reste se mesure. */
+  const VESTIAIRE = [
+    { img: 'dressup/jeans1.jpg',         nom: 'Straight jeans',  cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans2.png',         nom: 'Baggy jeans',     cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans3.webp',        nom: 'Washed jeans',    cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans4.jpg',         nom: 'Dark jeans',      cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans5.webp',        nom: 'Loose jeans',     cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jogger1.jpg',        nom: 'Jogger',          cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jogger2.webp',       nom: 'Grey jogger',     cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/pants1.webp',        nom: 'Cargo pants',     cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/pyjamapants1.webp',  nom: 'Pyjama pants',    cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/galaxylegging1.webp',nom: 'Galaxy leggings', cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/shoes1.png',         nom: 'White sneakers',  cat: 'pieds', coupe: 'chaussure' },
+    { img: 'dressup/shoes2.png',         nom: 'Sneakers',        cat: 'pieds', coupe: 'chaussure' },
+  ];
+
   /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
      vitrine n'est pas nu, et un jeu d'habillage ne demande à personne de le
      déshabiller d'abord. Il est de catégorie `bas`, donc il tombe au premier
@@ -9417,28 +9535,34 @@ const dressup = (() => {
   function garnir(){
     pieces = [];
     rack.innerHTML = '';
+    const caser = (p) => {
+      const el = p.el = document.createElement('div');
+      el.className = 'dress-case';
+      el.tabIndex = 0;
+      el.setAttribute('role', 'option');
+      el.title = p.nom;
+      el.addEventListener('click', () => basculer(p));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
+      el.addEventListener('animationend', () => el.classList.remove('refus'));
+      rack.appendChild(el);
+      pieces.push(p);
+      if (scene){ scene.load(p.it); if (p.porte) scene.load(p.porte); }
+    };
+    /* Le vestiaire en tête : ce sont les seules pièces du bas et des pieds, et
+       les mettre en queue obligerait à faire défiler toute la boutique pour
+       habiller les jambes. */
+    VESTIAIRE.forEach(v => caser({ it: v, porte: null, nom: v.nom, cat: v.cat, coupe: v.coupe, verrou: false }));
     DATA.forEach(cat => {
       if (cat.kind !== 'shop') return;
       cat.items.forEach(it => {
         const vu = visuelDe(it);
         if (!vu.img) return;
-        const el = document.createElement('div');
-        el.className = 'dress-case';
-        el.tabIndex = 0;
-        el.setAttribute('role', 'option');
-        el.title = vu === it ? L(it.n) : T('locked');
         const r = rangerDe(it);
         /* Deux visuels pour une même pièce : la CASE du portant montre la
            photo de boutique, seule à distinguer un sweat d'un autre, et le
            MANNEQUIN porte le rendu porté quand la taille en déclare un. */
-        const porte = (vu === it && r.porte) || null;
-        const p = { it: vu, porte, nom: el.title, cat: r.cat, coupe: r.coupe, verrou: vu !== it, el };
-        el.addEventListener('click', () => basculer(p));
-        el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
-        el.addEventListener('animationend', () => el.classList.remove('refus'));
-        rack.appendChild(el);
-        pieces.push(p);
-        if (scene){ scene.load(vu); if (porte) scene.load(porte); }
+        caser({ it: vu, porte: (vu === it && r.porte) || null,
+                nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
       });
     });
   }
@@ -9519,15 +9643,60 @@ const dressup = (() => {
        L'OUVERTURE de la manche (voir `viser`). Rien n'est écrit à la main, et
        un vêtement ajouté demain se posera tout seul. Le maillage posé est mis
        en cache : une pose ne se calcule qu'une fois. */
-    const boiteDe = (p) => {
-      const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
+    /* CADRER : la place exacte du vêtement dans la boîte du mannequin, et
+       elle ne se cale pas au même endroit selon ce qu'on habille.
+
+       UN HAUT SE CALE SUR SON OURLET, la seule mesure qui parle du buste : la
+       largeur totale ne distingue pas un débardeur étroit d'un t-shirt aux
+       manches écartées. La hauteur, elle, s'étire du col aux hanches.
+
+       UN BAS SE CALE SUR SA LONGUEUR, et garde ses propres proportions. Les
+       dix photos de pantalons sont des poses à plat, toutes cadrées
+       différemment : leur bas est tantôt deux chevilles, tantôt une seule
+       colonne quand les jambes sont jointes, et leur haut tantôt une ceinture,
+       tantôt des hanches évasées. Aucune largeur ne se compare d'une photo à
+       l'autre — le legging galaxie se mesurait sur une demi-jambe et arrivait
+       deux fois trop large, les jeans amples devenaient des jupes-culottes. La
+       LONGUEUR, elle, se compare : de la ceinture à l'ourlet, c'est la même
+       chose sur les dix. On l'étale donc de la taille aux chevilles et on
+       garde l'échelle pour la largeur — ainsi un jean baggy reste ample, un
+       legging reste moulant, et c'est la photo qui décide, pas nous.
+
+       `mini` est le seul garde-fou : un bas plus étroit que les hanches
+       laisserait la peau dépasser sur les côtés. On l'élargit alors juste
+       assez, et pas plus. */
+    const cadrer = (m, A, corps) => {
+      const e = scene.empreinte(m);
       if (!e) return null;
+      /* Une chaussure se cale sur le PIED, et non sur un nombre écrit ici : les
+         jambes se serrent d'un pantalon à l'autre, et l'empreinte du mannequin
+         POSÉ donne l'écart des deux pieds à chaque image. `pieds` est ce qu'on
+         ajoute autour — une basket déborde du pied qu'elle chausse. */
+      if (A.pieds && corps){
+        const ec = scene.empreinte(corps);
+        if (ec) A = Object.assign({}, A, { ourlet: (ec.o1 - ec.o0) * A.pieds });
+      }
+      if (A.mini){
+        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.mini / (e.x1 - e.x0));
+        return { x: 0.5 - (e.x0 + e.x1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
+      }
       const l = A.ourlet / (e.o1 - e.o0);
-      return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * (A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0)),
-               l, h: A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0) };
+      /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à l'échelle
+         sans l'étirer. L'étirement n'existe que pour rattraper une photo à
+         plat, large et courte, sur un buste haut et étroit. */
+      const h = A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0);
+      return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
     };
+    const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);
+    /* LA POSE VIENT DES VÊTEMENTS, ET ELLE SE MESURE aux deux bouts : le haut
+       dit où sont les bras, le bas où sont les jambes. Le mannequin est seul à
+       avoir un squelette, c'est donc lui qui se plie — aucun vêtement n'est
+       déformé pour rejoindre un membre. */
     const haut = portees.get('haut'), bh = haut && boiteDe(haut);
-    const corps = Object.assign({}, mannequin, bh ? scene.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1 });
+    const bas = portees.get('bas'), bb = bas && boiteDe(bas);
+    const corps = Object.assign({}, mannequin,
+      bh ? scene.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1 },
+      bb ? scene.poseJambes(bas.porte || bas.it, bb) : { jambes: 0 });
     if (!scene.ready(corps)) scene.load(corps);
     scene.draw(corps, ang, cadre, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
@@ -9539,22 +9708,14 @@ const dressup = (() => {
        papier n'a pas de volume, elle a des couches. */
     couches.forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
-        const cadrer = (m) => { const e = scene.empreinte(m);
-          if (!e) return null;
-          const l = A.ourlet / (e.o1 - e.o0);
-          /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à
-             l'échelle sans l'étirer. L'étirement n'existe que pour rattraper
-             une photo à plat, large et courte, sur un buste haut et étroit. */
-          const h = A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0);
-          return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h }; };
-        const b0 = cadrer(vetu);
+        const b0 = cadrer(vetu, A, corps);
         if (!b0) return;                      // pas encore mesurable : à l'image suivante
         /* Le col s'ouvre sur le cou : un vêtement ne couvre pas le cou. On
            cadre une première fois pour savoir OÙ tombera le cou, on découpe,
            puis on recadre sur le modèle découpé — son empreinte a très peu
            bougé, mais autant la prendre juste. */
         const modele = scene.encolure(vetu, corps, b0, p.coupe) || vetu;
-        const b = cadrer(modele) || b0;
+        const b = cadrer(modele, A, corps) || b0;
         scene.plan();
         scene.draw(modele, ang, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
       });
