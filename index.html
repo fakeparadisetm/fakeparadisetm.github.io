@@ -2903,9 +2903,9 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    /* Une tête low poly qui tourne sur elle-même : le modèle de `3Dmodels/`,
-       figé dans le module (voir TETE_XYZ), et pour texture la photo de
-       `pictures/`, convertie en WebP dans `icons/`.
+    /* Une tête low poly en va-et-vient de ±20°, vue verrouillée : le modèle de
+       `3Dmodels/`, figé dans le module (voir TETE_XYZ), et pour texture la
+       planche de `pictures/`, convertie en WebP dans `icons/`.
        `planche` : la texture de la tête, une carte CYLINDRIQUE — cheveux en
        haut, visage au milieu, une oreille de chaque côté, cou en bas. Le
        dépliage la lit telle quelle (voir PLANCHE) : rien à régler, rien à
@@ -4442,10 +4442,11 @@ const model3d = (() => {
      la nuque, la peau où il faut.
 
      Deux repères suffisent à caler la verticale, et ils se lisent sur la
-     planche : la RACINE DES CHEVEUX (v ≈ 0,22, à poser au quart de la hauteur
-     de tête sous le sommet) et le BAS DU MENTON (v ≈ 0,76). Calée sur la ligne
-     des yeux à la place, la chevelure se réduisait à un liseré et le front
-     mangeait la moitié du crâne. Pour l'horizontale, les
+     planche : la LIGNE DES YEUX (v ≈ 0,42, à poser à mi-chemin du sommet et du
+     menton) et le BAS DU MENTON (v ≈ 0,76, au menton du modèle). Le premier
+     calage prenait la racine des cheveux comme repère haut, et les yeux
+     descendaient trop bas sur le visage ; en repartant des yeux eux-mêmes, le
+     menton reste ancré et tout le haut remonte de quatre centièmes. Pour l'horizontale, les
      oreilles ne sont pas au quart et aux trois quarts mais à un dixième et
      neuf dixièmes : la planche ne fait donc pas le tour complet, elle couvre
      environ ±110°, et ce qui manque derrière est repris par le bord — qui est
@@ -4453,7 +4454,7 @@ const model3d = (() => {
   const PLANCHE = {
     thMax: 1.92,                        // demi-tour couvert par la planche, en radians (≈110°)
     yHaut: 0.525, yBas: -0.525,         // du sommet du crâne à la base du cou, sur le modèle
-    vHaut: 0.040, vBas: 0.968,          // les hauteurs correspondantes sur la planche
+    vHaut: 0.080, vBas: 0.956,          // les hauteurs correspondantes sur la planche
   };
   const ATLAS_W = 512, ATLAS_H = 512;
   const PS1_W = 128, PS1_H = 128;       // ce qui part au GPU. Une tête de 1995 tenait dans 64 ; ici la
@@ -4613,8 +4614,7 @@ const model3d = (() => {
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
   let current = null, active = false, raf = 0, last = 0, token = 0;
   let angle = 0, hover = false, target = 0, tap = 0, rowAngle = 0, rows = [], fading = [], listDrawn = false;
-  let tourne = 0;        // tour continu, pour les modèles marqués `tourne` (la tête de la page Info)
-  const TOUR_MS = 16000; // un tour complet ; plus vite, on ne voit plus les facettes passer
+  const BALANCE_MS = 4600; // aller-retour complet des modèles à vue verrouillée
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
@@ -4708,7 +4708,7 @@ const model3d = (() => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
       const tex = atlasTete(planche);
-      const a = { mesh, texF: tex, texB: tex, tourne: true, ps1: true };  // ps1 : grille de sommets et placage affine (voir uPS1)
+      const a = { mesh, texF: tex, texB: tex, balance: 20 * Math.PI / 180, ps1: true };  // ±20°, vue verrouillée  // ps1 : grille de sommets et placage affine (voir uPS1)
       ready.set(key, a);
       if (list) list.warm(a);
       return a;
@@ -4818,14 +4818,17 @@ const model3d = (() => {
     const dt = last ? Math.min(60, t - last) : 16; last = t;
     const ease = Math.min(1, dt / 110);
     const sway = reduced ? 0 : Math.sin(t / 3800 * Math.PI * 2) * SWAY; // balancement ±18° en 3,8 s, commun à la fiche et à la liste
-    /* Un vêtement se balance, une tête se montre de tous les côtés. La valeur
-       du tour avance TOUJOURS, même pendant que la souris tient l'angle : au
-       relâché le modèle rejoint la rotation là où elle en est, et non là où il
-       l'avait quittée — sinon il repartirait en arrière. Mouvement réduit :
-       aucun des deux, c'est précisément ce que ce réglage demande. */
-    tourne = (tourne + dt / TOUR_MS * Math.PI * 2) % (Math.PI * 2);
-    const repos = reduced ? 0 : (current && current.tourne ? tourne : sway);
-    if (hover){ backT = 0; angle += shortest(target - angle) * ease; }
+    /* VUE VERROUILLÉE (la tête de la page Info) : un va-et-vient fixe, que ni
+       la souris ni le toucher ne touchent. Un vêtement, on veut le retourner
+       pour voir le dos ; un visage, non — et le laisser manipuler n'apportait
+       que des poses où l'on ne reconnaissait plus personne. On sort donc avant
+       même de lire `hover` et `tap`, et le retour progressif au balancement ne
+       la concerne pas : elle n'en est jamais partie. */
+    if (current && current.balance){
+      angle = reduced ? 0 : Math.sin(t / BALANCE_MS * Math.PI * 2) * current.balance;
+      backT = 0; hover = false; tap = 0;
+    }
+    else if (hover){ backT = 0; angle += shortest(target - angle) * ease; }
     else if (tap === 1){ backT = 0; angle += shortest(0 - angle) * ease; }
     else if (tap === 2){ backT = 0; angle += shortest(Math.PI - angle) * ease; }
     else {
@@ -4836,7 +4839,7 @@ const model3d = (() => {
       // et avec moins d'amplitude, pour toujours. Ici l'arrivée est exacte.
       if (!backT){ backFrom = angle; backT = t; }
       const p = Math.min(1, (t - backT) / BACK_MS);
-      angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * (p * p * (3 - 2 * p));
+      angle = p >= 1 ? sway : backFrom + shortest(sway - backFrom) * (p * p * (3 - 2 * p));
     }
     rowAngle = sway;
     if (list && (rows.length || fading.length)) drawRows(t);
@@ -4912,6 +4915,7 @@ const model3d = (() => {
     const dx = e.clientX - lastX;
     lastX = e.clientX;
     if (!dx) return;
+    if (current && current.balance) return;   // vue verrouillée : la souris ne la tourne pas
     if (!hover){ hover = true; target = angle; } // on repart d'où le modèle est, sans à-coup
     target += dx / (swatchBox.width || 1) * Math.PI * 2;
   });
@@ -4919,6 +4923,7 @@ const model3d = (() => {
   let downX = 0, downY = 0;
   swatch.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; });
   swatch.addEventListener('pointerup', (e) => { // toucher sans déplacement : face → dos → balancement (un balayage change de vue, voir le diaporama)
+    if (current && current.balance) return;   // vue verrouillée : le toucher ne la retourne pas
     if (e.pointerType === 'touch' && Math.hypot(e.clientX - downX, e.clientY - downY) < 10) tap = (tap + 1) % 3; });
   resizeList();
   window.addEventListener('resize', () => { swatchW = 0; resizeList(); if (active) resize(); });
