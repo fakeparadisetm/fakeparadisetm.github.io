@@ -1037,6 +1037,29 @@
   }
 
   /* ---------- bottom hint bar ---------- */
+  /* L'annonce d'un déverrouillage : une pastille de verre qui monte, tient
+     quelques secondes et s'en va. En HAUT et au centre, loin du panneau et
+     loin de la barre d'aide — elle ne doit masquer ni ce qu'on manipule ni ce
+     qu'on lit. Elle ne se clique pas : il n'y a rien à y faire, elle dit
+     seulement où regarder. */
+  .egg-note{
+    position:fixed;
+    top:64px;left:50%;
+    transform:translate(-50%, -10px);
+    display:flex;align-items:baseline;gap:10px;
+    padding:11px 20px;
+    border-radius:999px;
+    font-size:13px;
+    color:var(--white);
+    letter-spacing:0.3px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.45s ease, transform 0.45s cubic-bezier(.2,.8,.2,1);
+    z-index:60;
+  }
+  .egg-note[hidden]{display:none;}
+  .egg-note.show{opacity:1;transform:translate(-50%, 0);}
+  .egg-note span{color:var(--white-60);font-size:12px;}
   .hintbar{
     position:fixed;
     bottom:var(--footer-h);left:0;right:0;
@@ -2084,6 +2107,15 @@
   <div class="preview-desc preview-desc-probe" id="descProbe" aria-hidden="true"></div>
 </div>
 
+<!-- L'annonce d'un déverrouillage. Elle vit hors du panneau : la pièce qui
+     s'ouvre n'est pas celle qu'on regarde, et le message doit tenir quel que
+     soit l'endroit du site où la chose arrive. `aria-live` la fait lire par un
+     lecteur d'écran sans lui voler le focus. -->
+<div class="egg-note glass" id="eggNote" hidden aria-live="polite">
+  <strong id="eggNoteTitre"></strong>
+  <span id="eggNoteOu"></span>
+</div>
+
 <div class="hintbar" id="hintbar">
   <span data-hint="browse"><span class="key">←</span><span class="key">→</span> <span data-label>browse</span></span>
   <span data-hint="select"><span class="key">↑</span><span class="key">↓</span> <span data-label>select</span></span>
@@ -2475,7 +2507,7 @@ Date : ______<br>
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont celles de votre système : aucune ressource n'est chargée depuis un serveur tiers.</p>
-<p>Un seul élément est conservé sur votre terminal, dans le stockage local de votre navigateur : <strong>la liste des mini-jeux que vous avez terminés</strong> (clé <code>fp.debloque</code>), qui donne accès aux pièces qu'ils débloquent. Sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Cet élément ne contient aucune donnée personnelle, n'est jamais envoyé à un serveur et ne permet pas de vous suivre d'un site à l'autre ; il relève des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requiert donc pas votre consentement préalable. Vous pouvez l'effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Un seul élément est conservé sur votre terminal, dans le stockage local de votre navigateur : <strong>la liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent. Sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Cet élément ne contient aucune donnée personnelle, n'est jamais envoyé à un serveur et ne permet pas de vous suivre d'un site à l'autre ; il relève des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requiert donc pas votre consentement préalable. Vous pouvez l'effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
 <h3>Paramétrage de votre navigateur</h3>
@@ -2664,7 +2696,7 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are those of your system: no resource is loaded from a third-party server.</p>
-<p>One single item is kept on your device, in your browser's local storage: <strong>the list of minigames you have completed</strong> (key <code>fp.debloque</code>), which grants access to the pieces they unlock. Without it, simply reloading the page would take back a reward you had already earned. It holds no personal data, is never sent to a server and cannot be used to track you across sites; it qualifies as strictly necessary for a service you explicitly requested, and therefore does not require your prior consent. You can erase it at any time by clearing your browser's site data — the reward would then have to be earned again. This is why no consent banner is displayed.</p>
+<p>One single item is kept on your device, in your browser's local storage: <strong>the list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock. Without it, simply reloading the page would take back a reward you had already earned. It holds no personal data, is never sent to a server and cannot be used to track you across sites; it qualifies as strictly necessary for a service you explicitly requested, and therefore does not require your prior consent. You can erase it at any time by clearing your browser's site data — the reward would then have to be earned again. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
 <h3>Browser settings</h3>
@@ -2706,6 +2738,13 @@ const STRINGS = {
     jumpSee:"See the item", jumpAgain:"Play again", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
     locked:"???", lockedHow:"Locked.\nFinish the minigame Jumper to unlock this piece.",
     lockedPlay:"Play Jumper", onlyOne:"One per person",
+    /* L'énigme d'une pièce qu'aucun jeu ne donne : elle doit METTRE SUR LA
+       VOIE sans dire la recette. Écrire « faites tourner la tête de 4000
+       degrés » en ferait une corvée affichée ; ne rien écrire du tout en
+       ferait une pièce morte, que personne ne saurait jamais pouvoir ouvrir. */
+    lockedRiddle:"Locked.\nNo game gives this one away. They say a head, spun long enough, ends up letting something go.",
+    lockedWait:"Not yet",
+    eggUnlocked:"A unique piece has been unlocked", eggWhere:"Unique Items",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -2734,6 +2773,9 @@ const STRINGS = {
     jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
     locked:"???", lockedHow:"Verrouillé.\nTerminez le mini-jeu Jumper pour débloquer cette pièce.",
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
+    lockedRiddle:"Verrouillé.\nAucun jeu ne la donne. Il paraît qu'à force de tourner, une tête finit par lâcher quelque chose.",
+    lockedWait:"Pas encore",
+    eggUnlocked:"Une pièce unique s'est déverrouillée", eggWhere:"Pièces uniques",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -2876,14 +2918,25 @@ const DATA = [
     {n:"CS:CO HOODIE (ALT)", p:40, d:{en:"400 GSM (100% cotton)\nBalloon Fit, Zip\nBrown\nCustom embroidery on left chest\nGlitter print on right chest\nKillfeed print on right sleeve\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"400 g/m² (100 % coton)\nCoupe ballon, zippé\nMarron\nBroderie personnalisée côté cœur\nImpression pailletée sur la poitrine droite\nImpression killfeed sur la manche droite\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/csco-hoodie-alt.jpg", img2:"products/csco-hoodie-alt-2.jpg", sz:"hoodie"},
     {n:"FISC HOODIE", p:40, d:{en:"COPS WILL NOT GIVE YOU SHIT FOR WEARING THIS IN PUBLIC, I TRIED\n400 GSM (100% cotton)\nBalloon Fit, Zip\nBlack\nCustom embroidery on left chest\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"LES FLICS NE TE DIRONT RIEN SI TU PORTES ÇA EN PUBLIC, J'AI TESTÉ\n400 g/m² (100 % coton)\nCoupe ballon, zippé\nNoir\nBroderie personnalisée côté cœur\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/fisc-hoodie.jpg", img2:"products/fisc-hoodie-2.jpg", sz:"hoodie"},
   ]},
-  /* Pièces uniques : une seule pour l'instant, et elle se MÉRITE — finir le
-     mini-jeu Jumper la déverrouille. Elle reste VISIBLE tant qu'elle est
-     verrouillée, nom masqué et bouton qui lance le jeu : une pièce qu'on ne
-     voit pas ne donne envie à personne. `verrou` porte le nom du jeu à
-     gagner, `max` le nombre d'exemplaires par visiteur.
+  /* Pièces uniques : elles se MÉRITENT. Elles restent VISIBLES tant qu'elles
+     sont verrouillées, nom masqué — une pièce qu'on ne voit pas ne donne envie
+     à personne. `verrou` porte le nom de l'épreuve à passer, `max` le nombre
+     d'exemplaires par visiteur.
+     DEUX FAÇONS de s'ouvrir, et elles ne s'annoncent pas pareil. Le JUMPER TEE
+     nomme son mini-jeu et le bouton y mène : c'est une récompense, on doit
+     savoir comment la chercher. Le VERTIGO TEE, lui, est un ŒUF DE PÂQUES — il
+     s'ouvre en faisant tourner la tête de la page Info, longtemps ; son bouton
+     ne mène nulle part et son texte n'est qu'une énigme (`verrouAide`), sans
+     quoi ce ne serait plus une chose trouvée mais une corvée affichée. Le
+     bouton et l'aide se règlent tout seuls : voir `jeuDuVerrou`, qui regarde
+     si un mini-jeu porte ce nom.
      Photo à venir : sans `img`, la fiche montre l'initiale et la ligne de
      liste son nom, comme n'importe quel produit sans visuel. */
   { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[
+    // PROVISOIRE : nom, prix et photos à remplacer par la vraie pièce.
+    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", verrouAide:"lockedRiddle", max:1,
+      d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
+         fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"} },
     { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1,
       d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
          fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"} },
@@ -3106,8 +3159,18 @@ const DEBLOQUE = (() => {
     },
   };
 })();
-// Un article verrouillé tant que son jeu n'est pas gagné (voir la catégorie « Unique Items »)
+// Un article verrouillé tant que son épreuve n'est pas passée (voir la catégorie « Unique Items »)
 const verrouille = (item) => !!(item && item.verrou && !DEBLOQUE.a(item.verrou));
+/* Le mini-jeu qui ouvre cette pièce, s'il en existe un. C'est DÉDUIT de la
+   liste des jeux plutôt que déclaré sur l'article : rien à tenir à jour de
+   deux côtés, et une pièce dont l'épreuve n'est pas un jeu — l'œuf de Pâques
+   de la tête — répond naturellement « aucun », ce qui suffit à éteindre son
+   bouton et à retirer son aide clavier. */
+const jeuDuVerrou = (item) => {
+  if (!item || !item.verrou) return null;
+  const arcade = DATA.find(c => c.kind === 'game');
+  return arcade && arcade.items.some(j => j.jeu === item.verrou) ? item.verrou : null;
+};
 /* Ce qu'on MONTRE à la place d'un article verrouillé : un cadenas, passé par
    la même chaîne que les vêtements — détourage, maillage, éclairage cuit — et
    donc rendu en 3D dans la liste comme dans la fiche, avec le même balancement
@@ -4729,6 +4792,12 @@ const model3d = (() => {
      son tour tranquille, d'où qu'on l'ait laissée. */
   let orient = ident();
   let vX = 0, vY = 0;                 // radians par milliseconde, axes de l'écran
+  /* Total de rotation VOULUE depuis le chargement, en radians. Le tour de repos
+     n'y entre pas — sinon le compteur monterait tout seul et ce qui en dépend
+     s'ouvrirait sans que personne n'ait touché à rien. Ne comptent donc que ce
+     que la main commande et l'élan qu'elle a donné, c'est-à-dire la part de la
+     vitesse qui DÉPASSE le repos. */
+  let cumul = 0, surTour = null;
   const AMORTI_MS = 700;              // l'élan s'éteint en deux à trois secondes, comme un cube qu'on pousse
   const SUIVI_MS = 120;               // tenir sans bouger, c'est s'arrêter : l'élan retombe vite sous la main
   const V_MAX = 0.010;                // plafond : environ un tour et demi par seconde, au-delà on ne voit plus rien
@@ -4737,11 +4806,17 @@ const model3d = (() => {
     if (!ax && !ay) return;
     orient = redresser(mul(mul(rotX(ax), rotY(ay)), orient));
   }
+  function compter(r){
+    if (!(r > 0)) return;
+    cumul += r;
+    if (surTour) surTour(cumul);
+  }
   function tournerLibre(dt){
     if (saisi){ const f = Math.exp(-dt / SUIVI_MS); vX *= f; vY *= f; return; } // la main mène
     const f = 1 - Math.exp(-dt / AMORTI_MS);
     vX += (0 - vX) * f;
     vY += (vRepos() - vY) * f;
+    compter((Math.abs(vX) + Math.abs(vY - vRepos())) * dt);   // l'élan compte, le tour de repos non
     pivoter(vX * dt, vY * dt);
   }
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
@@ -4772,7 +4847,7 @@ const model3d = (() => {
      que la fenêtre permet, par pas de 16 et sans jamais dépasser 256. */
   const PS1_ECRAN = 256;   // plafond : la définition d'un mode de la machine
   const PS1_GROS = 2;      // un texel de console pour deux pixels d'écran
-  let pixel = false;
+  let pixel = false, teteAffichee = false;
   function resize(){
     if (!swatchW) swatchW = swatch.clientWidth; // mesuré au premier affichage et à chaque redimensionnement
     const s = pixel
@@ -5139,9 +5214,15 @@ const model3d = (() => {
        d'après la fiche et non d'après le modèle chargé, pour que la main sache
        à quoi s'attendre avant même que la texture soit arrivée. */
     swatch.classList.toggle('prise', !!item.tete);
-    saisi = false; swatch.classList.remove('tenu');
-    // on arrive toujours face au visage : la pose laissée à la visite d'avant ne se reprend pas
-    if (item.tete){ orient = ident(); vX = 0; vY = vRepos(); }
+    /* On ARRIVE toujours face au visage : la pose laissée à la visite d'avant
+       ne se reprend pas. Mais seulement en ARRIVANT — `show()` est aussi appelé
+       quand la fiche se redessine sans changer d'article (changement de langue,
+       catalogue appliqué, liste reconstruite après un déverrouillage). Remettre
+       la tête d'aplomb à ces moments-là la ferait sauter sous la main, et lui
+       reprendre la prise en plein geste. */
+    if (item.tete && !teteAffichee){ orient = ident(); vX = 0; vY = vRepos(); }
+    if (!item.tete){ saisi = false; swatch.classList.remove('tenu'); }
+    teteAffichee = !!item.tete;
     active = true; canvas.hidden = false; resize();
     const my = ++token;
     current = null; tap = 0;
@@ -5246,6 +5327,7 @@ const model3d = (() => {
     const w = swatchBox.width || 1, h = swatchBox.height || w;   // même vitesse angulaire sur les deux axes
     const ax = dy / h * Math.PI * 2, ay = dx / w * Math.PI * 2;  // traverser le cadre = un tour
     pivoter(ax, ay);
+    compter(Math.abs(ax) + Math.abs(ay));
     /* Relevé de l'élan, pour qu'il survive au lâcher. Il est LISSÉ : une
        secousse isolée de la main ne doit pas lancer la tête. Et il est mesuré
        sur le temps réel entre deux événements, borné des deux côtés — un
@@ -5282,6 +5364,7 @@ const model3d = (() => {
        composante verticale de son axe vertical — +1 à l'endroit, −1 à l'envers. */
     vX: +(vX * 1000).toFixed(3), vY: +(vY * 1000).toFixed(3),
     haut: current && current.saisir ? +orient[5].toFixed(3) : null,
+    cumul: Math.round(cumul * 180 / Math.PI),   // degrés tournés par la main depuis le chargement
     meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
@@ -5325,8 +5408,49 @@ const model3d = (() => {
       },
     };
   }
-  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, debug, debugMask, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  /* `surRotation` : on PRÉVIENT, on ne décide pas. Le module sait combien la
+     main a fait tourner la tête ; ce qu'on en tire — un seuil, une pièce qui
+     s'ouvre — est une affaire de boutique, et n'a rien à faire dans un moteur
+     de rendu. Une seule fonction écoute, elle reçoit le total en radians. */
+  const surRotation = fn => { surTour = fn; };
+  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, surRotation, debug, debugMask, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
+
+/* ---------------- l'œuf de Pâques de la tête ----------------
+   Faire tourner la tête de la page Info assez longtemps ouvre une pièce
+   unique. QUATRE MILLE DEGRÉS, soit onze tours pleins : assez pour qu'on ne
+   tombe pas dessus en passant, assez peu pour que quelqu'un qui joue avec la
+   tête deux minutes finisse par y arriver sans le chercher — c'est là tout
+   l'intérêt d'un œuf de Pâques, il doit se trouver, pas se mériter.
+   Le compte est tenu par le module 3D, qui ne connaît que des radians ; le
+   seuil et la récompense sont ici, du côté de la boutique. Seule la rotation
+   VOULUE compte (voir `cumul`) : le tour de repos, lui, tournerait tout seul.
+   Ce n'est pas un secret gardé : on peut lire le seuil dans le code de la
+   page, et c'est très bien — il n'y a rien à protéger, seulement un plaisir à
+   ménager pour qui ne lit pas le code. */
+const TOURNE_DEBLOQUE = 4000 * Math.PI / 180;
+const eggNote = document.getElementById('eggNote');
+let eggFin = 0;
+function annoncerDeverrouillage(titre, ou){
+  if (!eggNote) return;
+  document.getElementById('eggNoteTitre').textContent = titre;
+  document.getElementById('eggNoteOu').textContent = ou;
+  eggNote.hidden = false;
+  // une image d'attente : sans elle, le navigateur découvre l'élément et son
+  // état final dans le même calcul, et la transition ne joue pas
+  requestAnimationFrame(() => eggNote.classList.add('show'));
+  clearTimeout(eggFin);
+  eggFin = setTimeout(() => {
+    eggNote.classList.remove('show');
+    setTimeout(() => { if (!eggNote.classList.contains('show')) eggNote.hidden = true; }, 600);
+  }, 5200);
+}
+model3d.surRotation((total) => {
+  if (total < TOURNE_DEBLOQUE || DEBLOQUE.a('vertige')) return;
+  DEBLOQUE.ajouter('vertige');        // la liste se refait, le nom masqué tombe
+  sfx.win();
+  annoncerDeverrouillage(T('eggUnlocked'), T('eggWhere'));
+});
 
 /* ---------------- diaporama du visuel produit ----------------
    Vues : le modèle 3D, puis les photos 2D déjà chargées (face, dos). Points
@@ -5531,8 +5655,16 @@ function updateHints(){
     if (text !== undefined) s.querySelector('[data-label]').textContent = text;
   };
   if (panelMode && cat.kind === 'shop' && productPart){ // fiche produit : parties (visuel, boutons)
+    /* Sur une pièce verrouillée, le bouton ne mène pas au panier : il lance le
+       jeu qui l'ouvre, ou rien du tout quand son épreuve n'en est pas un. La
+       même règle qu'en dehors du mode panneau — promettre « choisir la taille »
+       devant un bouton éteint serait un mensonge poli. */
+    const verrouIci = verrouille(cat.items[activeItem]);
+    const jeuIci = verrouIci ? jeuDuVerrou(cat.items[activeItem]) : null;
+    const surBouton = productPart === 'visual' ? T('hintView') : productPart === 'info' ? T('hintInfo')
+                    : verrouIci ? T('hintPlay') : T('hintSize');
     show('browse', true, productPart === 'visual' ? T('hintViews') : T('hintChoose')); show('select', true, T('hintSection'));
-    show('enter', true, productPart === 'visual' ? T('hintView') : productPart === 'info' ? T('hintInfo') : T('hintSize'));
+    show('enter', !(verrouIci && !jeuIci && productPart !== 'visual'), surBouton);
     show('info', false); show('back', true, T('hintBack'));
   } else if (panelMode && cat.kind === 'shop'){ // sélecteur de tailles ouvert
     show('browse', true, T('hintSize')); show('select', false);
@@ -5545,10 +5677,13 @@ function updateHints(){
     show('enter', false); show('info', false); show('back', true, T('hintBack'));
   } else {
     show('browse', true, T('hintBrowse')); show('select', true, T('hintSelect'));
-    // une pièce verrouillée mène au jeu, pas au panier : l'aide doit le dire
+    /* Une pièce verrouillée mène au jeu, pas au panier : l'aide doit le dire —
+       et quand son épreuve n'est pas un jeu (l'œuf de Pâques), la touche ne
+       fait rien, donc son aide disparaît plutôt que de mentir. */
     const verrouIci = cat.kind === 'shop' && verrouille(cat.items[activeItem]);
+    const jeuIci = verrouIci ? jeuDuVerrou(cat.items[activeItem]) : null;
     // Info : rien à ouvrir, tout est déjà à l'écran — pas d'aide « entrée »
-    show('enter', cat.kind !== 'about', verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
+    show('enter', cat.kind !== 'about' && !(verrouIci && !jeuIci), verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
     show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
@@ -6092,7 +6227,7 @@ function fillPreview(){
   initial.hidden = !!vu.img; // l'initiale ne sert qu'aux produits sans photo
   initial.textContent = verrou ? '?' : L(item.n)[0];
   document.getElementById('previewName').textContent = verrou ? T('locked') : L(item.n);
-  descEl.textContent = verrou ? T('lockedHow') : L(item.d);
+  descEl.textContent = verrou ? T(item.verrouAide || 'lockedHow') : L(item.d);
   descEl.hidden = !item.d && !verrou;
   // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
   // Livraison, Versus) affichent tout, sans repli.
@@ -6124,8 +6259,12 @@ function fillPreview(){
     addBtn.hidden = false;
     /* Pièce verrouillée : le prix reste affiché — on doit savoir ce qu'on
        joue — mais le bouton mène au jeu, pas au panier, et le guide des
-       tailles attend que la pièce soit gagnée. */
-    addBtn.textContent = verrou ? T('lockedPlay') : T('add');
+       tailles attend que la pièce soit gagnée. Quand l'épreuve n'est PAS un
+       jeu (l'œuf de Pâques), le bouton n'a nulle part où mener : il s'éteint
+       plutôt que de promettre une action qui n'existe pas. */
+    const jeuIci = verrou ? jeuDuVerrou(item) : null;
+    addBtn.textContent = verrou ? (jeuIci ? T('lockedPlay') : T('lockedWait')) : T('add');
+    addBtn.disabled = !!(verrou && !jeuIci);
     infoBtn.hidden = !item.sz || verrou;
     infoBtn.textContent = T('moreInfo');
     // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
@@ -6279,7 +6418,7 @@ addBtn.addEventListener('click', ()=>{
   if (cat.kind !== 'shop') return;
   // Pièce verrouillée : le bouton mène au jeu qui la débloque, pas au panier
   const cible = cat.items[activeItem];
-  if (verrouille(cible)){ if (cible.verrou === 'jumper') jumper.open(); return; }
+  if (verrouille(cible)){ if (jeuDuVerrou(cible) === 'jumper') jumper.open(); return; }
   // l'ajout passe par le choix d'une taille : le clic (ou un toucher, sans
   // survol) ouvre le sélecteur et le garde ouvert jusqu'à un choix
   openSizePicker(true);
