@@ -4554,6 +4554,11 @@ const model3d = (() => {
   const PLANCHE_Y = { haut: 0.525, bas: -0.525 }; // ce que l'atlas couvre en hauteur
   const PS1_W = 128, PS1_H = 64;        // l'atlas, et tout ce que le site publie de ce visage
   const ARGILE = [196, 158, 138];       // sans atlas : une argile chaude, le modèle reste présentable
+  /* Rayon horizontal en dessous duquel un sommet est considéré POSÉ SUR L'AXE,
+     donc sans angle (voir buildTete). Le partage est net sur ce maillage : les
+     trois sommets concernés sont à 0,023, 0,024 et 0,034 de l'axe, le suivant
+     à 0,173 — n'importe quelle valeur entre les deux convient. */
+  const RAYON_POLE = 0.10;
   const uDe = th => 0.5 + th / (2 * Math.PI);
   const vDe = y => (PLANCHE_Y.haut - y) / (PLANCHE_Y.haut - PLANCHE_Y.bas);
 
@@ -4576,14 +4581,32 @@ const model3d = (() => {
          écrasée sur une facette. Les u qui dépassent alors [0,1] sont rabattus
          par le GPU sur le bord, et les deux bords de l'atlas sont le MÊME point
          de la nuque : la couture ne se voit pas. */
+      /* Et les sommets POSÉS SUR L'AXE n'ont pas d'angle du tout. Il y en a
+         trois : le sommet du crâne, le dessous du menton et le bas du cou, tous
+         à moins de quatre centièmes de l'axe — c'est le point singulier de
+         toute carte équirectangulaire, celui où les méridiens se rejoignent.
+         `atan2` y répond quand même, et sa réponse ne veut rien dire : le
+         sommet du crâne est à z = −0,024, donc à π, c'est-à-dire tout au bord
+         de l'atlas, dans la nuque. Chacune des huit facettes de la calotte
+         s'étirait ainsi de son propre angle jusqu'à la nuque ; la pire, celle
+         de devant-gauche, balayait 4,05 radians — plus d'un demi-tour de tête
+         écrasé sur une facette, d'où sa texture étrange. Un sommet sur l'axe
+         prend donc l'angle MOYEN des deux autres, ce qui rend chaque facette
+         compacte et, les deux moitiés de l'atlas étant symétriques en haut,
+         rend la calotte gauche exactement le miroir de la droite. */
+      const rayon = v => Math.hypot(v[0], v[2]);
       let ref = null;
-      const uv = p.map(v => {
-        let th = Math.atan2(v[0], v[2]);
-        if (ref === null) ref = th;
-        else { while (th - ref >  Math.PI) th -= 2 * Math.PI;
-               while (th - ref < -Math.PI) th += 2 * Math.PI; }
-        return [uDe(th), vDe(v[1])];
+      const th = p.map(v => {
+        if (rayon(v) < RAYON_POLE) return null;
+        let t = Math.atan2(v[0], v[2]);
+        if (ref === null) ref = t;
+        else { while (t - ref >  Math.PI) t -= 2 * Math.PI;
+               while (t - ref < -Math.PI) t += 2 * Math.PI; }
+        return t;
       });
+      const bons = th.filter(t => t !== null);
+      const moyen = bons.length ? bons.reduce((s, t) => s + t, 0) / bons.length : 0;
+      const uv = p.map((v, i) => [uDe(th[i] === null ? moyen : th[i]), vDe(v[1])]);
       faces.push({ p, uv });
     }
     const nV = faces.length * 3;
