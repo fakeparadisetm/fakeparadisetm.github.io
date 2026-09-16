@@ -768,15 +768,19 @@
   .slide-edge::before{
     content:'';
     position:absolute;
-    /* elle DÉBORDE vers l'intérieur : la bande sensible fait 16 % de large, la
-       lueur en fait la moitié de plus — soit les 24 % qu'elle a toujours eus. */
-    top:calc(-1 * var(--pad));bottom:0;left:0;right:-50%;
+    /* la PEINTURE repart de l'arête du panneau et court jusqu'au bord intérieur
+       de la bande : elle garde donc sa largeur d'avant, alors que le geste,
+       lui, ne commence qu'à l'image. */
+    top:calc(-1 * var(--pad));bottom:0;left:calc(-1 * var(--pad));right:0;
     background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
     pointer-events:none;
   }
   .preview.gallery .slide-edge::before{bottom:calc(-1 * var(--pad));}
-  .slide-edge.prev{left:0;}
-  .slide-edge.next{right:0;transform:scaleX(-1);}
+  /* La bande commence au bord de L'IMAGE, pas du panneau : la marge qui les
+     sépare n'est pas la galerie, et s'y arrêter allumait la lueur avant d'y
+     être. La peinture, elle, repart de l'arête (voir ::before). */
+  .slide-edge.prev{left:var(--pad);}
+  .slide-edge.next{right:var(--pad);transform:scaleX(-1);}
   .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
   /* Fiche au repos : seule la galerie est visible. C'est la sélection de
      l'article — un clic sur la miniature ou Entrée — qui déplie le reste.
