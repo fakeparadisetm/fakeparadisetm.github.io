@@ -6411,6 +6411,71 @@ const model3d = (() => {
     return v;
   }
 
+  /* ---- effiler : le vêtement se resserre SOUS LES EMMANCHURES ----
+     `serre` rétrécit le vêtement entier, et sa limite est l'épaule : le polo
+     ne supporte pas mieux que 0,86. Or ce n'est pas l'épaule qui est trop
+     large, c'est le BAS : la ligne d'épaule d'un t-shirt fait 0,25 contre 0,21
+     de trapèze (un sixième de marge, juste), mais son ourlet fait 0,32 contre
+     0,14 de taille — plus du double. Les deux moitiés du vêtement n'ont pas le
+     même défaut, un seul facteur ne peut pas les corriger ensemble.
+
+     On resserre donc SEULEMENT ce qui est sous les emmanchures. La frontière
+     n'est pas écrite à la main : on relève la largeur rangée par rangée, la
+     rangée la plus large est la pointe des manches, et l'emmanchure est la
+     première rangée en dessous qui retombe à la largeur du corps (celle du
+     quart inférieur, à un huitième près). De là, la largeur fond en lissage
+     doux sur un huitième de la hauteur, sans cassure visible.
+
+     DÉFORMER, ICI, N'EST PAS CE QU'ON AVAIT REFUSÉ. Les essais écartés
+     tordaient la manche pour rejoindre le bras et faisaient des aiguilles à
+     l'emmanchure ; ici les manches ne bougent pas d'un pixel, et sous elles la
+     largeur est multipliée par un nombre qui ne dépend que de la hauteur —
+     une mise à l'échelle, pas un gauchissement.
+
+     Le maillage effilé se dessine dans la boîte du maillage D'ORIGINE : c'est
+     ce qui laisse l'épaule où elle est. Le mesurer à nouveau ferait regonfler
+     le vêtement pour rendre à l'ourlet sa largeur d'avant. */
+  const effiles = new Map();
+  function effiler(item, serre, cle0){
+    if (!serre || serre > 0.999) return null;
+    const src = keyOf(item), cle = src + '|eff:' + cle0;
+    if (effiles.has(cle)) return effiles.get(cle);
+    const a = ready.get(src);
+    if (!a) return null;                       // pas encore mesurable : l'original fera l'affaire
+    const m = a.mesh, P = m.__P || (m.__P = projeter(m)), nV = m.verts;
+    const NB = 128, NR = 40, pas = (P.x1 - P.x0) / NB || 1, dents = new Uint8Array(NB);
+    const larg = new Float64Array(NR);
+    for (let r = 0; r < NR; r++){
+      peigner(P, m, P.y0 + (P.y1 - P.y0) * (r + 0.5) / NR, dents, P.x0, pas);
+      const t = travee(dents, NB >> 1);
+      larg[r] = t ? (t[3] + 1 - t[2]) * pas : 0;   // l'étendue TOTALE, manches comprises
+    }
+    const bas = Array.from(larg.slice(NR - NR / 4)).filter(v => v > 0).sort((u, v) => u - v);
+    if (!bas.length){ effiles.set(cle, null); return null; }
+    const corps = bas[bas.length >> 1];
+    let rMax = 0;
+    for (let r = 0; r < NR; r++) if (larg[r] > larg[rMax]) rMax = r;
+    let rBras = rMax;
+    while (rBras < NR - 1 && larg[rBras] > corps * 1.125) rBras++;
+    const t0 = (rBras + 0.5) / NR, t1 = Math.min(1, t0 + 0.125);
+    const d = new Float32Array(m.data);
+    let xmin = 9, xmax = -9;
+    for (let i = 0; i < nV; i++){ const x = d[i*STRIDE]; if (x < xmin) xmin = x; if (x > xmax) xmax = x; }
+    const cx = (xmin + xmax) / 2, dy = (P.y1 - P.y0) || 1;
+    for (let i = 0; i < nV; i++){
+      const u = Math.max(0, Math.min(1, ((P.fy[i] - P.y0) / dy - t0) / (t1 - t0)));
+      const k = 1 - (1 - serre) * u * u * (3 - 2 * u);
+      const x = cx + (d[i*STRIDE] - cx) * k;
+      d[i*STRIDE] = x; d[(nV+i)*STRIDE] = x;     // le dos partage les positions de la face
+    }
+    const mesh = Object.assign({}, m, { data: d });
+    delete mesh.__P;                             // la projection d'avant ne vaut plus
+    const proxy = { ajuste: cle };
+    ready.set(cle, Object.assign({}, a, { mesh }));
+    effiles.set(cle, proxy);
+    return proxy;
+  }
+
   /* ---- l'encolure, découpée dans le MASQUE ----
      Une photo de vêtement n'a pas de trou au col : l'encolure y est du tissu,
      côtes rabattues et col imprimé, pas du fond. Il n'y a donc rien à y
@@ -6550,6 +6615,7 @@ const model3d = (() => {
       poseJambes,                             // de combien serrer les jambes pour entrer dans ce pantalon
       empreintePieds,                         // l'écart des deux pieds, jambes tournées : la paire s'y cale
       encolure,                               // une copie du vêtement, col ouvert sur le cou
+      effiler,                                // une copie resserrée sous les emmanchures
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
@@ -9514,13 +9580,13 @@ const dressup = (() => {
        à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, serre: 0.86, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
+    tee:      { ourlet: 0.32, serre: 0.86, effile: 0.78, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
     /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.26, serre: 0.86, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ceinture: 0.19, y0: 0.492, y1: 0.935 },  // la ceinture sur les hanches (0,170 de large), l'ourlet aux chevilles
+    sweat:    { ourlet: 0.26, serre: 0.86, effile: 0.82, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
+    pantalon: { ceinture: 0.19, y0: 0.465, y1: 0.935 },  // la ceinture sur la crête des hanches (le corps s'y échancre dès 0,483)
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -9812,7 +9878,10 @@ const dressup = (() => {
         const modele = scene.encolure(vetu, corps, b0, p.coupe) || vetu;
         const b = cadrer(modele, A, corps.jambes) || b0;
         scene.plan();
-        scene.draw(modele, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
+        /* Le maillage effilé se dessine dans la boîte du maillage d'ORIGINE :
+           c'est ce qui laisse l'épaule où elle est (voir `effiler`). */
+        scene.draw(scene.effiler(modele, A.effile, p.coupe) || modele, 0,
+                   { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1);
       });
     /* LE COL PASSE DEVANT LE COU, et c'est le vêtement lui-même qui le fait.
        On redessinait la tête et le cou par-dessus la capuche, dans une tranche
