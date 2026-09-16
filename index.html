@@ -5239,20 +5239,33 @@ const model3d = (() => {
      que la caméra regarde. On retire donc une demi-hauteur, et on garde à
      part les coordonnées d'origine (0 en bas, 1 en haut) pour lire le visage :
      ses repères sont plus parlants ainsi. */
-  /* `bras` et `jambes` : de combien on BAISSE les bras et on RESSERRE les
-     jambes, en radians. Le mannequin sort du fichier bras écartés à quarante
-     degrés de la verticale ; les manches d'un sweat, elles, tombent à vingt.
-     Plutôt que de tordre le vêtement pour qu'il rejoigne le membre, on amène
-     le membre au vêtement — c'est la seule des deux pièces qui ait un
-     squelette. L'angle n'est pas écrit à la main : il se mesure sur la
-     silhouette du vêtement : l'angle est donné par sa coupe, dans ANCRAGES.
-     La rotation se fait dans le plan face-caméra, autour de l'articulation,
-     dosée par la part du membre dans chaque sommet. */
-  function buildMannequin(hauteur, bras, jambes){
+  /* `bras` et `jambes` : de combien on tourne les membres, en radians ;
+     `allonge` : de combien on RALLONGE le bras, sans l'épaissir. Le mannequin
+     sort du fichier bras écartés à quarante degrés de la verticale, et les
+     manches d'un vêtement tombent où elles veulent. Plutôt que de tordre
+     l'étoffe pour qu'elle rejoigne le membre, on amène le membre à l'étoffe —
+     c'est la seule des deux pièces qui ait un squelette. L'angle vise le milieu
+     de l'ouverture, la longueur fait ressortir la main au bout (voir `viser`).
+     Tout se mesure : rien n'est écrit à la main.
+     La rotation se fait dans le plan face-caméra, autour de l'articulation ;
+     l'allongement se fait le long du bras SEULEMENT, pour que la main avance
+     sans grossir. Les deux sont dosés par la part du membre dans chaque
+     sommet. */
+  function buildMannequin(hauteur, bras, jambes, allonge){
     const membres = [[bras || 0, MANNEQUIN_BRAS, EPAULE], [jambes || 0, MANNEQUIN_JAMBES, HANCHE]]
       .filter(m => m[0]).map(m => [Math.cos(m[0]), Math.sin(m[0]), m[1], m[2]]);
+    const etire = allonge > 1.001 ? allonge : 0, dir = BRAS_REPOS.dir;
     const som = i => {
       let x = MANNEQUIN_XYZ[i*3], y = MANNEQUIN_XYZ[i*3+1];
+      if (etire){
+        const a = MANNEQUIN_BRAS[i] / 100;
+        if (a){
+          const cote = x < 0 ? -1 : 1, dx = x - cote * EPAULE.x, dy = y - EPAULE.y;
+          const le = dx * dir[0] * cote + dy * dir[1];       // part le long du bras
+          x += cote * dir[0] * le * (etire - 1) * a;
+          y += dir[1] * le * (etire - 1) * a;
+        }
+      }
       for (const [c, s, poids, art] of membres){
         const a = poids[i] / 100;
         if (!a) continue;
@@ -5555,9 +5568,9 @@ const model3d = (() => {
      sous une clé à part, il ne dépend que de la hauteur. */
   function prepareMannequin(item, key){
     const p = (item.visage ? loadPhoto(item.visage) : Promise.resolve(null)).then(img => {
-      const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0);
+      const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1);
       let mesh = meshes.get(cle);
-      if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0); meshes.set(cle, mesh); }
+      if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1); meshes.set(cle, mesh); }
       const tex = atlasMannequin(img);
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
@@ -6145,24 +6158,45 @@ const model3d = (() => {
     return [((M[0]*x + M[4]*y + M[8]*z + M[12]) / w + 1) / 2,
             (1 - (M[1]*x + M[5]*y + M[9]*z + M[13]) / w) / 2];
   }
-  // l'épaule et la main du mannequin au repos, dans la boîte : le bras est le
-  // segment qui les joint, et c'est lui qu'on fera tourner
+  /* Le bras au repos : son épaule, sa direction, sa longueur. La main est prise
+     comme le quart des sommets du bras les plus éloignés de l'épaule ; c'est
+     elle qui devra ressortir au bout de la manche. La direction est relevée
+     dans le repère du maillage, la longueur dans celui de la boîte : l'une sert
+     à déformer, l'autre à comparer avec le vêtement. */
   const BRAS_REPOS = (() => {
     const ep = pointBoite(EPAULE.x, EPAULE.y - 0.5, 0);
     const pris = [];
     for (let i = 0; i < MANNEQUIN_BRAS.length; i++){
       if (MANNEQUIN_BRAS[i] < 85 || MANNEQUIN_XYZ[i*3] < 0) continue;
       const p = pointBoite(MANNEQUIN_XYZ[i*3], MANNEQUIN_XYZ[i*3+1] - 0.5, MANNEQUIN_XYZ[i*3+2]);
-      pris.push([Math.hypot(p[0] - ep[0], p[1] - ep[1]), p]);
+      pris.push([Math.hypot(p[0] - ep[0], p[1] - ep[1]), p, i]);
     }
     pris.sort((a, b) => b[0] - a[0]);
     const loin = pris.slice(0, Math.max(1, Math.round(pris.length / 4)));
-    const mx = loin.reduce((s, p) => s + p[1][0], 0) / loin.length;
-    const my = loin.reduce((s, p) => s + p[1][1], 0) / loin.length;
-    return { ep, angle: Math.atan2(mx - ep[0], my - ep[1]) };   // 0 = bras le long du corps
+    const moy = (f) => loin.reduce((s, p) => s + f(p), 0) / loin.length;
+    const mx = moy(p => p[1][0]), my = moy(p => p[1][1]);
+    // la même main, dans le repère du maillage : donne la direction du bras
+    const gx = moy(p => MANNEQUIN_XYZ[p[2]*3]) - EPAULE.x, gy = moy(p => MANNEQUIN_XYZ[p[2]*3+1]) - EPAULE.y;
+    const n = Math.hypot(gx, gy) || 1;
+    return { ep, angle: Math.atan2(mx - ep[0], my - ep[1]),   // 0 = bras le long du corps
+             long: Math.hypot(mx - ep[0], my - ep[1]), dir: [gx / n, gy / n] };
   })();
-  // de combien baisser les bras pour que le mannequin entre dans cette manche
-  const poseBras = (item, boite) => { const v = viser(item, boite); return v == null ? 0 : BRAS_REPOS.angle - v; };
+  // de combien la main doit dépasser le bout de la manche : une demi-main,
+  // assez pour qu'on la voie sortir, trop peu pour qu'elle ait l'air arrachée
+  const MAIN_DEHORS = 0.045;
+  /* Ce que le vêtement demande au bras : un ANGLE, pour viser le milieu de
+     l'ouverture, et une LONGUEUR, pour que la main ressorte au bout de la
+     manche. L'angle ne peut rien contre une manche plus longue que le bras —
+     c'est une distance, pas une direction — alors on allonge le bras dans sa
+     manche. Il y est invisible : seule la main en sort, et c'est tout l'effet
+     recherché. On n'allonge JAMAIS vers le bas : une manche courte doit laisser
+     le bras là où il est, pas le raccourcir. */
+  const poseBras = (item, boite) => {
+    const v = viser(item, boite);
+    if (!v) return { bras: 0, allonge: 1 };
+    return { bras: BRAS_REPOS.angle - v.angle,
+             allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long) };
+  };
   const vises = new Map();
   function viser(item, boite){
     const cle = keyOf(item) + '|' + boite.x.toFixed(3) + ',' + boite.y.toFixed(3) + ',' + boite.l.toFixed(3) + ',' + boite.h.toFixed(3);
@@ -6192,7 +6226,8 @@ const model3d = (() => {
     const BANDE = 0.05;
     let b0 = 9, b1 = -9;
     for (let i = 0; i < n; i++) if (X[i] >= xmax - BANDE){ if (Y[i] < b0) b0 = Y[i]; if (Y[i] > b1) b1 = Y[i]; }
-    const v = Math.atan2(xmax - BANDE / 2 - ep[0], (b0 + b1) / 2 - ep[1]);
+    const cx = xmax - BANDE / 2, cy = (b0 + b1) / 2;
+    const v = { angle: Math.atan2(cx - ep[0], cy - ep[1]), dist: Math.hypot(cx - ep[0], cy - ep[1]) };
     vises.set(cle, v);
     return v;
   }
@@ -9336,8 +9371,7 @@ const dressup = (() => {
                l, h: A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0) };
     };
     const haut = portees.get('haut'), bh = haut && boiteDe(haut);
-    const corps = Object.assign({}, mannequin, {
-      bras: bh ? scene.poseBras(haut.porte || haut.it, bh) : 0 });
+    const corps = Object.assign({}, mannequin, bh ? scene.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1 });
     if (!scene.ready(corps)) scene.load(corps);
     scene.draw(corps, ang, cadre, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
