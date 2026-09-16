@@ -603,6 +603,19 @@
    },
    "items": [
     {
+     "n": "MAN LEGEND TEE",
+     "p": 25,
+     "d": {
+      "en": "280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print",
+      "fr": "280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée"
+     },
+     "sz": "tee",
+     "publie": false,
+     "img": "products/man-legend-tee.jpg",
+     "img2": "products/man-legend-tee-2.jpg",
+     "v": 1789591113116
+    },
+    {
      "n": "AMBIANCE 2000 POLO",
      "p": 25,
      "d": {
@@ -666,8 +679,9 @@
       "fr": "280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nCrâne pailleté imprimé sur le devant\nImpression au col personnalisée"
      },
      "img": "products/silk-road-tee.jpg",
+     "sz": "tee",
      "img2": "products/silk-road-tee-2.jpg",
-     "sz": "tee"
+     "v": 1789591113116
     },
     {
      "n": "HEAVEN'S GATE TEE",
@@ -692,17 +706,6 @@
      "sz": "tee"
     },
     {
-     "n": "N.W.O TEE",
-     "p": 25,
-     "d": {
-      "en": "280 GSM (100% cotton)\nBoxy fit\nBlack\nCustom neck print",
-      "fr": "280 g/m² (100 % coton)\nCoupe boxy\nNoir\nImpression au col personnalisée"
-     },
-     "img": "products/nwo-tee.jpg",
-     "img2": "products/nwo-tee-2.jpg",
-     "sz": "tee"
-    },
-    {
      "n": "I'M SO WOKE TEE",
      "p": 25,
      "d": {
@@ -723,17 +726,6 @@
      "img": "products/stripper-raglan-tee.jpg",
      "img2": "products/stripper-raglan-tee-2.jpg",
      "sz": "raglan"
-    },
-    {
-     "n": "I <3 DUBSTEP TANK TOP",
-     "p": 20,
-     "d": {
-      "en": "380 GSM (100% cotton)\nBoxy fit\nLight beige\nCustom neck print",
-      "fr": "380 g/m² (100 % coton)\nCoupe boxy\nBeige clair\nImpression au col personnalisée"
-     },
-     "img": "products/i-3-dubstep-tank-top.jpg",
-     "img2": "products/i-3-dubstep-tank-top-2.jpg",
-     "sz": "tank"
     },
     {
      "n": "COCO&RICO MERCH TEE",
