@@ -2906,15 +2906,11 @@ const DATA = [
     /* Une tête low poly qui tourne sur elle-même : le modèle de `3Dmodels/`,
        figé dans le module (voir TETE_XYZ), et pour texture la photo de
        `pictures/`, convertie en WebP dans `icons/`.
-       `visage` : une photo de face, DÉTOURÉE et recadrée sur le visage seul,
-       de la racine des cheveux au menton. Elle est étirée pour remplir
-       exactement la face avant du modèle — sa boîte opaque est mesurée toute
-       seule, il n'y a donc rien à régler. Le reste du crâne prend des aplats
-       déduits d'elle : cheveux en haut, peau des tempes sur les côtés, nuque
-       plus sombre (voir atlasTete).
-       `cheveux` : [r,v,b] pour imposer la couleur des cheveux si celle que la
-       photo donne ne convient pas. Sans photo, la tête reste en argile. */
-    panel:{ n:"FakeParadise™", tete:true, visage:"icons/visage.webp", seule3D:true,
+       `planche` : la texture de la tête, une carte CYLINDRIQUE — cheveux en
+       haut, visage au milieu, une oreille de chaque côté, cou en bas. Le
+       dépliage la lit telle quelle (voir PLANCHE) : rien à régler, rien à
+       déduire. Sans elle, la tête reste en argile. */
+    panel:{ n:"FakeParadise™", tete:true, planche:"icons/tete-texture.webp", seule3D:true,
       d:{en:"[À écrire] Who we are, where the clothes come from, how to reach us.",
          fr:"[À écrire] Qui nous sommes, d'où viennent les vêtements, comment nous joindre."} } },
 ];
@@ -4431,56 +4427,57 @@ const model3d = (() => {
   ];
   const HAUTEUR_TETE = 1.05;  // le modèle occupe le cadre comme un vêtement
 
-  /* ---- comment une console de 1995 texturait une tête ----
-     Une seule image, minuscule : 64 pixels de côté pour une tête (128 pour un
-     corps). Le VISAGE y prend presque toute la place, à plat, vu de face ; tout
-     le reste — crâne, tempes, nuque, cou — est peint en aplats, et l'ombrage
-     est peint DEDANS puisque la machine n'en calculait pas. C'est ce qu'on
-     reproduit ici, avec la photo pour visage et des aplats déduits d'elle.
+  /* ---- la texture, et le dépliage qui va la chercher ----
+     L'utilisateur a fourni trois images avant celle-ci ; c'est la dernière qui
+     a tout débloqué, et il vaut la peine de dire pourquoi. Les deux premières
+     étaient un visage seul, puis une planche à îlots séparés dont les UV ne
+     correspondaient PAS à ceux du FBX (vérifié : aucune des quatre
+     orientations ne les fait coïncider). Il fallait donc projeter la photo
+     droit devant et peindre le reste du crâne en aplats déduits des bords.
+     La troisième est une planche COUSUE, sans blanc entre les morceaux, et
+     elle se lit comme une carte CYLINDRIQUE de la tête : les cheveux en haut,
+     le visage au milieu, une oreille de chaque côté, le cou en bas. Là-dessus,
+     plus rien à déduire — un tour de tête pour u, une hauteur pour v, et tout
+     tombe en place : les oreilles sur les côtés, la chevelure sur le crâne et
+     la nuque, la peau où il faut.
 
-     Deux zones dans l'atlas :
-       — les quatre premières RANGÉES sont une palette, une couleur par bande
-         de hauteur, sur deux lignes (les flancs, puis la nuque, plus sombre) ;
-       — tout le reste est une PROJECTION DROITE du modèle vu de face, où la
-         photo est étirée pour remplir exactement la boîte du visage.
-     Une face qui regarde le spectateur lit la projection ; une face qui se
-     détourne lit la palette à sa hauteur — la photo, projetée sur une surface
-     qui fuit, s'y étirerait en traînées.
-
-     Le dépliage UV du modèle, lui, n'est PAS utilisé : il est EN MIROIR, les
-     deux moitiés du visage partageant le même îlot, parce qu'il a été fait pour
-     une texture peinte à la main où l'on ne peint qu'une moitié. Une photo
-     n'est pas symétrique : posée dessus, elle rendait deux joues gauches, deux
-     moustaches, un masque de tournoi. */
-  const ATLAS_W = 512, ATLAS_H = 512;   // atlas de travail : au large, pour que la projection ne crénèle pas
-  const PS1_W = 64, PS1_H = 64;         // ce qui part au GPU : la définition d'une tête de 1995
-  const RESERVE = 4;                    // rangées de palette, en texels de la petite image
-  // fenêtre du modèle couverte par la projection, un peu plus large que le crâne
-  const CADRE_3D = { x: 0.300, y0: -0.560, y1: 0.580 };
-  /* Où le VISAGE tombe sur le modèle : demi-largeur, racine des cheveux, bas du
-     menton. La photo — un visage détouré — est étirée pour remplir exactement
-     cette boîte, en x comme en y, chacun de son côté : c'est le seul moyen de
-     garantir qu'elle couvre toute la face avant quel que soit son cadrage.
-     La racine des cheveux est au quart de la hauteur de tête sous le sommet,
-     comme sur un crâne. */
-  const VISAGE = { x: 0.250, y0: -0.290, y1: 0.320 };
-  /* Où s'arrêtent les cheveux, selon le côté regardé. Ils descendent bien plus
-     bas derrière que devant : sur le front ils s'arrêtent à la racine, sur les
-     tempes ils passent l'oreille, et derrière ils couvrent tout le crâne
-     jusqu'à sa base. Sans cette distinction la nuque sortait couleur peau, et
-     une bande claire traversait l'arrière de la tête à hauteur de mâchoire. */
-  const CHEVEUX_Y = { avant: 0.320, cote: 0.020, dos: -0.330 };
-  const SOMBRE_COTE = 0.86, SOMBRE_DOS = 0.62;   // l'ombrage, peint dans la texture faute d'être calculé
-  // bande de palette d'une hauteur donnée, et les UV qui vont la chercher
-  const bandeDe = y => Math.max(0, Math.min(PS1_W - 1,
-    Math.round((CADRE_3D.y1 - y) / (CADRE_3D.y1 - CADRE_3D.y0) * (PS1_W - 1))));
-  const uvPalette = (y, dos) => [(bandeDe(y) + 0.5) / PS1_W, ((dos ? 2 : 0) + 0.5) / PS1_H];
-  // UV d'un point du modèle par projection droite ; v évite les rangées de palette
-  const uvProj = (x, y) => {
-    const h = RESERVE / PS1_H;
-    return [0.5 + x / (2 * CADRE_3D.x),
-            h + (1 - h) * (CADRE_3D.y1 - y) / (CADRE_3D.y1 - CADRE_3D.y0)];
+     Deux repères suffisent à caler la verticale, et ils se lisent sur la
+     planche : la RACINE DES CHEVEUX (v ≈ 0,22, à poser au quart de la hauteur
+     de tête sous le sommet) et le BAS DU MENTON (v ≈ 0,76). Calée sur la ligne
+     des yeux à la place, la chevelure se réduisait à un liseré et le front
+     mangeait la moitié du crâne. Pour l'horizontale, les
+     oreilles ne sont pas au quart et aux trois quarts mais à un dixième et
+     neuf dixièmes : la planche ne fait donc pas le tour complet, elle couvre
+     environ ±110°, et ce qui manque derrière est repris par le bord — qui est
+     précisément de la chevelure sombre. */
+  const PLANCHE = {
+    thMax: 1.92,                        // demi-tour couvert par la planche, en radians (≈110°)
+    yHaut: 0.525, yBas: -0.525,         // du sommet du crâne à la base du cou, sur le modèle
+    vHaut: 0.040, vBas: 0.968,          // les hauteurs correspondantes sur la planche
   };
+  const ATLAS_W = 512, ATLAS_H = 512;
+  const PS1_W = 128, PS1_H = 128;       // ce qui part au GPU. Une tête de 1995 tenait dans 64 ; ici la
+                                        // planche doit couvrir TOUT le crâne, d'où le cran au-dessus
+  const vDe = y => PLANCHE.vHaut + (PLANCHE.yHaut - y) / (PLANCHE.yHaut - PLANCHE.yBas) * (PLANCHE.vBas - PLANCHE.vHaut);
+  const uDe = th => 0.5 + th / (2 * PLANCHE.thMax);
+  /* L'ARRIÈRE du crâne n'est pas sur la planche : elle s'arrête un peu derrière
+     les oreilles, et le GPU y rabat les u sur le bord. Or ce bord, à hauteur
+     d'oreille, est de la PEAU (le cou et la mâchoire s'étalent jusque-là) — la
+     nuque sortait donc couleur chair. On force donc, pour ce qui regarde
+     derrière, la hauteur de lecture dans la BANDE DE CHEVEUX du haut de la
+     planche : le crâne y devient de la chevelure du sommet jusqu'à la nuque,
+     puis redescend vers le cou. C'est ce que fait une vraie tête. */
+  const Y_NUQUE = -0.250, V_CHEV = [0.035, 0.200];
+  const vNuque = y => {
+    const t = Math.max(0, Math.min(1, (PLANCHE.yHaut - y) / (PLANCHE.yHaut - Y_NUQUE)));
+    const vh = V_CHEV[0] + t * (V_CHEV[1] - V_CHEV[0]);
+    if (y >= Y_NUQUE) return vh;
+    const s = Math.max(0, Math.min(1, (Y_NUQUE - y) / 0.20));
+    return vh + (vDe(y) - vh) * s;
+  };
+  // part de l'arrière dans la lecture : nulle de face, entière passé les oreilles
+  const partDos = th => { const a = Math.abs(th);
+    return Math.max(0, Math.min(1, (a - 1.31) / (2.01 - 1.31))); };
 
   /* Maillage à facettes plates : une normale par TRIANGLE, sommets non
      partagés. C'est la lumière, pas la géométrie, qui fait voir le low poly une
@@ -4491,43 +4488,46 @@ const model3d = (() => {
     const som = i => [TETE_XYZ[i*3], TETE_XYZ[i*3+1], TETE_XYZ[i*3+2]];
     /* Le maillage sort du modèle avec un enroulement déjà sortant (volume signé
        positif, vérifié à la conversion) : on n'y touche pas. Ses UV, en
-       revanche, sont refaites. */
+       revanche, sont refaites — celles du FBX sont EN MIROIR, les deux moitiés
+       du visage partageant le même îlot, ce qui collait deux joues gauches et
+       deux moustaches, un masque de tournoi. */
     for (let k = 0; k < TETE_TRI.length; k += 6){
       const p = [som(TETE_TRI[k]), som(TETE_TRI[k+2]), som(TETE_TRI[k+4])];
-      const ux = p[1][0]-p[0][0], uy = p[1][1]-p[0][1], uz = p[1][2]-p[0][2];
-      const wx = p[2][0]-p[0][0], wy = p[2][1]-p[0][1], wz = p[2][2]-p[0][2];
-      const nz = ux*wy - uy*wx, l = Math.hypot(uy*wz-uz*wy, uz*wx-ux*wz, nz) || 1;
-      const c = nz / l;
-      let uv;
-      if (c > 0.12) uv = p.map(v => uvProj(v[0], v[1]));          // regarde le spectateur : la projection
-      else {
-        /* Se détourne : l'aplat de sa hauteur, pris PAR SOMMET et non par face.
-           Le modèle n'a que soixante triangles : un flanc entier tient en cinq
-           ou six faces, et une couleur par face donnait un côté de crâne tout
-           noir jusqu'à la mâchoire. Par sommet, le triangle interpole entre
-           deux bandes et la chevelure descend en dégradé sur la peau — ce que
-           faisait de toute façon l'ombrage peint de l'époque. */
-        // le partage se fait tôt (−0,15 et non −0,45) : dès qu'une face n'est plus
-        // franchement de profil, elle est derrière l'oreille, donc couverte de
-        // cheveux. Au seuil précédent, une bande de peau claire faisait le tour
-        // de l'arrière du crâne à hauteur de mâchoire.
-        const dos = c < -0.15;
-        uv = p.map(v => uvPalette(v[1], dos));
-      }
+      /* Les angles sont RECOLLÉS entre eux avant de devenir des u : un triangle
+         qui enjambe la nuque a ses trois sommets de part et d'autre de ±π, et
+         sans ce recollage son u balaierait la planche entière — toute la
+         texture écrasée sur une facette. Au-delà du bord, on laisse les u
+         sortir de [0,1] : c'est au GPU de les rabattre sur le bord (CLAMP), ce
+         qui prolonge la chevelure sombre sur l'arrière du crâne, là où la
+         planche s'arrête. */
+      let ref = null;
+      const uv = p.map(v => {
+        let th = Math.atan2(v[0], v[2]);
+        if (ref === null) ref = th;
+        else { while (th - ref >  Math.PI) th -= 2 * Math.PI;
+               while (th - ref < -Math.PI) th += 2 * Math.PI; }
+        const b = partDos(th), y = v[1];
+        return [uDe(th), vDe(y) + (vNuque(y) - vDe(y)) * b];
+      });
       faces.push({ p, uv });
     }
-    const ech = HAUTEUR_TETE / 1.05, cy = 0;
     const nV = faces.length * 3;
     const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
     let k = 0;
     for (const face of faces){
-      const q = face.p.map(p => [p[0] * ech, (p[1] - cy) * ech, p[2] * ech]);
+      const q = face.p.map(p => [p[0] * HAUTEUR_TETE / 1.05, p[1] * HAUTEUR_TETE / 1.05, p[2] * HAUTEUR_TETE / 1.05]);
       const ux = q[1][0]-q[0][0], uy = q[1][1]-q[0][1], uz = q[1][2]-q[0][2];
       const wx = q[2][0]-q[0][0], wy = q[2][1]-q[0][1], wz = q[2][2]-q[0][2];
       let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
       const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
       const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.max(nz, 0), 3);
-      const fac = 0.60 + 0.58 * dif, ajout = rim * 0.075;
+      /* L'écart de clarté entre facettes est revenu près de celui des vêtements
+         (0,74 + 0,32 là-bas). Il avait été poussé à 0,60 + 0,58 du temps où la
+         texture était un aplat sur les trois quarts du crâne, et où seule la
+         lumière faisait voir le facettage ; maintenant que la planche porte
+         tout, ce contraste ne servait plus qu'à fendre le visage en deux le
+         long de l'arête du nez. */
+      const fac = 0.72 + 0.36 * dif, ajout = rim * 0.075;
       for (let i = 0; i < 3; i++){
         const o = k * STRIDE;
         data[o] = q[i][0]; data[o+1] = q[i][1]; data[o+2] = q[i][2];
@@ -4541,107 +4541,34 @@ const model3d = (() => {
     return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
   }
 
-  function atlasTete(photo, cheveuxImpose){
-    const W = ATLAS_W, H = ATLAS_H;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const g = cv.getContext('2d');
-    const out = g.createImageData(W, H), o = out.data;
-    let pd = null, pw = 0, ph = 0, bb = null;
-    if (photo){
-      const p = document.createElement('canvas'); pw = p.width = photo.naturalWidth || photo.width; ph = p.height = photo.naturalHeight || photo.height;
-      const pg = p.getContext('2d', { willReadFrequently:true }); pg.drawImage(photo, 0, 0);
-      pd = pg.getImageData(0, 0, pw, ph).data;
-      // la boîte des pixels opaques : c'est ELLE qu'on étire sur la boîte du visage
-      let x0 = pw, y0 = ph, x1 = -1, y1 = -1;
-      for (let j = 0; j < ph; j++) for (let i = 0; i < pw; i++) if (pd[(j*pw+i)*4+3] > 128){
-        if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
-      if (x1 >= 0) bb = { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
-    }
-    /* Les couleurs déduites de la photo, une par rangée de la boîte : la moyenne
-       du pixel le plus à GAUCHE et du plus à DROITE du sujet. Au front on tombe
-       sur les tempes, aux joues sur la peau, au menton sur la mâchoire — c'est
-       exactement ce qu'il faut prolonger sur les côtés du crâne. */
-    const bordRang = new Array(bb ? bb.h : 0);
-    if (bb) for (let r = 0; r < bb.h; r++){
-      const j = bb.y0 + r; let G = null, D = null;
-      for (let i = bb.x0; i < bb.x0 + bb.w; i++){ const s = (j*pw+i)*4; if (pd[s+3] > 128){ G = s; break; } }
-      for (let i = bb.x0 + bb.w - 1; i >= bb.x0; i--){ const s = (j*pw+i)*4; if (pd[s+3] > 128){ D = s; break; } }
-      bordRang[r] = (G === null) ? null : [ (pd[G] + pd[D]) / 2, (pd[G+1] + pd[D+1]) / 2, (pd[G+2] + pd[D+2]) / 2 ];
-    }
-    /* Les CHEVEUX : la moyenne des BORDS gauche et droit du dixième supérieur
-       de la photo, un peu assombrie. Sur un visage détouré à la racine des
-       cheveux, c'est aux tempes — donc au bord — qu'il en reste ; le milieu de
-       cette bande, lui, est du front. Un quantile sombre pris sur toute la
-       largeur ne suffisait pas : le front est si large et si clair qu'il
-       emportait la moyenne (162,109,112, un rose, là où les bords donnent
-       101,72,93). L'assombrissement rend le dessus du crâne, qui ne reçoit pas
-       la lumière rasante des tempes. */
-    let cheveux = [64, 48, 40];
-    if (cheveuxImpose) cheveux = cheveuxImpose.slice();
-    else if (bb){
-      const n = Math.max(1, Math.round(bb.h * 0.10)), moy = [0, 0, 0];
-      let vus = 0;
-      for (let r = 0; r < n; r++) if (bordRang[r]){ for (let c = 0; c < 3; c++) moy[c] += bordRang[r][c]; vus++; }
-      if (vus) cheveux = moy.map(v => v / vus * 0.85);
-    }
-    const basPhoto = bb && bordRang[bb.h - 1] ? bordRang[bb.h - 1] : [190, 150, 132];
-    /* La couleur d'une hauteur du modèle, selon la face regardée : au-dessus de
-       la limite des cheveux, les cheveux ; en dessous, le bord de la photo à
-       cette hauteur ; sous le menton, le bas de la photo. */
-    const peauA = y => {
-      if (y >= VISAGE.y0 && bb){
-        const r = Math.round((VISAGE.y1 - y) / (VISAGE.y1 - VISAGE.y0) * (bb.h - 1));
-        const c = bordRang[Math.max(0, Math.min(bb.h - 1, r))];
-        if (c) return c;
+  /* L'atlas n'est plus qu'un passage en texture de console : la planche telle
+     quelle, réduite et quantifiée. Sans planche, une argile chaude — le modèle
+     reste présentable, seul le visage manque.
+     D'abord la RÉDUCTION, avec lissage, comme le faisait l'infographiste avant
+     de livrer sa planche : le gros texel carré viendra de l'agrandissement au
+     plus proche, à l'affichage. Ensuite la QUANTIFICATION en 15 bits, cinq par
+     voie, avec une trame ordonnée 4 × 4 — sans elle un dégradé de peau se casse
+     en larges bandes. À 45 % d'amplitude seulement : la console tramait en
+     SORTIE, un texel pour un pixel, alors qu'ici la texture est agrandie
+     plusieurs fois. */
+  const ARGILE = [196, 158, 138];
+  function atlasTete(planche){
+    const pc = document.createElement('canvas'); pc.width = PS1_W; pc.height = PS1_H;
+    const g = pc.getContext('2d', { willReadFrequently:true });
+    if (!planche){
+      for (let j = 0; j < PS1_H; j++){
+        const f = 1 - 0.22 * (j / PS1_H);
+        g.fillStyle = `rgb(${Math.round(ARGILE[0]*f)},${Math.round(ARGILE[1]*f)},${Math.round(ARGILE[2]*f)})`;
+        g.fillRect(0, j, PS1_W, 1);
       }
-      return basPhoto;
-    };
-    /* Le passage des cheveux à la peau se fait sur un DOIGT de hauteur et non
-       d'un texel à l'autre : le modèle n'ayant que soixante triangles, une
-       limite franche se lisait comme un ruban clair en travers du crâne. */
-    const teinte = (y, quoi) => {
-      const t = Math.max(0, Math.min(1, (CHEVEUX_Y[quoi] - y) / 0.14));
-      if (t <= 0) return cheveux;
-      const p = peauA(y);
-      return t >= 1 ? p : [0, 1, 2].map(c => cheveux[c] + (p[c] - cheveux[c]) * t);
-    };
-    const hRes = RESERVE / PS1_H, jRes = Math.round(hRes * H);
-    for (let j = jRes; j < H; j++){
-      const vy = (j + 0.5) / H;
-      const Y = CADRE_3D.y1 - (vy - hRes) / (1 - hRes) * (CADRE_3D.y1 - CADRE_3D.y0);
-      const dehors = teinte(Y, 'avant');
-      // rangée de la photo correspondant à cette hauteur, si on est dans le visage
-      const r = bb ? Math.round((VISAGE.y1 - Y) / (VISAGE.y1 - VISAGE.y0) * (bb.h - 1)) : -1;
-      const dansY = bb && r >= 0 && r < bb.h;
-      for (let i = 0; i < W; i++){
-        const t = (j*W + i)*4;
-        const X = ((i + 0.5) / W - 0.5) * 2 * CADRE_3D.x;
-        let c = dehors;
-        if (dansY && Math.abs(X) <= VISAGE.x){
-          const col = Math.round((X + VISAGE.x) / (2 * VISAGE.x) * (bb.w - 1));
-          const s = ((bb.y0 + r) * pw + bb.x0 + col) * 4;
-          if (pd[s+3] > 128) c = [pd[s], pd[s+1], pd[s+2]];
-        }
-        o[t] = c[0]; o[t+1] = c[1]; o[t+2] = c[2]; o[t+3] = 255;
-      }
+      pc.brut = true; return pc;
     }
-    g.putImageData(out, 0, 0);
-    /* ---- passage en texture de console ----
-       D'abord la RÉDUCTION, avec lissage, comme le faisait l'infographiste
-       avant de livrer sa planche — le gros texel carré viendra de
-       l'agrandissement au plus proche, à l'affichage. Ensuite la QUANTIFICATION
-       en 15 bits, cinq par voie, avec une trame ordonnée 4 × 4 : sans elle un
-       dégradé de peau se casse en larges bandes. À 45 % d'amplitude seulement —
-       la console tramait en SORTIE, un texel pour un pixel, alors qu'ici la
-       texture est agrandie plusieurs fois. */
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(planche, 0, 0, PS1_W, PS1_H);
     const CH = 32 / 256;
     const BAYER = [ 0, 8, 2,10, 12, 4,14, 6, 3,11, 1, 9, 15, 7,13, 5];
-    const pc = document.createElement('canvas'); pc.width = PS1_W; pc.height = PS1_H;
-    const pg2 = pc.getContext('2d', { willReadFrequently:true });
-    pg2.imageSmoothingEnabled = true; pg2.imageSmoothingQuality = 'high';
-    pg2.drawImage(cv, 0, 0, PS1_W, PS1_H);
-    const pix = pg2.getImageData(0, 0, PS1_W, PS1_H), q = pix.data;
-    for (let j = RESERVE; j < PS1_H; j++) for (let i = 0; i < PS1_W; i++){
+    const pix = g.getImageData(0, 0, PS1_W, PS1_H), q = pix.data;
+    for (let j = 0; j < PS1_H; j++) for (let i = 0; i < PS1_W; i++){
       const t = (j*PS1_W + i)*4, seuil = (BAYER[(j & 3)*4 + (i & 3)] / 16 - 0.5) * CH * 255 * 0.45;
       for (let ch = 0; ch < 3; ch++){
         const v = Math.max(0, Math.min(255, q[t+ch] + seuil));
@@ -4649,18 +4576,7 @@ const model3d = (() => {
       }
       q[t+3] = 255;
     }
-    /* La palette, posée en dernier : ni délavée par la réduction ni tramée.
-       Une colonne par bande de hauteur, deux lignes pour les flancs puis deux
-       pour la nuque, plus sombre. Rien n'est filtré, un texel suffit. */
-    for (let i = 0; i < PS1_W; i++){
-      const Y = CADRE_3D.y1 - i / (PS1_W - 1) * (CADRE_3D.y1 - CADRE_3D.y0);
-      for (let j = 0; j < RESERVE; j++){
-        const dos = j >= 2, c = teinte(Y, dos ? 'dos' : 'cote'), f = dos ? SOMBRE_DOS : SOMBRE_COTE;
-        const t = (j*PS1_W + i)*4;
-        q[t] = c[0]*f; q[t+1] = c[1]*f; q[t+2] = c[2]*f; q[t+3] = 255;
-      }
-    }
-    pg2.putImageData(pix, 0, 0);
+    g.putImageData(pix, 0, 0);
     pc.brut = true;        // texture() : aucun lissage, aucun rééchantillonnage
     return pc;
   }
@@ -4743,7 +4659,7 @@ const model3d = (() => {
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
-  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.visage || '') + '|' + (item.cheveux || 'auto')
+  const keyOf = item => item.tete ? 'tete|' + encodeURI(item.planche || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -4788,10 +4704,10 @@ const model3d = (() => {
      `visage`, ou si le fichier manque, atlasTete peint son argile — le modèle
      reste présentable, seul le visage manque. */
   function prepareTete(item, key){
-    const p = (item.visage ? loadPhoto(encodeURI(item.visage)) : Promise.resolve(null)).then(photo => {
+    const p = (item.planche ? loadPhoto(encodeURI(item.planche)) : Promise.resolve(null)).then(planche => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
-      const tex = atlasTete(photo, item.cheveux);
+      const tex = atlasTete(planche);
       const a = { mesh, texF: tex, texB: tex, tourne: true, ps1: true };  // ps1 : grille de sommets et placage affine (voir uPS1)
       ready.set(key, a);
       if (list) list.warm(a);
@@ -5010,7 +4926,7 @@ const model3d = (() => {
   const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
-  const debugAtlas = (visage, cheveux) => (visage ? loadPhoto(encodeURI(visage)) : Promise.resolve(null)).then(p => atlasTete(p, cheveux).toDataURL('image/png'));
+  const debugAtlas = planche => (planche ? loadPhoto(encodeURI(planche)) : Promise.resolve(null)).then(p => atlasTete(p).toDataURL('image/png'));
   const debugMask = url => loadImage(url).then(e => { const m = e.mask; let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return { url, coverage: Math.round(n / m.length * 1000) / 10 }; });
   const debugTexture = url => loadImage(url).then(e => e.canvas); // contrôle : texture étendue d'une photo
   const debugSnapshot = () => { draw(); return canvas.toDataURL('image/png'); }; // contrôle : image du rendu courant
