@@ -4892,7 +4892,12 @@ const model3d = (() => {
   //      selon la distance au contour ; face arrière symétrique ; la photo de
   //      face est projetée devant, la photo de dos derrière (en miroir), sa
   //      silhouette calée sur celle de face.
-  function buildMesh(mask, backMask, doux, prof){
+  /* `plat` : construire le DEVANT SEUL. Le salon regarde le personnage de face
+     et ne le tourne plus ; pour les pièces qui n'existent que là — le vestiaire
+     et les rendus portés — le dos n'est jamais vu, et le garder doublait le
+     maillage pour rien. La boutique, elle, fait tourner ses articles : eux
+     gardent leurs deux faces. */
+  function buildMesh(mask, backMask, doux, prof, plat){
     const N = MASK_N, dist = distances(mask);
     /* Carte de profondeur : on la ramène dans [0,1] sur les SEULS pixels du
        sujet. Les valeurs du fond n'ont aucun sens ici (une carte estimée en
@@ -4979,21 +4984,23 @@ const model3d = (() => {
     }
     const nV = vx.length; if (!nV || !tris.length) return null;
     // STRIDE flottants par sommet : position, uv, éclairage ; face avant (0..nV-1) puis arrière (z opposé)
-    const data = new Float32Array(nV*2*STRIDE), bw = back.x1-back.x0+1, bh = back.y1-back.y0+1;
+    const nT2 = plat ? nV : nV * 2;
+    const data = new Float32Array(nT2*STRIDE), bw = back.x1-back.x0+1, bh = back.y1-back.y0+1;
     for (let k = 0; k < nV; k++){
       const X = (vx[k]-cx)/S, Y = -(vy[k]-cy)/S, o = k*STRIDE, p = (nV+k)*STRIDE;
       const fx = (vu[k]-fb.x0) / fw, fy = (vv[k]-fb.y0) / fh; // position relative dans la silhouette de face
       data[o] = X; data[o+1] = Y; data[o+2] = vz[k]; data[o+3] = vu[k]/N; data[o+4] = vv[k]/N;
-      data[p] = X; data[p+1] = Y; data[p+2] = -vz[k]; data[p+3] = (back.x0 + bw - fx*bw)/N; data[p+4] = (back.y0 + fy*bh)/N;
+      if (!plat){ data[p] = X; data[p+1] = Y; data[p+2] = -vz[k]; data[p+3] = (back.x0 + bw - fx*bw)/N; data[p+4] = (back.y0 + fy*bh)/N; }
     }
     const front = [], backI = [];
     for (let t = 0; t < tris.length; t += 3){
       const a = tris[t], b = tris[t+1], c = tris[t+2];
       // orientation : en pixels image (y vers le bas), normale +z devant ⇔ produit vectoriel négatif
       const cr = (vx[b]-vx[a])*(vy[c]-vy[a]) - (vy[b]-vy[a])*(vx[c]-vx[a]);
-      if (cr < 0){ front.push(a, b, c); backI.push(nV+a, nV+c, nV+b); } else { front.push(a, c, b); backI.push(nV+a, nV+b, nV+c); }
+      if (cr < 0){ front.push(a, b, c); if (!plat) backI.push(nV+a, nV+c, nV+b); }
+      else { front.push(a, c, b); if (!plat) backI.push(nV+a, nV+b, nV+c); }
     }
-    const acc = new Float32Array(nV*2*3); // normales : moyenne des faces adjacentes
+    const acc = new Float32Array(nT2*3); // normales : moyenne des faces adjacentes
     const addN = list => { for (let t = 0; t < list.length; t += 3){ const A = list[t], B = list[t+1], C = list[t+2];
       const ax = data[A*STRIDE], ay = data[A*STRIDE+1], az = data[A*STRIDE+2];
       const ux = data[B*STRIDE]-ax, uy = data[B*STRIDE+1]-ay, uz = data[B*STRIDE+2]-az;
@@ -5005,7 +5012,7 @@ const model3d = (() => {
     // telle quelle devant et retournée derrière (comme si cette face nous
     // faisait face, donc les deux côtés sont éclairés pareil). Deux nombres
     // suffisent au nuanceur : un facteur (diffus doux) et un ajout (liseré).
-    for (let P = 0; P < nV*2; P++){
+    for (let P = 0; P < nT2; P++){
       const l = Math.hypot(acc[P*3], acc[P*3+1], acc[P*3+2]) || 1, backFace = P >= nV;
       const nx = (backFace ? -acc[P*3] : acc[P*3]) / l, ny = acc[P*3+1] / l, nz = (backFace ? -acc[P*3+2] : acc[P*3+2]) / l;
       const d = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.max(nz, 0), 3);
@@ -5015,7 +5022,7 @@ const model3d = (() => {
     // zmax, zmin : releve de controle du relief (voir model3d.debug)
     let zmin = 9, zmax = -9;
     for (let k = 0; k < nV; k++){ if (vz[k] < zmin) zmin = vz[k]; if (vz[k] > zmax) zmax = vz[k]; }
-    return { data, index: new Uint16Array(front.concat(backI)), nFront: front.length, nBack: backI.length, tris: (front.length + backI.length) / 3, verts: nV, zmin, zmax, relief: !!relief };
+    return { data, index: new Uint16Array(front.concat(backI)), nFront: front.length, nBack: backI.length, tris: (front.length + backI.length) / 3, verts: nV, zmin, zmax, relief: !!relief, plat: !!plat };
   }
 
 
@@ -5924,7 +5931,7 @@ const model3d = (() => {
         texB = altSrc.get(k2);
       }
       let mesh = meshes.get(key);
-      if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front), prof); meshes.set(key, mesh); }
+      if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front), prof, PORTE.test(front)); meshes.set(key, mesh); }
       const a = mesh ? { mesh, texF: f.canvas, texB } : null;
       ready.set(key, a);
       if (list) list.warm(a); // la ligne s'affiche dès que possible, sans à-coup
@@ -6659,7 +6666,7 @@ const model3d = (() => {
     const demi = new Uint8Array(m);
     for (let i = 0; i < N * N; i++){ const x = i % N; if (cote === 'd' ? x < mi : x >= mi) demi[i] = 0; }
     demi.bg = m.bg; demi.alphaMode = m.alphaMode;
-    const mesh = buildMesh(demi, null, COUSSIN_DOUX.test(encodeURI(item.img)), null);
+    const mesh = buildMesh(demi, null, COUSSIN_DOUX.test(encodeURI(item.img)), null, a.mesh.plat);
     if (!mesh){ demis.set(cle, null); return null; }
     const proxy = { ajuste: cle };
     ready.set(cle, Object.assign({}, a, { mesh }));
@@ -6762,6 +6769,45 @@ const model3d = (() => {
     return v;
   }
 
+  /* ---- cintrer : reprendre le HAUT d'un vêtement sans toucher au bas ----
+     L'inverse d'`effiler`. Un bas doit satisfaire deux mesures qui ne vont pas
+     ensemble : sa ceinture tombe sur les hanches, et son ourlet doit couvrir
+     l'écart des pieds. Une échelle unique ne peut pas les tenir toutes les
+     deux — le legging galaxie, dont les jambes se rejoignent bien plus que
+     celles du mannequin, s'élargissait en entier pour atteindre les chevilles
+     et se retrouvait avec des hanches deux fois trop larges.
+     On l'agrandit donc pour les chevilles, PUIS on lui reprend la taille : la
+     largeur est multipliée par `k` en haut et revient à 1 à mi-hauteur, en
+     lissage doux. Les chevilles ne bougent pas d'un pixel, les hanches
+     retrouvent leur mesure, et rien n'est tordu — c'est une mise à l'échelle
+     qui ne dépend que de la hauteur, comme l'effilage. */
+  const CINTRE_FIN = 0.5;
+  const cintres = new Map();
+  function cintrer(item, k, cle0){
+    if (!k || k > 0.999) return null;
+    const cle = keyOf(item) + '|cin:' + cle0;
+    if (cintres.has(cle)) return cintres.get(cle);
+    const a = ready.get(keyOf(item));
+    if (!a) return null;                       // pas encore mesurable : l'original fera l'affaire
+    const m = a.mesh, P = m.__P || (m.__P = projeter(m)), nV = m.verts;
+    const d = new Float32Array(m.data);
+    let xmin = 9, xmax = -9;
+    for (let i = 0; i < nV; i++){ const x = d[i*STRIDE]; if (x < xmin) xmin = x; if (x > xmax) xmax = x; }
+    const cx = (xmin + xmax) / 2, dy = (P.y1 - P.y0) || 1, dos = m.nBack > 0;
+    for (let i = 0; i < nV; i++){
+      const u = Math.max(0, Math.min(1, ((P.fy[i] - P.y0) / dy) / CINTRE_FIN));
+      const f = k + (1 - k) * u * u * (3 - 2 * u);
+      const x = cx + (d[i*STRIDE] - cx) * f;
+      d[i*STRIDE] = x;
+      if (dos) d[(nV+i)*STRIDE] = x;           // le dos partage les positions de la face
+    }
+    const mesh = Object.assign({}, m, { data: d });
+    delete mesh.__P;                           // la projection d'avant ne vaut plus
+    const proxy = { ajuste: cle };
+    ready.set(cle, Object.assign({}, a, { mesh }));
+    cintres.set(cle, proxy);
+    return proxy;
+  }
   /* ---- l'épaule doit être couverte, et ça se vérifie ----
      Le buste disparaît sous le vêtement, sauf sa partie haute : le trapèze
      reste, parce que c'est par là qu'on voit le cou dans l'encolure. Il faut
@@ -6873,7 +6919,8 @@ const model3d = (() => {
       const u = Math.max(0, Math.min(1, ((P.fy[i] - P.y0) / dy - t0) / (t1 - t0)));
       const k = 1 - (1 - serre) * u * u * (3 - 2 * u);
       const x = cx + (d[i*STRIDE] - cx) * k;
-      d[i*STRIDE] = x; d[(nV+i)*STRIDE] = x;     // le dos partage les positions de la face
+      d[i*STRIDE] = x;
+      if (m.nBack) d[(nV+i)*STRIDE] = x;         // le dos partage les positions de la face
     }
     const mesh = Object.assign({}, m, { data: d });
     delete mesh.__P;                             // la projection d'avant ne vaut plus
@@ -6996,9 +7043,35 @@ const model3d = (() => {
         if (Math.abs(bx - 0.5) < large){ troue[y * N + x] = 0; coupes++; }
       }
     }
+    /* ---- et la manche s'arrête au POIGNET ----
+       Une manche photographiée à plat descend plus bas que le bras ne va, et
+       son coin de bas de manche restait planté dehors, en pointe, à côté de la
+       main — l'« artefact de manche » des sweats. Il n'y a rien à redresser :
+       ce qui dépasse le poignet n'a pas lieu d'être, on l'enlève.
+       Le poignet, on sait où il est : `viser` a déjà relevé le centre de
+       l'ouverture de la manche et sa distance à l'épaule, et c'est exactement
+       là que la main sort. On efface donc tout ce qui est PLUS LOIN DE
+       L'ÉPAULE que cette distance — le calcul est radial, comme le bras. Le
+       CORPS du vêtement n'est jamais touché : on ne coupe qu'au-delà de la
+       largeur de l'ourlet, là où il n'y a plus que de la manche. Sans cette
+       réserve, un t-shirt long se serait fait raccourcir l'ourlet. */
+    const v = viser(item, boite);
+    if (v){
+      const demi = (e.o1 - e.o0) / 2 * boite.l, ex = Math.abs(BRAS_REPOS.ep[0] - 0.5), ey = BRAS_REPOS.ep[1];
+      for (let y = v0; y <= v1; y++){
+        const fy = e.y0 + (y - v0) / (v1 - v0) * (e.y1 - e.y0), by = boite.y + fy * boite.h;
+        for (let x = u0; x <= u1; x++){
+          if (!troue[y * N + x]) continue;
+          const fx = e.x0 + (x - u0) / (u1 - u0) * (e.x1 - e.x0), bx = boite.x + fx * boite.l;
+          const dx = Math.abs(bx - 0.5);
+          if (dx < demi) continue;                       // le corps du vêtement, jamais
+          if (Math.hypot(dx - ex, by - ey) > v.dist){ troue[y * N + x] = 0; coupes++; }
+        }
+      }
+    }
     if (!coupes){ encolures.set(cle, null); return null; }
     troue.bg = m.bg; troue.alphaMode = m.alphaMode;
-    const mesh = buildMesh(troue, null, COUSSIN_DOUX.test(encodeURI(item.img)), null);
+    const mesh = buildMesh(troue, null, COUSSIN_DOUX.test(encodeURI(item.img)), null, a.mesh.plat);
     if (!mesh){ encolures.set(cle, null); return null; }
     const proxy = { ajuste: cle };
     ready.set(cle, Object.assign({}, a, { mesh }));
@@ -7025,6 +7098,7 @@ const model3d = (() => {
       ourletsBas,                             // où tombe chaque bas de jambe : la chaussure s'y centre
       encolure,                               // une copie du vêtement, col ouvert sur le cou
       effiler,                                // une copie resserrée sous les emmanchures
+      cintrer,                                // une copie reprise à la taille, l'ourlet intact
       couvrirEpaules,                         // de combien élargir pour que l'épaule ne sorte pas
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
@@ -10002,7 +10076,7 @@ const dressup = (() => {
        à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
+    tee:      { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.162, y1: 0.512 },  // t-shirts, polos, débardeurs
     /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
@@ -10010,7 +10084,7 @@ const dressup = (() => {
     sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ceinture: 0.19, chevilles: 0.92, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
-    culotte:  { ourlet: 0.205, y0: 0.468, y1: 0.618 },  // le sous-vêtement : 0,205 contre 0,170 de hanche, il ne s'évase plus en jupe
+    culotte:  { ceinture: 0.175, y0: 0.468, y1: 0.618 },  // le sous-vêtement : sa ceinture sur la taille (0,170), comme un bas
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
   /* ---- le vestiaire du salon ----
@@ -10168,8 +10242,14 @@ const dressup = (() => {
   function basculer(p){
     /* Même tremblement que pour un article verrouillé : un seul geste de refus
        dans tout le salon, il se reconnaît tout de suite. */
+    /* ET ON NE SE RHABILLE PAS EN SE DÉSHABILLANT : une fois un haut posé, le
+       reclic ne le retire pas, il faut en choisir un autre. Le corps reste
+       habillé tant qu'on joue ; « Clear all » est la seule sortie, et elle est
+       à portée de main juste en dessous. */
     const attend = DEPEND[p.cat];
-    const refus = p.verrou || (attend && !portees.has(attend) && !portees.has(p.cat));
+    const refus = p.verrou
+      || (attend && !portees.has(attend) && !portees.has(p.cat))
+      || (p.cat === 'haut' && portees.get(p.cat) === p);
     if (refus){
       p.el.classList.remove('refus');
       void p.el.offsetWidth;          // relance l'animation même sur un clic répété
@@ -10343,7 +10423,12 @@ const dressup = (() => {
            la boîte : celle du jogger tombe à 0,467 parce que ses jambes
            partent de biais, et le pantalon se posait de travers. */
         const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0), pieds);
-        return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
+        /* Si ce sont les CHEVILLES qui ont commandé l'échelle, la ceinture est
+           désormais trop large : on la reprend (voir `cintrer`), sans toucher
+           à l'ourlet. C'est le seul moyen de tenir les deux mesures à la fois
+           avec une photo rigide. */
+        const cin = (A.ceinture / (e.c1 - e.c0)) / l;
+        return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h, cintre: cin < 0.999 ? cin : 0 };
       }
       const base = A.ourlet / (e.o1 - e.o0);
       /* `serre` : le RESSERREMENT horizontal, de manche à manche. Une photo à
@@ -10400,10 +10485,13 @@ const dressup = (() => {
       const b = cadrer(modele, A, cps, cote);
       if (!b) return;
       sc.plan();
-      /* Le maillage effilé se dessine dans la boîte du maillage d'ORIGINE :
-         c'est ce qui laisse l'épaule où elle est (voir `effiler`). */
-      sc.draw(sc.effiler(modele, A.effile, cle) || modele, 0,
-              { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
+      /* Le maillage retouché se dessine dans la boîte du maillage d'ORIGINE :
+         c'est ce qui laisse l'épaule où elle est (voir `effiler`) et les
+         chevilles où elles sont (voir `cintrer`). Le remesurer ferait
+         regonfler le vêtement pour lui rendre sa largeur d'avant. */
+      let m = sc.effiler(modele, A.effile, cle) || modele;
+      if (b.cintre) m = sc.cintrer(m, b.cintre, cle) || m;
+      sc.draw(m, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
     };
     couches.forEach(p => {
       const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
@@ -10465,7 +10553,8 @@ const dressup = (() => {
       if (b.bottom < rr.top || b.top > rr.bottom) return;   // sorti du cadre par le défilement
       const s = Math.min(b.width, b.height) * 0.92;
       // une piece en sommeil s'efface avec sa case : le refus se lit avant le clic
-      scene.draw(p.it, Math.sin(t / 1400 + i) * 0.5, {
+      // les vignettes ne tournent plus : le vestiaire n'a plus de dos a montrer
+      scene.draw(p.it, 0, {
         x: (b.left - r.left + (b.width - s) / 2) * k,
         y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k, clip: fenetre },
         p.el.classList.contains('dress-case--dort') ? 0.4 : 1);
