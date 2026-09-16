@@ -9352,7 +9352,11 @@ const dressup = (() => {
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
     tee:      { ourlet: 0.32, y0: 0.162, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
+    /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
+       (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
+       rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
+       oreilles, ça ne se voit sur personne. */
+    sweat:    { ourlet: 0.26, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
