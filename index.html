@@ -7791,6 +7791,8 @@ const jumper = (() => {
     ciel:'#5c94fc', nuage:'#ffffff', nuageBas:'#c8dcff',
     colline:'#00a844', collineOmbre:'#007028', collineTrait:'#00401a',
     brique:'#c06028', briqueHaut:'#e89848', briqueBas:'#803010', joint:'#000000',
+    // la brique friable : la même, lavée et grisée — une maçonnerie qui a pris l'eau
+    briqueFri:'#b0765a', briqueFriHaut:'#d0a488', briqueFriBas:'#74463a',
     pic:'#38c838', picOmbre:'#1a8020',
     corps:'#ffffff', corpsOmbre:'#c8c8d8', trait:'#000000',
     metal:'#e8e8f0', mat:'#f8d038',
@@ -7960,9 +7962,9 @@ const jumper = (() => {
      une suite de morceaux au lieu d'un mur continu. Le cerne noir est dessiné
      en rectangles pleins plutôt qu'en trait : à cette définition, un trait de
      un pixel se retrouve à cheval sur deux et devient gris. */
-  function plateau(x, y, w, h){
+  function plateau(x, y, w, h, fri){
     const B = 32, R = 16;
-    ctx.fillStyle = PAL.brique; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = fri ? PAL.briqueFri : PAL.brique; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = PAL.joint;
     for (let jy = 0; jy < h - 1; jy += R){
       ctx.fillRect(x, y + jy + R - 2, w, 2);                   // joint horizontal
@@ -7970,11 +7972,35 @@ const jumper = (() => {
       for (let bx = Math.ceil((x - dec) / B) * B + dec; bx < x + w; bx += B)
         if (bx > x) ctx.fillRect(bx, y + jy, 2, Math.min(R - 2, h - jy));
     }
-    ctx.fillStyle = PAL.briqueHaut; ctx.fillRect(x, y, w, 3);
-    ctx.fillStyle = PAL.briqueBas; ctx.fillRect(x, y + h - 3, w, 3);
+    ctx.fillStyle = fri ? PAL.briqueFriHaut : PAL.briqueHaut; ctx.fillRect(x, y, w, 3);
+    ctx.fillStyle = fri ? PAL.briqueFriBas : PAL.briqueBas; ctx.fillRect(x, y + h - 3, w, 3);
     ctx.fillStyle = PAL.trait;                     // cerne
     ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y + h - 2, w, 2);
     ctx.fillRect(x, y, 2, h); ctx.fillRect(x + w - 2, y, 2, h);
+  }
+  // un trait en ESCALIER : à cette définition, une ligne fine se perd, une
+  // suite de petits carrés se voit
+  function escalier(x0, y0, x1, y1){
+    const dx = x1 - x0, dy = y1 - y0, m = Math.max(Math.abs(dx), Math.abs(dy), 1);
+    for (let s = 0; s <= m; s += 1.6)
+      ctx.fillRect(Math.round(x0 + dx * s / m), Math.round(y0 + dy * s / m), 2, 2);
+  }
+  /* La marque d'une plateforme FRIABLE : deux fissures en DIAGONALE, plus une
+     brique un peu plus pâle et grise (voir `plateau`). La diagonale est ce qui
+     compte : les deux traits verticaux d'avant se confondaient exactement avec
+     les joints de l'appareil et ne prévenaient donc de rien — il n'y a aucune
+     oblique ailleurs dans le mur, c'est la seule forme qui se remarque.
+     L'écart de teinte, lui, reste faible : on doit pouvoir le voir en y
+     faisant attention, pas le recevoir en pleine figure. C'est un piège, il
+     garde le droit de surprendre qui traverse sans regarder — et la fissure
+     s'ouvre à mesure qu'elle cède, ce qui laisse une seconde chance à qui
+     s'attarde. */
+  function fissures(x, y, w, h, usure){
+    ctx.fillStyle = PAL.trait;
+    const e = 1 + usure * 2.5;                    // elle s'écarte quand la plateforme fatigue
+    escalier(x + w * 0.30 - e, y + 2, x + w * 0.40 + e, y + h - 2);
+    escalier(x + w * 0.68 + e, y + 2, x + w * 0.58 - e, y + h - 2);
+    if (usure > 0.45) escalier(x + w * 0.46, y + 2, x + w * 0.50, y + h - 2);
   }
   // Les pics : de simples dents vertes, cernées, plantées dans le sol.
   function pics(x, y, n){
@@ -8144,12 +8170,8 @@ const jumper = (() => {
         if (p.fri.usure > 0.15 && !p.fri.chute){ ctx.translate(Math.sin(t / 28) * 1.6, 0); }  // elle tremble avant de céder
         ctx.globalAlpha = p.fri.chute ? Math.max(0, 1 - p.fri.chute) : 1;
       }
-      plateau(p.x, p.y, p.w, EP);
-      if (p.fri){                                    // deux fissures : on voit qu'elle est fragile
-        ctx.fillStyle = PAL.trait;
-        ctx.fillRect(p.x + p.w * 0.34, p.y + 3, 2, EP - 6);
-        ctx.fillRect(p.x + p.w * 0.62, p.y + 3, 2, EP - 6);
-      }
+      plateau(p.x, p.y, p.w, EP, !!p.fri);
+      if (p.fri) fissures(p.x, p.y, p.w, EP, p.fri.usure);
       ctx.restore();
     }
     NIVEAU.checks.forEach((c, i) => { if (i) drapeau(c[0], c[1], i <= check, t); });
