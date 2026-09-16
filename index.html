@@ -3904,6 +3904,17 @@ const model3d = (() => {
   const TROUS_OK = /lock(%20|\s)icon/;
   const INSET = 2.5;     // texture prise plus à l'intérieur au contour (px du masque), dégressif jusqu'au bout du gonflement
   const AREA_UNIT = 0.637; // √(surface du vêtement, px) par unité : même surface pour tous, un tee ≈ 0,95 de large
+  /* Plafond de HAUTEUR, calé sur le plus haut des vêtements (le hoodie). À
+     surface égale, un objet étroit et haut monte beaucoup plus haut dans le
+     cadre qu'un vêtement, qui est large et court — mesuré : le cadenas d'une
+     pièce verrouillée occupait 0,79 de la hauteur du cadre contre 0,54 pour un
+     tee et 0,65 pour un hoodie, alors que les trois couvrent exactement la même
+     surface (28 %). C'est la hauteur qu'on lit comme la taille, pas la surface.
+     La valeur est relevée à l'écran : le plus haut des vêtements, le hoodie,
+     mesure 0,772 d'unité, et le plafond est posé juste au-dessus pour ne PAS le
+     raboter — aucun vêtement n'y touche aujourd'hui, et un futur vêtement plus
+     haut que celui-ci serait ramené ici plutôt que de dominer la gamme. */
+  const HAUT_MAX = 0.80;
   const EXT_R = 10;      // rayon (px du masque) de la moyenne locale du tissu pour la texture étendue (dilue étiquettes et imprimés)
   const THICK = 0.10;    // demi-épaisseur du coussin (le vêtement mesure 1)
   const INFL = 0.16;     // rayon de gonflement, en fraction de la taille du vêtement
@@ -4321,6 +4332,7 @@ const model3d = (() => {
     let S = Math.sqrt(fb.area) / AREA_UNIT;
     const fw = fb.x1-fb.x0+1, fh = fb.y1-fb.y0+1, ext = Math.max(fw, fh) / S;
     if (ext > 1.08) S *= ext / 1.08;
+    const haut = fh / S; if (haut > HAUT_MAX) S *= haut / HAUT_MAX;   // second plafond, sur la hauteur seule (voir HAUT_MAX)
     const cell = Math.max(fw, fh) / GRID, cx = (fb.x0+fb.x1+1)/2, cy = (fb.y0+fb.y1+1)/2;
     const gx0 = fb.x0 - cell, gy0 = fb.y0 - cell, cols = Math.ceil(fw/cell) + 3, rows = Math.ceil(fh/cell) + 3;
     const rInfl = (doux ? INFL_DOUX : INFL) * S;
@@ -4466,7 +4478,14 @@ const model3d = (() => {
     19,26,20,12,30,3, 19,26,30,3,31,52, 25,62,31,35,30,54, 25,62,30,54,22,55, 22,66,30,5,20,46,
     22,66,20,46,10,10, 7,25,19,32,31,43, 7,25,31,43,25,4, 29,65,13,9,15,36, 13,9,28,59,27,50,
   ];
-  const HAUTEUR_TETE = 1.05;  // le modèle occupe le cadre comme un vêtement
+  /* Hauteur de la tête dans le cadre. Elle ne peut pas se déduire de la règle
+     des vêtements (même surface) : la tête est étroite et PROFONDE, et le léger
+     basculement vers le spectateur transforme cette profondeur en hauteur — à
+     1,05 elle occupait 0,88 du cadre contre 0,65 pour un hoodie et 0,54 pour un
+     tee. Le chiffre est donc relevé à l'écran, pas calculé : 0,78 amène sa
+     hauteur apparente sur celle du plus haut des vêtements. Les éclats du
+     piercing suivent (ils sont mis à l'échelle par le même rapport). */
+  const HAUTEUR_TETE = 0.78;
 
   /* ---- la texture de la tête ----
      Le site ne publie qu'UNE image, `icons/tete-atlas.png`, 128 × 64, déjà
