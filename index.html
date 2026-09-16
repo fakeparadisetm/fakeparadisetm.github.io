@@ -6120,6 +6120,83 @@ const model3d = (() => {
 
 
 
+  /* ---- viser le milieu de la manche ----
+     LA RÈGLE, en une phrase : le bras doit pointer vers le CENTRE de
+     l'ouverture de la manche. Pas être parallèle à elle — on a essayé, et
+     comparer deux pentes ne dit rien : un bras et une manche peuvent être
+     parallèles et le bras sortir quand même, parce que le vêtement est posé à
+     une autre échelle que l'envergure. Ce qui compte, c'est où finit la
+     manche, et que le bras y aille.
+
+     On repère donc les DEUX EXTRÉMITÉS de l'ouverture — le haut et le bas de
+     la bande la plus externe du vêtement, d'un côté — et on vise leur
+     entre-deux. Le plus LARGE, et non le plus éloigné de l'épaule : sur un
+     t-shirt l'ourlet est plus loin que la manche, et viser au plus loin
+     couchait les bras. Le calcul se fait sur les sommets projetés, dans la boîte du
+     corps, donc à l'échelle où la pièce sera vraiment posée. Un seul côté
+     suffit : tout est symétrique.
+
+     C'est ce qui rend la pose automatique pour de bon. Un vêtement qu'on
+     ajoute demain — photo à plat ou rendu porté — donne sa mesure tout seul,
+     et le mannequin va s'y loger. */
+  function pointBoite(x, y, z){
+    const M = mul(PVrow, mul(rotX(BASCULE), ident()));
+    const w = M[3]*x + M[7]*y + M[11]*z + M[15];
+    return [((M[0]*x + M[4]*y + M[8]*z + M[12]) / w + 1) / 2,
+            (1 - (M[1]*x + M[5]*y + M[9]*z + M[13]) / w) / 2];
+  }
+  // l'épaule et la main du mannequin au repos, dans la boîte : le bras est le
+  // segment qui les joint, et c'est lui qu'on fera tourner
+  const BRAS_REPOS = (() => {
+    const ep = pointBoite(EPAULE.x, EPAULE.y - 0.5, 0);
+    const pris = [];
+    for (let i = 0; i < MANNEQUIN_BRAS.length; i++){
+      if (MANNEQUIN_BRAS[i] < 85 || MANNEQUIN_XYZ[i*3] < 0) continue;
+      const p = pointBoite(MANNEQUIN_XYZ[i*3], MANNEQUIN_XYZ[i*3+1] - 0.5, MANNEQUIN_XYZ[i*3+2]);
+      pris.push([Math.hypot(p[0] - ep[0], p[1] - ep[1]), p]);
+    }
+    pris.sort((a, b) => b[0] - a[0]);
+    const loin = pris.slice(0, Math.max(1, Math.round(pris.length / 4)));
+    const mx = loin.reduce((s, p) => s + p[1][0], 0) / loin.length;
+    const my = loin.reduce((s, p) => s + p[1][1], 0) / loin.length;
+    return { ep, angle: Math.atan2(mx - ep[0], my - ep[1]) };   // 0 = bras le long du corps
+  })();
+  // de combien baisser les bras pour que le mannequin entre dans cette manche
+  const poseBras = (item, boite) => { const v = viser(item, boite); return v == null ? 0 : BRAS_REPOS.angle - v; };
+  const vises = new Map();
+  function viser(item, boite){
+    const cle = keyOf(item) + '|' + boite.x.toFixed(3) + ',' + boite.y.toFixed(3) + ',' + boite.l.toFixed(3) + ',' + boite.h.toFixed(3);
+    if (vises.has(cle)) return vises.get(cle);
+    const a = ready.get(keyOf(item));
+    if (!a) return null;                       // pas encore mesurable : on réessaiera
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh)), ep = BRAS_REPOS.ep, n = a.mesh.verts, e = empreinte(item);
+    const X = new Float64Array(n), Y = new Float64Array(n);
+    let xmax = -9;
+    for (let i = 0; i < n; i++){
+      X[i] = boite.x + P.fx[i] * boite.l; Y[i] = boite.y + P.fy[i] * boite.h;
+      if (X[i] > xmax) xmax = X[i];
+    }
+    /* Y A-T-IL SEULEMENT UNE MANCHE ? Le point le plus large d'un débardeur est
+       son propre flanc : viser « l'extrémité » le ferait pointer sur l'ourlet et
+       coucherait les bras le long du corps. On compare donc le point le plus
+       large au bord de l'OURLET — la seule mesure qui, par construction, ignore
+       les manches (voir `empreinte`). Sans écart, il n'y a pas de manche, et le
+       bras reste où il est. Comparer au bas du vêtement ne marchait pas : les
+       manches d'un sweat descendent jusqu'à l'ourlet, et il se déclarait alors
+       sans manches. */
+    const flanc = boite.x + e.o1 * boite.l;
+    if (xmax - flanc < 0.03){ vises.set(cle, null); return null; }
+    /* LES DEUX EXTRÉMITÉS de l'ouverture : les sommets de la bande la plus
+       externe, le plus haut et le plus bas. Leur entre-deux est le centre de la
+       manche, et c'est là que le bras doit pointer. */
+    const BANDE = 0.05;
+    let b0 = 9, b1 = -9;
+    for (let i = 0; i < n; i++) if (X[i] >= xmax - BANDE){ if (Y[i] < b0) b0 = Y[i]; if (Y[i] > b1) b1 = Y[i]; }
+    const v = Math.atan2(xmax - BANDE / 2 - ep[0], (b0 + b1) / 2 - ep[1]);
+    vises.set(cle, v);
+    return v;
+  }
+
   /* ---- scène du mini-jeu (voir le module `arena`) ----
      Un contexte WebGL de plus, créé seulement à l'ouverture de l'arène. Il
      réutilise les maillages et les textures déjà calculés pour la fiche et la
@@ -6132,6 +6209,7 @@ const model3d = (() => {
       load: item => prepare(item),            // maillage + textures, mis en cache
       ready: item => !!ready.get(keyOf(item)),
       empreinte,                              // ce que l'article couvre dans sa boîte, mesuré une fois
+      poseBras,                               // de combien baisser les bras pour entrer dans cette manche
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
@@ -9079,8 +9157,12 @@ const dressup = (() => {
      posé, et `bras`/`jambes` de combien le mannequin vient s'y loger. Plus
      rien n'est déformé : le vêtement est intouchable, seul le corps bouge. */
   const ANCRAGES = {
-    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true, bras: 0.35 },  // rendu porté : à l'échelle, capuche derrière la nuque, bras baissés de 20°
+    /* 0,162 et 0,32 : le plus bas et le plus étroit qui ne laisse RIEN dépasser
+       à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
+       (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
+       haut, le col remontait sur le cou. */
+    tee:      { ourlet: 0.32, y0: 0.162, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true },  // rendu porté : à l'échelle, capuche derrière la nuque
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -9236,27 +9318,26 @@ const dressup = (() => {
     const cadre = { x: MX, y: MY, s: S };
     const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
     if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
-    /* LA POSE VIENT DU VÊTEMENT. Un sweat dont les manches tombent le long du
-       corps ne peut pas habiller un mannequin bras écartés. On a longtemps
-       essayé de tordre la manche vers le bras : ça revenait à coudre un
-       vêtement sur une statue, et ça laissait des plis en aiguille à
+    /* LA POSE VIENT DU VÊTEMENT, ET ELLE SE MESURE. Un sweat dont les manches
+       tombent le long du corps ne peut pas habiller un mannequin bras écartés.
+       On a longtemps essayé de tordre la manche vers le bras : ça revenait à
+       coudre un vêtement sur une statue, et ça laissait des plis en aiguille à
        l'emmanchure. C'est le mannequin qui bouge — lui seul a un squelette, et
        PLUS AUCUN vêtement n'est déformé.
-
-       L'angle est UN NOMBRE PAR COUPE, et pas une mesure. On a essayé de le
-       lire sur la silhouette (pente de la manche contre pente du bras) :
-       relevé, le bras du mannequin donne 12°, la manche du sweat 32°, celle
-       d'un t-shirt à plat −31°. Ces chiffres ne veulent rien dire, et pour une
-       raison de fond : une manche photographiée À PLAT n'a pas de direction de
-       bras, elle a la forme qu'on lui a donnée en la posant sur la table. Seul
-       un rendu PORTÉ en a une, et il arrive déjà avec son type. Le guide des
-       tailles porte donc l'angle comme il porte le reste.
-
-       Les jambes suivent la même règle, et le jour où un bas arrivera il n'y
-       aura qu'à lui donner son angle : les poids sont là. */
+       La règle tient en une phrase : le bras pointe vers le MILIEU DE
+       L'OUVERTURE de la manche (voir `viser`). Rien n'est écrit à la main, et
+       un vêtement ajouté demain se posera tout seul. Le maillage posé est mis
+       en cache : une pose ne se calcule qu'une fois. */
+    const boiteDe = (p) => {
+      const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
+      if (!e) return null;
+      const l = A.ourlet / (e.o1 - e.o0);
+      return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * (A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0)),
+               l, h: A.fidele ? l : (A.y1 - A.y0) / (e.y1 - e.y0) };
+    };
+    const haut = portees.get('haut'), bh = haut && boiteDe(haut);
     const corps = Object.assign({}, mannequin, {
-      bras: (ANCRAGES[(portees.get('haut') || {}).coupe] || {}).bras || 0,
-      jambes: (ANCRAGES[(portees.get('bas') || {}).coupe] || {}).jambes || 0 });
+      bras: bh ? scene.poseBras(haut.porte || haut.it, bh) : 0 });
     if (!scene.ready(corps)) scene.load(corps);
     scene.draw(corps, ang, cadre, 1);
     /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
