@@ -2026,6 +2026,15 @@
   .dress-bt--3 input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
   .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:999px;}
   .dress-bt--4{background:#9be08a;border-color:#3d7a2e;box-shadow:0 3px 0 #3d7a2e;color:#22451a;}
+  /* Le curseur de taille du visage. Il ne paraît QUE si une photo est posée :
+     un réglage qui ne règle rien n'a rien à faire à l'écran. */
+  .dress-bt--5{background:#d3b4f0;border-color:#6b3fa0;box-shadow:0 3px 0 #6b3fa0;color:#3a1f5c;}
+  .dress-bt--5:hover{box-shadow:0 5px 0 #6b3fa0;}
+  .dress-bt--5:active{box-shadow:0 1px 0 #6b3fa0;}
+  .dress-bt--5[hidden]{display:none;}
+  .dress-bt--5 input[type=range]{
+    width:88px;height:14px;margin:0;cursor:pointer;accent-color:#6b3fa0;
+  }
   /* Le bouton d'enregistrement vit dans la scène, en bas à gauche, sous le
      mannequin : ce qu'on emporte, c'est LUI. */
   .dress-save{position:absolute;left:16px;bottom:14px;z-index:3;}
@@ -2476,6 +2485,12 @@
             <!-- tabindex -1 : c'est l'étiquette qui prend le focus, pas le champ,
                  sinon la même commande ferait deux arrêts -->
             <input type="color" id="dressPeau" value="#c89878" tabindex="-1" aria-labelledby="dressPeauTxt">
+          </label>
+          <!-- La taille du visage, à la main. Caché tant qu'aucune photo n'est
+               posée : voir `refletVisage`. -->
+          <label class="dress-bt dress-bt--5" id="dressZoomBt" hidden>
+            <span id="dressZoomTxt"></span>
+            <input type="range" id="dressZoom" min="0.6" max="1.6" step="0.02" value="1" aria-labelledby="dressZoomTxt">
           </label>
           <button class="dress-bt dress-bt--2" id="dressNu"></button>
           <p class="dress-note" id="dressNote"></p>
@@ -2990,7 +3005,7 @@ const STRINGS = {
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
     dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats",
-    dressSkin:"Skin tone", dressSave:"Save the look",
+    dressSkin:"Skin tone", dressSave:"Save the look", dressFaceSize:"Face size",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
@@ -3047,7 +3062,7 @@ const STRINGS = {
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
     dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux",
-    dressSkin:"Couleur de peau", dressSave:"Enregistrer le look",
+    dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
@@ -5694,7 +5709,16 @@ const model3d = (() => {
      ce sont les deux rectangles que peint le visage sans photo, et c'est sur
      eux qu'on vient poser ceux de la photo. */
   const MAN_OEIL = [[43, 57], [85, 57]], MAN_CASE = 128;
-  function atlasMannequin(photo, peau){
+  /* `zoom` : la taille du visage, réglée À LA MAIN dans le salon. La pose
+     automatique vise juste la plupart du temps, mais elle dépend d'une
+     détection d'yeux ; quand celle-ci se trompe d'un cheveu, personne ne peut
+     rattraper le coup, et c'est ce que ce réglage rend possible.
+     Il MULTIPLIE l'échelle trouvée au lieu de la remplacer : le cadrage
+     automatique reste le point de départ, et la main ne fait que l'ajuster.
+     Le zoom s'applique autour des YEUX — le point d'ancrage ne bouge pas,
+     seule la taille change, sinon régler la taille déréglerait la position. */
+  function atlasMannequin(photo, peau, zoom){
+    const z = zoom > 0 ? zoom : 1;
     const c = document.createElement('canvas'); c.width = 256; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = peau || PEAU_DEFAUT; g.fillRect(0, 0, 256, 128);  // la peau, à droite comme à gauche
@@ -5720,22 +5744,33 @@ const model3d = (() => {
         const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k;
         /* L'étirement est PLAFONNÉ. Remplir la case coûte que coûte revenait à
            zoomer sans limite sur un cadrage large, et le visage sortait rogné
-           à la mâchoire. Au-delà de  fois ce que les yeux
+           à la mâchoire. Au-delà de `VISAGE_ETIRE` fois ce que les yeux
            demandent, on préfère la bande de peau au menton coupé : elle se
            remarque moins qu'un visage tronqué, et la peau est justement de la
-           bonne couleur. */
+           bonne couleur.
+           Ce plafond borne le calcul AUTOMATIQUE, pas la main : le zoom est
+           appliqué après, sans quoi le réglage n'aurait aucun effet passé la
+           borne — c'est-à-dire précisément quand on en a besoin. */
         const base = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / ecart * k;
         const borne = base * VISAGE_ETIRE;
-        const ex = Math.min(borne, Math.max(base, cx / mx, (VISAGE_PIX - cx) / (iw - mx)));
-        const ey = Math.min(borne, Math.max(base, cy / my, (VISAGE_PIX - cy) / (ih - my)));
+        const ex = Math.min(borne, Math.max(base, cx / mx, (VISAGE_PIX - cx) / (iw - mx))) * z;
+        const ey = Math.min(borne, Math.max(base, cy / my, (VISAGE_PIX - cy) / (ih - my))) * z;
         gp.drawImage(photo, cx - mx * ex, cy - my * ey, iw * ex, ih * ey);
       } else {
         /* Pas d'yeux reconnaissables : on retombe sur la tache de peau, et à
            défaut sur la case remplie — comme la tête du panneau Info, qui
            étire la photo dans sa texture sans rien y chercher. */
+        /* Le zoom vaut ici aussi, et il agit sur la DÉCOUPE : agrandir le
+           visage, c'est prendre un morceau plus petit de la photo. D'où la
+           division — l'inverse du cas d'au-dessus, où l'on agrandissait
+           l'image posée. Le centre du cadrage ne bouge pas. */
         const v = cadrerVisage(photo);
-        if (v) gp.drawImage(photo, v.x, v.y, v.l, v.h, 0, 0, VISAGE_PIX, VISAGE_PIX);
-        else gp.drawImage(photo, 0, 0, VISAGE_PIX, VISAGE_PIX);
+        const cadre = (x, y, l, h) => {
+          const nl = l / z, nh = h / z;
+          gp.drawImage(photo, x + (l - nl) / 2, y + (h - nh) / 2, nl, nh, 0, 0, VISAGE_PIX, VISAGE_PIX);
+        };
+        if (v) cadre(v.x, v.y, v.l, v.h);
+        else cadre(0, 0, iw, ih);
       }
       g.imageSmoothingEnabled = false;
       g.drawImage(p, 0, 0, 128, 128);
@@ -6060,7 +6095,7 @@ const model3d = (() => {
   // silhouette de face en miroir pour l'extension de texture et le calage
   const assets = new Map(), ready = new Map();
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
-    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
+    : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
@@ -6130,7 +6165,7 @@ const model3d = (() => {
       const cle = 'mannequin|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '');
       let mesh = meshes.get(cle);
       if (!mesh){ mesh = buildMannequin(1, item.bras || 0, item.jambes || 0, item.allonge || 1, item.cache || '', item.coude || 0); meshes.set(cle, mesh); }
-      const tex = atlasMannequin(img, item.peau);
+      const tex = atlasMannequin(img, item.peau, item.zoomVisage);
 
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
@@ -8354,7 +8389,9 @@ function fillPreview(){
     addBtn.textContent = verrou ? T('lockedPlay') : T('add');
     addBtn.hidden = !!(verrou && !jeuIci);
     infoBtn.hidden = !item.sz || verrou;
-    infoBtn.textContent = T('moreInfo');
+    // le bouton dit ce qu'il ouvre : un guide des tailles, et rien d'autre.
+    // « Plus d'infos » promettait n'importe quoi et ne tenait que les mesures.
+    infoBtn.textContent = T('sizeGuide');
     // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
     if (sizePicker.classList.contains('open')) buildSizePills(sizesFor(item));
   }
@@ -10435,6 +10472,9 @@ const dressup = (() => {
   const titre = document.getElementById('dressTitre');
   const champFace = document.getElementById('dressFace');
   const champPeau = document.getElementById('dressPeau');
+  const champZoom = document.getElementById('dressZoom');
+  const btZoom = document.getElementById('dressZoomBt');
+  const txtZoom = document.getElementById('dressZoomTxt');
   const btSave = document.getElementById('dressSave');
   const txtPeau = document.getElementById('dressPeauTxt');
   const btFaceTxt = document.getElementById('dressFaceTxt');
@@ -10598,7 +10638,14 @@ const dressup = (() => {
   const portees = new Map();  // catégorie -> pièce
   let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let peau = null;            // teinte choisie au nuancier, ou rien (voir PEAU_DEFAUT)
-  let mannequin = { mannequin: true, visage: null, peau: null };
+  let zoomVisage = 1;         // taille du visage réglée à la main (voir atlasMannequin)
+  let mannequin = { mannequin: true, visage: null, peau: null, zoomVisage: 1 };
+  // Le mannequin est décrit en UN endroit : trois champs qui bougent, et
+  // autant d'occasions d'en oublier un si chacun le réécrit de son côté.
+  const majMannequin = () => {
+    mannequin = { mannequin: true, visage: visageURL, peau, zoomVisage };
+    if (scene) scene.load(mannequin);
+  };
   /* L'ORDRE DU PORTANT EST CELUI DU CORPS : les hauts, puis les bas, puis les
      chaussures, chaque groupe sous son intertitre. Une liste où un jean voisine
      un t-shirt ne dit rien de ce qu'on est en train de faire ; rangée, elle se
@@ -10740,8 +10787,7 @@ const dressup = (() => {
      redessine à l'image suivante, sans rien recalculer d'autre. */
   function poserPeau(hex){
     peau = hex;
-    mannequin = { mannequin: true, visage: visageURL, peau };
-    if (scene) scene.load(mannequin);
+    majMannequin();
   }
   /* ---- enregistrer le look ----
      Une image PNG du personnage tel qu'il est, envoyée au dossier de
@@ -10796,17 +10842,35 @@ const dressup = (() => {
     if (!fichier) return;
     if (visageURL) URL.revokeObjectURL(visageURL);
     visageURL = URL.createObjectURL(fichier);
-    mannequin = { mannequin: true, visage: visageURL, peau };
-    if (scene) scene.load(mannequin);
-    btFaceTxt.textContent = T('dressFaceOff');
+    /* Une nouvelle photo repart à la taille automatique. Garder le réglage de
+       la précédente n'aurait aucun sens : il avait été fait pour un cadrage
+       qui n'est plus là. */
+    zoomVisage = 1; champZoom.value = '1';
+    majMannequin();
+    refletVisage();
     sfx.add();
   }
   function oterVisage(){
     if (visageURL){ URL.revokeObjectURL(visageURL); visageURL = null; }
-    mannequin = { mannequin: true, visage: null, peau };
-    if (scene) scene.load(mannequin);
-    btFaceTxt.textContent = T('dressFace');
+    zoomVisage = 1; champZoom.value = '1';
+    majMannequin();
+    refletVisage();
     champFace.value = '';
+  }
+  /* Le libellé du bouton photo et la présence du curseur disent la même chose :
+     y a-t-il un visage posé ? Autant que ce soit écrit une seule fois. */
+  function refletVisage(){
+    btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
+    btZoom.hidden = !visageURL;
+  }
+  /* Le curseur redessine à chaque cran. C'est tenable parce que seul l'ATLAS
+     du mannequin est refait — le maillage ne bouge pas, c'est la clé de
+     texture qui change (voir keyOf) — et qu'un atlas fait 256 × 128 pixels. */
+  function poserZoomVisage(v){
+    const z = Math.min(1.6, Math.max(0.6, Number(v) || 1));
+    if (Math.abs(z - zoomVisage) < 0.001) return;
+    zoomVisage = z;
+    majMannequin();
   }
 
   /* ---- le dessin ----
@@ -11083,7 +11147,8 @@ const dressup = (() => {
     if (ouvert) return;
     ouvert = true;
     titre.textContent = T('dressTitle');
-    btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
+    txtZoom.textContent = T('dressFaceSize');
+    refletVisage();
     btNu.textContent = T('dressStrip');
     btSave.textContent = T('dressSave');
     txtPeau.textContent = T('dressSkin');
@@ -11153,6 +11218,12 @@ const dressup = (() => {
   const FLECHES = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
+    /* UN CURSEUR SE RÈGLE AUX FLÈCHES : c'est ce que tout le monde attend, et
+       le navigateur le fait déjà très bien. On lui laisse donc ←/→ quand il a
+       le focus, et on garde ↑/↓ pour en sortir — sans quoi on y resterait
+       enfermé, ce qui est le défaut habituel de ce genre de réglage. */
+    const surCurseur = document.activeElement && document.activeElement.type === 'range';
+    if (surCurseur && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return true;
     if (FLECHES[e.key]){ e.preventDefault(); navigerFocus(FLECHES[e.key][0], FLECHES[e.key][1]); return true; }
     /* Entrée et Espace. Les cases du portant et les deux étiquettes ont leur
        PROPRE écouteur, qui s'est déclenché avant celui-ci — la fenêtre écoute
@@ -11199,6 +11270,7 @@ const dressup = (() => {
   btNu.addEventListener('click', deshabiller);
   btSave.addEventListener('click', enregistrer);
   champPeau.addEventListener('input', (e) => poserPeau(e.target.value));
+  champZoom.addEventListener('input', (e) => poserZoomVisage(e.target.value));
   document.getElementById('dressClose').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
