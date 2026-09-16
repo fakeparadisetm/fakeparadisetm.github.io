@@ -2994,13 +2994,23 @@ const STRINGS = {
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
     jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked tee is yours.",
     jumpSee:"See the item", jumpAgain:"Play again", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
-    locked:"???", lockedHow:"Locked.\nFinish the minigame Jumper to unlock this piece.",
+    locked:"???",
+    /* Une pièce verrouillée ne dit plus COMMENT s'ouvrir (demande du 16 sept.
+       2026 : « enlève les indices sur les pages des item bloqués »). Il reste
+       un mot et rien d'autre : le cadenas, le prix, et à chercher soi-même.
+       LES DEUX TEXTES RETIRÉS, si jamais ils devaient revenir :
+         « Locked. » + « Finish the minigame Jumper to unlock this piece. »
+         « Verrouillé. » + « Terminez le mini-jeu Jumper pour débloquer cette pièce. »
+         « Locked. » + « No game gives this one away. They say a head, spun
+           long enough, ends up letting something go. »
+         « Verrouillé. » + « Aucun jeu ne la donne. Il paraît qu'à force de
+           tourner, une tête finit par lâcher quelque chose. »
+       Les deux derniers étaient l'énigme de la pièce trouvée, sous la clé
+       `lockedRiddle`, effacée avec eux. Le mécanisme `verrouAide` reste, lui :
+       il permet à une pièce d'avoir son propre texte, et plus aucune ne s'en
+       sert aujourd'hui. */
+    lockedHow:"Locked.",
     lockedPlay:"Play Jumper", onlyOne:"One per person",
-    /* L'énigme d'une pièce qu'aucun jeu ne donne : elle doit METTRE SUR LA
-       VOIE sans dire la recette. Écrire « faites tourner la tête de 4000
-       degrés » en ferait une corvée affichée ; ne rien écrire du tout en
-       ferait une pièce morte, que personne ne saurait jamais pouvoir ouvrir. */
-    lockedRiddle:"Locked.\nNo game gives this one away. They say a head, spun long enough, ends up letting something go.",
     eggUnlocked:"A unique piece has been unlocked", eggWhere:"Unique Items",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
@@ -3037,9 +3047,8 @@ const STRINGS = {
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
     jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"Le t-shirt verrouillé est à vous.",
     jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
-    locked:"???", lockedHow:"Verrouillé.\nTerminez le mini-jeu Jumper pour débloquer cette pièce.",
+    locked:"???", lockedHow:"Verrouillé.",   // voir le commentaire côté anglais
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
-    lockedRiddle:"Verrouillé.\nAucun jeu ne la donne. Il paraît qu'à force de tourner, une tête finit par lâcher quelque chose.",
     eggUnlocked:"Une pièce unique s'est déverrouillée", eggWhere:"Pièces uniques",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
@@ -3187,19 +3196,18 @@ const DATA = [
      sont verrouillées, nom masqué — une pièce qu'on ne voit pas ne donne envie
      à personne. `verrou` porte le nom de l'épreuve à passer, `max` le nombre
      d'exemplaires par visiteur.
-     DEUX FAÇONS de s'ouvrir, et elles ne s'annoncent pas pareil. Le JUMPER TEE
-     nomme son mini-jeu et le bouton y mène : c'est une récompense, on doit
-     savoir comment la chercher. Le VERTIGO TEE, lui, est un ŒUF DE PÂQUES — il
-     s'ouvre en faisant tourner la tête de la page Info, longtemps ; son bouton
-     ne mène nulle part et son texte n'est qu'une énigme (`verrouAide`), sans
-     quoi ce ne serait plus une chose trouvée mais une corvée affichée. Le
-     bouton et l'aide se règlent tout seuls : voir `jeuDuVerrou`, qui regarde
-     si un mini-jeu porte ce nom.
+     DEUX FAÇONS de s'ouvrir, et la fiche n'en dit plus rien : depuis le
+     16 sept. 2026 elle affiche « Verrouillé. » et s'arrête là (voir
+     `lockedHow`). Le JUMPER TEE se gagne au mini-jeu, et seul le bouton y
+     mène encore ; le VERTIGO TEE est un ŒUF DE PÂQUES — il s'ouvre en faisant
+     tourner la tête de la page Info, longtemps — et sa fiche n'a ni bouton ni
+     énigme. Ce qui reste se règle tout seul : voir `jeuDuVerrou`, qui regarde
+     si un mini-jeu porte le nom du verrou et fait disparaître le bouton sinon.
      Photo à venir : sans `img`, la fiche montre l'initiale et la ligne de
      liste son nom, comme n'importe quel produit sans visuel. */
   { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[
     // PROVISOIRE : nom, prix et photos à remplacer par la vraie pièce.
-    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", verrouAide:"lockedRiddle", max:1,
+    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", max:1,
       d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
          fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"} },
     { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1,
@@ -3488,13 +3496,14 @@ const addBtn = document.getElementById('addBtn');
    de démarrage. Réglable dans Réglages › Son (non mémorisé, comme la langue
    et la devise : le site ne stocke rien). */
 const sfx = (() => {
-  /* PROVISOIRE (16 sept. 2026, demande de l'utilisateur : « fais que par défaut
-     le son soit off sur le site. il faudra rétablir ce choix plus tard »).
-     Pour remettre le son à l'allumage : `on = true` ci-dessous, et rien
-     d'autre — tout passe par ce seul drapeau, audio() renvoyant null tant
-     qu'il est faux, si bien qu'aucun contexte audio n'est même créé. Le
-     panneau Réglages › Son montre « Coupé » et suffit à rallumer. */
-  let ctx = null, master = null, noise = null, on = false;
+  /* Le son est ALLUMÉ à l'arrivée (rétabli le 16 sept. 2026, après une période
+     où il démarrait coupé). Tout passe par ce seul drapeau : audio() renvoie
+     null tant qu'il est faux, si bien qu'aucun contexte audio n'est même créé,
+     et le panneau Réglages › Son ne fait rien d'autre que le basculer.
+     Allumé ne veut pas dire bruyant tout de suite : les navigateurs refusent le
+     son avant un geste de l'utilisateur, et le contexte n'est créé qu'au
+     premier clic ou à la première touche. */
+  let ctx = null, master = null, noise = null, on = true;
   const api = {};
   // Réglages › Son : couper arrête aussi la nappe de fond, rallumer la relance
   Object.defineProperty(api, 'enabled', {
@@ -3582,15 +3591,16 @@ const sfx = (() => {
      passent —, donc c'est le seul chiffre à changer, et le retour d'onglet
      doit viser le même. */
   const AMB_VOL = 0.09;
-  /* PROVISOIRE (16 sept. 2026, demande de l'utilisateur : « enlève la nappe de
-     fond, pas d'autre fond sonore pour le moment »). Le code de la nappe reste
-     entier — il est réglé et documenté, et le remettre ne coûtera qu'un mot :
-     `NAPPE = true`. Rien d'autre à toucher, `ambientStart` sortant aussitôt
-     tant que le drapeau est faux, si bien qu'aucun oscillateur n'est créé. Les
-     bruitages, eux, ne passent pas par là et continuent de sonner. */
-  const NAPPE = false;
+  /* La nappe joue au MENU (rétablie le 16 sept. 2026 : elle avait été coupée
+     partout alors que la demande ne visait que le salon d'essayage).
+     TROIS ÉTATS, et un seul fond sonore à la fois : le menu a sa nappe,
+     l'arène son motif 8 bits, le salon d'essayage RIEN — ses bruitages lui
+     suffisent, c'est la demande « pas d'autre fond sonore pour le moment ».
+     `salon` est donc un silence, pas une musique : il éteint sans remplacer,
+     et c'est pour cela qu'il ne peut pas passer par `api.combat`. */
+  let sansFond = false;
   function ambientStart(){
-    if (!NAPPE || amb || !ctx || !on) return;
+    if (amb || sansFond || arene || !ctx || !on) return;
     const g = ctx.createGain();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
     lp.connect(g); g.connect(master);
@@ -3928,6 +3938,18 @@ const sfx = (() => {
     if (!audio()) return;
     if (arene){ ambientStop(); combatStart(); }
     else { combatStop(); ambientStart(); }
+  };
+  /* Le salon d'essayage fait TAIRE la nappe et ne met rien à la place : ses
+     bruitages se suffisent, et une nappe sous eux les noierait. À la
+     fermeture, le menu retrouve la sienne — sauf si une arène tourne encore,
+     auquel cas `ambientStart` sort de lui-même.
+     Le nom compte : `api.salon` est DÉJÀ pris, c'est le carillon d'ouverture
+     du salon, plus bas. Une seconde définition du même nom ne casserait rien
+     de visible — la dernière écrite gagne — et laisserait celle-ci muette. */
+  api.sansFond = (v) => {
+    sansFond = !!v;
+    if (!audio()) return;
+    if (sansFond) ambientStop(); else ambientStart();
   };
   /* Carillon d'ouverture : deux notes aiguës qui montent d'une quarte, comme
      une application qui s'annonce. Le grave qui l'accompagnait a été retiré à
@@ -10959,6 +10981,7 @@ const dressup = (() => {
     tirerHaut();
     eveilAt = performance.now(); dort = false;
     overlay.classList.add('open');
+    sfx.sansFond(true);             // le salon se joue sans nappe : ses bruitages suffisent
     sfx.salon();                    // le carillon du salon, pas celui du site
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(boucle);
@@ -10969,6 +10992,7 @@ const dressup = (() => {
     cancelAnimationFrame(raf); raf = 0; dort = false;
     overlay.classList.remove('open');
     oterVisage();          // la photo ne survit pas à la fermeture, même en mémoire
+    sfx.sansFond(false);   // le menu retrouve sa nappe
     // on revient sur la tuile du jeu, comme en quittant une application
     const ci = DATA.findIndex(c => c.kind === 'game');
     const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'dressup') : -1;
@@ -11004,12 +11028,28 @@ const dressup = (() => {
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
   /* ---- aperçu du panneau ----
-     Celui-ci est en DEUX dimensions et rien d'autre : le calque 3D de la boîte
-     appartient au mini-jeu Versus, deux moteurs ne peuvent pas se partager un
-     canvas, et un salon d'essayage se raconte très bien avec son fond sucré,
-     son portant en pointillés et une robe. C'est d'ailleurs ce que montraient
-     les vignettes de ces jeux-là. */
+     Deux dimensions et rien d'autre : le calque 3D de la boîte appartient au
+     mini-jeu Versus, et deux moteurs ne peuvent pas se partager un canvas. Ce
+     n'est donc pas une capture du salon, c'est son PLAN — la même scène
+     redessinée, chaque nombre repris de la feuille de style plus haut
+     (`.dress-stage`, `.dress-cote`, `.dress-rack`, `.dress-case`,
+     `.dress-outils`, `.dress-titre`, `.dress-save`). D'où l'unité `u` : un
+     pixel CSS du salon, vu de loin.
+     UNE VIGNETTE EST UNE AFFICHE, PAS UNE CAPTURE. Réduire fidèlement la vraie
+     fenêtre — mesurée à 1178 px de large — donnerait des cases de trente
+     pixels et des intertitres de cinq : illisible. On dessine donc le salon
+     d'une fenêtre plus petite, `VIG_REF`, ce qui garde la mise en page exacte
+     en la rendant lisible ; le nombre de colonnes se compte alors tout seul
+     avec la règle de grille du portant, et tombe sur quatre, comme à l'écran.
+     La version d'avant montrait quatre cases VIDES et une ROBE : le portant du
+     salon n'est jamais vide, et il n'y a jamais eu de robe dans la penderie. */
   const vig = { taille: '' };
+  const VIG_REF = 730;               // largeur de la scène représentée, en pixels CSS
+  const VIG_POLICE = '"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif';
+  /* La teinte de peau et l'écartement des pieds vivent dans `model3d`, hors de
+     portée d'ici : on les réécrit, avec le renvoi qui va bien. */
+  const VIG_PEAU = '#c89878';   // = PEAU_DEFAUT (model3d)
+  const VIG_ECART = 0.045;      // = ECART_PIEDS (model3d)
   function apercu(force){
     const box = document.getElementById('arenaTeaser');
     const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
@@ -11017,48 +11057,264 @@ const dressup = (() => {
     const r = box.getBoundingClientRect();
     if (!r.width) return;
     const k = Math.min(2, window.devicePixelRatio || 1);
-    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
+    /* La langue entre dans la clé : les intertitres du portant et les boutons
+       sont ÉCRITS dans la vignette, ils doivent suivre le site. Sans elle, un
+       passage en français laissait « TOPS » au-dessus des hauts, la taille
+       n'ayant pas bougé. */
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height) + '/' + currentLang;
     if (!force && vig.taille === cle) return;
     vig.taille = cle;
     [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
     const g = bc.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
     fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
-    const W = bc.width, H = bc.height, s = H / 300;
-    const fond = g.createLinearGradient(0, 0, W, H);
-    fond.addColorStop(0, '#ffd7ef'); fond.addColorStop(0.42, '#ffe9c9'); fond.addColorStop(1, '#d6f2ff');
+    const W = bc.width, H = bc.height, u = W / VIG_REF;
+    // ---- outils de tracé : rectangle arrondi, polygone, cadre en pointillés
+    const arrondi = (x, y, w, h, rd) => {
+      const q = Math.max(0, Math.min(rd, w / 2, h / 2));
+      g.beginPath();
+      g.moveTo(x + q, y);
+      g.arcTo(x + w, y, x + w, y + h, q); g.arcTo(x + w, y + h, x, y + h, q);
+      g.arcTo(x, y + h, x, y, q);         g.arcTo(x, y, x + w, y, q);
+      g.closePath();
+    };
+    const forme = (pts, col) => {
+      g.fillStyle = col; g.beginPath();
+      pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+      g.closePath(); g.fill();
+    };
+    const pointille = (x, y, w, h, rd, col) => {
+      g.setLineDash([6 * u, 5 * u]); g.lineWidth = 3 * u; g.strokeStyle = col;
+      arrondi(x, y, w, h, rd); g.stroke(); g.setLineDash([]);
+    };
+
+    /* ---- le fond : le dégradé de `.dress-stage`, au degré près.
+       160° se comptent depuis le haut dans le sens des aiguilles ; la ligne du
+       dégradé traverse toute la boîte, d'où sa longueur. */
+    const ang = 160 * Math.PI / 180, ax = Math.sin(ang), ay = -Math.cos(ang);
+    const L = Math.abs(W * ax) + Math.abs(H * ay);
+    const fond = g.createLinearGradient(W / 2 - ax * L / 2, H / 2 - ay * L / 2,
+                                        W / 2 + ax * L / 2, H / 2 + ay * L / 2);
+    fond.addColorStop(0, '#ffd7ef'); fond.addColorStop(0.38, '#ffe9c9'); fond.addColorStop(1, '#d6f2ff');
     g.fillStyle = fond; g.fillRect(0, 0, W, H);
-    g.fillStyle = 'rgba(255,255,255,0.85)';
-    for (let i = 0; i < 14; i++){
-      const x = (i * 97 % 100) / 100 * W, y = (i * 61 % 100) / 100 * H, t = (1 + i % 3) * s;
-      g.beginPath(); g.arc(x, y, t, 0, 7); g.fill();
-    }
-    // le portant, à droite : un cadre en pointillés et quatre cases
-    g.setLineDash([7 * s, 5 * s]); g.lineWidth = 3 * s; g.strokeStyle = '#ff8ec4';
-    g.strokeRect(W * 0.46, H * 0.10, W * 0.46, H * 0.72);
-    g.setLineDash([]);
-    g.strokeStyle = 'rgba(255,120,180,0.5)'; g.lineWidth = 2 * s;
-    for (let i = 0; i < 4; i++){
-      const cx = W * (0.51 + (i % 2) * 0.21), cy = H * (0.19 + Math.floor(i / 2) * 0.31);
-      g.strokeRect(cx, cy, W * 0.17, H * 0.26);
-    }
-    // le mannequin, à gauche : une silhouette simple, la citation suffit
-    const mx = W * 0.23, sol = H * 0.88, ht = H * 0.72;
-    g.fillStyle = '#c89878';
-    g.beginPath(); g.arc(mx, sol - ht * 0.90, ht * 0.10, 0, 7); g.fill();
-    g.fillRect(mx - ht * 0.035, sol - ht * 0.80, ht * 0.07, ht * 0.10);
-    g.fillRect(mx - ht * 0.15, sol - ht * 0.72, ht * 0.30, ht * 0.34);
-    g.fillRect(mx - ht * 0.22, sol - ht * 0.70, ht * 0.07, ht * 0.30);
-    g.fillRect(mx + ht * 0.15, sol - ht * 0.70, ht * 0.07, ht * 0.30);
-    g.fillRect(mx - ht * 0.13, sol - ht * 0.38, ht * 0.10, ht * 0.38);
-    g.fillRect(mx + ht * 0.03, sol - ht * 0.38, ht * 0.10, ht * 0.38);
-    g.fillStyle = '#ff77b8';                       // la robe, posée dessus
-    g.beginPath();
-    g.moveTo(mx - ht * 0.15, sol - ht * 0.70);
-    g.lineTo(mx + ht * 0.15, sol - ht * 0.70);
-    g.lineTo(mx + ht * 0.24, sol - ht * 0.30);
-    g.lineTo(mx - ht * 0.24, sol - ht * 0.30);
-    g.closePath(); g.fill();
+    // les étoiles : les deux pavés répétés de `.dress-stage::before`, même pas,
+    // même décalage, même rayon — donc la même densité à l'œil
+    g.globalAlpha = 0.8;
+    [[130, 0.12, 0.18, 3, 'rgba(255,255,255,0.9)'], [90, 0.78, 0.62, 2, 'rgba(255,255,255,0.75)']]
+      .forEach(([pas, fx, fy, ray, col]) => {
+        const p = pas * u; g.fillStyle = col;
+        for (let x = fx * p; x < W + p; x += p)
+          for (let y = fy * p; y < H + p; y += p){ g.beginPath(); g.arc(x, y, ray * u, 0, 7); g.fill(); }
+      });
+    g.globalAlpha = 1;
+
+    /* ---- la colonne de droite (`.dress-cote`) : le portant, puis les outils.
+       Marges de 10 px, largeur min(52 %, 430 px), 8 px entre les deux. */
+    const M = 10 * u, Lw = Math.min(W * 0.52, 430 * u);
+    const Lx = W - M - Lw, Ly = M, Lh = H - 2 * M;
+    const Oh = Math.min(Lh * 0.45, 104 * u);       // le pavé bleu, mesuré à l'écran
+    const Rh = Lh - Oh - 8 * u;
+    g.fillStyle = 'rgba(255,255,255,0.58)'; arrondi(Lx, Ly, Lw, Rh, 18 * u); g.fill();
+    pointille(Lx, Ly, Lw, Rh, 18 * u, '#ff8ec4');
+
+    /* ---- trois vêtements à plat, dans l'esprit des aperçus du portant : un
+       haut, un bas, une chaussure. Des aplats et des angles droits — c'est un
+       modèle à peu de faces qu'on cite, pas une photo. */
+    const habit = {
+      haut: (x, y, w, h, col) => {
+        const cx = x + w / 2, t = y + h * 0.22, b = y + h * 0.82;
+        forme([[cx - w * 0.17, t], [cx - w * 0.33, t + h * 0.09], [cx - w * 0.33, t + h * 0.30],
+               [cx - w * 0.21, t + h * 0.30], [cx - w * 0.21, b], [cx + w * 0.21, b],
+               [cx + w * 0.21, t + h * 0.30], [cx + w * 0.33, t + h * 0.30],
+               [cx + w * 0.33, t + h * 0.09], [cx + w * 0.17, t]], col);
+        forme([[cx - w * 0.09, t], [cx, t + h * 0.08], [cx + w * 0.09, t]], 'rgba(255,255,255,0.5)');
+      },
+      bas: (x, y, w, h, col) => {
+        const cx = x + w / 2, t = y + h * 0.17, b = y + h * 0.85;
+        forme([[cx - w * 0.20, t], [cx + w * 0.20, t], [cx + w * 0.18, b], [cx + w * 0.045, b],
+               [cx, t + h * 0.38], [cx - w * 0.045, b], [cx - w * 0.18, b]], col);
+      },
+      pieds: (x, y, w, h, col) => {
+        const b = y + h * 0.64, l = x + w * 0.22;
+        forme([[l, b - h * 0.28], [l + w * 0.21, b - h * 0.28],
+               [l + w * 0.56, b - h * 0.09], [l + w * 0.56, b], [l, b]], col);
+        g.fillStyle = 'rgba(0,0,0,0.20)'; g.fillRect(l, b - h * 0.05, w * 0.56, h * 0.05);
+      },
+    };
+
+    /* ---- le portant : la grille de `.dress-rack`, à la lettre —
+       `repeat(auto-fill,minmax(74px,1fr))`, 7 px de gouttière, 10 px de marge —
+       et un intertitre par catégorie, comme `.dress-groupe`. Le tout est ROGNÉ
+       au cadre : une rangée à moitié sortie est coupée, exactement comme le
+       fait le défilement du vrai portant. */
+    const pad = 10 * u, gap = 7 * u, gx = Lx + pad, gw = Lw - 2 * pad;
+    const cols = Math.max(2, Math.floor((gw + gap) / (74 * u + gap)));
+    const cw = (gw - gap * (cols - 1)) / cols, ch = 74 * u;
+    const RAYONS = [
+      { cle: 'dressCatTop',    cat: 'haut',  cols: ['#2b2b31', '#efece4', '#7ba6d6', '#c8455f', '#2b2b31', '#6c8f6a', '#efece4', '#3c4658'] },
+      { cle: 'dressCatBottom', cat: 'bas',   cols: ['#4a6ea8', '#2f3340', '#8d8577', '#5d7f9c'] },
+      { cle: 'dressCatShoes',  cat: 'pieds', cols: ['#f2f0ea', '#33363d', '#f2f0ea', '#8a5a3c'] },
+    ];
+    const fsT = Math.max(6, 11.5 * u);
+    g.save(); arrondi(Lx, Ly, Lw, Rh, 18 * u); g.clip();
+    let cy = Ly + pad;
+    RAYONS.forEach((rayon, ri) => {
+      if (cy > Ly + Rh) return;
+      // l'intertitre, puis le filet pointillé qui finit la ligne
+      g.font = '800 ' + fsT.toFixed(2) + 'px ' + VIG_POLICE;
+      g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+      g.fillStyle = '#b0307a';
+      const mot = String(T(rayon.cle)).toUpperCase();
+      if (ri) cy += 5 * u;
+      g.fillText(mot, gx, cy + fsT);
+      const fin = gx + g.measureText(mot).width + 8 * u;
+      g.setLineDash([5 * u, 4 * u]); g.lineWidth = 2 * u; g.strokeStyle = 'rgba(255,142,196,0.8)';
+      g.beginPath(); g.moveTo(fin, cy + fsT * 0.6); g.lineTo(gx + gw, cy + fsT * 0.6); g.stroke();
+      g.setLineDash([]);
+      cy += fsT + 5 * u;
+      for (let c = 0; c < cols; c++){
+        const x = gx + c * (cw + gap);
+        const porte = ri === 0 && c === 0;             // une pièce déjà sur le mannequin
+        g.fillStyle = porte ? '#fff2c2' : 'rgba(255,255,255,0.5)';
+        arrondi(x, cy, cw, ch, 12 * u); g.fill();
+        g.lineWidth = 2 * u; g.strokeStyle = porte ? '#ffb020' : 'rgba(255,120,180,0.45)';
+        arrondi(x, cy, cw, ch, 12 * u); g.stroke();
+        habit[rayon.cat](x, cy, cw, ch, rayon.cols[c % rayon.cols.length]);
+        if (porte){                                     // la coche de `.dress-case.porte::after`
+          g.font = '800 ' + Math.max(7, 14 * u).toFixed(2) + 'px ' + VIG_POLICE;
+          g.fillStyle = '#e07800'; g.textAlign = 'right'; g.textBaseline = 'top';
+          g.fillText('✓', x + cw - 4 * u, cy + 2 * u);
+          g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+        }
+      }
+      cy += ch + 4 * u;
+    });
+    g.restore();
+
+    /* ---- les outils (`.dress-outils`) : le pavé pointillé bleu et ses boutons
+       bonbon, un par outil du salon, dans l'ordre et dans leurs couleurs. La
+       mention sur la photo, elle, n'est pas écrite : à cette taille un
+       paragraphe de dix pixels et demi ne serait qu'une bouillie. Deux filets
+       en tiennent la place — ils DISENT qu'il y a un texte là, sans prétendre
+       le donner à lire. */
+    const Oy = Ly + Rh + 8 * u;
+    g.fillStyle = 'rgba(255,255,255,0.72)'; arrondi(Lx, Oy, Lw, Oh, 16 * u); g.fill();
+    pointille(Lx, Oy, Lw, Oh, 16 * u, '#7fd0f0');
+    const fsB = Math.max(6, 12.5 * u), bh = fsB + 16 * u;
+    g.font = '700 ' + fsB.toFixed(2) + 'px ' + VIG_POLICE;
+    g.textBaseline = 'middle';
+    let bx = Lx + 12 * u, by = Oy + 9 * u;
+    [[T('dressFace'), '#ff77b8', '#b0307a', '#ffffff', 0],
+     [T('dressSkin'), '#ffd166', '#a9761a', '#6b3f00', 1],
+     [T('dressStrip'), '#7fd0f0', '#1d7ea8', '#ffffff', 0]].forEach(([mot, teinte, cerne, encre, pastille]) => {
+      const bw = g.measureText(mot).width + 30 * u + (pastille ? 28 * u : 0);
+      if (bx + bw > Lx + Lw - 12 * u){ bx = Lx + 12 * u; by += bh + 8 * u; }
+      if (by + bh > Oy + Oh - 6 * u) return;
+      g.fillStyle = cerne; arrondi(bx, by + 3 * u, bw, bh, bh / 2); g.fill();   // l'ombre franche
+      g.fillStyle = teinte; arrondi(bx, by, bw, bh, bh / 2); g.fill();
+      g.lineWidth = 2 * u; g.strokeStyle = cerne; arrondi(bx, by, bw, bh, bh / 2); g.stroke();
+      g.fillStyle = encre; g.fillText(mot, bx + 15 * u, by + bh * 0.54);
+      if (pastille){                                    // la pastille de teinte EST le champ
+        const d = bh * 0.62, px = bx + bw - 15 * u - d;
+        g.fillStyle = VIG_PEAU;
+        g.beginPath(); g.arc(px + d / 2, by + bh / 2, d / 2, 0, 7); g.fill();
+        g.lineWidth = 2 * u; g.strokeStyle = cerne; g.stroke();
+      }
+      bx += bw + 8 * u;
+    });
+    g.fillStyle = 'rgba(122,74,102,0.35)';
+    [0.92, 0.84, 0.55].forEach((part, i) => {
+      const ly = by + bh + (8 + i * 7) * u;
+      if (ly + 3 * u < Oy + Oh - 4 * u){ arrondi(Lx + 12 * u, ly, (Lw - 24 * u) * part, 3 * u, 2 * u); g.fill(); }
+    });
+
+    /* ---- le mannequin. Il occupe ce que la colonne lui laisse, au même
+       endroit que dans le salon : voir `dessiner`, qui pose un carré de
+       min(46 % de large, 92 % de haut) à 4,5 % du bord gauche. Dans ce carré,
+       la plante des pieds est à 0,978 et le sommet du crâne à 0,03 — c'est le
+       cadrage mesuré en réglant le souffle.
+       Les proportions sont celles du modèle : chevilles à 0,08 de la hauteur,
+       hanches à 0,492, épaules à 0,796, et les pieds écartés de VIG_ECART.
+       Il est HABILLÉ — haut, bas, chaussures : un salon d'essayage ne se
+       raconte pas avec un mannequin nu.
+       LES MANCHES ET LES MAINS COMPTENT. Un haut dessiné d'un seul bloc donne
+       une masse noire sans bras, et le personnage cesse d'en être un : le haut
+       est donc fait de trois morceaux — le corps et deux manches — qui
+       s'arrêtent au poignet, et la peau reprend en dessous. C'est d'ailleurs
+       ce que montre le vrai salon : le sweat descend jusqu'aux poignets, les
+       mains dépassent. */
+    const libre = Math.min(W * 0.46, H * 0.92);
+    const mx = W * 0.045 + libre / 2, sol = (H - libre) / 2 + libre * 0.978, ht = libre * 0.948;
+    const Y = (f) => sol - ht * f;                       // hauteur, en fractions du modèle
+    const X = (f) => mx + ht * f;                        // largeur, à la même échelle
+    const PEAU = VIG_PEAU, OMBRE = 'rgba(0,0,0,0.13)';
+    const PIED = VIG_ECART;
+    // 1. la peau, en entier : jambes, pieds, bras, mains, buste, cou, tête
+    [-1, 1].forEach(s => {
+      forme([[X(s * (PIED - 0.048)), Y(0.492)], [X(s * (PIED + 0.048)), Y(0.492)],
+             [X(s * (PIED + 0.026)), Y(0.08)],  [X(s * (PIED - 0.026)), Y(0.08)]], PEAU);
+      forme([[X(s * (PIED - 0.030)), Y(0.08)],  [X(s * (PIED + 0.032)), Y(0.08)],
+             [X(s * (PIED + 0.034)), Y(0.004)], [X(s * (PIED - 0.028)), Y(0.004)]], PEAU);
+      forme([[X(s * 0.072), Y(0.796)], [X(s * 0.115), Y(0.788)],
+             [X(s * 0.130), Y(0.470)], [X(s * 0.096), Y(0.470)]], PEAU);   // le bras
+      forme([[X(s * 0.106), Y(0.505)], [X(s * 0.140), Y(0.505)],
+             [X(s * 0.134), Y(0.412)], [X(s * 0.110), Y(0.412)]], PEAU);   // la main, sous la manche
+    });
+    forme([[X(-0.100), Y(0.796)], [X(0.100), Y(0.796)], [X(0.080), Y(0.560)],
+           [X(0.088), Y(0.470)], [X(-0.088), Y(0.470)], [X(-0.080), Y(0.560)]], PEAU);
+    forme([[X(-0.031), Y(0.862)], [X(0.031), Y(0.862)], [X(0.036), Y(0.782)], [X(-0.036), Y(0.782)]], PEAU);
+    forme([[X(-0.036), Y(0.845)], [X(-0.063), Y(0.881)], [X(-0.063), Y(0.957)], [X(-0.040), Y(0.998)],
+           [X(0.040), Y(0.998)], [X(0.063), Y(0.957)], [X(0.063), Y(0.881)], [X(0.036), Y(0.845)]], PEAU);
+    forme([[X(0.018), Y(0.845)], [X(0.036), Y(0.845)], [X(0.063), Y(0.881)],
+           [X(0.063), Y(0.957)], [X(0.040), Y(0.998)], [X(0.018), Y(0.998)]], OMBRE);  // la facette d'ombre
+    forme([[X(0.010), Y(0.862)], [X(0.031), Y(0.862)], [X(0.036), Y(0.782)], [X(0.014), Y(0.782)]], OMBRE);
+    // 2. le bas, puis le haut par-dessus — corps et manches séparés
+    [-1, 1].forEach(s => {
+      forme([[X(s * (PIED - 0.060)), Y(0.520)], [X(s * (PIED + 0.064)), Y(0.520)],
+             [X(s * (PIED + 0.045)), Y(0.095)], [X(s * (PIED - 0.041)), Y(0.095)]], '#4a6ea8');
+    });
+    forme([[X(-0.100), Y(0.520)], [X(0.100), Y(0.520)], [X(0.096), Y(0.455)], [X(-0.096), Y(0.455)]], '#3f5f93');
+    [-1, 1].forEach(s => {
+      forme([[X(s * 0.060), Y(0.850)], [X(s * 0.152), Y(0.788)],
+             [X(s * 0.140), Y(0.500)], [X(s * 0.086), Y(0.500)]], '#2b2b31');        // la manche
+    });
+    forme([[X(-0.100), Y(0.854)], [X(0.100), Y(0.854)], [X(0.104), Y(0.430)], [X(-0.104), Y(0.430)]], '#2b2b31');
+    forme([[X(0.040), Y(0.854)], [X(0.100), Y(0.854)], [X(0.104), Y(0.430)], [X(0.044), Y(0.430)]], 'rgba(0,0,0,0.20)');
+    forme([[X(0.086), Y(0.500)], [X(0.140), Y(0.500)], [X(0.152), Y(0.788)], [X(0.108), Y(0.802)]], 'rgba(0,0,0,0.20)');
+    forme([[X(-0.034), Y(0.854)], [X(0.034), Y(0.854)], [X(0.019), Y(0.808)], [X(-0.019), Y(0.808)]], 'rgba(255,255,255,0.13)');
+    // 3. les chaussures, par-dessus l'ourlet du bas
+    [-1, 1].forEach(s => {
+      forme([[X(s * (PIED - 0.038)), Y(0.112)], [X(s * (PIED + 0.040)), Y(0.112)],
+             [X(s * (PIED + 0.046)), Y(0.026)], [X(s * (PIED - 0.043)), Y(0.026)]], '#f2f0ea');
+      forme([[X(s * (PIED - 0.044)), Y(0.026)], [X(s * (PIED + 0.047)), Y(0.026)],
+             [X(s * (PIED + 0.047)), Y(0)],     [X(s * (PIED - 0.044)), Y(0)]], '#3a3a40');
+    });
+
+    /* ---- le titre (`.dress-titre`) : rose cerné de blanc, posé de travers.
+       L'inclinaison est le milieu de son balancement (de −6,5° à −1,5°) : la
+       vignette est une image fixe, elle prend la pose moyenne. */
+    const fsTi = Math.min(34, 24 + W / 60) * u;
+    g.save();
+    g.translate(16 * u, 10 * u + fsTi * 0.86);
+    g.rotate(-4 * Math.PI / 180);
+    g.font = '800 ' + fsTi.toFixed(2) + 'px ' + VIG_POLICE;
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    const mot = T('dressTitle');
+    g.fillStyle = 'rgba(120,20,80,0.35)'; g.fillText(mot, 3 * u, 3 * u);
+    g.lineJoin = 'round'; g.lineWidth = 6 * u; g.strokeStyle = '#ffffff';
+    g.strokeText(mot, 0, 0);
+    g.fillStyle = '#ff4fa3'; g.fillText(mot, 0, 0);
+    g.restore();
+
+    /* ---- « Enregistrer le look » (`.dress-save`) : le bouton vert, dans la
+       scène et en bas à gauche — ce qu'on emporte, c'est le personnage. */
+    g.font = '700 ' + fsB.toFixed(2) + 'px ' + VIG_POLICE;
+    g.textBaseline = 'middle';
+    const sw = g.measureText(T('dressSave')).width + 30 * u, sy = H - 14 * u - bh;
+    g.fillStyle = '#3d7a2e'; arrondi(16 * u, sy + 3 * u, sw, bh, bh / 2); g.fill();
+    g.fillStyle = '#9be08a'; arrondi(16 * u, sy, sw, bh, bh / 2); g.fill();
+    g.lineWidth = 2 * u; g.strokeStyle = '#3d7a2e'; arrondi(16 * u, sy, sw, bh, bh / 2); g.stroke();
+    g.fillStyle = '#22451a'; g.fillText(T('dressSave'), 31 * u, sy + bh * 0.54);
   }
 
   // contrôle : l'état du salon, et de quoi poser une pièce sans la cliquer
