@@ -6287,13 +6287,19 @@ const model3d = (() => {
 
      Le maillage découpé est propre au salon d'essayage ; la boutique continue
      d'afficher le vêtement entier, col fermé, comme sur la photo. */
-  /* La bande s'arrête AVANT les épaules, et le rayon est celui du cou LE PLUS
-     ÉTROIT. Sous 0,19 la travée centrale du mannequin n'est déjà plus une
+  /* La bande droite s'arrête AVANT les épaules, et le rayon est celui du cou LE
+     PLUS ÉTROIT. Sous 0,19 la travée centrale du mannequin n'est déjà plus une
      nuque mais une carrure : mesurée rangée par rangée, elle passe de 0,03 à
      0,13 en quelques millièmes, et la découpe emportait alors la moitié du
-     buste. Un rayon unique, pris au plus mince, donne un col rond et régulier
-     — et c'est bien ce qu'est un col. */
-  const COU_BANDE = [0.116, 0.182], COU_RANGS = 20, COU_MARGE = 1.30;
+     buste. Un rayon unique, pris au plus mince, donne un col rond et régulier.
+
+     Puis l'encolure CREUSE sous les épaules, en demi-ellipse. Un col ne
+     s'arrête pas à la naissance du cou : il descend sur le haut de la poitrine
+     et se referme en arrondi — c'est ce qui distingue une encolure d'un simple
+     trou de nuque, et ce qu'on voit sur n'importe quel vêtement porté. La
+     profondeur vaut une fois et demie le rayon du cou : de quoi laisser voir la
+     clavicule sans ouvrir un décolleté. */
+  const COU_BANDE = [0.112, 0.185], COU_CREUX = 0.042, COU_RANGS = 20, COU_MARGE = 1.45;
   let couRayon = null;
   function rayonCou(corpsItem){
     if (couRayon != null) return couRayon;
@@ -6335,11 +6341,18 @@ const model3d = (() => {
     let coupes = 0;
     for (let y = v0; y <= v1; y++){
       const fy = e.y0 + (y - v0) / (v1 - v0) * (e.y1 - e.y0), by = boite.y + fy * boite.h;
-      if (by < COU_BANDE[0] || by > COU_BANDE[1]) continue;
+      // droit le long du cou, puis refermé en demi-ellipse sur la poitrine
+      let large = 0;
+      if (by >= COU_BANDE[0] && by <= COU_BANDE[1]) large = rayon * COU_MARGE;
+      else if (by > COU_BANDE[1] && by < COU_BANDE[1] + COU_CREUX){
+        const t = (by - COU_BANDE[1]) / COU_CREUX;
+        large = rayon * COU_MARGE * Math.sqrt(1 - t * t);
+      }
+      if (large < 1e-4) continue;
       for (let x = u0; x <= u1; x++){
         if (!troue[y * N + x]) continue;
         const fx = e.x0 + (x - u0) / (u1 - u0) * (e.x1 - e.x0), bx = boite.x + fx * boite.l;
-        if (Math.abs(bx - 0.5) < rayon * COU_MARGE){ troue[y * N + x] = 0; coupes++; }
+        if (Math.abs(bx - 0.5) < large){ troue[y * N + x] = 0; coupes++; }
       }
     }
     if (!coupes){ encolures.set(cle, null); return null; }
