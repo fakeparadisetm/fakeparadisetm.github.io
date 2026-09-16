@@ -3142,22 +3142,19 @@ let cart = [];
    Elle ne contient aucune donnée personnelle, seulement le nom du jeu gagné.
    La page « Cookies » le déclare ; toute lecture ou écriture est protégée, un
    navigateur en navigation privée peut refuser l'accès au stockage.
-   Tout cela est SUSPENDU tant que `RELOCK` vaut vrai, le temps des essais —
-   voir juste en dessous. La page « Cookies » n'est pas touchée pour autant :
-   elle annonce ce que le site fera, et déclarer plus que ce qu'on garde n'a
-   jamais posé de problème à personne ; l'inverse, si. */
+   Un drapeau `RELOCK` sert à suspendre tout cela le temps d'essais — il a
+   servi le 16 sept. 2026 et il est retombé le même jour. */
 const DEBLOQUE = (() => {
   const CLE = 'fp.debloque';
-  /* PROVISOIRE (16 sept. 2026, demande de l'utilisateur : « pour que je puisse
-     beta test, fais que pour l'instant, dès que je reload la page, les
-     unlockables se re-lock »). À `true`, rien n'est lu ni écrit : chaque
-     chargement repart de zéro, ce qui permet de refaire l'épreuve autant de
-     fois qu'on veut sans vider les données du navigateur à la main.
-     POUR RÉTABLIR : `RELOCK = false` ci-dessous, et rien d'autre.
-     On ne SUPPRIME pas la valeur déjà enregistrée, on l'ignore : effacer
-     reprendrait à un visiteur une pièce qu'il a réellement gagnée, et le jour
-     où ce drapeau retombe, chacun retrouve ce qu'il avait. */
-  const RELOCK = true;
+  /* Interrupteur d'essais : à `true`, rien n'est lu ni écrit et chaque
+     chargement referme les pièces, ce qui permet de refaire une épreuve
+     autant de fois qu'on veut sans vider les données du navigateur à la main.
+     Il a servi pour la bêta du 16 sept. 2026 et il est retombé le même jour ;
+     on le laisse en place, il resservira à la prochaine épreuve ajoutée.
+     Il IGNORE la valeur enregistrée, il ne la supprime pas : effacer
+     reprendrait à un visiteur une pièce réellement gagnée, et au retour à
+     `false` chacun retrouve ce qu'il avait — ce qui vient d'être vérifié. */
+  const RELOCK = false;
   let jeux = new Set();
   if (!RELOCK) try { const v = JSON.parse(localStorage.getItem(CLE) || '[]'); if (Array.isArray(v)) jeux = new Set(v); } catch (e) {}
   return {
@@ -4144,21 +4141,49 @@ const model3d = (() => {
     const gl = cv.getContext('webgl', { antialias:true, alpha:true, premultipliedAlpha:true });
     if (!gl) return null;
     const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
-    const prog = gl.createProgram();
-    gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
-    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
-    gl.linkProgram(prog);
-    gl.useProgram(prog);
-    const aPos = gl.getAttribLocation(prog, 'aPos'), aUV = gl.getAttribLocation(prog, 'aUV'), aSh = gl.getAttribLocation(prog, 'aSh');
-    const uMVP = gl.getUniformLocation(prog, 'uMVP');
-    const uTex = gl.getUniformLocation(prog, 'uTex'), uAlpha = gl.getUniformLocation(prog, 'uAlpha');
-    const uTint = gl.getUniformLocation(prog, 'uTint'); // teinte de dégât du mini-jeu ; (0,0,0,0) ailleurs
-    const uPS1 = gl.getUniformLocation(prog, 'uPS1');   // grille de sommets et placage affine ; (0,0,0) ailleurs
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
-    gl.uniform1i(uTex, 0);
-    const textures = new WeakMap(), buffers = new WeakMap(); // objets GPU de ce contexte, par source
+    let prog, aPos, aUV, aSh, uMVP, uTex, uAlpha, uTint, uPS1;
+    let textures = new WeakMap(), buffers = new WeakMap(); // objets GPU de ce contexte, par source
+    let perdu = false;
+    function monter(){
+      prog = gl.createProgram();
+      gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+      aPos = gl.getAttribLocation(prog, 'aPos'); aUV = gl.getAttribLocation(prog, 'aUV'); aSh = gl.getAttribLocation(prog, 'aSh');
+      uMVP = gl.getUniformLocation(prog, 'uMVP');
+      uTex = gl.getUniformLocation(prog, 'uTex'); uAlpha = gl.getUniformLocation(prog, 'uAlpha');
+      uTint = gl.getUniformLocation(prog, 'uTint'); // teinte de dégât du mini-jeu ; (0,0,0,0) ailleurs
+      uPS1 = gl.getUniformLocation(prog, 'uPS1');   // grille de sommets et placage affine ; (0,0,0) ailleurs
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.cullFace(gl.BACK);
+      gl.uniform1i(uTex, 0);
+    }
+    monter();
+    /* ---- perte du contexte ----
+       Un contexte WebGL n'est PAS acquis pour toujours : le navigateur le
+       reprend quand la carte graphique est sous pression, à la sortie de
+       veille, sur une réinitialisation de pilote, ou quand trop de contextes
+       vivent en même temps (il sacrifie alors le plus ancien). Tous les objets
+       GPU — textures et tampons — disparaissent avec lui, et le modèle ne
+       revient jamais : une page laissée ouverte finit par n'afficher qu'un
+       cadre vide, sans la moindre erreur en console. Les nappes du fond
+       s'en gardaient déjà ; le module 3D, non, et c'est ce qui est arrivé.
+       `preventDefault` est indispensable : SANS LUI le navigateur ne restaure
+       jamais le contexte, il se contente de le perdre. Les caches sont vidés
+       parce que leurs objets n'existent plus ; ils se remplissent d'eux-mêmes
+       au premier rendu suivant, les maillages et les textures vivant côté
+       processeur. */
+    cv.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      perdu = true;
+      textures = new WeakMap(); buffers = new WeakMap();
+    });
+    cv.addEventListener('webglcontextrestored', () => {
+      monter(); perdu = false;
+      if (!raf && (active || rows.length || fading.length)) raf = requestAnimationFrame(frame);
+    });
     function texture(src){
       let t = textures.get(src); if (t) return t;
       let img = src;
@@ -4184,8 +4209,8 @@ const model3d = (() => {
       const ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.index, gl.STATIC_DRAW);
       b = { vbo, ibo }; buffers.set(mesh, b); return b;
     }
-    const warm = a => { if (a){ texture(a.texF); texture(a.texB); bufs(a.mesh); } }; // envoi anticipé : pas d'à-coup au premier rendu
-    function clear(){ gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); }
+    const warm = a => { if (a && !perdu){ texture(a.texF); texture(a.texB); bufs(a.mesh); } }; // envoi anticipé : pas d'à-coup au premier rendu
+    function clear(){ if (perdu) return; gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); }
     // dessine un modèle sur tout le canvas, ou dans le carré box = { x, y, s } (pixels du
     // canvas, y vers le bas, fractions permises : la fenêtre de rendu est entière et un
     // peu plus large, le décalage restant passe dans la projection → aucun tremblement)
@@ -4197,6 +4222,7 @@ const model3d = (() => {
        par-dessus, la main s'inverse à l'écran. Une orientation accumulée n'a ni
        haut ni bas — voir « prise à la main ». */
     function render(a, ang, pv, alpha, box, side, tint, libre){
+      if (perdu) return;   // contexte repris par le navigateur : on attend sa restauration
       const M = mul(rotX(BASCULE), libre || rotY(ang));
       let MVP = mul(pv, M);
       if (box){
