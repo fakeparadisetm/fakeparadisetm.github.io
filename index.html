@@ -2989,7 +2989,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
-    dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes",
+    dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats",
     dressSkin:"Skin tone", dressSave:"Save the look",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
@@ -3046,7 +3046,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
-    dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures",
+    dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux",
     dressSkin:"Couleur de peau", dressSave:"Enregistrer le look",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
@@ -10595,6 +10595,14 @@ const dressup = (() => {
      un t-shirt ne dit rien de ce qu'on est en train de faire ; rangée, elle se
      lit comme une penderie, et l'on voit d'un coup d'œil ce qui manque. */
   const GROUPES = [
+    /* Les chapeaux EN PREMIER : l'ordre du portant est celui du corps, et on
+       commence par la tête. Ils ne dorment jamais — un bonnet se met sur un
+       crâne nu, il n'attend rien, là où des chaussures attendent un bas.
+       Ce rayon manquait alors que tout le reste était prêt (`CATEGORIES`,
+       `ANCRAGES`, `TAILLES`) : une casquette existait pour le mannequin mais
+       n'apparaissait nulle part dans la penderie, donc personne ne pouvait la
+       lui mettre. */
+    { cat: 'chapeau', cle: 'dressCatHat' },
     { cat: 'haut',  cle: 'dressCatTop' },
     { cat: 'bas',   cle: 'dressCatBottom', dort: () => !portees.has('haut') },
     { cat: 'pieds', cle: 'dressCatShoes', dort: () => !portees.has('bas') },
