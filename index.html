@@ -5620,6 +5620,9 @@ const model3d = (() => {
      triangles est la seule chose qui trahisse l'époque ; ces quarante pixels
      la remettent dans le même grain que le reste. */
   const VISAGE_PIX = 40;
+  // jusqu'où l'on étire la photo pour remplir la case, en multiples de ce que
+  // les yeux demandent : au-delà, le visage serait rogné plutôt que cadré
+  const VISAGE_ETIRE = 1.18;
   /* Les deux yeux du mannequin dans sa case de visage, en pixels de l'atlas :
      ce sont les deux rectangles que peint le visage sans photo, et c'est sur
      eux qu'on vient poser ceux de la photo. */
@@ -5648,9 +5651,16 @@ const model3d = (() => {
         const ecart = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]) || 1;
         const mx = (y[0][0] + y[1][0]) / 2, my = (y[0][1] + y[1][1]) / 2;
         const cx = (MAN_OEIL[0][0] + MAN_OEIL[1][0]) / 2 * k, cy = MAN_OEIL[0][1] * k;
-        let ex = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / ecart * k;
-        ex = Math.max(ex, cx / mx, (VISAGE_PIX - cx) / (iw - mx));       // couvrir à gauche et à droite
-        const ey = Math.max(cy / my, (VISAGE_PIX - cy) / (ih - my));     // couvrir en haut et en bas
+        /* L'étirement est PLAFONNÉ. Remplir la case coûte que coûte revenait à
+           zoomer sans limite sur un cadrage large, et le visage sortait rogné
+           à la mâchoire. Au-delà de  fois ce que les yeux
+           demandent, on préfère la bande de peau au menton coupé : elle se
+           remarque moins qu'un visage tronqué, et la peau est justement de la
+           bonne couleur. */
+        const base = (MAN_OEIL[1][0] - MAN_OEIL[0][0]) / ecart * k;
+        const borne = base * VISAGE_ETIRE;
+        const ex = Math.min(borne, Math.max(base, cx / mx, (VISAGE_PIX - cx) / (iw - mx)));
+        const ey = Math.min(borne, Math.max(base, cy / my, (VISAGE_PIX - cy) / (ih - my)));
         gp.drawImage(photo, cx - mx * ex, cy - my * ey, iw * ex, ih * ey);
       } else {
         /* Pas d'yeux reconnaissables : on retombe sur la tache de peau, et à
@@ -6699,8 +6709,17 @@ const model3d = (() => {
   const poseBras = (item, boite) => {
     const v = viser(item, boite);
     if (!v) return { bras: 0, allonge: 1, coude: 0 };
+    /* LE BRAS NE S'ALLONGE PLUS AU-DELÀ DE SA LONGUEUR. Une manche plus longue
+       que le bras n'est pas une raison d'allonger le bras : c'est la manche
+       qu'on raccourcit, au poignet (voir la découpe dans `encolure`). Sans ce
+       plafond, un sweat aux manches longues donnait au personnage des bras
+       plus longs qu'avec un t-shirt, et l'anatomie changeait avec le vêtement.
+       L'allongement ne sert donc plus qu'à faire ressortir la main d'une
+       manche COURTE ; une manche longue est coupée un demi-poing avant le
+       poignet, et le bras n'a plus rien à rallonger du tout. */
+    const bout = Math.min(v.dist, BRAS_REPOS.long - MAIN_DEHORS);
     return { bras: BRAS_REPOS.angle - v.angle,
-             allonge: Math.max(1, (v.dist + MAIN_DEHORS) / BRAS_REPOS.long),
+             allonge: Math.max(1, (bout + MAIN_DEHORS) / BRAS_REPOS.long),
              coude: v.dist < BRAS_REPOS.long * COUDE_SEUIL ? COUDE_ANGLE : 0 };
   };
   /* ---- viser le milieu de la jambe du pantalon ----
@@ -7249,6 +7268,11 @@ const model3d = (() => {
        réserve, un t-shirt long se serait fait raccourcir l'ourlet. */
     const v = viser(item, boite);
     if (v){
+      /* On coupe au POIGNET DU BRAS, et non au bout de la manche : au-delà de
+         la longueur du bras il n'y a plus personne dedans, et laisser pendre
+         l'étoffe obligeait à rallonger le bras pour l'y rejoindre. Une manche
+         plus courte que le bras, elle, n'est pas touchée. */
+      const bout = Math.min(v.dist, BRAS_REPOS.long - MAIN_DEHORS);
       const demi = (e.o1 - e.o0) / 2 * boite.l, ex = Math.abs(BRAS_REPOS.ep[0] - 0.5), ey = BRAS_REPOS.ep[1];
       for (let y = v0; y <= v1; y++){
         const fy = e.y0 + (y - v0) / (v1 - v0) * (e.y1 - e.y0), by = boite.y + fy * boite.h;
@@ -7257,7 +7281,7 @@ const model3d = (() => {
           const fx = e.x0 + (x - u0) / (u1 - u0) * (e.x1 - e.x0), bx = boite.x + fx * boite.l;
           const dx = Math.abs(bx - 0.5);
           if (dx < demi) continue;                       // le corps du vêtement, jamais
-          if (Math.hypot(dx - ex, by - ey) > v.dist){ troue[y * N + x] = 0; coupes++; }
+          if (Math.hypot(dx - ex, by - ey) > bout){ troue[y * N + x] = 0; coupes++; }
         }
       }
     }
