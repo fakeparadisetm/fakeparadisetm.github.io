@@ -8981,20 +8981,48 @@ const dressup = (() => {
   };
   const ANCRAGES = {
     tee:      { ourlet: 0.28, y0: 0.150, y1: 0.556 },   // t-shirts, polos, débardeurs : col au ras du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.25, y0: 0.045, y1: 0.585, capuche: true },  // la capuche encadre la tête : le vêtement monte au ras du crâne, manches jusqu'aux mains
+    sweat:    { ourlet: 0.30, y0: 0.043, y1: 0.611, capuche: true },  // rendu porté : capuche baissée derrière la nuque, manches le long du corps
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
-  /* Du guide des tailles vers [catégorie, coupe]. Tout ce qui n'est pas listé
-     est un haut de coupe t-shirt : c'est le cas de `tee`, `polo`, `tank`,
-     `raglan` et des tailles propres à un article. */
+  /* ---- le guide des tailles décide de tout ----
+     Une ligne par taille, et tout ce qui concerne cette taille y est. `sz`
+     dit déjà les DIMENSIONS du vêtement — c'est sa définition même — donc
+     deux sweats de coupes différentes portent forcément deux `sz`
+     différents, et c'est la bonne clé pour ranger le reste :
+
+       cat   — où va la pièce sur le corps, donc ce qu'elle remplace ;
+       coupe — quel ancrage la pose (voir ANCRAGES) ;
+       porte — le rendu du vêtement PORTÉ, s'il en existe un.
+
+     LE RENDU PORTÉ, et pourquoi il change tout. Une photo de boutique est
+     prise à plat : manches écartées en croix, capuche étalée. C'est la bonne
+     image pour REGARDER un article et la mauvaise pour l'habiller — elle ne
+     se trompe pas un peu sur la taille, elle se trompe sur la FORME. Le
+     salon d'essayage emploie donc, quand il existe, un rendu du vêtement tel
+     qu'il tombe : capuche baissée, manches le long du corps. Ici seulement :
+     la boutique, la fiche et l'arène continuent de montrer la photo à plat,
+     et la case du portant aussi — c'est la seule qui distingue un sweat d'un
+     autre, puisque le rendu porté est PARTAGÉ par tous les articles d'une
+     même taille.
+
+     Pour un nouveau type de sweat : deux images dans `dressup/`, une ligne
+     ici, et un ancrage de plus si ses proportions diffèrent vraiment. Rien
+     d'autre à toucher. */
   const TAILLES = {
-    hoodie: ['haut', 'sweat'],
-    pants:  ['bas', 'pantalon'],  jeans: ['bas', 'pantalon'],  skirt: ['bas', 'pantalon'],
-    cap:    ['chapeau', 'chapeau'],  beanie: ['chapeau', 'chapeau'],
+    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png', img2: 'dressup/hoodie-back.png' } },
+    pants:  { cat: 'bas', coupe: 'pantalon' },
+    jeans:  { cat: 'bas', coupe: 'pantalon' },
+    cap:    { cat: 'chapeau', coupe: 'chapeau' },
+    beanie: { cat: 'chapeau', coupe: 'chapeau' },
   };
-  const rangerDe = (it) => TAILLES[it.sz] || ['haut', 'tee'];
-  const TETE_COU = [0, 0.185];   // du haut du cadre à la naissance des épaules
+  // tout le reste est un haut de coupe t-shirt : `tee`, `polo`, `tank`,
+  // `raglan`, et les tailles propres à un seul article
+  const DEFAUT = { cat: 'haut', coupe: 'tee' };
+  const rangerDe = (it) => TAILLES[it.sz] || DEFAUT;
+  // la tranche du mannequin qu'on repasse par-dessus une capuche : jusqu'à
+  // ras des épaules, là où le col est épais et masque la coupure
+  const TETE_COU = [0, 0.175];
 
   let ouvert = false, scene = null, raf = 0;
   let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
@@ -9020,14 +9048,18 @@ const dressup = (() => {
         el.tabIndex = 0;
         el.setAttribute('role', 'option');
         el.title = vu === it ? L(it.n) : T('locked');
-        const [categorie, coupe] = rangerDe(it);
-        const p = { it: vu, nom: el.title, cat: categorie, coupe, verrou: vu !== it, el };
+        const r = rangerDe(it);
+        /* Deux visuels pour une même pièce : la CASE du portant montre la
+           photo de boutique, seule à distinguer un sweat d'un autre, et le
+           MANNEQUIN porte le rendu porté quand la taille en déclare un. */
+        const porte = (vu === it && r.porte) || null;
+        const p = { it: vu, porte, nom: el.title, cat: r.cat, coupe: r.coupe, verrou: vu !== it, el };
         el.addEventListener('click', () => basculer(p));
         el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
         el.addEventListener('animationend', () => el.classList.remove('refus'));
         rack.appendChild(el);
         pieces.push(p);
-        if (scene) scene.load(vu);
+        if (scene){ scene.load(vu); if (porte) scene.load(porte); }
       });
     });
   }
@@ -9107,20 +9139,23 @@ const dressup = (() => {
     let capuche = false;
     [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang)
       .forEach(p => {
-        const A = ANCRAGES[p.coupe], e = scene.empreinte(p.it);
+        const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
         const l = S * A.ourlet / (e.o1 - e.o0), hh = S * (A.y1 - A.y0) / (e.y1 - e.y0);
         scene.plan();
-        scene.draw(p.it, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
+        scene.draw(vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
           y: MY + S * (A.y0 + A.y1) / 2 - (e.y0 + e.y1) / 2 * hh, s: l, h: hh }, 1);
         capuche = capuche || !!A.capuche;
       });
-    /* Une capuche se PORTE, elle ne se pose pas : la tête et le cou repassent
-       par-dessus le sweat, dans une tranche de découpe qui s'arrête à la
-       naissance des épaules. Ce qui reste du vêtement autour — le bord au-
-       dessus du crâne, les deux côtés le long des joues — devient le bord de
-       la capuche, exactement là où il tomberait. Rien n'est dessiné en plus :
-       c'est le mannequin lui-même, redessiné dans une fente. */
+    /* Une capuche BAISSÉE se trouve derrière la nuque : sur une image, elle
+       occupe le quart haut du vêtement et vient donc se poser sur le visage
+       dès qu'on aligne les épaules sur les épaules. La tête et le haut du cou
+       sont donc REDESSINÉS par-dessus, dans une tranche qui s'arrête à ras des
+       épaules. Ce qui reste du vêtement autour — l'étoffe le long des joues,
+       le col en dessous — redevient ce qu'elle est : une capuche tombée dans
+       le dos. La coupure est placée là où le col est épais, ce qui la rend
+       invisible ; plus haut, elle trancherait la mâchoire. Rien n'est dessiné
+       en plus : c'est le mannequin lui-même, dans une fente. */
     if (capuche){
       scene.plan();
       scene.draw(mannequin, ang, { ...cadre, clip: [MY + S * TETE_COU[0], MY + S * TETE_COU[1]] }, 1);
@@ -9150,6 +9185,7 @@ const dressup = (() => {
     btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
     btNu.textContent = T('dressStrip');
     note.textContent = T('dressPrivacy');
+    ang = cible = 0;         // on rouvre toujours de face, quel que soit l'angle laissé la fois d'avant
     if (!scene) scene = model3d.makeScene(cv);
     if (scene) scene.load(mannequin);
     garnir();
