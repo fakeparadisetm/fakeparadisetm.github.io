@@ -2473,7 +2473,7 @@
       </div>
     </div>
     <div class="legal-hint">
-      <span><span class="key">clic</span> <span data-i18n="dressPick">pick a piece</span></span>
+      <span><span class="key wide">clic</span> <span data-i18n="dressPick">pick a piece</span></span>
       <span><span class="key wide">clic</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
@@ -6559,7 +6559,7 @@ const model3d = (() => {
      pas, et c'est justement pour ça qu'il faut le faire. Une manche longue,
      elle, tient déjà l'avant-bras : on n'y touche pas, la pose générale ne
      bouge d'un iota dans aucun des deux cas. */
-  const COUDE_SEUIL = 0.78, COUDE_ANGLE = 0.20;
+  const COUDE_SEUIL = 0.78, COUDE_ANGLE = 0.436;   // vingt-cinq degrés
   // de combien la main doit dépasser le bout de la manche : une demi-main,
   // assez pour qu'on la voie sortir, trop peu pour qu'elle ait l'air arrachée
   const MAIN_DEHORS = 0.045;
@@ -10144,8 +10144,8 @@ const dressup = (() => {
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ceinture: 0.19, chevilles: 1.08, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet par-dessus les chevilles
+    sweat:    { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.118, y1: 0.546 },  // la capuche occupe le haut de la photo : le vêtement part plus haut qu'un t-shirt
+    pantalon: { ceinture: 0.19, chevilles: 0.95, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ceinture: 0.175, y0: 0.468, y1: 0.618 },  // le sous-vêtement : sa ceinture sur la taille (0,170), comme un bas
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -10209,7 +10209,7 @@ const dressup = (() => {
      ici, et un ancrage de plus si ses proportions diffèrent vraiment. Rien
      d'autre à toucher. */
   const TAILLES = {
-    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png' } },
+    hoodie: { cat: 'haut', coupe: 'sweat' },
     pants:  { cat: 'bas', coupe: 'pantalon' },
     jeans:  { cat: 'bas', coupe: 'pantalon' },
     cap:    { cat: 'chapeau', coupe: 'chapeau' },
