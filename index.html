@@ -1885,20 +1885,67 @@
     text-shadow:3px 3px 0 rgba(120,20,80,0.35);
     transform:rotate(-4deg);
     pointer-events:none;letter-spacing:1px;
+    /* Le titre se balance. Un autocollant posé de travers sur un jeu en Flash
+       ne tenait jamais tout à fait droit ; quelques degrés, très lentement,
+       suffisent à le rendre vivant sans attirer l'œil hors du mannequin. */
+    animation:dressTitreBalance 6.5s ease-in-out infinite;
+    transform-origin:8% 70%;
+  }
+  @keyframes dressTitreBalance{
+    0%,100%{transform:rotate(-6.5deg);}
+    50%{transform:rotate(-1.5deg);}
+  }
+  @media (prefers-reduced-motion:reduce){ .dress-titre{animation:none;} }
+  /* La colonne de droite : le portant, puis les outils. UNE COLONNE FLEX, et
+     non deux blocs posés chacun dans son coin — le pavé bleu grandit avec la
+     longueur de la mention sur la photo, qui change avec la langue et la
+     largeur de la fenêtre, et il finissait par mordre sur le cadre rose du
+     portant. Ici c'est le portant qui cède la place, et les deux pointillés ne
+     se touchent jamais. */
+  .dress-cote{
+    position:absolute;right:10px;top:10px;bottom:10px;width:min(52%,430px);
+    display:flex;flex-direction:column;gap:8px;min-height:0;
   }
   /* Le portant. Fond blanc translucide, pointillés, et une case par pièce —
      l'aperçu 3D y est dessiné par le canvas du dessous, à la position de la
-     case : aucune image n'est recopiée par vignette. */
+     case : aucune image n'est recopiée par vignette. Les pièces sont rangées
+     par catégorie, chaque groupe sous son intertitre. */
   .dress-rack{
-    position:absolute;right:10px;top:10px;bottom:96px;width:min(52%,430px);
+    flex:1 1 auto;min-height:0;
     display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
-    grid-auto-rows:74px;gap:7px;
+    grid-auto-rows:min-content;gap:7px;
     padding:10px;overflow-y:auto;
     background:rgba(255,255,255,0.58);
     border:3px dashed #ff8ec4;border-radius:18px;
+    /* L'ascenseur : le navigateur en pose un gris d'interface au milieu d'un
+       décor rose pointillé, et ça se voit. On lui donne la même grammaire que
+       le reste — piste blanche, pouce rose bonbon cerné de prune, tout rond. */
+    scrollbar-width:thin;scrollbar-color:#ff77b8 rgba(255,255,255,0.5);
   }
+  .dress-rack::-webkit-scrollbar{width:13px;}
+  .dress-rack::-webkit-scrollbar-track{
+    background:rgba(255,255,255,0.5);border-radius:999px;margin:4px 0;
+    box-shadow:inset 0 0 0 1px rgba(255,142,196,0.55);
+  }
+  .dress-rack::-webkit-scrollbar-thumb{
+    background:#ff77b8;border:2px solid #b0307a;border-radius:999px;
+    background-clip:padding-box;
+  }
+  .dress-rack::-webkit-scrollbar-thumb:hover{background:#ff4fa3;}
+  .dress-rack::-webkit-scrollbar-thumb:active{background:#e0357f;}
+  /* L'intertitre d'une catégorie : toute la largeur du portant, un filet
+     pointillé pour finir la ligne — le même trait que les cadres. */
+  .dress-groupe{
+    grid-column:1/-1;display:flex;align-items:center;gap:8px;
+    margin:4px 0 -1px;padding:0 2px;
+    font-size:11.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;
+    color:#b0307a;
+  }
+  .dress-groupe:first-child{margin-top:0;}
+  .dress-groupe::after{content:"";flex:1 1 auto;height:0;border-top:2px dashed rgba(255,142,196,0.8);}
   .dress-case{
-    position:relative;border:2px solid rgba(255,120,180,0.45);border-radius:12px;
+    position:relative;height:74px;
+    border:2px solid rgba(255,120,180,0.45);border-radius:12px;
     background:rgba(255,255,255,0.5);
     cursor:pointer;transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
   }
@@ -1925,7 +1972,7 @@
   }
   .dress-case.refus:hover{transform:none;}
   .dress-outils{
-    position:absolute;right:10px;bottom:10px;width:min(52%,430px);
+    flex:0 0 auto;
     display:flex;flex-wrap:wrap;align-items:center;gap:8px;
     padding:9px 12px;
     background:rgba(255,255,255,0.72);
@@ -1950,9 +1997,11 @@
     flex:1 1 100%;margin:0;
     font-size:10.5px;line-height:1.45;color:#7a4a66;
   }
+  /* Écran étroit : la colonne passe sous le mannequin, sur toute la largeur.
+     Elle garde sa structure — portant puis outils — donc rien ne se chevauche
+     là non plus. */
   @media (max-width:820px){
-    .dress-rack,.dress-outils{width:calc(100% - 20px);right:10px;}
-    .dress-rack{top:auto;height:34%;bottom:120px;}
+    .dress-cote{left:10px;right:10px;width:auto;top:auto;bottom:10px;max-height:58%;}
   }
   .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#5c94fc;}
   /* Le tampon fait la moitié de la boîte et le navigateur l'agrandit au PLUS
@@ -2365,15 +2414,20 @@
     <div class="dress-stage" id="dressStage">
       <canvas id="dressCv"></canvas>
       <div class="dress-titre" id="dressTitre"></div>
-      <!-- le portant : rempli par le script, une case par pièce -->
-      <div class="dress-rack" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
-      <div class="dress-outils">
-        <label class="dress-bt" id="dressFaceBt">
-          <span id="dressFaceTxt"></span>
-          <input type="file" id="dressFace" accept="image/*" hidden>
-        </label>
-        <button class="dress-bt dress-bt--2" id="dressNu"></button>
-        <p class="dress-note" id="dressNote"></p>
+      <!-- Le portant et les outils : UNE colonne, pour que le cadre bleu ne
+           vienne jamais mordre le cadre rose quand la mention s'allonge. -->
+      <div class="dress-cote">
+        <!-- le portant : rempli par le script, une case par pièce, groupées
+             par catégorie -->
+        <div class="dress-rack" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
+        <div class="dress-outils">
+          <label class="dress-bt" id="dressFaceBt">
+            <span id="dressFaceTxt"></span>
+            <input type="file" id="dressFace" accept="image/*" hidden>
+          </label>
+          <button class="dress-bt dress-bt--2" id="dressNu"></button>
+          <p class="dress-note" id="dressNote"></p>
+        </div>
       </div>
     </div>
     <div class="legal-hint">
@@ -2881,6 +2935,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Take it all off",
+    dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
@@ -2926,6 +2981,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout enlever",
+    dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
@@ -4461,7 +4517,21 @@ const model3d = (() => {
         const bh = box.h || box.s;
         const H = cv.height, x0 = Math.floor(box.x) - 1, y0 = Math.floor(box.y) - 1, x1 = Math.ceil(box.x + box.s) + 1, y1 = Math.ceil(box.y + bh) + 1;
         const vw = x1 - x0, vh = y1 - y0;
-        gl.viewport(x0, H - y1, vw, vh); gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, H - y1, vw, vh);
+        /* `box.clip` : une fenêtre qui ROGNE le dessin sans le déplacer. La
+           vue reste calée sur la boîte — donc le modèle ne bouge pas d'un
+           pixel — et seuls les pixels hors de la fenêtre sont jetés. C'est ce
+           qui tient les aperçus du portant dans leur cadre : une case à moitié
+           sortie par le défilement se coupe net au bord, au lieu de peindre
+           par-dessus le reste du décor. */
+        let cx0 = x0, cy0 = y0, cx1 = x1, cy1 = y1;
+        if (box.clip){
+          const c = box.clip;
+          cx0 = Math.max(cx0, Math.floor(c.x)); cy0 = Math.max(cy0, Math.floor(c.y));
+          cx1 = Math.min(cx1, Math.ceil(c.x + c.l)); cy1 = Math.min(cy1, Math.ceil(c.y + c.h));
+        }
+        gl.viewport(x0, H - y1, vw, vh);
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(cx0, H - cy1, Math.max(0, cx1 - cx0), Math.max(0, cy1 - cy0));
         const sx = box.s / vw, sy = bh / vh, ox = (2 * (box.x - x0) + box.s) / vw - 1, oy = (2 * (y1 - box.y) - bh) / vh - 1;
         MVP = mul(new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, ox,oy,0,1]), MVP);
       } else { gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); }
@@ -6411,6 +6481,58 @@ const model3d = (() => {
     return v;
   }
 
+  /* ---- l'épaule doit être couverte, et ça se vérifie ----
+     Le buste disparaît sous le vêtement, sauf sa partie haute : le trapèze
+     reste, parce que c'est par là qu'on voit le cou dans l'encolure. Il faut
+     donc que le vêtement le recouvre, et aucun réglage commun ne peut le
+     garantir : la ligne d'épaule tombe plus ou moins bas selon la photo — le
+     polo, dont le col ouvert occupe tout le haut de l'image, se posait trop
+     bas et laissait sortir deux coins de peau au-dessus des coutures.
+
+     Plutôt que d'écrire un nombre par article, on MESURE. La bande va de la
+     naissance des épaules au plafond du buste caché ; en dessous il n'y a plus
+     rien à couvrir, au-dessus c'est le cou. Pour chaque rangée on compare la
+     demi-largeur du mannequin à celle du vêtement posé, et on renvoie le
+     facteur qui manque. `cadrer` élargit d'autant — jamais plus. Un vêtement
+     qui couvre déjà rend 1 et n'est pas touché. */
+  const EP_BANDE = [0.185, 0.231], EP_RANGS = 12;
+  let epauleProfil = null;
+  function profilEpaule(corpsItem){
+    if (epauleProfil) return epauleProfil;
+    const a = ready.get(keyOf(corpsItem));
+    if (!a) return null;
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
+    const NB = 192, dents = new Uint8Array(NB), xa = 0.5 - 0.6, pas = 1.2 / NB;
+    const demi = new Float32Array(EP_RANGS);
+    for (let r = 0; r < EP_RANGS; r++){
+      peigner(P, a.mesh, EP_BANDE[0] + (EP_BANDE[1] - EP_BANDE[0]) * (r + 0.5) / EP_RANGS, dents, xa, pas);
+      const t = travee(dents, NB >> 1);
+      if (t) demi[r] = Math.max(0.5 - (xa + t[2] * pas), xa + (t[3] + 1) * pas - 0.5);
+    }
+    epauleProfil = demi;
+    return demi;
+  }
+  function couvrirEpaules(item, boite, corpsItem){
+    const demi = profilEpaule(corpsItem), a = ready.get(keyOf(item)), e = empreinte(item);
+    if (!demi || !a || !e) return 1;
+    const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
+    const NB = 128, pas = (e.x1 - e.x0) / NB || 1, dents = new Uint8Array(NB);
+    let k = 1;
+    for (let r = 0; r < EP_RANGS; r++){
+      if (demi[r] < 1e-4) continue;
+      const y = EP_BANDE[0] + (EP_BANDE[1] - EP_BANDE[0]) * (r + 0.5) / EP_RANGS;
+      const fy = (y - boite.y) / boite.h;                   // la même hauteur, chez le vêtement
+      if (fy < e.y0 || fy > e.y1) continue;
+      peigner(P, a.mesh, fy, dents, e.x0, pas);
+      const t = travee(dents, NB >> 1);
+      if (!t) continue;
+      const g = Math.max(0.5 - (boite.x + (e.x0 + t[2] * pas) * boite.l),
+                         boite.x + (e.x0 + (t[3] + 1) * pas) * boite.l - 0.5);
+      if (g > 1e-4 && demi[r] / g > k) k = demi[r] / g;
+    }
+    return k;
+  }
+
   /* ---- effiler : le vêtement se resserre SOUS LES EMMANCHURES ----
      `serre` rétrécit le vêtement entier, et sa limite est l'épaule : le polo
      ne supporte pas mieux que 0,86. Or ce n'est pas l'épaule qui est trop
@@ -6457,7 +6579,11 @@ const model3d = (() => {
     for (let r = 0; r < NR; r++) if (larg[r] > larg[rMax]) rMax = r;
     let rBras = rMax;
     while (rBras < NR - 1 && larg[rBras] > corps * 1.125) rBras++;
-    const t0 = (rBras + 0.5) / NR, t1 = Math.min(1, t0 + 0.125);
+    /* Le fondu court de l'emmanchure jusqu'à l'OURLET, et non sur un huitième
+       de hauteur : le vêtement se resserre alors sans qu'aucune rangée soit
+       plus pincée que sa voisine — l'ourlet arrive au même endroit, par une
+       pente régulière au lieu d'une taille marquée. */
+    const t0 = (rBras + 0.5) / NR, t1 = 1;
     const d = new Float32Array(m.data);
     let xmin = 9, xmax = -9;
     for (let i = 0; i < nV; i++){ const x = d[i*STRIDE]; if (x < xmin) xmin = x; if (x > xmax) xmax = x; }
@@ -6616,6 +6742,7 @@ const model3d = (() => {
       empreintePieds,                         // l'écart des deux pieds, jambes tournées : la paire s'y cale
       encolure,                               // une copie du vêtement, col ouvert sur le cou
       effiler,                                // une copie resserrée sous les emmanchures
+      couvrirEpaules,                         // de combien élargir pour que l'épaule ne sorte pas
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
@@ -9518,6 +9645,7 @@ const dressup = (() => {
   const overlay = document.getElementById('dressOverlay');
   const cv = document.getElementById('dressCv');
   const rack = document.getElementById('dressRack');
+  const cote = document.querySelector('.dress-cote');
   const titre = document.getElementById('dressTitre');
   const champFace = document.getElementById('dressFace');
   const btFaceTxt = document.getElementById('dressFaceTxt');
@@ -9580,12 +9708,12 @@ const dressup = (() => {
        à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, serre: 0.86, effile: 0.78, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
+    tee:      { ourlet: 0.32, serre: 0.80, effile: 0.80, y0: 0.162, y1: 0.556 },  // t-shirts, polos, débardeurs
     /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
        (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
        rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
        oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.26, serre: 0.86, effile: 0.82, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
+    sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ceinture: 0.19, y0: 0.465, y1: 0.935 },  // la ceinture sur la crête des hanches (le corps s'y échancre dès 0,483)
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
@@ -9662,11 +9790,15 @@ const dressup = (() => {
   const portees = new Map();  // catégorie -> pièce
   let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let mannequin = { mannequin: true, visage: null };
-  // le mannequin ne tourne pas : il fait face au visiteur, toujours
-  /* Le portant prend TOUTES les pièces achetables du catalogue, verrouillées
-     comprises : le cadenas dit que l'article existe et qu'il se gagne, et il
-     serait dommage de cacher la moitié de la boutique. Il ne se PORTE pas
-     pour autant — voir `basculer`. */
+  /* L'ORDRE DU PORTANT EST CELUI DU CORPS : les hauts, puis les bas, puis les
+     chaussures, chaque groupe sous son intertitre. Une liste où un jean voisine
+     un t-shirt ne dit rien de ce qu'on est en train de faire ; rangée, elle se
+     lit comme une penderie, et l'on voit d'un coup d'œil ce qui manque. */
+  const GROUPES = [
+    { cat: 'haut',  cle: 'dressCatTop' },
+    { cat: 'bas',   cle: 'dressCatBottom' },
+    { cat: 'pieds', cle: 'dressCatShoes' },
+  ];
   function garnir(){
     pieces = [];
     rack.innerHTML = '';
@@ -9683,10 +9815,9 @@ const dressup = (() => {
       pieces.push(p);
       if (scene){ scene.load(p.it); if (p.porte) scene.load(p.porte); }
     };
-    /* Le vestiaire en tête : ce sont les seules pièces du bas et des pieds, et
-       les mettre en queue obligerait à faire défiler toute la boutique pour
-       habiller les jambes. */
-    VESTIAIRE.forEach(v => caser({ it: v, porte: null, nom: v.nom, cat: v.cat, coupe: v.coupe, verrou: false }));
+    /* Le vestiaire d'abord dans la liste de travail, la boutique ensuite : à
+       l'affichage ils se retrouvent de toute façon rangés par catégorie. */
+    const tout = VESTIAIRE.map(v => ({ it: v, porte: null, nom: v.nom, cat: v.cat, coupe: v.coupe, verrou: false }));
     DATA.forEach(cat => {
       if (cat.kind !== 'shop') return;
       cat.items.forEach(it => {
@@ -9696,9 +9827,19 @@ const dressup = (() => {
         /* Deux visuels pour une même pièce : la CASE du portant montre la
            photo de boutique, seule à distinguer un sweat d'un autre, et le
            MANNEQUIN porte le rendu porté quand la taille en déclare un. */
-        caser({ it: vu, porte: (vu === it && r.porte) || null,
-                nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
+        tout.push({ it: vu, porte: (vu === it && r.porte) || null,
+                    nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
       });
+    });
+    GROUPES.forEach(g => {
+      const lot = tout.filter(p => p.cat === g.cat);
+      if (!lot.length) return;
+      const t = document.createElement('div');
+      t.className = 'dress-groupe';
+      t.setAttribute('aria-hidden', 'true');       // le nom de chaque case le dit déjà
+      t.textContent = T(g.cle);
+      rack.appendChild(t);
+      lot.forEach(caser);
     });
   }
   /* Une pièce par catégorie : la choisir retire celle qu'elle remplace, la
@@ -9707,7 +9848,13 @@ const dressup = (() => {
      n'apprenait rien à personne ; le refus, lui, dit qu'il y a là quelque
      chose à débloquer. */
   function basculer(p){
-    if (p.verrou){
+    /* ON NE SE CHAUSSE PAS AVANT DE S'ÊTRE HABILLÉ. Une paire de baskets sur
+       un corps sans pantalon ne ressemble à rien, et le refus le dit mieux
+       qu'une case grisée : la chaussure existe, elle attend son bas. Même
+       tremblement que pour un article verrouillé — un seul geste de refus dans
+       tout le salon, il se reconnaît tout de suite. */
+    const refus = p.verrou || (p.cat === 'pieds' && !portees.has('bas') && !portees.has(p.cat));
+    if (refus){
       p.el.classList.remove('refus');
       void p.el.offsetWidth;          // relance l'animation même sur un clic répété
       p.el.classList.add('refus');
@@ -9717,6 +9864,8 @@ const dressup = (() => {
     const dedans = portees.get(p.cat);
     if (dedans === p) portees.delete(p.cat);
     else portees.set(p.cat, p);
+    // le bas s'en va : les chaussures suivent, elles ne tiennent pas seules
+    if (p.cat === 'bas' && !portees.has('bas')) portees.delete('pieds');
     pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.cat) === q));
     sfx.select();
   }
@@ -9761,10 +9910,18 @@ const dressup = (() => {
     const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
     if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
     scene.clear();
-    // le mannequin : à gauche, aussi haut que la scène le permet
-    const libre = Math.min(r.width * 0.46, r.height * 0.92);
+    /* Le mannequin occupe ce que la colonne de droite lui laisse. Sur un écran
+       large elle est À CÔTÉ, il reste toute la hauteur ; sur un écran étroit
+       elle passe EN DESSOUS, et le mannequin doit alors tenir au-dessus d'elle
+       — sans quoi il se dessinait derrière le portant, jambes cachées par les
+       cases. Le canvas couvre toute la scène et ne sait rien des blocs posés
+       dessus : c'est ici qu'on le lui dit. */
+    const co = cote.getBoundingClientRect();
+    const sous = co.top - r.top > r.height * 0.25;
+    const hDispo = sous ? co.top - r.top - 6 : r.height;
+    const libre = Math.min(r.width * 0.46, hDispo * 0.92);
     const S = libre * k;
-    const MX = (r.width * 0.045) * k, MY = ((r.height - libre) / 2) * k;
+    const MX = (sous ? (r.width - libre) / 2 : r.width * 0.045) * k, MY = ((hDispo - libre) / 2) * k;
     const cadre = { x: MX, y: MY, s: S };
     const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
     if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
@@ -9799,7 +9956,7 @@ const dressup = (() => {
        garde l'échelle pour la largeur — ainsi un jean baggy reste ample, un
        legging reste moulant, et c'est la photo qui décide, pas nous. Seule la
        CEINTURE est garantie : elle doit tomber sur les hanches. */
-    const cadrer = (m, A, jambes) => {
+    const cadrer = (m, A, corps) => {
       const e = scene.empreinte(m);
       if (!e) return null;
       /* Une chaussure se cale sur le PIED, et non sur un nombre écrit ici : les
@@ -9807,7 +9964,7 @@ const dressup = (() => {
          suit. `pieds` est ce qu'on ajoute autour — une basket déborde du pied
          qu'elle chausse. */
       if (A.pieds){
-        const pi = scene.empreintePieds(jambes);
+        const pi = scene.empreintePieds(corps ? corps.jambes : 0);
         if (!pi) return null;                 // pas encore mesurable : à l'image suivante
         A = Object.assign({}, A, { ourlet: (pi[1] - pi[0]) * A.pieds });
       }
@@ -9824,26 +9981,31 @@ const dressup = (() => {
         const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0));
         return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
       }
+      const base = A.ourlet / (e.o1 - e.o0);
       /* `serre` : le RESSERREMENT horizontal, de manche à manche. Une photo à
          plat est plus large qu'un vêtement porté — elle montre le tour de
          buste mis à plat, donc une demi-circonférence là où le corps n'offre
          qu'un diamètre — et le t-shirt tombait à 0,32 de large sur une taille
          de 0,144. Maintenant que le buste disparaît sous le vêtement, plus
          rien n'oblige à le couvrir largement.
-         La limite est l'ÉPAULE, et elle est mesurée : le trapèze du mannequin
-         fait 0,214 à la hauteur 0,20, et c'est la seule partie du buste qui
-         reste visible (au-dessus de MAN_BUSTE_HAUT, pour qu'on voie le cou
-         dans l'encolure). Les treize hauts couvrent cette largeur avec une
-         marge de 1,25 (cocorico) à 1,01 (le polo, le plus juste) ; au-delà de
-         ce resserrement, l'épaule du polo ressort. */
-      const l = A.ourlet / (e.o1 - e.o0) * (A.serre || 1);
+         La limite n'est pas un nombre choisi : c'est l'ÉPAULE, et elle se
+         vérifie article par article (voir `couvrirEpaules`). Un vêtement dont
+         la ligne d'épaule tombe bas — le polo et son grand col ouvert — est
+         réélargi juste assez pour que le trapèze ne ressorte pas. */
+      let l = base * (A.serre || 1);
       /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à l'échelle
          sans l'étirer. L'étirement n'existe que pour rattraper une photo à
          plat, large et courte, sur un buste haut et étroit. */
-      const h = A.fidele ? A.ourlet / (e.o1 - e.o0) : (A.y1 - A.y0) / (e.y1 - e.y0);
-      return { x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h };
+      const h = A.fidele ? base : (A.y1 - A.y0) / (e.y1 - e.y0);
+      const pose = () => ({ x: 0.5 - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h });
+      if (!A.serre) return pose();
+      /* Le relevé se fait sur le mannequin NU : celui qu'on dessine a le buste
+         retiré sous le vêtement, et ses épaules avec. */
+      const k = scene.couvrirEpaules(m, pose(), mannequin);
+      if (k > 1.001) l = Math.min(l * k, base * 1.15);      // jamais plus large que la photo
+      return pose();
     };
-    const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);
+    const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);   // la pose : pas de pieds à caler ici
     /* LA POSE VIENT DES VÊTEMENTS, ET ELLE SE MESURE aux deux bouts : le haut
        dit où sont les bras, le bas où sont les jambes. Le mannequin est seul à
        avoir un squelette, c'est donc lui qui se plie — aucun vêtement n'est
@@ -9869,14 +10031,14 @@ const dressup = (() => {
        papier n'a pas de volume, elle a des couches. */
     couches.forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
-        const b0 = cadrer(vetu, A, corps.jambes);
+        const b0 = cadrer(vetu, A, corps);
         if (!b0) return;                      // pas encore mesurable : à l'image suivante
         /* Le col s'ouvre sur le cou : un vêtement ne couvre pas le cou. On
            cadre une première fois pour savoir OÙ tombera le cou, on découpe,
            puis on recadre sur le modèle découpé — son empreinte a très peu
            bougé, mais autant la prendre juste. */
         const modele = scene.encolure(vetu, corps, b0, p.coupe) || vetu;
-        const b = cadrer(modele, A, corps.jambes) || b0;
+        const b = cadrer(modele, A, corps) || b0;
         scene.plan();
         /* Le maillage effilé se dessine dans la boîte du maillage d'ORIGINE :
            c'est ce qui laisse l'épaule où elle est (voir `effiler`). */
@@ -9891,15 +10053,20 @@ const dressup = (() => {
        qui est au-dessus, c'est le corps. Une bordure de vêtement qui recouvre
        la peau, c'est exactement ce qu'on voit sur quelqu'un d'habillé. */
     scene.plan();
-    // le portant : chaque aperçu à la place de sa case
+    /* Le portant : chaque aperçu à la place de sa case, ROGNÉ au cadre du
+       portant. Sans ce rognage, une case à moitié sortie par le défilement
+       peignait quand même son vêtement en entier, par-dessus les outils et le
+       décor — le canvas est unique et ne connaît pas le débordement du bloc
+       qui le surplombe. */
     const rr = rack.getBoundingClientRect();
+    const fenetre = { x: (rr.left - r.left) * k, y: (rr.top - r.top) * k, l: rr.width * k, h: rr.height * k };
     pieces.forEach((p, i) => {
       const b = p.el.getBoundingClientRect();
       if (b.bottom < rr.top || b.top > rr.bottom) return;   // sorti du cadre par le défilement
       const s = Math.min(b.width, b.height) * 0.92;
       scene.draw(p.it, Math.sin(t / 1400 + i) * 0.5, {
         x: (b.left - r.left + (b.width - s) / 2) * k,
-        y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k }, 1);
+        y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k, clip: fenetre }, 1);
     });
   }
   function boucle(t){
