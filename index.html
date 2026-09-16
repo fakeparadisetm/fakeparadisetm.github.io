@@ -678,14 +678,17 @@
      Cette boîte les remet à leur place. Elle annule la marge intérieure du
      panneau puis la rend aussitôt (`margin` négative, `padding` égale) : le
      visuel ne bouge pas d'un pixel, mais la boîte, elle, va jusqu'aux bords.
-     Son arrondi reprend celui du panneau en haut seulement, et `overflow`
-     découpe les lueurs dedans — elles épousent donc le coin au lieu de le
-     déborder. Un seul nombre, `--radius`, pour les deux. */
+     Son arrondi reprend celui du panneau, EN HAUT COMME EN BAS : le bas ne
+     touche aucun coin du panneau, mais une forme arrondie d'un côté et coupée
+     au couteau de l'autre se lit comme un accident ; symétrique, elle se lit
+     comme une intention. `overflow` découpe les lueurs dedans — elles
+     épousent donc le coin au lieu de le déborder. Un seul nombre,
+     `--radius`, pour les deux. */
   .gallery-zone{
     position:relative;
     margin:calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0;
     padding:var(--pad) var(--pad) 0;
-    border-radius:var(--radius) var(--radius) 0 0;
+    border-radius:var(--radius);
     overflow:hidden;
   }
   .gallery-zone:not(.has-slides) .slide-dots,
@@ -730,14 +733,10 @@
     transition:opacity 0.22s ease;
     z-index:3;
   }
-  /* Le bas des lueurs S'ÉTEINT au lieu de se couper. Elles vont maintenant
-     d'un bord à l'autre du panneau : une coupe nette y traçait un trait en
-     travers, là où l'ancienne bande, large comme le visuel seulement, la
-     cachait presque. Le dégradé reste horizontal, c'est le masque qui fond. */
-  .slide-edge{
-    -webkit-mask-image:linear-gradient(to bottom, #000 78%, transparent 100%);
-    mask-image:linear-gradient(to bottom, #000 78%, transparent 100%);
-  }
+  /* Le fondu qui eteignait le bas des lueurs a ete RETIRE le 16 sept. 2026 :
+     l'arrondi du bas le rendait invisible, et c'est l'arrondi qu'on veut voir.
+     Pour le remettre, un masque sur .slide-edge :
+       mask-image:linear-gradient(to bottom, #000 78%, transparent 100%); */
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
   .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
