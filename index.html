@@ -2774,7 +2774,7 @@ const STRINGS = {
     language:"Language", currency:"Currency", sound:"Sound", soundOn:"On", soundOff:"Off",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
-    play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"VERSUS", descToggle:"Show details",
+    play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"ITEM VERSUS", descToggle:"Show details",
     arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAdd:"Go to product",
@@ -2815,7 +2815,7 @@ const STRINGS = {
     language:"Langue", currency:"Devise", sound:"Son", soundOn:"Activé", soundOff:"Coupé",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
-    play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"VERSUS", descToggle:"Afficher le détail",
+    play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"ITEM VERSUS", descToggle:"Afficher le détail",
     arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAdd:"Voir l'article",
@@ -3002,12 +3002,11 @@ const DATA = [
      Jumper est un parcours de plateforme dont la récompense est la pièce
      unique ci-dessus. Le panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
   { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"gamepad icon.svg", kind:"game", items:[
-    { n:"Jumper", jeu:"jumper", icon:"jumper icon.svg",
-      d:{en:"One level, one flag, a few falls.\nFinish it and the locked tee is yours.",
-         fr:"Un niveau, un drapeau, quelques chutes.\nTerminez-le et le t-shirt verrouillé est à vous."} },
-    { n:"Versus", jeu:"versus", icon:"versus icon.svg",
-      d:{en:"Can't decide on what to get?\nMake your favorite items fight.",
-         fr:"Vous n'arrivez pas à choisir ?\nFaites combattre vos pièces préférées."} },
+    /* Sans descriptif : le nom et l'aperçu disent déjà de quoi il s'agit, et
+       un jeu s'essaie, il ne se lit pas. Le panneau s'adapte tout seul — le
+       texte et son bouton de repli disparaissent quand `d` manque. */
+    { n:"Jumper", jeu:"jumper", icon:"jumper icon.svg" },
+    { n:"Item versus", jeu:"versus", icon:"versus icon.svg" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
@@ -3017,7 +3016,7 @@ const DATA = [
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
     panel:{ n:"Contact via DM" } },
   { name:{en:"Settings", fr:"Réglages"}, icon:"settings icon.png", kind:"settings", items:[] },
-  { name:{en:"Shipping Info", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
+  { name:{en:"Shipping", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
       d:"No exchanges. Returns within 14 days per our policy.\nItems are 100% made and printed in China unless specified.\nYou will receive confirmation of your order and your tracking number by e-mail.\nHave questions about your order? Check the contact section.\nOrders may take 2-3 weeks to be delivered.\nStay ballin" } },
   /* Info : un panneau de texte, mais avec un VISUEL 3D à la place du visuel
