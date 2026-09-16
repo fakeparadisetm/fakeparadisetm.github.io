@@ -8980,8 +8980,8 @@ const dressup = (() => {
     chapeau: { rang: 2 },
   };
   const ANCRAGES = {
-    tee:      { ourlet: 0.28, y0: 0.150, y1: 0.556 },   // t-shirts, polos, débardeurs : col au ras du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.30, y0: 0.043, y1: 0.611, capuche: true },  // rendu porté : capuche baissée derrière la nuque, manches le long du corps
+    tee:      { ourlet: 0.30, y0: 0.170, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true },  // rendu porté : à l'échelle, capuche derrière la nuque, mains hors des manches
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
@@ -9010,7 +9010,7 @@ const dressup = (() => {
      ici, et un ancrage de plus si ses proportions diffèrent vraiment. Rien
      d'autre à toucher. */
   const TAILLES = {
-    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png', img2: 'dressup/hoodie-back.png' } },
+    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png' } },
     pants:  { cat: 'bas', coupe: 'pantalon' },
     jeans:  { cat: 'bas', coupe: 'pantalon' },
     cap:    { cat: 'chapeau', coupe: 'chapeau' },
@@ -9141,10 +9141,16 @@ const dressup = (() => {
       .forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
-        const l = S * A.ourlet / (e.o1 - e.o0), hh = S * (A.y1 - A.y0) / (e.y1 - e.y0);
+        const l = S * A.ourlet / (e.o1 - e.o0);
+        /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à
+           l'échelle sans l'étirer. L'étirement n'existe que pour rattraper une
+           photo à plat, large et courte, sur un buste haut et étroit ; appliqué
+           à un vêtement déjà tombé, il ne corrige rien et allonge la capuche
+           jusque par-dessus le crâne. */
+        const hh = A.fidele ? l : S * (A.y1 - A.y0) / (e.y1 - e.y0);
         scene.plan();
         scene.draw(vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
-          y: MY + S * (A.y0 + A.y1) / 2 - (e.y0 + e.y1) / 2 * hh, s: l, h: hh }, 1);
+          y: MY + S * A.y0 - e.y0 * hh, s: l, h: hh }, 1);                 // et le haut posé sur y0
         capuche = capuche || !!A.capuche;
       });
     /* Une capuche BAISSÉE se trouve derrière la nuque : sur une image, elle
