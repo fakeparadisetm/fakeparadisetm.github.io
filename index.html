@@ -1963,6 +1963,9 @@
   .dress-case.porte{background:#fff2c2;border-color:#ffb020;box-shadow:inset 0 0 0 2px #ffdf8a;}
   .dress-case.porte::after{content:"\2713";position:absolute;right:4px;top:2px;color:#e07800;font-weight:800;font-size:14px;}
   .dress-case:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;}
+  /* Le prune du cerne des boutons : il se voit sur les quatre couleurs, là
+     où le rose du portant disparaîtrait sur le bouton rose. */
+  .dress-bt:focus-visible{outline:3px solid #b0307a;outline-offset:3px;}
   /* EN SOMMEIL : un groupe dont rien n'est posable. Les chaussures attendent
      un bas — le refus le dit au clic, mais il vaut mieux le dire AVANT :
      pâlies et sans relief, elles se lisent comme « pas encore », et la case
@@ -2462,15 +2465,17 @@
              par catégorie -->
         <div class="dress-rack" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
         <div class="dress-outils">
-          <label class="dress-bt" id="dressFaceBt">
+          <label class="dress-bt" id="dressFaceBt" tabindex="0">
             <span id="dressFaceTxt"></span>
             <input type="file" id="dressFace" accept="image/*" hidden>
           </label>
           <!-- La couleur de peau : le nuancier du navigateur, pas le nôtre. Il
                connaît déjà la pipette, les valeurs récentes et le clavier. -->
-          <label class="dress-bt dress-bt--3" id="dressPeauBt">
+          <label class="dress-bt dress-bt--3" id="dressPeauBt" tabindex="0">
             <span id="dressPeauTxt"></span>
-            <input type="color" id="dressPeau" value="#c89878" aria-labelledby="dressPeauTxt">
+            <!-- tabindex -1 : c'est l'étiquette qui prend le focus, pas le champ,
+                 sinon la même commande ferait deux arrêts -->
+            <input type="color" id="dressPeau" value="#c89878" tabindex="-1" aria-labelledby="dressPeauTxt">
           </label>
           <button class="dress-bt dress-bt--2" id="dressNu"></button>
           <p class="dress-note" id="dressNote"></p>
@@ -2478,6 +2483,8 @@
       </div>
     </div>
     <div class="legal-hint">
+      <span><span class="key">&#8592;</span><span class="key">&#8594;</span><span class="key">&#8593;</span><span class="key">&#8595;</span> <span data-i18n="hintBrowse">browse</span></span>
+      <span><span class="key wide">enter</span> <span data-i18n="hintPick">pick</span></span>
       <span><span class="key wide">clic</span> <span data-i18n="dressPick">pick a piece</span></span>
       <span><span class="key wide">clic</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
@@ -5872,7 +5879,7 @@ const model3d = (() => {
   //      l'animation sur le fil principal (Firefox), ce qui hachait le
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
   let current = null, active = false, raf = 0, last = 0, token = 0;
-  let angle = 0, hover = false, target = 0, tap = 0, rowAngle = 0, rows = [], fading = [], listDrawn = false;
+  let angle = 0, hover = false, target = 0, tap = 0, rows = [], fading = [], listDrawn = false;
   const TOUR_MS = 10000; // un tour complet au repos, pour la tête de la page Info
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
@@ -6272,6 +6279,18 @@ const model3d = (() => {
     const p = st.dur > 0 ? Math.min(1, (now - st.t0) / st.dur) : 1, m = EASE_MOVE(p), f = EASE_FADE(p), o = st.from, d = st.to;
     return { x: o.x + (d.x - o.x) * m, y: o.y + (d.y - o.y) * m, s: o.s + (d.s - o.s) * m, a: o.a + (d.a - o.a) * f };
   }
+  /* Chaque ligne se balance à SON moment. En phase, une liste ouverte donnait
+     un banc de poissons : dix vêtements faisant le même geste au même instant,
+     ce qui trahit le rendu commun bien plus qu'il ne le cache. Un décalage d'un
+     treizième de cycle par rang suffit à casser l'unisson — deux voisines
+     restent proches, et il faut treize lignes pour retomber en phase, soit plus
+     qu'une colonne n'en montre jamais.
+     Le décalage suit le RANG DANS LA LISTE et non l'ordre d'arrivée : une ligne
+     garde donc son moment quand la sélection monte ou descend, et la colonne ne
+     se resynchronise jamais. La fiche, elle, garde le rang zéro : c'est la
+     phase d'origine, celle de tout le reste du site. */
+  const SWAY_RANG = 1 / 13;
+  const swayDe = (rang, t) => reduced ? 0 : Math.sin((t / 3800 + (rang || 0) * SWAY_RANG) * Math.PI * 2) * SWAY;
   function drawRows(now){
     list.clear();
     if (!listH) return;
@@ -6283,7 +6302,7 @@ const model3d = (() => {
       if (!a || c.a < 0.01 || c.y + c.s < 0 || c.y > listH) continue; // hors écran ou pas encore prêt
       // rotation de sélection : trois tours et un quart de taille en plus,
       // autour du centre de la case (voir spin)
-      let ang = rowAngle, ech = 1;
+      let ang = swayDe(st.rang, now), ech = 1;
       if (st.spin){
         const u = (now - st.spin) / SPIN_MS;
         if (u >= 1) st.spin = 0;
@@ -6335,7 +6354,7 @@ const model3d = (() => {
     if ((!active && !rows.length && !fading.length) || document.hidden){ last = 0; return; }
     const dt = last ? Math.min(60, t - last) : 16; last = t;
     const ease = Math.min(1, dt / 110);
-    const sway = reduced ? 0 : Math.sin(t / 3800 * Math.PI * 2) * SWAY; // balancement ±18° en 3,8 s, commun à la fiche et à la liste
+    const sway = swayDe(0, t); // balancement ±18° en 3,8 s ; les lignes le décalent par leur rang
     /* Un vêtement se balance, une tête fait le TOUR : elle a de la texture sur
        les quatre faces, il n'y a plus de raison de la retenir. La valeur du
        tour avance TOUJOURS, même pendant que la souris tient l'angle : au
@@ -6357,7 +6376,6 @@ const model3d = (() => {
       const p = Math.min(1, (t - backT) / BACK_MS);
       angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * (p * p * (3 - 2 * p));
     }
-    rowAngle = sway;
     if (list && (rows.length || fading.length)) drawRows(t);
     if (active) draw();
     frames++; if (t - fpsT >= 1000){ fps = Math.round(frames * 1000 / (t - fpsT)); frames = 0; fpsT = t; }
@@ -6425,6 +6443,7 @@ const model3d = (() => {
       let st = states.get(r.el);
       if (!st){ st = { el: r.el, item: r.item, from: { x: to.x, y: to.y, s: to.s, a: 0 }, to, t0: now, dur: FADE_MS, cur: null }; states.set(r.el, st); }
       else { st.item = r.item; st.from = sample(st, now); st.to = to; st.t0 = now; st.dur = dur; }
+      st.rang = r.rang || 0;   // son moment dans le balancement (voir swayDe)
       return st;
     });
     rows.forEach(r => prepare(r.item));
@@ -6539,6 +6558,7 @@ const model3d = (() => {
       const c = st.cur || sample(st, now), rc = st.el.getBoundingClientRect();
       const r2 = Math.round;
       return { ready: !!ready.get(keyOf(st.item)), alpha: Math.round(c.a * 100) / 100,
+        rang: st.rang || 0, angle: r2(swayDe(st.rang, now) * 180 / Math.PI * 10) / 10,   // son moment dans le balancement
         box: { x: r2(c.x), y: r2(c.y), s: r2(c.s) },
         dom: { x: r2(rc.left + camShift), y: r2(rc.top), s: r2(rc.width) } }; // le canvas suit la barre : on retire son décalage
     });
@@ -7970,7 +7990,7 @@ function render(){
       // Boîtes des aperçus 3D, dans le repère de la barre : le canvas y vit,
       // donc le déplacement horizontal de la barre s'y applique tout seul.
       if (DATA[ci].kind === 'shop' || DATA[ci].kind === 'game') rowBoxes = place.map((p, ii) => p.has3d
-        ? { el: p.row, item: visuelDe(DATA[ci].items[ii]), x: g.left + left, y: g.top + g.colTop + p.ty, size: ITEM_CSS * p.s, alpha: p.op }
+        ? { el: p.row, item: visuelDe(DATA[ci].items[ii]), x: g.left + left, y: g.top + g.colTop + p.ty, size: ITEM_CSS * p.s, alpha: p.op, rang: ii }
         : null).filter(Boolean);
     }
   });
@@ -9531,13 +9551,25 @@ const arena = (() => {
   // tirage au sort, pas un jeu — sauf Entrée pour passer à la fin.
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
-    /* Carte de fin : ←/→ passent d'un bouton à l'autre. Entrée n'est pas
-       traitée ici — le bouton qui a le focus reçoit du navigateur son clic
-       natif, et le doubler déclencherait l'action deux fois. */
+    /* Carte de fin : les flèches passent d'un bouton à l'autre, Entrée appuie.
+       ENTRÉE EST TRAITÉE ICI, EXPLICITEMENT. Le navigateur sait déjà cliquer le
+       bouton qui a le focus, et on s'en remettait à lui ; mais c'est un
+       comportement par défaut, donc invisible au contrôle et propre à chaque
+       moteur. On coupe ce défaut et on clique soi-même : un seul appel, le même
+       partout, et qui se vérifie. */
     if (fini){
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+      /* Les QUATRE flèches passent d'un bouton à l'autre. Les trois mini-jeux
+         répondent ainsi pareil, qu'un menu soit couché ou debout : il n'y a
+         rien à savoir avant d'appuyer. */
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp'){
         const n = boutonsFin.length, i = boutonsFin.indexOf(document.activeElement);
-        boutonsFin[(i < 0 ? 0 : i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n].focus();
+        const pas = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : n - 1;
+        boutonsFin[(i < 0 ? 0 : i + pas) % n].focus();
+      }
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        const i = boutonsFin.indexOf(document.activeElement);
+        if (i < 0) boutonsFin[0].focus(); else boutonsFin[i].click();
       }
       return true;
     }
@@ -10168,6 +10200,32 @@ const jumper = (() => {
      d'Espace qui lance le saut. */
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
+    /* CARTE VISIBLE — écran-titre ou fin de partie : les flèches changent de
+       bouton, elles ne font plus marcher le personnage. Le menu est debout sur
+       l'écran-titre et couché sur les cartes de fin, alors les quatre flèches
+       font la même chose : reculer ou avancer d'une entrée.
+       Entrée appuie sur le bouton qui a le focus — explicitement, en coupant le
+       clic que le navigateur aurait fait tout seul : un défaut de moteur ne se
+       contrôle pas, un appel si. Faute de focus, la première entrée le prend. */
+    if (!carte.hidden){
+      const bt = [btGo, btBest, btAgain, btQuit].filter(b => !b.hidden);
+      if (!bt.length) return true;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'ArrowDown'){
+        e.preventDefault();
+        const i = bt.indexOf(document.activeElement);
+        const pas = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : bt.length - 1;
+        bt[(i < 0 ? 0 : i + pas) % bt.length].focus();
+        return true;
+      }
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        const i = bt.indexOf(document.activeElement);
+        if (i < 0) bt[0].focus(); else bt[i].click();
+        return true;
+      }
+      if (e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); return true; }
+      return true;
+    }
     if (e.key === 'ArrowLeft'){ touches.gauche = true; e.preventDefault(); return true; }
     if (e.key === 'ArrowRight'){ touches.droite = true; e.preventDefault(); return true; }
     if (e.key === ' ' || e.key === 'Spacebar'){
@@ -10998,14 +11056,76 @@ const dressup = (() => {
     const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'dressup') : -1;
     if (ci >= 0 && ii >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = ii; render(); }
   }
+  /* ---- navigation au clavier ----
+     Le salon se joue à la souris, mais il doit aussi se parcourir aux flèches
+     et à Entrée, comme le reste du site et comme les deux autres mini-jeux.
+     ON NE COMPTE PAS LES COLONNES. Le portant est une grille dont la largeur
+     change avec la fenêtre, un groupe peut être vide, un intertitre s'intercale
+     entre deux rangées : tout cela se lit dans la MISE EN PAGE, jamais dans le
+     code. On choisit donc par la GÉOMÉTRIE — parmi les commandes qui sont du
+     bon côté, la plus proche, l'écart de travers comptant double pour qu'une
+     flèche vers le bas ne parte pas en biais. Le jour où la grille change, il
+     n'y a rien à retoucher ici.
+     Les commandes sont rangées DE HAUT EN BAS ET DE GAUCHE À DROITE, et non
+     dans l'ordre du document : le bouton vert y est écrit avant le portant,
+     si bien que la première flèche tombait sur lui au lieu du premier
+     vêtement. L'ordre de lecture est celui de l'œil, pas celui du fichier. */
+  const commandes = () => [...overlay.querySelectorAll('.dress-case, .dress-outils .dress-bt, .dress-save')]
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ el, r: el.getBoundingClientRect() }))
+    .sort((a, b) => (Math.round(a.r.top / 8) - Math.round(b.r.top / 8)) || (a.r.left - b.r.left))
+    .map(o => o.el);
+  function navigerFocus(dx, dy){
+    const tout = commandes();
+    if (!tout.length) return;
+    const ici = tout.indexOf(document.activeElement);
+    if (ici < 0){ tout[0].focus(); return; }
+    const a = tout[ici].getBoundingClientRect();
+    const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+    let choix = null, best = Infinity;
+    tout.forEach((el, i) => {
+      if (i === ici) return;
+      const b = el.getBoundingClientRect();
+      const bx = b.left + b.width / 2, by = b.top + b.height / 2;
+      const avance = (bx - ax) * dx + (by - ay) * dy;
+      if (avance <= 1) return;                                  // derrière soi : ce n'est pas par là
+      const travers = Math.abs((bx - ax) * dy - (by - ay) * dx);
+      const cout = avance + travers * 2;
+      if (cout < best){ best = cout; choix = el; }
+    });
+    if (choix) choix.focus();
+  }
+  const FLECHES = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   function touche(e){
     if (e.key === 'Escape'){ fermer(); return true; }
-    /* Les flèches sont AVALÉES sans rien faire. Le mannequin ne tourne plus —
-       il se regarde de face, comme une poupée sur son carton — mais les
-       laisser passer ferait défiler le XMB derrière la fenêtre. */
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown'){ e.preventDefault(); return true; }
-    return false;
+    if (FLECHES[e.key]){ e.preventDefault(); navigerFocus(FLECHES[e.key][0], FLECHES[e.key][1]); return true; }
+    /* Entrée et Espace. Les cases du portant et les deux étiquettes ont leur
+       PROPRE écouteur, qui s'est déclenché avant celui-ci — la fenêtre écoute
+       en dernier — et qui a retenu la touche en le faisant. `defaultPrevented`
+       le dit : quand il est vrai, le geste a eu lieu, refaire un clic ici le
+       ferait deux fois. Sinon la commande est un vrai bouton, et on l'appuie
+       nous-même plutôt que de compter sur le clic que le navigateur ferait de
+       lui-même : un défaut de moteur ne se vérifie pas, un appel si.
+       Dans tous les cas la touche s'arrête là — sans quoi elle descendrait
+       jusqu'au XMB et ajouterait un article au panier derrière la fenêtre. */
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){
+      const tout = commandes(), i = tout.indexOf(document.activeElement);
+      if (i < 0){ if (tout[0]){ e.preventDefault(); tout[0].focus(); } }
+      else if (!e.defaultPrevented){ e.preventDefault(); tout[i].click(); }
+      return true;
+    }
+    return true;   // le salon garde la main : aucune touche ne file au XMB derrière
   }
+  /* Les deux outils qui sont des ÉTIQUETTES (la photo, la teinte) ne sont pas
+     des boutons : sans ceci ils ne prendraient pas le focus et Entrée ne les
+     ouvrirait pas. Le clic simulé fait exactement ce que ferait la souris — y
+     compris passer par l'écouteur qui RETIRE la photo au second appui. */
+  ['dressFaceBt', 'dressPeauBt'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); el.click(); }
+    });
+  });
   champFace.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     if (f) poserVisage(f); else oterVisage();
@@ -11046,6 +11166,13 @@ const dressup = (() => {
   const vig = { taille: '' };
   const VIG_REF = 730;               // largeur de la scène représentée, en pixels CSS
   const VIG_POLICE = '"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif';
+  /* La vignette est TOUJOURS en anglais, quelle que soit la langue du site
+     (demande du 16 sept. 2026). C'est une image du jeu, pas une page : le
+     salon s'appelle « Dress Up » partout, et un « Mettre mon visage » de huit
+     pixels passait sur deux rangs là où « Use my face » tient sur un. D'où
+     `EN` au lieu de `T` — et la langue n'a donc plus rien à faire dans la clé
+     du cache. */
+  const EN = (cle) => STRINGS.en[cle] ?? cle;
   /* La teinte de peau et l'écartement des pieds vivent dans `model3d`, hors de
      portée d'ici : on les réécrit, avec le renvoi qui va bien. */
   const VIG_PEAU = '#c89878';   // = PEAU_DEFAUT (model3d)
@@ -11057,11 +11184,7 @@ const dressup = (() => {
     const r = box.getBoundingClientRect();
     if (!r.width) return;
     const k = Math.min(2, window.devicePixelRatio || 1);
-    /* La langue entre dans la clé : les intertitres du portant et les boutons
-       sont ÉCRITS dans la vignette, ils doivent suivre le site. Sans elle, un
-       passage en français laissait « TOPS » au-dessus des hauts, la taille
-       n'ayant pas bougé. */
-    const cle = Math.round(r.width) + 'x' + Math.round(r.height) + '/' + currentLang;
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
     if (!force && vig.taille === cle) return;
     vig.taille = cle;
     [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
@@ -11164,7 +11287,7 @@ const dressup = (() => {
       g.font = '800 ' + fsT.toFixed(2) + 'px ' + VIG_POLICE;
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
       g.fillStyle = '#b0307a';
-      const mot = String(T(rayon.cle)).toUpperCase();
+      const mot = String(EN(rayon.cle)).toUpperCase();
       if (ri) cy += 5 * u;
       g.fillText(mot, gx, cy + fsT);
       const fin = gx + g.measureText(mot).width + 8 * u;
@@ -11204,9 +11327,9 @@ const dressup = (() => {
     g.font = '700 ' + fsB.toFixed(2) + 'px ' + VIG_POLICE;
     g.textBaseline = 'middle';
     let bx = Lx + 12 * u, by = Oy + 9 * u;
-    [[T('dressFace'), '#ff77b8', '#b0307a', '#ffffff', 0],
-     [T('dressSkin'), '#ffd166', '#a9761a', '#6b3f00', 1],
-     [T('dressStrip'), '#7fd0f0', '#1d7ea8', '#ffffff', 0]].forEach(([mot, teinte, cerne, encre, pastille]) => {
+    [[EN('dressFace'), '#ff77b8', '#b0307a', '#ffffff', 0],
+     [EN('dressSkin'), '#ffd166', '#a9761a', '#6b3f00', 1],
+     [EN('dressStrip'), '#7fd0f0', '#1d7ea8', '#ffffff', 0]].forEach(([mot, teinte, cerne, encre, pastille]) => {
       const bw = g.measureText(mot).width + 30 * u + (pastille ? 28 * u : 0);
       if (bx + bw > Lx + Lw - 12 * u){ bx = Lx + 12 * u; by += bh + 8 * u; }
       if (by + bh > Oy + Oh - 6 * u) return;
@@ -11299,7 +11422,7 @@ const dressup = (() => {
     g.rotate(-4 * Math.PI / 180);
     g.font = '800 ' + fsTi.toFixed(2) + 'px ' + VIG_POLICE;
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    const mot = T('dressTitle');
+    const mot = EN('dressTitle');
     g.fillStyle = 'rgba(120,20,80,0.35)'; g.fillText(mot, 3 * u, 3 * u);
     g.lineJoin = 'round'; g.lineWidth = 6 * u; g.strokeStyle = '#ffffff';
     g.strokeText(mot, 0, 0);
@@ -11310,11 +11433,11 @@ const dressup = (() => {
        scène et en bas à gauche — ce qu'on emporte, c'est le personnage. */
     g.font = '700 ' + fsB.toFixed(2) + 'px ' + VIG_POLICE;
     g.textBaseline = 'middle';
-    const sw = g.measureText(T('dressSave')).width + 30 * u, sy = H - 14 * u - bh;
+    const sw = g.measureText(EN('dressSave')).width + 30 * u, sy = H - 14 * u - bh;
     g.fillStyle = '#3d7a2e'; arrondi(16 * u, sy + 3 * u, sw, bh, bh / 2); g.fill();
     g.fillStyle = '#9be08a'; arrondi(16 * u, sy, sw, bh, bh / 2); g.fill();
     g.lineWidth = 2 * u; g.strokeStyle = '#3d7a2e'; arrondi(16 * u, sy, sw, bh, bh / 2); g.stroke();
-    g.fillStyle = '#22451a'; g.fillText(T('dressSave'), 31 * u, sy + bh * 0.54);
+    g.fillStyle = '#22451a'; g.fillText(EN('dressSave'), 31 * u, sy + bh * 0.54);
   }
 
   // contrôle : l'état du salon, et de quoi poser une pièce sans la cliquer
