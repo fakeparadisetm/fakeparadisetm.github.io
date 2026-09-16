@@ -4460,14 +4460,7 @@ const model3d = (() => {
         const bh = box.h || box.s;
         const H = cv.height, x0 = Math.floor(box.x) - 1, y0 = Math.floor(box.y) - 1, x1 = Math.ceil(box.x + box.s) + 1, y1 = Math.ceil(box.y + bh) + 1;
         const vw = x1 - x0, vh = y1 - y0;
-        /* `box.clip` = [haut, bas] en pixels du canvas : la FENÊTRE reste la
-           boîte — donc le cadrage et l'échelle ne bougent pas — mais le ciseau
-           se resserre sur une tranche. Sert à ne redessiner du mannequin que
-           sa tête et son cou, par-dessus la capuche d'un sweat, pour que le
-           visage se voie au travers comme si la capuche était portée. */
-        const sy0 = box.clip ? Math.max(y0, Math.floor(box.clip[0])) : y0;
-        const sy1 = box.clip ? Math.min(y1, Math.ceil(box.clip[1])) : y1;
-        gl.viewport(x0, H - y1, vw, vh); gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, H - sy1, vw, Math.max(0, sy1 - sy0));
+        gl.viewport(x0, H - y1, vw, vh); gl.enable(gl.SCISSOR_TEST); gl.scissor(x0, H - y1, vw, vh);
         const sx = box.s / vw, sy = bh / vh, ox = (2 * (box.x - x0) + box.s) / vw - 1, oy = (2 * (y1 - box.y) - bh) / vh - 1;
         MVP = mul(new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, ox,oy,0,1]), MVP);
       } else { gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); }
@@ -9197,7 +9190,7 @@ const dressup = (() => {
        (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
        haut, le col remontait sur le cou. */
     tee:      { ourlet: 0.32, y0: 0.162, y1: 0.556 },   // t-shirts, polos, débardeurs : col à la base du cou, ourlet aux hanches
-    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true, capuche: true },  // rendu porté : à l'échelle, capuche derrière la nuque
+    sweat:    { ourlet: 0.26, y0: 0.115, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ourlet: 0.26, y0: 0.500, y1: 0.960 },   // de la taille aux chevilles
     culotte:  { ourlet: 0.27, y0: 0.468, y1: 0.618 },   // le sous-vêtement, aux hanches
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
@@ -9243,9 +9236,6 @@ const dressup = (() => {
   // `raglan`, et les tailles propres à un seul article
   const DEFAUT = { cat: 'haut', coupe: 'tee' };
   const rangerDe = (it) => TAILLES[it.sz] || DEFAUT;
-  // la tranche du mannequin qu'on repasse par-dessus une capuche : jusqu'à
-  // ras des épaules, là où le col est épais et masque la coupure
-  const TETE_COU = [0, 0.175];
 
   let ouvert = false, scene = null, raf = 0;
   let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
@@ -9381,8 +9371,7 @@ const dressup = (() => {
        profondeur : l'épaule ressortait au travers de la manche, la cuisse au
        travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
        papier n'a pas de volume, elle a des couches. */
-    let capuche = false;
-    couches.forEach(p => {
+        couches.forEach(p => {
         const A = ANCRAGES[p.coupe], vetu = p.porte || p.it, e = scene.empreinte(vetu);
         if (!e) return;                       // pas encore mesurable : à l'image suivante
         const l = S * A.ourlet / (e.o1 - e.o0);
@@ -9395,21 +9384,14 @@ const dressup = (() => {
         scene.plan();
         scene.draw(vetu, ang, { x: MX + S * 0.5 - (e.o0 + e.o1) / 2 * l,   // l'ourlet centré sur l'axe du corps
           y: MY + S * A.y0 - e.y0 * hh, s: l, h: hh }, 1);                 // et le haut posé sur y0
-        capuche = capuche || !!A.capuche;
       });
-    /* Une capuche BAISSÉE se trouve derrière la nuque : sur une image, elle
-       occupe le quart haut du vêtement et vient donc se poser sur le visage
-       dès qu'on aligne les épaules sur les épaules. La tête et le haut du cou
-       sont donc REDESSINÉS par-dessus, dans une tranche qui s'arrête à ras des
-       épaules. Ce qui reste du vêtement autour — l'étoffe le long des joues,
-       le col en dessous — redevient ce qu'elle est : une capuche tombée dans
-       le dos. La coupure est placée là où le col est épais, ce qui la rend
-       invisible ; plus haut, elle trancherait la mâchoire. Rien n'est dessiné
-       en plus : c'est le mannequin lui-même, dans une fente. */
-    if (capuche){
-      scene.plan();
-      scene.draw(corps, ang, { ...cadre, clip: [MY + S * TETE_COU[0], MY + S * TETE_COU[1]] }, 1);
-    }
+    /* LE COL PASSE DEVANT LE COU, et c'est le vêtement lui-même qui le fait.
+       On redessinait la tête et le cou par-dessus la capuche, dans une tranche
+       découpée à l'horizontale : la coupure ne suivait aucune couture, et la
+       tête avait l'air POSÉE sur le vêtement au lieu d'y être passée. Il n'y a
+       rien à redessiner — le bord du col est déjà la limite du maillage, et ce
+       qui est au-dessus, c'est le corps. Une bordure de vêtement qui recouvre
+       la peau, c'est exactement ce qu'on voit sur quelqu'un d'habillé. */
     scene.plan();
     // le portant : chaque aperçu à la place de sa case
     const rr = rack.getBoundingClientRect();
