@@ -690,6 +690,26 @@
     padding:var(--pad) var(--pad) 0;
     border-radius:var(--radius);
     overflow:hidden;
+    /* la même durée et la même courbe que le dépliage du texte (.preview-info) :
+       le bas de la galerie accompagne l'ouverture au lieu de sauter avant elle */
+    transition:margin-bottom 0.34s cubic-bezier(.2,.8,.2,1),
+               padding-bottom 0.34s cubic-bezier(.2,.8,.2,1);
+  }
+  /* ---- REPLIÉ : la galerie EST le panneau ----
+     Rien ne la suit, elle descend donc jusqu'à l'arête du bas comme elle monte
+     jusqu'à celle du haut, et les quatre coins du panneau sont à elle. */
+  .preview.gallery .gallery-zone{
+    margin-bottom:calc(-1 * var(--pad));
+    padding-bottom:var(--pad);
+  }
+  /* ---- DÉPLIÉ : du texte commence juste dessous ----
+     Le nom du produit arrive à quelques pixels du bas de la galerie. Une lueur
+     qui s'arrêterait net juste au-dessus de lui tracerait un trait en travers
+     du panneau et lui volerait la vedette : elle s'éteint donc AVANT, en
+     fondu. L'arrondi du bas ne se voit plus — il n'a plus rien à border. */
+  .preview:not(.gallery) .slide-edge{
+    -webkit-mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
+    mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
   }
   .gallery-zone:not(.has-slides) .slide-dots,
   .gallery-zone:not(.has-slides) .slide-edge{display:none;}
@@ -733,10 +753,6 @@
     transition:opacity 0.22s ease;
     z-index:3;
   }
-  /* Le fondu qui eteignait le bas des lueurs a ete RETIRE le 16 sept. 2026 :
-     l'arrondi du bas le rendait invisible, et c'est l'arrondi qu'on veut voir.
-     Pour le remettre, un masque sur .slide-edge :
-       mask-image:linear-gradient(to bottom, #000 78%, transparent 100%); */
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
   .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
