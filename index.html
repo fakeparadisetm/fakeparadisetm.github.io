@@ -6287,44 +6287,61 @@ const model3d = (() => {
 
      Le maillage découpé est propre au salon d'essayage ; la boutique continue
      d'afficher le vêtement entier, col fermé, comme sur la photo. */
-  /* La bande droite s'arrête AVANT les épaules, et le rayon est celui du cou LE
-     PLUS ÉTROIT. Sous 0,19 la travée centrale du mannequin n'est déjà plus une
-     nuque mais une carrure : mesurée rangée par rangée, elle passe de 0,03 à
-     0,13 en quelques millièmes, et la découpe emportait alors la moitié du
-     buste. Un rayon unique, pris au plus mince, donne un col rond et régulier.
+  /* La découpe SUIT LE COU, rangée par rangée. Un cou n'est pas un cylindre :
+     il est le plus mince sous la mâchoire et s'évase vers les épaules, et une
+     encolure fait de même — sinon le col est un tube posé sur un tronc de
+     cône, et ça se voit.
 
-     Puis l'encolure CREUSE sous les épaules, en demi-ellipse. Un col ne
-     s'arrête pas à la naissance du cou : il descend sur le haut de la poitrine
-     et se referme en arrondi — c'est ce qui distingue une encolure d'un simple
-     trou de nuque, et ce qu'on voit sur n'importe quel vêtement porté. La
-     profondeur vaut une fois et demie le rayon du cou : de quoi laisser voir la
-     clavicule sans ouvrir un décolleté. */
-  const COU_BANDE = [0.112, 0.185], COU_CREUX = 0.042, COU_RANGS = 20, COU_MARGE = 1.45;
-  let couRayon = null;
-  function rayonCou(corpsItem){
-    if (couRayon != null) return couRayon;
+     Deux garde-fous, tous deux payés pour. La bande s'arrête AVANT les épaules
+     (0,185) : en dessous, la travée centrale du mannequin n'est déjà plus une
+     nuque mais une carrure, elle passe de 0,03 à 0,13 en quelques millièmes et
+     la découpe emportait la moitié du buste. Et chaque rangée est PLAFONNÉE à
+     une fois et demie la plus mince : une rangée aberrante — un menton qui
+     rentre dans le relevé, une épaule qui commence tôt — ne peut plus ouvrir le
+     vêtement en grand, elle est simplement ramenée dans la forme. Le plafond
+     vaut un cinquième de plus que le plus mince, parce que c'est ce que fait un
+     vrai cou : relevé rangée par rangée, il vaut 0,047 sous la mâchoire, 0,029
+     au plus mince, et 0,066 aux épaules — les deux bouts sont déjà du menton
+     et de la carrure, et c'est le milieu qui donne la mesure.
+     La marge suit : elle est passée de 1,45 à 1,25 quand la largeur a cessé
+     d'être constante, pour que l'ouverture la plus large reste la même.
+
+     Puis l'encolure creuse en demi-ellipse sous les épaules, en repartant de la
+     dernière largeur relevée. Un col ne s'arrête pas à la naissance du cou : il
+     descend sur le haut de la poitrine et se referme en arrondi — c'est ce qui
+     distingue une encolure d'un trou de nuque. */
+  const COU_BANDE = [0.112, 0.185], COU_CREUX = 0.042, COU_RANGS = 20;
+  const COU_MARGE = 1.25, COU_PLAFOND = 1.2;
+  let couProfil = null;
+  function profilCou(corpsItem){
+    if (couProfil) return couProfil;
     const a = ready.get(keyOf(corpsItem));
     if (!a) return null;
     const P = a.mesh.__P || (a.mesh.__P = projeter(a.mesh));
     const NB = 192, dents = new Uint8Array(NB), xa = 0.5 - 0.6, pas = 1.2 / NB;
+    const demi = new Float32Array(COU_RANGS);
     let mince = 9;
     for (let r = 0; r < COU_RANGS; r++){
       peigner(P, a.mesh, COU_BANDE[0] + (COU_BANDE[1] - COU_BANDE[0]) * (r + 0.5) / COU_RANGS, dents, xa, pas);
       const t = travee(dents, NB >> 1);
       if (!t) continue;
-      const d = Math.max(0.5 - (xa + t[0] * pas), xa + (t[1] + 1) * pas - 0.5);
-      if (d > 1e-4 && d < mince) mince = d;
+      demi[r] = Math.max(0.5 - (xa + t[0] * pas), xa + (t[1] + 1) * pas - 0.5);
+      if (demi[r] > 1e-4 && demi[r] < mince) mince = demi[r];
     }
-    couRayon = mince < 9 ? mince : null;
-    return couRayon;
+    if (mince >= 9) return null;
+    // plafond, puis bouchage des rangées muettes par la voisine du dessus
+    for (let r = 0; r < COU_RANGS; r++) demi[r] = Math.min(demi[r] || 0, mince * COU_PLAFOND);
+    for (let r = 0; r < COU_RANGS; r++) if (demi[r] < 1e-4) demi[r] = r ? demi[r-1] : mince;
+    couProfil = demi;
+    return demi;
   }
   const encolures = new Map();
   function encolure(item, corpsItem, boite, coupe){
     const cle = keyOf(item) + '|col:' + coupe;
     if (encolures.has(cle)) return encolures.get(cle);
-    const a = ready.get(keyOf(item)), rayon = rayonCou(corpsItem), e = empreinte(item);
+    const a = ready.get(keyOf(item)), cou = profilCou(corpsItem), e = empreinte(item);
     const f = images.get(encodeURI(item.img));
-    if (!a || !rayon || !e || !f || !f.mask) return null;  // pas encore mesurable : l'original fera l'affaire
+    if (!a || !cou || !e || !f || !f.mask) return null;    // pas encore mesurable : l'original fera l'affaire
     const N = MASK_N, m = f.mask;
     let u0 = N, u1 = 0, v0 = N, v1 = 0;
     for (let i = 0; i < N * N; i++) if (m[i]){
@@ -6341,12 +6358,14 @@ const model3d = (() => {
     let coupes = 0;
     for (let y = v0; y <= v1; y++){
       const fy = e.y0 + (y - v0) / (v1 - v0) * (e.y1 - e.y0), by = boite.y + fy * boite.h;
-      // droit le long du cou, puis refermé en demi-ellipse sur la poitrine
+      // le long du cou, rangée par rangée, puis refermé en demi-ellipse
       let large = 0;
-      if (by >= COU_BANDE[0] && by <= COU_BANDE[1]) large = rayon * COU_MARGE;
-      else if (by > COU_BANDE[1] && by < COU_BANDE[1] + COU_CREUX){
+      if (by >= COU_BANDE[0] && by <= COU_BANDE[1]){
+        const r = Math.min(COU_RANGS - 1, Math.floor((by - COU_BANDE[0]) / (COU_BANDE[1] - COU_BANDE[0]) * COU_RANGS));
+        large = cou[r] * COU_MARGE;
+      } else if (by > COU_BANDE[1] && by < COU_BANDE[1] + COU_CREUX){
         const t = (by - COU_BANDE[1]) / COU_CREUX;
-        large = rayon * COU_MARGE * Math.sqrt(1 - t * t);
+        large = cou[COU_RANGS - 1] * COU_MARGE * Math.sqrt(1 - t * t);
       }
       if (large < 1e-4) continue;
       for (let x = u0; x <= u1; x++){
