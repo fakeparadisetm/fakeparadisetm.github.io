@@ -10842,9 +10842,26 @@ const dressup = (() => {
      La courbe n'est pas une sinusoïde : on inspire plus vite qu'on n'expire.
      L'exposant 1,4 allonge le bas de la courbe, et quatre secondes et demie
      font quatorze respirations par minute — un corps au repos. */
-  const SOUFFLE = { duree: 4500, ampleur: 0.020 };
+  const SOUFFLE = { duree: 4500, ampleur: 0.0135 };
   const souffle = (t) => Math.pow((Math.sin(t / SOUFFLE.duree * Math.PI * 2) + 1) / 2, 1.4);
-  function dessiner(t){
+  /* ---- et le salon s'endort ----
+     Un onglet laissé ouvert et oublié ne doit pas continuer de peindre quatre-
+     vingts images par seconde pour un mannequin que personne ne regarde. Le
+     navigateur endort déjà les onglets qu'on quitte ; celui qu'on laisse SOUS
+     LES YEUX en travaillant ailleurs, lui, continue.
+     Au bout de trois quarts de minute sans un geste, le souffle redescend en
+     fondu — s'arrêter net sur une inspiration laisserait un corps gonflé — puis
+     la boucle se coupe pour de bon. L'image reste à l'écran telle quelle : le
+     navigateur garde la dernière peinte, il n'y a rien à redessiner pour qu'elle
+     tienne. Le moindre geste réveille tout, et le fondu repart à l'endroit où
+     il s'était arrêté. */
+  const VEILLE = 45000, VEILLE_FONDU = 1500;
+  let eveilAt = 0, dort = false;
+  function reveiller(){
+    eveilAt = performance.now();
+    if (dort && ouvert){ dort = false; cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle); }
+  }
+  function dessiner(t, eveil){
     if (!scene) return;
     const r = cv.getBoundingClientRect();
     if (!r.width) return;
@@ -10866,7 +10883,7 @@ const dressup = (() => {
     const MX = (sous ? (r.width - libre) / 2 : r.width * 0.045) * k, MY = ((hDispo - libre) / 2) * k;
     // le souffle : la boîte grandit autour des PIEDS, donc la tête monte et
     // les pieds ne quittent pas le sol
-    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t));
+    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t) * eveil);
     habiller(scene, MX - (S2 - S) / 2, MY - (S2 - S), S2);
     /* Le portant : chaque aperçu à la place de sa case, ROGNÉ au cadre du
        portant. Sans ce rognage, une case à moitié sortie par le défilement
@@ -10894,8 +10911,12 @@ const dressup = (() => {
     // images, donc sauter une image ne le ralentit pas (voir IPS_MAX)
     if (t - ipsSalon < IPS_PAS - 0.5) return;
     ipsSalon = t;
+    // l'éveil : 1 tant qu'on s'occupe du salon, puis un fondu vers 0
+    const eveil = Math.max(0, Math.min(1, (VEILLE + VEILLE_FONDU - (t - eveilAt)) / VEILLE_FONDU));
     dessins++;
-    dessiner(t);
+    dessiner(t, eveil);
+    // le souffle est retombé : on peint une dernière fois au repos, puis on coupe
+    if (eveil <= 0){ cancelAnimationFrame(raf); raf = 0; dort = true; }
   }
 
   function ouvrir(){
@@ -10911,6 +10932,7 @@ const dressup = (() => {
     if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
     garnir();
     tirerHaut();
+    eveilAt = performance.now(); dort = false;
     overlay.classList.add('open');
     sfx.salon();                    // le carillon du salon, pas celui du site
     cancelAnimationFrame(raf);
@@ -10919,7 +10941,7 @@ const dressup = (() => {
   function fermer(){
     if (!ouvert) return;
     ouvert = false;
-    cancelAnimationFrame(raf); raf = 0;
+    cancelAnimationFrame(raf); raf = 0; dort = false;
     overlay.classList.remove('open');
     oterVisage();          // la photo ne survit pas à la fermeture, même en mémoire
     // on revient sur la tuile du jeu, comme en quittant une application
@@ -10943,6 +10965,13 @@ const dressup = (() => {
     // le bouton sert aussi à RETIRER la photo : deuxième clic, on l'enlève
     if (visageURL){ e.preventDefault(); oterVisage(); }
   });
+  /* Tout geste dans la fenêtre du salon réveille le souffle : bouger la
+     souris, cliquer, taper, faire défiler le portant. On écoute à la CAPTURE
+     pour être sûr d'être prévenu même quand l'événement est arrêté plus bas,
+     et en `passive` pour ne jamais retarder un défilement. */
+  ['pointermove', 'pointerdown', 'wheel', 'keydown'].forEach(e =>
+    overlay.addEventListener(e, reveiller, { capture: true, passive: true }));
+  rack.addEventListener('scroll', reveiller, { passive: true });
   btNu.addEventListener('click', deshabiller);
   btSave.addEventListener('click', enregistrer);
   champPeau.addEventListener('input', (e) => poserPeau(e.target.value));
