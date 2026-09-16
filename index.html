@@ -10823,6 +10823,27 @@ const dressup = (() => {
        la peau, c'est exactement ce qu'on voit sur quelqu'un d'habillé. */
     sc.plan();
   }
+  /* ---- LE SOUFFLE ----
+     Le mannequin respire, et c'est sa BOÎTE qui respire, pas son maillage. Il
+     grandit d'un centième autour de ses pieds : la tête monte, les pieds
+     restent au sol, et le buste s'élargit du même millième — le mouvement d'un
+     torse qui se remplit d'air.
+
+     LA BOÎTE, ET RIEN QUE LA BOÎTE, pour deux raisons qui comptent autant
+     l'une que l'autre. D'abord le prix : plier le squelette changerait la clé
+     du maillage à chaque image, et le mannequin serait reconstruit soixante
+     fois par seconde au lieu d'une fois pour toutes. Ensuite la cohérence :
+     les vêtements sont des coussins plats, sans articulations ni poids de
+     peau, et c'est en refusant de les tordre qu'on a fait disparaître les
+     aiguilles à l'emmanchure. Une boîte, elle, est partagée : le corps et
+     toutes ses couches en descendent, donc tout respire ensemble, au même
+     rythme et sans se décoller.
+
+     La courbe n'est pas une sinusoïde : on inspire plus vite qu'on n'expire.
+     L'exposant 1,4 allonge le bas de la courbe, et quatre secondes et demie
+     font quatorze respirations par minute — un corps au repos. */
+  const SOUFFLE = { duree: 4500, ampleur: 0.010 };
+  const souffle = (t) => Math.pow((Math.sin(t / SOUFFLE.duree * Math.PI * 2) + 1) / 2, 1.4);
   function dessiner(t){
     if (!scene) return;
     const r = cv.getBoundingClientRect();
@@ -10843,7 +10864,10 @@ const dressup = (() => {
     const libre = Math.min(r.width * 0.46, hDispo * 0.92);
     const S = libre * k;
     const MX = (sous ? (r.width - libre) / 2 : r.width * 0.045) * k, MY = ((hDispo - libre) / 2) * k;
-    habiller(scene, MX, MY, S);
+    // le souffle : la boîte grandit autour des PIEDS, donc la tête monte et
+    // les pieds ne quittent pas le sol
+    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t));
+    habiller(scene, MX - (S2 - S) / 2, MY - (S2 - S), S2);
     /* Le portant : chaque aperçu à la place de sa case, ROGNÉ au cadre du
        portant. Sans ce rognage, une case à moitié sortie par le défilement
        peignait quand même son vêtement en entier, par-dessus les outils et le
@@ -10863,8 +10887,14 @@ const dressup = (() => {
         p.el.classList.contains('dress-case--dort') ? 0.4 : 1);
     });
   }
+  let ipsSalon = 0, dessins = 0;
   function boucle(t){
     raf = requestAnimationFrame(boucle);
+    // même plafond que le reste du site : le souffle suit l'horloge, pas les
+    // images, donc sauter une image ne le ralentit pas (voir IPS_MAX)
+    if (t - ipsSalon < IPS_PAS - 0.5) return;
+    ipsSalon = t;
+    dessins++;
     dessiner(t);
   }
 
@@ -10981,7 +11011,7 @@ const dressup = (() => {
   const debug = (i) => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
-             visage: !!visageURL };
+             visage: !!visageURL, dessins };   // contrôle : images réellement peintes depuis l'ouverture
   };
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug };
 })();
@@ -11491,9 +11521,29 @@ function drawSparkles(){
    nombre de sons joués. Rien ne s'affiche sans ce ?diag, et rien n'est
    mesuré non plus. Outil de mise au point, à retirer quand le site sera
    stabilisé. */
+/* ---- CENT IMAGES PAR SECONDE, ET PAS PLUS ----
+   Au-delà, personne ne voit la différence et la machine chauffe pour rien :
+   un écran à 165 Hz faisait tourner le ruban, les étincelles et le salon
+   d'essayage à 165 images par seconde, soit deux tiers de travail en plus
+   pour un mouvement identique à l'œil. Cent est au-dessus du seuil où l'on
+   perçoit encore les à-coups, et laisse de la marge aux machines modestes.
+
+   LE PLAFOND NE TOUCHE À AUCUNE VITESSE. Toutes les animations du site sont
+   réglées sur l'HORLOGE et non sur le nombre d'images — le ruban avance de
+   son delta de temps, le souffle du mannequin lit `performance.now()` — donc
+   sauter une image ralentit le dessin, jamais le mouvement. C'est la raison
+   pour laquelle on peut se permettre de plafonner sans rien re-régler. */
+const IPS_MAX = 100, IPS_PAS = 1000 / IPS_MAX;
 const DIAG = location.search.indexOf('diag') >= 0;
 let bgFrames = 0, bgFps = 0, bgT = 0, bgLast = 0, bgWorst = 0, bgWorstShown = 0;
 function drawFrame(ts){
+  // le plafond : on rend la main sans rien peindre tant que l'image d'avant
+  // n'a pas fini son temps de pose (voir IPS_MAX)
+  {
+    const maintenant = ts || performance.now();
+    if (maintenant - ipsCadre < IPS_PAS - 0.5){ requestAnimationFrame(drawFrame); return; }
+    ipsCadre = maintenant;
+  }
   if (DIAG){
     const now = ts || performance.now();
     if (bgLast){ const gap = now - bgLast; if (gap > bgWorst) bgWorst = gap; }
@@ -11522,7 +11572,7 @@ function drawFrame(ts){
   drawSparkles();
   requestAnimationFrame(drawFrame);
 }
-let wavesAt = 0, tLast = 0;
+let wavesAt = 0, tLast = 0, ipsCadre = 0;
 if (DIAG){
   const box = document.createElement('div');
   box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;background:rgba(0,0,0,0.78);'
