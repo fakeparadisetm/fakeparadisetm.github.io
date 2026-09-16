@@ -3277,11 +3277,14 @@ const DATA = [
       /* Le texte de la page Info, donné par l'utilisateur le 16 sept. 2026.
          La version anglaise est la SIENNE, mot pour mot, ponctuation comprise :
          c'est une phrase de marque, on ne la corrige pas.
-         Le français en est une traduction de ton, pas de mots — « bien moches »
-         pour « ugly ass », et la symétrie moches/cool tient la chute. À changer
-         d'un mot si elle ne lui ressemble pas. */
-      d:{en:"Hi, I'm fakeparadise. I make ugly ass clothes for cool people",
-         fr:"Salut, moi c'est fakeparadise. Je fais des fringues bien moches pour des gens bien cool"} } },
+         Le français en est une traduction de TON et non de mots, et il suit
+         l'anglais quand il change — « ass » retiré des deux le même jour.
+         LE MOT-DIÈSE EST SUR SA PROPRE LIGNE : une signature se détache, et
+         collé à la phrase il s'y serait fondu. Le texte passe par `white-space:
+         pre-line` (voir .preview-desc), donc le saut de ligne est respecté ;
+         pour le remettre au fil du texte, remplacer `\n` par une espace. */
+      d:{en:"Hi, I'm fakeparadise. I make ugly clothes for cool people\n#bigbossmoves",
+         fr:"Salut, moi c'est fakeparadise. Je fais des fringues moches pour des gens cool\n#bigbossmoves"} } },
 ];
 
 /* ---------------- catalogue enregistré (catalogue.json) ----------------
