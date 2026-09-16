@@ -702,6 +702,11 @@
   .slide.active{display:block;}
   .slide.flat{width:100%;height:100%;object-fit:cover;}
   .preview-swatch canvas{position:absolute;inset:0;width:100%;height:100%;}
+  /* Rendu « console » : le tampon fait 256 pixels de côté et le navigateur
+     l'agrandit au PLUS PROCHE. C'est le trait le plus reconnaissable de la
+     machine — bien avant le compte de polygones : elle dessinait dans une
+     définition minuscule, sans rien lisser, et l'écran étirait le résultat. */
+  .preview-swatch canvas.pixel{image-rendering:pixelated;}
   /* Pastilles en HAUT du visuel, et non plus en bas : c'est la première chose
      qu'on lit en arrivant sur la fiche. Un reflet les parcourt de gauche à
      droite, en boucle, pour signaler qu'il y a plusieurs vues à voir. */
@@ -3942,16 +3947,27 @@ const model3d = (() => {
      .xy — la grille d'accrochage des sommets. La console calculait ses
      coordonnées à l'écran en entiers, sans précision sous-pixel : les sommets
      sautaient d'un pixel à l'autre au lieu de glisser, et c'est ce frémissement
-     qu'on reconnaît d'abord. On accroche donc en coordonnées normalisées, à la
-     définition d'un mode de la machine (256 × 224).
+     qu'on reconnaît d'abord. La grille, c'est le TAMPON lui-même (sa moitié,
+     puisqu'on accroche en coordonnées normalisées, qui vont de −1 à 1) : un
+     sommet tombe ainsi exactement sur un pixel rendu, ni plus fin — le saut
+     serait invisible — ni plus grossier.
      .z — le placage AFFINE. Le matériel ne corrigeait pas la perspective : la
      texture était interpolée droit en coordonnées d'écran, d'où ce glissement
      des motifs sur les faces vues de biais. Le rastériseur, lui, interpole
      toujours en perspective ; on annule sa correction en multipliant les UV par
      w au sommet pour rediviser au fragment, ce qui laisse exactement
      l'interpolation linéaire d'écran. À zéro, vW vaut 1 partout et on retrouve
-     le placage correct, au bit près. */
-  const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;uniform vec3 uPS1;
+     le placage correct, au bit près.
+     Il sert aussi au fragment (la trame de sortie, plus bas), et c'est le seul
+     uniforme PARTAGÉ par les deux étages. D'où le `mediump` écrit en toutes
+     lettres des deux côtés : la précision par défaut n'est pas la même dans un
+     sommet (highp) et dans un fragment (mediump ici), et un uniforme déclaré
+     aux deux avec des précisions différentes fait ÉCHOUER l'édition de liens —
+     sans exception, juste un programme mort et un cadre resté vide. Les
+     valeurs (une demi-définition de tampon, puis 0 ou 1) sont exactes en
+     mediump, et les calculs qui les emploient gardent la précision de leur
+     autre opérande. */
+  const VS = `attribute vec3 aPos;attribute vec2 aUV;attribute vec2 aSh;uniform mat4 uMVP;uniform mediump vec3 uPS1;
     varying vec2 vUV;varying vec2 vSh;varying float vW;
     void main(){
       vec4 p = uMVP*vec4(aPos,1.0);
@@ -3968,15 +3984,31 @@ const model3d = (() => {
      l'éclair rouge du coup encaissé comme à l'aperçu du mini-jeu, où le modèle
      est réutilisé sans sa photo. L'ajout, lui, ne monte qu'au carré : il fait
      rayonner la teinte quand elle domine, sans éclaircir un simple reflet. */
-  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;
+  /* La TRAME DE SORTIE, troisième signature, allumée par le même uPS1.z. La
+     console ne savait afficher que 32 niveaux par voie : ses dégradés se
+     seraient cassés en bandes larges si le matériel n'avait pas tramé à la
+     sortie, un motif ordonné 4 × 4 accroché aux pixels de l'écran. Ici le
+     tampon fait justement 256 pixels de côté et n'est agrandi qu'après : le
+     motif retombe donc à l'échelle où il était dessiné, un carré de trame par
+     gros pixel. C'est ce qui manquait au rendu — la texture était déjà
+     quantifiée, mais l'éclairage la repeignait ensuite en 8 bits lisses.
+     Le motif s'obtient sans tableau (ESSL 1 n'indexe pas librement) : la
+     matrice de Bayer se construit par récurrence sur la 2 × 2, dont
+     `m2` est la forme close. */
+  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;uniform mediump vec3 uPS1;
     varying vec2 vUV;varying vec2 vSh;varying float vW;
+    float m2(vec2 p){ return 2.0*p.x + 3.0*p.y - 4.0*p.x*p.y; }
     void main(){
       vec3 base = mix(texture2D(uTex,vUV/vW).rgb, uTint.rgb, uTint.a);
       vec3 c = base*vSh.x + vSh.y + uTint.rgb*uTint.a*uTint.a*0.30;
+      if (uPS1.z > 0.0){
+        vec2 q = floor(gl_FragCoord.xy);
+        float b = (4.0*m2(mod(q, 2.0)) + m2(mod(floor(q*0.5), 2.0))) / 16.0;
+        c = floor(clamp(c, 0.0, 1.0)*31.0 + b) / 31.0;
+      }
       gl_FragColor=vec4(c*uAlpha,uAlpha);
     }`;
   const STRIDE = 7;      // flottants par sommet : position (3), uv (2), éclairage (2)
-  const PS1_GRILLE = [128, 112];   // demi-définition d'un mode 256 × 224 : la grille où les sommets s'accrochent
   const LIGHT = (() => { const l = Math.hypot(0.35, 0.5, 0.8); return [0.35 / l, 0.5 / l, 0.8 / l]; })();
 
   // ---- un contexte WebGL par canvas : la fiche (canvas du cadre) et la liste
@@ -4046,7 +4078,8 @@ const model3d = (() => {
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
       gl.uniform4f(uTint, tint ? tint[0] : 0, tint ? tint[1] : 0, tint ? tint[2] : 0, tint ? tint[3] : 0);
-      gl.uniform3f(uPS1, a.ps1 ? PS1_GRILLE[0] : 0, a.ps1 ? PS1_GRILLE[1] : 0, a.ps1 ? 1 : 0);
+      // la grille d'accrochage, c'est le tampon lui-même : un sommet tombe sur un pixel
+      gl.uniform3f(uPS1, a.ps1 ? cv.width/2 : 0, a.ps1 ? cv.height/2 : 0, a.ps1 ? 1 : 0);
       const b = bufs(a.mesh), S = STRIDE * 4;
       gl.bindBuffer(gl.ARRAY_BUFFER, b.vbo);
       gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, S, 0);
@@ -4436,7 +4469,7 @@ const model3d = (() => {
   const HAUTEUR_TETE = 1.05;  // le modèle occupe le cadre comme un vêtement
 
   /* ---- la texture de la tête ----
-     Le site ne publie qu'UNE image, `icons/tete-atlas.png`, 192 × 96, déjà
+     Le site ne publie qu'UNE image, `icons/tete-atlas.png`, 128 × 64, déjà
      réduite et quantifiée. C'est une demande expresse : le visage est celui de
      l'utilisateur, et la photo d'avant pixellisation ne doit se trouver nulle
      part dans les fichiers en ligne. Les planches d'origine restent donc hors
@@ -4468,7 +4501,9 @@ const model3d = (() => {
        4. composition avec fondu sur les bords ET à l'approche du vide, puis
           comblement par dilatation bouclée en u, puis lissage des seules
           jointures ;
-       5. PROLONGEMENT DE LA CHEVELURE sur les côtés et l'arrière : les
+       5. symétrie : le côté du piercing recopié en miroir sur l'autre, le
+          visage excepté ;
+       6. PROLONGEMENT DE LA CHEVELURE sur les côtés et l'arrière : les
           planches montrent de la peau au-dessus et derrière l'oreille, là où
           une vraie tête a des cheveux courts — le dépliage étire cette zone et
           la coupe dégradée y est presque rase, si bien qu'elle passe pour du
@@ -4478,10 +4513,12 @@ const model3d = (() => {
           jamais — rien de face (la racine vient de la photo), juste au-dessus
           de l'oreille sur le côté pour ne pas la recouvrir, et jusqu'à la base
           du crâne dans la nuque ;
-       6. réduction à 192 × 96 avec lissage, et quantification en 15 bits avec
-          trame ordonnée 4 × 4 à 45 % d'amplitude. */
+       7. réduction à 128 × 64 avec lissage, trame ordonnée 4 × 4, puis
+          quantification sur une PALETTE de 256 couleurs par coupes médianes —
+          la console lisait ses textures dans une table, et c'est ce qui donne
+          ces aplats et ces bandes dans les dégradés de peau. */
   const PLANCHE_Y = { haut: 0.525, bas: -0.525 }; // ce que l'atlas couvre en hauteur
-  const PS1_W = 192, PS1_H = 96;        // l'atlas, et tout ce que le site publie de ce visage
+  const PS1_W = 128, PS1_H = 64;        // l'atlas, et tout ce que le site publie de ce visage
   const ARGILE = [196, 158, 138];       // sans atlas : une argile chaude, le modèle reste présentable
   const uDe = th => 0.5 + th / (2 * Math.PI);
   const vDe = y => (PLANCHE_Y.haut - y) / (PLANCHE_Y.haut - PLANCHE_Y.bas);
@@ -4611,10 +4648,30 @@ const model3d = (() => {
      544² pour UN seul modèle ; sur un écran déjà à 2, on y est déjà et rien
      ne change (le plafond reste 2). */
   const SUR = 2;
+  /* Définition du TAMPON de la fiche. Les vêtements sont rendus à deux pixels
+     par pixel d'écran (voir SUR) ; la tête de la page Info, elle, est rendue
+     dans un tampon minuscule et agrandie au PLUS PROCHE, parce qu'elle imite
+     une console de 1995. Les deux ne peuvent pas cohabiter — c'est le même
+     canvas —, d'où ce drapeau, posé par show() d'après l'article affiché.
+     Le tampon ne peut pas être fixé une fois pour toutes : le visuel mesure
+     270 px de côté dans une fenêtre étroite et 544 dans une large. À 256 de
+     tampon, la grande fenêtre donne un bon gros texel de deux pixels, mais
+     l'étroite tombe à 1,05 — et un agrandissement au plus proche juste
+     au-dessus de 1 ne fait pas de gros pixel : il en double une ligne sur
+     vingt, ce qui se lit comme un défaut et non comme un parti pris. On vise
+     donc un GRANDISSEMENT constant plutôt qu'une définition constante : le
+     texel garde la même taille apparente partout, et la définition suit ce
+     que la fenêtre permet, par pas de 16 et sans jamais dépasser 256. */
+  const PS1_ECRAN = 256;   // plafond : la définition d'un mode de la machine
+  const PS1_GROS = 2;      // un texel de console pour deux pixels d'écran
+  let pixel = false;
   function resize(){
     if (!swatchW) swatchW = swatch.clientWidth; // mesuré au premier affichage et à chaque redimensionnement
-    const s = Math.max(64, Math.round(swatchW * Math.min(2, (window.devicePixelRatio || 1) * SUR)));
+    const s = pixel
+      ? Math.min(PS1_ECRAN, Math.max(128, Math.round(swatchW / PS1_GROS / 16) * 16))
+      : Math.max(64, Math.round(swatchW * Math.min(2, (window.devicePixelRatio || 1) * SUR)));
     if (canvas.width !== s){ canvas.width = s; canvas.height = s; }
+    canvas.classList.toggle('pixel', pixel);
   }
   /* La largeur du visuel ne dépend plus seulement de la fenêtre : le
      descriptif et les tailles la reprennent (--squeeze, --sq-size), et la
@@ -4779,10 +4836,19 @@ const model3d = (() => {
   function peindreEclat(a, ang){
     if (!fxg) return;
     const liste = (a && a.eclat3d && a.mesh) ? pointsEclat(a.mesh) : null;
-    // on dessine en pixels CSS, le tampon suivant la densité de l'écran
-    const w = swatchW || swatch.clientWidth, k = dprCap(), px = Math.round(w * k);
+    /* On dessine toujours en pixels CSS, le tampon suivant la densité de
+       l'écran — sauf en mode console, où l'éclat prend la MÊME définition que
+       le rendu (le tampon du canvas, voir resize) et le même agrandissement au
+       plus proche. Un halo
+       lisse posé sur une tête au gros pixel se verrait comme un calque d'une
+       autre époque ; la machine, elle, collait là un sprite aussi grossier que
+       le reste. Tout le tracé continue de se faire en pixels CSS : seule
+       l'échelle du repère change. */
+    const w = swatchW || swatch.clientWidth;
     if (!w) return;
+    const k = pixel ? canvas.width / w : dprCap(), px = pixel ? canvas.width : Math.round(w * k);
     if (fx.width !== px){ fx.width = fx.height = px; }
+    fx.classList.toggle('pixel', pixel);
     fxg.setTransform(k, 0, 0, k, 0, 0);
     fxg.clearRect(0, 0, w, w);
     if (!liste || !liste.length){ fx.hidden = true; grains.length = 0; return; }
@@ -4954,6 +5020,7 @@ const model3d = (() => {
     raf = requestAnimationFrame(frame);
   }
   function show(item){
+    pixel = !!item.tete;   // la tête de la page Info se rend en petit, tout le reste en grand
     active = true; canvas.hidden = false; resize();
     const my = ++token;
     current = null; tap = 0;
