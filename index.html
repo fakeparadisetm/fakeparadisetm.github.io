@@ -10825,9 +10825,9 @@ const dressup = (() => {
   }
   /* ---- LE SOUFFLE ----
      Le mannequin respire, et c'est sa BOÎTE qui respire, pas son maillage. Il
-     grandit d'un centième autour de ses pieds : la tête monte, les pieds
-     restent au sol, et le buste s'élargit du même millième — le mouvement d'un
-     torse qui se remplit d'air.
+     grandit de deux centièmes autour de ses pieds : la tête monte, les pieds
+     restent au sol, et le buste s'élargit d'autant — le mouvement d'un torse
+     qui se remplit d'air.
 
      LA BOÎTE, ET RIEN QUE LA BOÎTE, pour deux raisons qui comptent autant
      l'une que l'autre. D'abord le prix : plier le squelette changerait la clé
@@ -10842,7 +10842,7 @@ const dressup = (() => {
      La courbe n'est pas une sinusoïde : on inspire plus vite qu'on n'expire.
      L'exposant 1,4 allonge le bas de la courbe, et quatre secondes et demie
      font quatorze respirations par minute — un corps au repos. */
-  const SOUFFLE = { duree: 4500, ampleur: 0.010 };
+  const SOUFFLE = { duree: 4500, ampleur: 0.020 };
   const souffle = (t) => Math.pow((Math.sin(t / SOUFFLE.duree * Math.PI * 2) + 1) / 2, 1.4);
   function dessiner(t){
     if (!scene) return;
