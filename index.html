@@ -3945,6 +3945,24 @@ const model3d = (() => {
     return o; };
   const rotY = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); };
   const rotX = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); };
+  const ident = () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+  /* Une orientation qu'on accumule image par image DÉRIVE : au bout de quelques
+     minutes les produits de flottants ne décrivent plus tout à fait une
+     rotation, et le modèle se met à enfler ou à cisailler. On remet donc la
+     base d'aplomb à chaque image — Gram-Schmidt sur les trois colonnes, une
+     vingtaine d'opérations, moins cher que d'avoir à s'en soucier. */
+  const redresser = m => {
+    const n = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0]/l, v[1]/l, v[2]/l]; };
+    const col = k => [m[k*4], m[k*4+1], m[k*4+2]];
+    const x = n(col(0));
+    const c1 = col(1), d = c1[0]*x[0] + c1[1]*x[1] + c1[2]*x[2];
+    const y = n([c1[0] - x[0]*d, c1[1] - x[1]*d, c1[2] - x[2]*d]);
+    const z = [x[1]*y[2] - x[2]*y[1], x[2]*y[0] - x[0]*y[2], x[0]*y[1] - x[1]*y[0]];
+    m[0]=x[0]; m[1]=x[1]; m[2]=x[2];
+    m[4]=y[0]; m[5]=y[1]; m[6]=y[2];
+    m[8]=z[0]; m[9]=z[1]; m[10]=z[2];
+    return m;
+  };
   const PV = mul(perspective(28 * Math.PI / 180, 0.5, 10), new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-2.35,1]));
   const PVrow = mul(perspective(28 * Math.PI / 180, 0.5, 10), new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-2.2,1])); // lignes : caméra plus proche
   const SWAY = 18 * Math.PI / 180; // balancement gauche-droite autour de la face (±18°), fiche et lignes
@@ -4084,15 +4102,15 @@ const model3d = (() => {
     // dessine un modèle sur tout le canvas, ou dans le carré box = { x, y, s } (pixels du
     // canvas, y vers le bas, fractions permises : la fenêtre de rendu est entière et un
     // peu plus large, le décalage restant passe dans la projection → aucun tremblement)
-    /* `penche` : inclinaison EN PLUS du basculement commun, et elle ne sert
-       qu'à la tête de la page Info, que le visiteur peut retourner dans les
-       deux sens. Les autres appels ne la passent pas et retrouvent exactement
-       le cadrage d'avant. L'ordre compte : lacet d'abord (autour de l'axe du
-       modèle), tangage ensuite (autour de l'axe horizontal de l'écran) — c'est
-       la platine tournante, où la main garde le même sens quelle que soit la
-       pose ; l'inverse ferait rouler le modèle sur lui-même. */
-    function render(a, ang, pv, alpha, box, side, tint, penche){
-      const M = mul(rotX(BASCULE + (penche || 0)), rotY(ang));
+    /* `libre` : une ORIENTATION COMPLÈTE, et elle ne sert qu'à la tête de la
+       page Info, la seule chose du site qui se manipule sans butée. Les autres
+       appels ne la passent pas et retrouvent exactement le cadrage d'avant, un
+       simple lacet. Pourquoi une matrice plutôt qu'un couple d'angles : des
+       angles d'Euler ont un haut et un bas, et le jour où le modèle passe
+       par-dessus, la main s'inverse à l'écran. Une orientation accumulée n'a ni
+       haut ni bas — voir « prise à la main ». */
+    function render(a, ang, pv, alpha, box, side, tint, libre){
+      const M = mul(rotX(BASCULE), libre || rotY(ang));
       let MVP = mul(pv, M);
       if (box){
         const H = cv.height, x0 = Math.floor(box.x) - 1, y0 = Math.floor(box.y) - 1, x1 = Math.ceil(box.x + box.s) + 1, y1 = Math.ceil(box.y + box.s) + 1;
@@ -4689,18 +4707,43 @@ const model3d = (() => {
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
   let current = null, active = false, raf = 0, last = 0, token = 0;
   let angle = 0, hover = false, target = 0, tap = 0, rowAngle = 0, rows = [], fading = [], listDrawn = false;
-  let tourne = 0;        // tour continu, pour les modèles marqués `tourne` (la tête de la page Info)
-  const TOUR_MS = 10000; // un tour complet
+  const TOUR_MS = 10000; // un tour complet au repos, pour la tête de la page Info
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
-  /* Tangage : l'inclinaison haut-bas, que SEULE la tête de la page Info
-     connaît (les vêtements n'ont pas de dessous à montrer). Elle est bornée :
-     au-delà, le modèle bascule sur la tête et la main perd son repère — le
-     lacet s'inverse à l'écran et on ne sait plus dans quel sens tirer. À 1,2
-     radian on voit le sommet du crâne et le dessous du menton, ce qui est tout
-     ce qu'il y a à voir. Comme le lacet, il revient au repos après le lâcher. */
-  let penche = 0, pencheCible = 0, pencheDe = 0;
-  const PENCHE_MAX = 1.2;
+  /* ---- l'orientation libre de la tête ----
+     Tout le reste du site tourne sur un seul axe et revient à sa place : un
+     vêtement se regarde de face et de dos, il n'y a rien d'autre à en voir. La
+     tête, elle, n'est pas un produit, et la page Info n'est pas une fiche — il
+     faut que la main le sente tout de suite. Elle se comporte donc comme le
+     cube du menu d'une console : on la pousse, elle CONTINUE, elle ralentit, et
+     elle ne se redresse jamais toute seule. On peut la retourner complètement.
+     L'orientation est gardée en MATRICE, accumulée d'un geste à l'autre, et non
+     en couple d'angles : des angles d'Euler ont un haut et un bas, et dès que le
+     modèle passe par-dessus, tirer vers la droite le fait partir à gauche. Ici
+     chaque mouvement de la main est une rotation appliquée dans le repère de
+     l'ÉCRAN — multipliée à gauche —, si bien que la surface suit toujours le
+     doigt, quelle que soit la pose.
+     L'inertie est une vitesse angulaire à deux composantes (les deux axes de
+     l'écran ; un geste plat ne produit pas de roulis) qui décroît non pas vers
+     zéro mais vers la ROTATION DE REPOS : la tête finit toujours par retrouver
+     son tour tranquille, d'où qu'on l'ait laissée. */
+  let orient = ident();
+  let vX = 0, vY = 0;                 // radians par milliseconde, axes de l'écran
+  const AMORTI_MS = 700;              // l'élan s'éteint en deux à trois secondes, comme un cube qu'on pousse
+  const SUIVI_MS = 120;               // tenir sans bouger, c'est s'arrêter : l'élan retombe vite sous la main
+  const V_MAX = 0.010;                // plafond : environ un tour et demi par seconde, au-delà on ne voit plus rien
+  const vRepos = () => reduced ? 0 : 2 * Math.PI / TOUR_MS;
+  function pivoter(ax, ay){           // rotation appliquée dans le repère de l'écran
+    if (!ax && !ay) return;
+    orient = redresser(mul(mul(rotX(ax), rotY(ay)), orient));
+  }
+  function tournerLibre(dt){
+    if (saisi){ const f = Math.exp(-dt / SUIVI_MS); vX *= f; vY *= f; return; } // la main mène
+    const f = 1 - Math.exp(-dt / AMORTI_MS);
+    vX += (0 - vX) * f;
+    vY += (vRepos() - vY) * f;
+    pivoter(vX * dt, vY * dt);
+  }
   let frames = 0, fpsT = 0, fps = 0; // images par seconde (contrôle : model3d.debug().fps)
   const shortest = d => Math.atan2(Math.sin(d), Math.cos(d)); // écart angulaire le plus court
   const dprCap = () => Math.min(2, window.devicePixelRatio || 1);
@@ -4812,10 +4855,10 @@ const model3d = (() => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
       const tex = atlasTete(img);
-      // tourne : tour continu, repris par la main ; saisir : il faut la PRENDRE pour
-      // la faire tourner, et elle tourne alors sur les deux axes (voir « prise à la
-      // main ») ; ps1 : grille de sommets et placage affine (voir uPS1)
-      const a = { mesh, texF: tex, texB: tex, tourne: true, saisir: true, ps1: true, eclat3d: true };
+      // saisir : orientation libre, prise à la main, élan au lâcher, aucune butée et
+      // aucun retour à une pose (voir « l'orientation libre de la tête ») ; ps1 :
+      // grille de sommets et placage affine (voir uPS1)
+      const a = { mesh, texF: tex, texB: tex, saisir: true, ps1: true, eclat3d: true };
       ready.set(key, a);
       if (list) list.warm(a);
       return a;
@@ -4900,7 +4943,7 @@ const model3d = (() => {
   const fx = document.getElementById('teteFx');
   const fxg = fx ? fx.getContext('2d') : null;
   let grains = [];
-  function peindreEclat(a, ang, penche){
+  function peindreEclat(a, ang, libre){
     if (!fxg) return;
     const liste = (a && a.eclat3d && a.mesh) ? pointsEclat(a.mesh) : null;
     /* On dessine toujours en pixels CSS, le tampon suivant la densité de
@@ -4920,7 +4963,7 @@ const model3d = (() => {
     fxg.clearRect(0, 0, w, w);
     if (!liste || !liste.length){ fx.hidden = true; grains.length = 0; return; }
     fx.hidden = false;
-    const M = mul(rotX(BASCULE + (penche || 0)), rotY(ang)), MVP = mul(PV, M);
+    const M = mul(rotX(BASCULE), libre || rotY(ang)), MVP = mul(PV, M);
     const pt = (m, x, y, z, wp) => [m[0]*x + m[4]*y + m[8]*z + m[12]*wp,
                                     m[1]*x + m[5]*y + m[9]*z + m[13]*wp,
                                     m[2]*x + m[6]*y + m[10]*z + m[14]*wp,
@@ -4979,7 +5022,11 @@ const model3d = (() => {
     fxg.restore();
   }
   let debugSide = ''; // contrôle : ne dessiner qu'une face ('front' | 'back' | '')
-  function draw(){ panel.clear(); if (current) panel.render(current, angle, PV, 1, null, debugSide, null, penche); peindreEclat(current, angle, penche); }
+  function draw(){
+    const libre = (current && current.saisir) ? orient : null;   // la tête a son orientation à elle
+    panel.clear(); if (current) panel.render(current, angle, PV, 1, null, debugSide, null, libre);
+    peindreEclat(current, angle, libre);
+  }
 
   // courbes des transitions CSS des lignes, résolues par bissection
   const bezier = (x1, y1, x2, y2) => {
@@ -5065,9 +5112,9 @@ const model3d = (() => {
        relâché le modèle rejoint la rotation là où elle en est, et non là où il
        l'avait quittée — sinon il repartirait en arrière. Mouvement réduit :
        aucun des deux, c'est précisément ce que ce réglage demande. */
-    tourne = (tourne + dt / TOUR_MS * Math.PI * 2) % (Math.PI * 2);
-    const repos = reduced ? 0 : (current && current.tourne ? tourne : sway);
-    if (hover){ backT = 0; angle += shortest(target - angle) * ease; penche += (pencheCible - penche) * ease; }
+    const repos = reduced ? 0 : sway;
+    if (current && current.saisir){ tournerLibre(dt); }   // la tête : orientation libre, élan, aucun retour à une pose
+    else if (hover){ backT = 0; angle += shortest(target - angle) * ease; }
     else if (tap === 1){ backT = 0; angle += shortest(0 - angle) * ease; }
     else if (tap === 2){ backT = 0; angle += shortest(Math.PI - angle) * ease; }
     else {
@@ -5076,11 +5123,9 @@ const model3d = (() => {
       // moment. Un simple rattrapage progressif ne convenait pas : le
       // balancement étant lui-même mobile, le modèle l'aurait suivi en retard
       // et avec moins d'amplitude, pour toujours. Ici l'arrivée est exacte.
-      if (!backT){ backFrom = angle; pencheDe = penche; backT = t; }
+      if (!backT){ backFrom = angle; backT = t; }
       const p = Math.min(1, (t - backT) / BACK_MS);
-      const doux = p * p * (3 - 2 * p);
-      angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * doux;
-      penche = p >= 1 ? 0 : pencheDe * (1 - doux);   // le tangage rentre sur la même courbe
+      angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * (p * p * (3 - 2 * p));
     }
     rowAngle = sway;
     if (list && (rows.length || fading.length)) drawRows(t);
@@ -5094,7 +5139,9 @@ const model3d = (() => {
        d'après la fiche et non d'après le modèle chargé, pour que la main sache
        à quoi s'attendre avant même que la texture soit arrivée. */
     swatch.classList.toggle('prise', !!item.tete);
-    if (!item.tete){ saisi = false; swatch.classList.remove('tenu'); penche = pencheCible = 0; }
+    saisi = false; swatch.classList.remove('tenu');
+    // on arrive toujours face au visage : la pose laissée à la visite d'avant ne se reprend pas
+    if (item.tete){ orient = ident(); vX = 0; vY = vRepos(); }
     active = true; canvas.hidden = false; resize();
     const my = ++token;
     current = null; tap = 0;
@@ -5168,24 +5215,22 @@ const model3d = (() => {
     if (!hover){ hover = true; target = angle; } // on repart d'où le modèle est, sans à-coup
     target += dx / (swatchBox.width || 1) * Math.PI * 2;
   });
-  swatch.addEventListener('mouseleave', () => { if (!saisi){ hover = false; } swatchBox = null; lastX = null; });
+  swatch.addEventListener('mouseleave', () => { hover = false; swatchBox = null; lastX = null; });
   /* ---- prise à la main, pour la tête seule ----
-     Un vêtement se regarde : le curseur le fait tourner en passant. Une tête,
-     on la MANIPULE — il faut la prendre et la tenir, et elle tourne alors dans
-     les deux sens. La différence est demandée, et elle se justifie : le
-     survol seul n'a qu'un axe utile (au-delà, tout mouvement de souris
-     inclinerait le modèle sans qu'on l'ait voulu), et surtout on ne lâche
-     jamais vraiment une chose qu'on n'a pas prise.
+     Un vêtement se regarde : le curseur le fait tourner en passant, sur un
+     axe, et il revient à sa place. Une tête, on la MANIPULE — il faut la
+     prendre, la tenir, et elle part alors où on la pousse, sans butée et sans
+     retour. Cette différence n'est pas un ornement : c'est elle qui dit, avant
+     tout texte, que ce panneau n'est pas une fiche produit.
      La capture du pointeur est ce qui rend la prise sûre : le geste continue
      hors du cadre et se termine proprement, même relâché ailleurs — sans elle,
      sortir du visuel en tirant laisse le modèle accroché à la main. */
-  let saisi = false, prise = 0, prisX = 0, prisY = 0, parcouru = 0, avaleClic = false, downX = 0, downY = 0;
+  let saisi = false, prise = 0, prisX = 0, prisY = 0, prisT = 0, parcouru = 0, avaleClic = false, downX = 0, downY = 0;
   swatch.addEventListener('pointerdown', (e) => {
     downX = e.clientX; downY = e.clientY;
     if (!aSaisir() || e.button > 0) return;
-    saisi = true; prise = e.pointerId; prisX = e.clientX; prisY = e.clientY; parcouru = 0;
+    saisi = true; prise = e.pointerId; prisX = e.clientX; prisY = e.clientY; prisT = e.timeStamp; parcouru = 0;
     swatchBox = swatch.getBoundingClientRect();
-    hover = true; target = angle; pencheCible = penche; backT = 0;
     swatch.classList.add('tenu');
     try { swatch.setPointerCapture(e.pointerId); } catch (err) {}
     /* Pas de preventDefault ici : il emporterait aussi le clic, et un clic
@@ -5198,13 +5243,22 @@ const model3d = (() => {
     const dx = e.clientX - prisX, dy = e.clientY - prisY;
     prisX = e.clientX; prisY = e.clientY;
     parcouru += Math.abs(dx) + Math.abs(dy);
-    const c = swatchBox.width || 1, h = swatchBox.height || c;   // même vitesse angulaire sur les deux axes
-    target += dx / c * Math.PI * 2;
-    pencheCible = Math.max(-PENCHE_MAX, Math.min(PENCHE_MAX, pencheCible + dy / h * Math.PI * 2));
+    const w = swatchBox.width || 1, h = swatchBox.height || w;   // même vitesse angulaire sur les deux axes
+    const ax = dy / h * Math.PI * 2, ay = dx / w * Math.PI * 2;  // traverser le cadre = un tour
+    pivoter(ax, ay);
+    /* Relevé de l'élan, pour qu'il survive au lâcher. Il est LISSÉ : une
+       secousse isolée de la main ne doit pas lancer la tête. Et il est mesuré
+       sur le temps réel entre deux événements, borné des deux côtés — un
+       intervalle très court donnerait une vitesse absurde, un très long (une
+       image sautée) l'écraserait à zéro. */
+    const dtE = Math.max(8, Math.min(100, e.timeStamp - prisT)); prisT = e.timeStamp;
+    const k = 0.5, bornee = v => Math.max(-V_MAX, Math.min(V_MAX, v));
+    vX = bornee(vX + (ax / dtE - vX) * k);
+    vY = bornee(vY + (ay / dtE - vY) * k);
   });
   const lacher = (e) => {
     if (!saisi || (e && e.pointerId !== prise)) return;
-    saisi = false; hover = false; swatch.classList.remove('tenu');
+    saisi = false; swatch.classList.remove('tenu');   // l'élan relevé pendant le geste prend le relais
     if (parcouru > 6) avaleClic = true;   // un geste n'est pas un clic : la fiche ne doit pas s'ouvrir derrière
     try { if (e) swatch.releasePointerCapture(e.pointerId); } catch (err) {}
   };
@@ -5223,7 +5277,12 @@ const model3d = (() => {
   resizeList();
   window.addEventListener('resize', () => { swatchW = 0; resizeList(); if (active) resize(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && (active || rows.length) && !raf) raf = requestAnimationFrame(frame); });
-  const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, penche: Math.round(penche * 180 / Math.PI), saisi, hover, tap, canvas: canvas.width, meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
+  const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, saisi, hover, tap, canvas: canvas.width,
+    /* vX, vY : l'élan de la tête en radians par seconde ; `haut` est la
+       composante verticale de son axe vertical — +1 à l'endroit, −1 à l'envers. */
+    vX: +(vX * 1000).toFixed(3), vY: +(vY * 1000).toFixed(3),
+    haut: current && current.saisir ? +orient[5].toFixed(3) : null,
+    meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
   // contrôle : déplacer l'éclat et vider le point en cache, pour le régler à vue
