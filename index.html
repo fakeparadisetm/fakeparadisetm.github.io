@@ -1083,14 +1083,22 @@
        trois partaient ensemble, et comme le refend est posé sur le bord
        GAUCHE de la moitié droite — un bord qui ne bouge pas pendant que la
        largeur fond — on voyait le trait survivre au raccourcissement et
-       s'éteindre après, tout seul, au milieu du bouton. */
-    transition:max-width 0.26s ease 0.14s, padding 0.26s ease 0.14s, border-width 0.14s ease, background 0.25s ease;
+       s'éteindre après, tout seul, au milieu du bouton.
+       ET LE TOUT FINIT AVEC LE PANNEAU. La liste des tailles se replie en
+       0,3 s (voir .size-picker) ; 0,11 s pour le refend et l'icône, puis
+       0,19 s pour la largeur, cela fait le compte. Même courbe que le
+       panneau, aussi : les deux ne se contentent pas de s'arrêter en même
+       temps, ils voyagent ensemble. Ces trois nombres se tiennent — en
+       changer un demande de changer les autres. */
+    transition:max-width 0.19s cubic-bezier(.2,.8,.2,1) 0.11s,
+               padding 0.19s cubic-bezier(.2,.8,.2,1) 0.11s,
+               border-width 0.11s ease, background 0.25s ease;
   }
   .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
   /* Le survol de la seule moitié droite : c'est ainsi qu'on apprend qu'elle
      mène ailleurs. Un voile de plus par-dessus le galet, pas un second galet. */
   .cta-duo.pret .cta-panier:hover{background:rgba(255,255,255,0.07);}
-  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.12s ease;}
+  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.11s ease;}
   @media (prefers-reduced-motion:reduce){
     .cta-panier,.cta-panier svg{transition:none;}
   }
