@@ -922,7 +922,10 @@
   .desc-toggle::after{width:2px;height:10px;transform:translate(-50%,-50%);}
   .desc-toggle:hover{border-color:rgba(var(--accent-rgb),0.85);background:rgba(var(--accent-rgb),0.10);}
   .desc-toggle:hover::before,.desc-toggle:hover::after{box-shadow:0 0 8px rgba(var(--accent-rgb),0.9);}
-  .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);}
+  /* Ouvert, le + est devenu une croix : le battement n'a plus rien à annoncer,
+     et une croix qui clignote dirait « ferme-moi », ce qui n'est pas le
+     message. Il s'arrête donc à l'ouverture et reprend à la fermeture. */
+  .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);animation:none;}
   .preview-desc{
     margin-top:0;
     font-size:15px;
@@ -1752,11 +1755,6 @@
     color:var(--white);
     text-shadow:2px 2px 0 rgba(0,0,0,0.8);
   }
-  .arena-pick-sub{
-    margin-top:6px;font-size:10.5px;
-    text-transform:uppercase;letter-spacing:1.6px;
-    color:var(--white-35);
-  }
   .arena-slots{
     display:flex;align-items:stretch;justify-content:center;gap:14px;
     margin:14px 0 12px;
@@ -2466,8 +2464,10 @@
     <!-- 1. choix des deux articles -->
     <div class="arena-pick" id="arenaPick">
       <div class="arena-pick-head">
+        <!-- Le sous-titre a été retiré le 18 sept. 2026 : le titre et les deux
+             cases vides disent déjà quoi faire. Ses textes sont conservés en
+             commentaire à côté des autres (chercher arenaPickSub). -->
         <div class="arena-pick-title" data-i18n="arenaPick"></div>
-        <div class="arena-pick-sub" data-i18n="arenaPickSub"></div>
       </div>
       <div class="arena-slots">
         <div class="arena-slot" id="arenaSlot0"></div>
@@ -3104,7 +3104,8 @@ const STRINGS = {
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
     play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"ITEM VERSUS", descToggle:"Show details",
-    arenaPick:"Pick two pieces", arenaPickSub:"They fight, chance decides, you order.",
+    /* arenaPickSub:"They fight, chance decides, you order." — retiré, voir .arena-pick-head */
+    arenaPick:"Pick two pieces",
     arenaSlotEmpty:"empty", arenaFight:"Fight", arenaClear:"Clear",
     arenaWins:"wins", arenaAdd:"Go to product",
     arenaBack:"Pick again", arenaQuit:"Close",
@@ -3165,7 +3166,8 @@ const STRINGS = {
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
     play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"ITEM VERSUS", descToggle:"Afficher le détail",
-    arenaPick:"Choisissez deux pièces", arenaPickSub:"Elles se battent, le sort tranche, vous commandez.",
+    /* arenaPickSub:"Elles se battent, le sort tranche, vous commandez." — retiré */
+    arenaPick:"Choisissez deux pièces",
     arenaSlotEmpty:"vide", arenaFight:"Combattre", arenaClear:"Effacer",
     arenaWins:"gagne", arenaAdd:"Voir l'article",
     arenaBack:"Retour au choix", arenaQuit:"Fermer",
