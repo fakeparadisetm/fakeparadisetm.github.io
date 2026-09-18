@@ -1061,12 +1061,15 @@
   .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]){
     max-width:42px;padding:0 12px;
+    /* à l'ouverture, l'allongement part tout de suite ; c'est la fermeture
+       qui attend (voir le délai dans la règle de base) */
+    transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.14s ease, background 0.25s ease;
   }
   /* second temps */
   .cta-duo.pret .cta-panier:not([hidden]){
     border-left-width:1px;pointer-events:auto;
   }
-  .cta-duo.pret .cta-panier:not([hidden]) svg{opacity:1;}
+  .cta-duo.pret .cta-panier:not([hidden]) svg{opacity:1;transition:opacity 0.22s ease;}
   .cta-panier{
     display:inline-flex;align-items:center;justify-content:center;
     max-width:0;padding:0;overflow:hidden;
@@ -1075,13 +1078,19 @@
     border-radius:0 999px 999px 0;
     color:var(--white);cursor:pointer;
     pointer-events:none;                          /* jusqu'au second temps */
-    transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.2s ease, background 0.25s ease;
+    /* LA FERMETURE EST L'OUVERTURE À L'ENVERS. Le refend et l'icône s'en vont
+       d'abord, vite ; le galet ne se raccourcit qu'ensuite. Sans ce délai les
+       trois partaient ensemble, et comme le refend est posé sur le bord
+       GAUCHE de la moitié droite — un bord qui ne bouge pas pendant que la
+       largeur fond — on voyait le trait survivre au raccourcissement et
+       s'éteindre après, tout seul, au milieu du bouton. */
+    transition:max-width 0.26s ease 0.14s, padding 0.26s ease 0.14s, border-width 0.14s ease, background 0.25s ease;
   }
   .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
   /* Le survol de la seule moitié droite : c'est ainsi qu'on apprend qu'elle
      mène ailleurs. Un voile de plus par-dessus le galet, pas un second galet. */
   .cta-duo.pret .cta-panier:hover{background:rgba(255,255,255,0.07);}
-  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.22s ease;}
+  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.12s ease;}
   @media (prefers-reduced-motion:reduce){
     .cta-panier,.cta-panier svg{transition:none;}
   }
