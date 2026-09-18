@@ -9050,7 +9050,7 @@ function updatePreview(){
    et scrollHeight rendrait alors une hauteur intermédiaire. On mesure donc une
    fois, descriptif replié (infoBase), et on ajoute la hauteur connue du
    descriptif quand il est déplié. */
-let ficheOuverte = false, dernierItem = null, infoBase = 0;
+let ficheOuverte = false, dernierItem = null, derniereCat = null, infoBase = 0;
 const previewInfo = document.getElementById('previewInfo');
 function mesurerInfo(){
   // scrollHeight lit le contenu même sous un plafond : surtout ne pas lever
@@ -9197,9 +9197,20 @@ function fillPreview(){
   // Le + n'a de sens que sur une fiche produit : les panneaux texte (Contact,
   // Livraison, Versus) affichent tout, sans repli.
   descToggle.hidden = isInfo || estAbout || !item.d;
-  // Changer d'article referme la fiche ET le descriptif : on revient toujours
-  // à la galerie seule, état de repos.
-  if (item !== dernierItem){ dernierItem = item; ficheOuverte = false; descOuvert = false; appliquerDesc(); }
+  /* CHANGER D'ARTICLE NE REFERME PLUS LA FICHE, changer de CATÉGORIE si.
+     Auparavant le moindre pas dans la liste ramenait à la galerie seule : on
+     ouvrait un t-shirt, on descendait au suivant pour comparer, et il fallait
+     le rouvrir — un geste de plus à chaque article, pour revenir au même état.
+     Parcourir une liste, c'est rester dans le même geste ; on garde donc la
+     fiche dépliée tant qu'on est dans la même catégorie, et elle se referme
+     quand on en sort, parce que passer aux hoodies n'est plus le même geste.
+     LE DESCRIPTIF, LUI, SE REFERME À CHAQUE ARTICLE. Ce n'est pas une
+     incohérence : la fiche est un MODE — on regarde les articles de près — et
+     le descriptif est un texte, propre à un produit, qu'on a demandé à lire.
+     Le garder ouvert ferait s'ouvrir sur un pavé de texte qu'on n'a pas
+     réclamé, et sauter la hauteur de la fiche d'un article à l'autre. */
+  if (cat !== derniereCat){ derniereCat = cat; ficheOuverte = false; }
+  if (item !== dernierItem){ dernierItem = item; descOuvert = false; appliquerDesc(); }
   appliquerFiche();
   requestAnimationFrame(mesurerInfo);   // après la mise en page du nouveau contenu
   recalerIcones();                      // la largeur du panneau vient peut-etre de changer
