@@ -7573,6 +7573,80 @@ const model3d = (() => {
     return k;
   }
 
+  /* ---- couvrirOurlet : le bas d'un haut par rapport au bas qu'on porte ----
+     Le pendant de `couvrirEpaules`, à l'autre bout du vêtement. Un sweat
+     s'arrête SUR le pantalon et le recouvre ; si son ourlet est plus étroit
+     que les hanches, le pantalon ressort de part et d'autre et le sweat a
+     l'air rentré dedans.
+     On relève les deux à la MÊME hauteur d'écran, celle de l'ourlet, et on
+     rend le rapport des deux demi-largeurs. À plus de 1, le bas manque de
+     largeur ; le dessinateur en fait ce qu'il veut.
+
+     L'OURLET N'EST PAS LE BAS DE L'EMPREINTE, et c'est tout le piège. Sur une
+     photo de sweat posée à plat, les MANCHES pendent le long du corps et leurs
+     poignets descendent plus bas que l'ourlet. À la dernière ligne de
+     l'empreinte, le peigne ne trouve donc que deux petits paquets de tissu aux
+     deux extrémités — les poignets — et rien au milieu. On mesurait ainsi la
+     largeur d'un poignet à l'autre, soit près du double de l'ourlet ; on en
+     concluait que le sweat couvrait largement le pantalon, et on voyait le
+     contraire à l'écran.
+     On REMONTE donc depuis le bas de l'empreinte jusqu'à trouver du tissu sur
+     l'axe du corps, et c'est là qu'est l'ourlet. Le bas, lui, se mesure en
+     totalité : ses deux jambes doivent être couvertes, pas seulement celle du
+     milieu. */
+  function couvrirOurlet(haut, bHaut, bas, bBas){
+    const aH = ready.get(keyOf(haut)), aB = ready.get(keyOf(bas));
+    if (!aH || !aB || !bHaut || !bBas) return 1;
+    const eH = empreinte(haut), eB = empreinte(bas);
+    if (!eH || !eB) return 1;
+    const PH = aH.mesh.__P || (aH.mesh.__P = projeter(aH.mesh));
+    const PB = aB.mesh.__P || (aB.mesh.__P = projeter(aB.mesh));
+    const NB = 128, dents = new Uint8Array(NB);
+    // la demi-largeur, comptée depuis l'axe du corps (0,5) : soit celle de la
+    // travée qui EST sur l'axe, soit l'étendue entière (`tout`)
+    const demi = (P, mesh, fy, e, b, tout) => {
+      const pas = (e.x1 - e.x0) / NB || 1;
+      const largeur = (g, d) => Math.max(0.5 - (b.x + (e.x0 + g * pas) * b.l),
+                                         b.x + (e.x0 + (d + 1) * pas) * b.l - 0.5);
+      peigner(P, mesh, fy, dents, e.x0, pas);
+      if (tout){
+        const t = travee(dents, NB >> 1);
+        return t ? largeur(t[2], t[3]) : 0;
+      }
+      const axe = Math.round(((0.5 - b.x) / b.l - e.x0) / pas);
+      if (axe < 0 || axe >= NB || !dents[axe]) return 0;
+      let g = axe, d = axe;
+      while (g > 0 && dents[g-1]) g--;
+      while (d < NB - 1 && dents[d+1]) d++;
+      return largeur(g, d);
+    };
+    /* L'ourlet du CORPS : la ligne la plus basse où l'axe porte du tissu. La
+       recherche remonte rangée par rangée et peigne le maillage à chaque fois ;
+       elle est donc RETENUE sur le maillage, comme la projection. Elle ne
+       dépend que du vêtement et de sa boîte, et ni l'un ni l'autre ne changent
+       d'une image à l'autre — sans cette mémoire on repeignait le sweat vingt
+       fois par image pour retrouver le même nombre. */
+    const cleO = bHaut.x.toFixed(4) + ',' + bHaut.l.toFixed(4);
+    let O = aH.mesh.__ourlet;
+    if (!O || O.cle !== cleO){
+      const NR = 40, pasY = (eH.y1 - eH.y0) / NR;
+      O = { cle: cleO, fy: 0, d: 0 };
+      for (let r = 1; r <= NR / 2 && O.d <= 1e-4; r++){
+        O.fy = eH.y1 - r * pasY;
+        O.d = demi(PH, aH.mesh, O.fy, eH, bHaut, false);
+      }
+      aH.mesh.__ourlet = O;
+    }
+    const fyH = O.fy, dH = O.d;
+    if (dH <= 1e-4) return 1;
+    const y = bHaut.y + fyH * bHaut.h;               // la même ligne, à l'écran
+    const fyB = (y - bBas.y) / bBas.h;               // et chez le bas
+    if (fyB < eB.y0 || fyB > eB.y1) return 1;        // le bas ne monte pas jusque-là
+    const dB = demi(PB, aB.mesh, fyB, eB, bBas, true);
+    if (dB <= 1e-4) return 1;
+    return dB / dH;
+  }
+
   /* ---- effiler : le vêtement se resserre SOUS LES EMMANCHURES ----
      `serre` rétrécit le vêtement entier, et sa limite est l'épaule : le polo
      ne supporte pas mieux que 0,86. Or ce n'est pas l'épaule qui est trop
@@ -7598,8 +7672,12 @@ const model3d = (() => {
      ce qui laisse l'épaule où elle est. Le mesurer à nouveau ferait regonfler
      le vêtement pour rendre à l'ourlet sa largeur d'avant. */
   const effiles = new Map();
+  /* `serre` PEUT DÉPASSER 1, et alors le bas s'élargit au lieu de se
+     resserrer. Même fondu, même courbe, même absence de cassure : une photo à
+     plat n'est pas toujours trop large pour le corps, et l'ourlet d'un sweat
+     doit passer par-dessus le pantalon (voir `couvrirOurlet`). */
   function effiler(item, serre, cle0){
-    if (!serre || serre > 0.999) return null;
+    if (!serre || Math.abs(serre - 1) < 0.001) return null;
     const src = keyOf(item), cle = src + '|eff:' + cle0;
     if (effiles.has(cle)) return effiles.get(cle);
     const a = ready.get(src);
@@ -7871,6 +7949,7 @@ const model3d = (() => {
       effiler,                                // une copie resserrée sous les emmanchures
       cintrer,                                // une copie reprise à la taille, l'ourlet intact
       couvrirEpaules,                         // de combien élargir pour que l'épaule ne sorte pas
+      couvrirOurlet,                          // le bas du haut, mesuré contre le bas qu'on porte
       clear: r.clear,
       plan: r.plan,                           // couche suivante : la profondeur repart à zéro, l'image reste
       // box = { x, y, s } en pixels du canvas ; tint = [r, v, b, force] ou null
@@ -11349,6 +11428,7 @@ const dressup = (() => {
      porte sa propre couleur et sa propre lumière (voir meshAccessoire). Il
      tourne avec la cigarette, il rapetisse avec elle, et il n'y a plus rien à
      tenir en face. */
+  let dernierOurlet = null;   // contrôle : l'élargissement d'ourlet du dernier dessin (voir debug)
   function habiller(sc, MX, MY, S){
     const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
     if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
@@ -11477,6 +11557,33 @@ const dressup = (() => {
        profondeur : l'épaule ressortait au travers de la manche, la cuisse au
        travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
        papier n'a pas de volume, elle a des couches. */
+    /* L'OURLET DU HAUT PASSE PAR-DESSUS LE BAS. Si le sweat finit plus étroit
+       que les hanches, le pantalon ressort de chaque côté et le sweat a l'air
+       rentré dedans — ce n'est ni la coupe ni la façon de le porter.
+       On mesure les deux à la hauteur de l'ourlet (voir `couvrirOurlet`) et on
+       élargit le bas du haut juste assez. Six pour cent de marge, pour que le
+       recouvrement se voie : à largeur égale les deux bords se superposent au
+       pixel près et le pantalon reparaît au premier souffle.
+       Un PLAFOND, parce qu'élargir c'est étirer la photo : au-delà, le tissu
+       se déforme et l'imprimé avec. Faute de pantalon c'est le sous-vêtement
+       qui sert de mesure, et il ne demande jamais rien.
+       ARRONDI AU VINGTIÈME, et pas plus fin : cette valeur est la clé du
+       maillage retouché. La ligne d'ourlet est cherchée de rangée en rangée,
+       et selon la respiration du mannequin elle tombe tantôt sur l'une tantôt
+       sur sa voisine — au centième, la mesure sautait de 1,12 à 1,18 et le
+       vêtement était remaillé pour rien. Au vingtième, elle tient. */
+    const OURLET_MARGE = 1.06, OURLET_PLAFOND = 1.35;
+    const ourletDe = (A) => {
+      dernierOurlet = null;
+      if (!A.effile || !haut || !bh) return A.effile;
+      const socle = bas || SOUS, bsocle = bb || boiteDe(SOUS);
+      if (!socle || !bsocle) return A.effile;
+      const q = sc.couvrirOurlet(haut.porte || haut.it, bh, socle.porte || socle.it, bsocle);
+      if (!(q > 0)) return A.effile;
+      const k = Math.round(Math.min(OURLET_PLAFOND, Math.max(A.effile, q * OURLET_MARGE)) * 20) / 20;
+      dernierOurlet = k;
+      return k;
+    };
     const poser = (modele, A, cle, cps, cote) => {
       const b = cadrer(modele, A, cps, cote);
       if (!b) return;
@@ -11485,7 +11592,10 @@ const dressup = (() => {
          c'est ce qui laisse l'épaule où elle est (voir `effiler`) et les
          chevilles où elles sont (voir `cintrer`). Le remesurer ferait
          regonfler le vêtement pour lui rendre sa largeur d'avant. */
-      let m = sc.effiler(modele, A.effile, cle) || modele;
+      // la clé porte l'élargissement : deux pantalons de largeurs différentes
+      // ne demandent pas le même ourlet, et ce sont deux maillages
+      const eff = ourletDe(A);
+      let m = sc.effiler(modele, eff, cle + '@' + eff) || modele;
       if (b.cintre) m = sc.cintrer(m, b.cintre, cle) || m;
       sc.draw(m, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
     };
@@ -12056,7 +12166,8 @@ const dressup = (() => {
   const debug = (i) => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
-             visage: !!visageURL, dessins };   // contrôle : images réellement peintes depuis l'ouverture
+             visage: !!visageURL, dessins,     // contrôle : images réellement peintes depuis l'ouverture
+             ourlet: dernierOurlet };          // contrôle : l'élargissement d'ourlet du dernier dessin
   };
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug };
 })();
