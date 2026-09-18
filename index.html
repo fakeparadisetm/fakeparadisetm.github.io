@@ -321,6 +321,39 @@
     opacity:0;
     pointer-events:none;
   }
+  /* ---- « il y en a encore par là » ----
+     Un chevron de part et d'autre, à la hauteur des icônes, allumé seulement
+     quand des catégories sont hors champ de ce côté. Il POINTE, il ne se
+     clique pas : la barre se tire, et un bouton de plus à côté d'une barre
+     qu'on tire dirait deux choses pour un seul geste. Discret par principe —
+     c'est un renseignement, pas un appel.
+     Il RESPIRE, à peine, et lentement : un signe fixe se confond avec le
+     décor, celui-ci se rappelle sans se faire remarquer. */
+  .hors-champ{
+    position:fixed;
+    top:var(--xmb-bar);
+    transform:translateY(-50%);
+    width:22px;height:22px;
+    color:rgba(var(--accent-rgb),0.85);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.3s ease;
+    filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),0.45));
+    z-index:2;
+  }
+  .hors-champ.gauche{left:18px;}
+  .hors-champ.on{opacity:1;animation:horsChamp 2.8s ease-in-out infinite;}
+  .hors-champ svg{width:100%;height:100%;display:block;}
+  @keyframes horsChamp{
+    0%,100%{transform:translateY(-50%) translateX(0);}
+    50%{transform:translateY(-50%) translateX(3px);}
+  }
+  .hors-champ.gauche.on{animation-name:horsChampGauche;}
+  @keyframes horsChampGauche{
+    0%,100%{transform:translateY(-50%) translateX(0);}
+    50%{transform:translateY(-50%) translateX(-3px);}
+  }
+  @media (prefers-reduced-motion:reduce){ .hors-champ.on{animation:none;} }
   .cat-icon{
     position:relative;
     width:104px;height:104px;
@@ -2504,6 +2537,15 @@
 
 <div class="stage">
   <div class="categories" id="categories"></div>
+  <!-- Les deux chevrons : ils disent qu'il reste des catégories de ce côté-là.
+       Hors de .categories, sinon ils glisseraient avec elle. Placés et
+       allumés par majIconesCachees. -->
+  <span class="hors-champ gauche" id="horsGauche" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+  </span>
+  <span class="hors-champ droite" id="horsDroite" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+  </span>
 </div>
 
 
@@ -8878,7 +8920,7 @@ function scrollActiveIntoView(){
 function majIconesCachees(){
   const els = categoriesEl.querySelectorAll('.category'); // requête, pas de lecture de mise en page
   if (!geom.cats.length || els.length !== geom.cats.length) return;
-  const montrer = () => els.forEach(el => el.classList.remove('masquee'));
+  const montrer = () => { els.forEach(el => el.classList.remove('masquee')); chevrons(0, 0, 0); };
   if (!previewEl.classList.contains('show')) return montrer();
   /* La fiche est mesurée ici, et pas reprise du cache de render() : sa largeur
      dépend du type de catégorie (les panneaux texte sont un peu plus étroits)
@@ -8888,6 +8930,7 @@ function majIconesCachees(){
      lectures par image qu'il faut éviter. */
   const p = previewEl.getBoundingClientRect();
   if (!p.width) return montrer();
+  let aGauche = 0, aDroite = 0;
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
     const tx = (ci > activeCat ? geom.extra : 0) - camShift;
@@ -8896,8 +8939,23 @@ function majIconesCachees(){
     const droite = gauche + g.icoW * s;
     // Le moindre dépassement suffit : une icône à moitié coupée par l'arête
     // est précisément ce qu'on ne veut plus voir.
-    els[ci].classList.toggle('masquee', ci !== activeCat && droite > p.left);
+    const cachee = ci !== activeCat && droite > p.left;
+    els[ci].classList.toggle('masquee', cachee);
+    if (cachee) aDroite++;
+    else if (droite < 4) aGauche++;   // sortie par le bord de l'écran, à gauche
   });
+  chevrons(aGauche, aDroite, p.left);
+}
+/* Les chevrons suivent le compte : celui de droite se pose contre l'arête de
+   la fiche, là où les icônes s'arrêtent ; celui de gauche reste au bord de
+   l'écran, là où elles sortent. On ne les allume que s'il y a vraiment
+   quelque chose derrière — un signe qui ment une fois n'est plus lu. */
+const horsGauche = document.getElementById('horsGauche');
+const horsDroite = document.getElementById('horsDroite');
+function chevrons(gauche, droite, bordFiche){
+  horsGauche.classList.toggle('on', gauche > 0);
+  horsDroite.classList.toggle('on', droite > 0);
+  if (droite > 0) horsDroite.style.left = Math.round(bordFiche - 34) + 'px';
 }
 
 /* ---- LA BARRE SE TIRE À LA SOURIS ----
