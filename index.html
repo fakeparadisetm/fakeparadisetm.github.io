@@ -722,7 +722,7 @@
      qui s'arrêterait net juste au-dessus de lui tracerait un trait en travers
      du panneau et lui volerait la vedette : elle s'éteint donc AVANT, en
      fondu. L'arrondi du bas ne se voit plus — il n'a plus rien à border. */
-  .preview:not(.gallery) .slide-glow::before{
+  .preview:not(.gallery) .slide-edge::before{
     -webkit-mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
     mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
   }
@@ -758,58 +758,38 @@
      anciennes flèches. Invisibles au repos, elles s'allument sous la souris
      pour dire de quel côté on va. Elles se mesurent sur `.gallery-zone`, donc
      elles touchent les arêtes latérales et suivent l'arrondi du haut. */
-  /* TROIS TAILLES, TROIS RÔLES, et il ne faut pas les confondre :
-       • le BOUTON est ce qu'on CLIQUE. Il va jusqu'aux arêtes du panneau —
-         on vise ces bandes vite et de loin, et la marge entre l'image et le
-         bord ne sert à rien d'autre. Lui-même ne se voit jamais.
-       • le CAPTEUR, dedans, est ce qui ALLUME. Il commence au bord de
-         l'IMAGE : sinon la lueur s'allume en frôlant le panneau, sans même
-         approcher la galerie — c'est le défaut corrigé le 16 sept.
-       • la PEINTURE (le `::before` du capteur) repart de l'arête et monte
-         jusqu'au coin arrondi : elle se montre en grand sans que la souris
-         ait à y aller.
-     Séparer les deux premiers demande un élément de plus, et il est DANS le
-     bouton : le clic remonte tout seul, il n'y a ni deuxième écouteur, ni
-     z-index à arbitrer, ni double commande pour un lecteur d'écran. */
+  /* CE QUI S'ALLUME EST EXACTEMENT CE QUI RÉPOND AU CLIC — une seule forme,
+     d'une arête du panneau à l'autre.
+     Il y a eu un temps (16 sept.) où l'allumage était confié à une bande plus
+     petite, au bord de l'image, pour que la lueur ne se déclenche pas quand on
+     frôlait le panneau sans approcher la galerie. Depuis que la bande
+     cliquable va jusqu'à l'arête, ce décalage se retourne contre elle : une
+     partie de la zone répondait au clic sans jamais s'annoncer, on cliquait
+     dans le noir. Demande du 18 sept. : la lueur suit la zone. */
   .slide-edge{
     position:absolute;
     top:0;bottom:0;
     width:calc(16% + var(--pad));
     padding:0;border:none;background:none;
+    opacity:0;
     cursor:pointer;
+    transition:opacity 0.22s ease;
     z-index:3;
   }
-  .slide-glow{
-    position:absolute;
-    /* la marge du panneau appartient au bouton, pas au capteur : d'où ces
-       deux --pad qui le ramènent au bord de l'image. Sur .next le bouton est
-       retourné, donc « left » y désigne bien le côté image. */
-    top:var(--pad);bottom:0;
-    left:var(--pad);right:0;
-    opacity:0;
-    transition:opacity 0.22s ease;
-  }
-  /* Repliée, la galerie descend jusqu'à l'arête : l'image s'arrête une marge
-     plus haut, et le capteur avec elle. */
-  .preview.gallery .slide-glow{bottom:var(--pad);}
-  .slide-glow::before{
+  /* La peinture remplit le bouton. Elle est mise à part plutôt que sur le fond
+     du bouton parce qu'elle porte le fondu du bas quand la fiche est dépliée
+     (voir plus haut, .preview:not(.gallery)), et qu'un masque sur le bouton
+     lui-même rognerait aussi la zone sensible. */
+  .slide-edge::before{
     content:'';
     position:absolute;
-    /* la PEINTURE repart de l'arête du panneau et court jusqu'au bord intérieur
-       de la bande : elle garde donc sa largeur d'avant, alors que le geste,
-       lui, ne commence qu'à l'image. */
-    top:calc(-1 * var(--pad));bottom:0;left:calc(-1 * var(--pad));right:0;
+    inset:0;
     background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
     pointer-events:none;
   }
-  .preview.gallery .slide-glow::before{bottom:calc(-1 * var(--pad));}
   .slide-edge.prev{left:0;}
   .slide-edge.next{right:0;transform:scaleX(-1);}
-  /* Le survol se juge sur le capteur ; le focus clavier, lui, se pose sur le
-     bouton — au clavier il n'y a pas de pointeur, la bande s'allume entière. */
-  .slide-glow:hover,
-  .slide-edge:focus-visible .slide-glow{opacity:1;}
-  .slide-edge:focus-visible{outline:none;}
+  .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
   /* Fiche au repos : seule la galerie est visible. C'est la sélection de
      l'article — un clic sur la miniature ou Entrée — qui déplie le reste.
      --info-h est mesuré au remplissage : sans lui l'animation partirait d'un
@@ -2358,10 +2338,8 @@
         <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
         <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
       </div>
-      <!-- le bouton = la cible du clic, jusqu'à l'arête ; le span dedans = ce
-           qui allume, au bord de l'image seulement (voir .slide-edge) -->
-      <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"><span class="slide-glow"></span></button>
-      <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"><span class="slide-glow"></span></button>
+      <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
+      <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"></button>
     </div>
     <!-- Aperçu fixe du mini-jeu, dans le panneau « Versus » : un décor, deux
          vêtements et une attaque en vol. Voir arena.apercu(). -->
@@ -3366,9 +3344,12 @@ const DATA = [
        maintenir et à retirer avant la mise en ligne coûtaient plus qu'ils ne
        rapportaient. Sans lui, la ligne montre le nom, comme une pièce sans
        photo. */
+    /* Ordre demandé le 18 sept. 2026 : Item Versus EN DERNIER. Rien dans le
+       code ne compte sur la position — l'aperçu du panneau et le raccourci du
+       salon cherchent le jeu par son nom (`jeu`), pas par son rang. */
     { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
-    { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
     { n:"Dress Up", jeu:"dressup", img:"icons/dressup icon.png" },
+    { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
