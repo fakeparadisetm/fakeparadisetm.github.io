@@ -11564,15 +11564,22 @@ const dressup = (() => {
        élargit le bas du haut juste assez. Six pour cent de marge, pour que le
        recouvrement se voie : à largeur égale les deux bords se superposent au
        pixel près et le pantalon reparaît au premier souffle.
-       Un PLAFOND, parce qu'élargir c'est étirer la photo : au-delà, le tissu
-       se déforme et l'imprimé avec. Faute de pantalon c'est le sous-vêtement
-       qui sert de mesure, et il ne demande jamais rien.
+       UN PLAFOND À UN CINQUIÈME, et il sert. Élargir, c'est étirer la photo ;
+       au-delà d'un cinquième le bas du vêtement cesse de se lire comme un
+       ourlet et devient une petite jupe — les coins partent en cloche sous le
+       corps. Le legging et le pyjama y arrivaient : leurs photos sont étroites
+       et longues, elles sont donc posées dans une grande boîte et se trouvent
+       plus larges aux hanches que n'importe quel jean, alors qu'elles sont
+       plus fines partout ailleurs. Le pantalon qui déborde d'un cheveu se
+       remarque moins qu'un sweat en jupette.
+       Faute de pantalon c'est le sous-vêtement qui sert de mesure, et il ne
+       demande jamais rien.
        ARRONDI AU VINGTIÈME, et pas plus fin : cette valeur est la clé du
        maillage retouché. La ligne d'ourlet est cherchée de rangée en rangée,
        et selon la respiration du mannequin elle tombe tantôt sur l'une tantôt
        sur sa voisine — au centième, la mesure sautait de 1,12 à 1,18 et le
        vêtement était remaillé pour rien. Au vingtième, elle tient. */
-    const OURLET_MARGE = 1.06, OURLET_PLAFOND = 1.35;
+    const OURLET_MARGE = 1.06, OURLET_PLAFOND = 1.20;
     const ourletDe = (A) => {
       dernierOurlet = null;
       if (!A.effile || !haut || !bh) return A.effile;
