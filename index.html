@@ -2853,7 +2853,19 @@ const COMPANY = {
   email: "[contact@fakeparadise.fr]",
   phone: "[+33 X XX XX XX XX]",
   director: "[Prénom NOM du directeur de la publication]",
-  host: { name:"[Nom de l'hébergeur]", address:"[Adresse de l'hébergeur]", phone:"[Téléphone de l'hébergeur]" },
+  /* L'HÉBERGEUR, C'EST GITHUB, et il n'y a rien à choisir : le site est servi
+     par GitHub Pages. Nom et adresse relevés sur leur propre déclaration de
+     confidentialité, pas de mémoire.
+     PAS DE TÉLÉPHONE, et ce n'est pas un oubli : la LCEN demande le téléphone
+     de l'hébergeur, mais GitHub écrit noir sur blanc dans ses conditions
+     « We do not provide phone support » et n'en publie aucun. On dit donc ce
+     qui est vrai et on donne la voie de contact qui existe, plutôt que
+     d'inventer un numéro dans un texte légal.
+     GitHub a aussi une entité européenne (GitHub B.V., Prins Bernhardplein
+     200, 1097JB Amsterdam) ; c'est bien GitHub, Inc. qui sert les Pages. */
+  host: { name:"GitHub, Inc.",
+          address:"88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis",
+          phone:"support par écrit uniquement, https://support.github.com" },
   idu: "[Identifiant unique REP textile délivré par Refashion : FRXXXXXX_11XXXX]",
   mediator: { name:"[Nom du médiateur de la consommation]", address:"[Adresse postale du médiateur]", url:"[https://www.site-du-mediateur.fr]" },
   payment: "[Stripe / PayPal / …]",
