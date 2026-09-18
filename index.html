@@ -2025,29 +2025,44 @@
      l'aperçu 3D y est dessiné par le canvas du dessous, à la position de la
      case : aucune image n'est recopiée par vignette. Les pièces sont rangées
      par catégorie, chaque groupe sous son intertitre. */
+  /* DEUX BOÎTES, ET IL EN FAUT DEUX. Le cadre pointillé est sur l'extérieur,
+     le défilement sur l'intérieur. Quand les deux étaient sur le même élément,
+     le navigateur peignait l'ascenseur contre l'arête intérieure de la
+     bordure : la barre rose venait mordre le pointillé rose, et les deux se
+     confondaient. La marge de l'extérieur l'en écarte maintenant, quoi que
+     fasse le navigateur — et il en fait à sa tête, voir juste en dessous. */
   .dress-rack{
     flex:1 1 auto;min-height:0;
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
-    grid-auto-rows:min-content;gap:7px;
-    padding:10px;overflow-y:auto;
+    display:flex;
+    padding:10px;overflow:hidden;
     background:rgba(255,255,255,0.58);
     border:3px dashed #ff8ec4;border-radius:18px;
+  }
+  .dress-piste{
+    flex:1 1 auto;min-width:0;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+    grid-auto-rows:min-content;gap:7px;
+    overflow-y:auto;
     /* L'ascenseur : le navigateur en pose un gris d'interface au milieu d'un
        décor rose pointillé, et ça se voit. On lui donne la même grammaire que
-       le reste — piste blanche, pouce rose bonbon cerné de prune, tout rond. */
+       le reste — piste blanche, pouce rose bonbon.
+       DEUX ÉCRITURES POUR LA MÊME CHOSE, et ce n'est pas du zèle : Chrome
+       ignore désormais les `::-webkit-scrollbar` dès que `scrollbar-width` est
+       posé, tandis que les navigateurs plus anciens ne connaissent que
+       celles-là. Chacun prend ce qu'il sait lire. */
     scrollbar-width:thin;scrollbar-color:#ff77b8 rgba(255,255,255,0.5);
   }
-  .dress-rack::-webkit-scrollbar{width:13px;}
-  .dress-rack::-webkit-scrollbar-track{
+  .dress-piste::-webkit-scrollbar{width:13px;}
+  .dress-piste::-webkit-scrollbar-track{
     background:rgba(255,255,255,0.5);border-radius:999px;margin:4px 0;
     box-shadow:inset 0 0 0 1px rgba(255,142,196,0.55);
   }
-  .dress-rack::-webkit-scrollbar-thumb{
+  .dress-piste::-webkit-scrollbar-thumb{
     background:#ff77b8;border:2px solid #b0307a;border-radius:999px;
     background-clip:padding-box;
   }
-  .dress-rack::-webkit-scrollbar-thumb:hover{background:#ff4fa3;}
-  .dress-rack::-webkit-scrollbar-thumb:active{background:#e0357f;}
+  .dress-piste::-webkit-scrollbar-thumb:hover{background:#ff4fa3;}
+  .dress-piste::-webkit-scrollbar-thumb:active{background:#e0357f;}
   /* L'intertitre d'une catégorie : toute la largeur du portant, un filet
      pointillé pour finir la ligne — le même trait que les cadres. */
   .dress-groupe{
@@ -2587,7 +2602,11 @@
       <div class="dress-cote">
         <!-- le portant : rempli par le script, une case par pièce, groupées
              par catégorie -->
-        <div class="dress-rack" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
+        <!-- le cadre pointillé dehors, la piste qui défile dedans : l'ascenseur
+             ne vient plus se poser sur le pointillé (voir .dress-rack) -->
+        <div class="dress-rack">
+          <div class="dress-piste" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
+        </div>
         <div class="dress-outils">
           <label class="dress-bt" id="dressFaceBt" tabindex="0">
             <span id="dressFaceTxt"></span>
@@ -2618,9 +2637,10 @@
     </div>
     <div class="legal-hint">
       <span><span class="key">&#8592;</span><span class="key">&#8594;</span><span class="key">&#8593;</span><span class="key">&#8595;</span> <span data-i18n="hintBrowse">browse</span></span>
-      <span><span class="key wide">enter</span> <span data-i18n="hintPick">pick</span></span>
-      <span><span class="key wide">clic</span> <span data-i18n="dressPick">pick a piece</span></span>
-      <span><span class="key wide">clic</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
+      <!-- un seul indice : les deux gestes font la même chose, deux lignes
+           laissaient croire le contraire -->
+      <span><span class="key wide">clic / enter</span> <span data-i18n="dressPick">pick a piece</span></span>
+      <span><span class="key wide">clic / enter</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
   </div>
@@ -10745,7 +10765,14 @@ const dressup = (() => {
     sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
     pantalon: { ceinture: 0.19, chevilles: 0.95, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
     chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
-    culotte:  { ceinture: 0.175, y0: 0.468, y1: 0.618 },  // le sous-vêtement : sa ceinture sur la taille (0,170), comme un bas
+    /* Le sous-vêtement se cale sur sa CEINTURE ET RIEN D'AUTRE, d'où
+       `ceintureSeule`. Un pantalon s'étire de la taille aux chevilles, et sa
+       largeur suit cette longueur — c'est juste, il a des jambes. Un boxer n'a
+       pas de longueur à respecter : large et court, il gagnait la mise sur la
+       hauteur et sortait des hanches de chaque côté, en jupette. Sa taille est
+       maintenant donnée par la ceinture, et ses proportions sont celles de sa
+       photo — il ne s'étire plus dans un sens sans l'autre. */
+    culotte:  { ceinture: 0.175, ceintureSeule: true, y0: 0.468 },
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
   };
   /* ---- le vestiaire du salon ----
@@ -11164,7 +11191,12 @@ const dressup = (() => {
            assez, et pas plus. Le centrage se fait sur la ceinture et non sur
            la boîte : celle du jogger tombe à 0,467 parce que ses jambes
            partent de biais, et le pantalon se posait de travers. */
-        const h = (A.y1 - A.y0) / (e.y1 - e.y0), l = Math.max(h, A.ceinture / (e.c1 - e.c0), pieds);
+        const haut = A.y1 != null ? (A.y1 - A.y0) / (e.y1 - e.y0) : 0;
+        // `ceintureSeule` : la ceinture décide, et la hauteur suit l'échelle de
+        // la largeur — le vêtement garde les proportions de sa photo.
+        const l = A.ceintureSeule ? A.ceinture / (e.c1 - e.c0)
+                                  : Math.max(haut, A.ceinture / (e.c1 - e.c0), pieds);
+        const h = A.ceintureSeule ? l : haut;
         /* Si ce sont les CHEVILLES qui ont commandé l'échelle, la ceinture est
            désormais trop large : on la reprend (voir `cintrer`), sans toucher
            à l'ourlet. C'est le seul moyen de tenir les deux mesures à la fois
