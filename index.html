@@ -278,6 +278,11 @@
     padding-bottom:calc(100vh - 2 * var(--xmb-bar)); /* les icônes (marges auto) se centrent dans le haut : centre à --xmb-bar */
     transition:transform 0.4s cubic-bezier(.2,.8,.2,1);
   }
+  /* Pendant qu'on la tire : pas de transition — la barre doit coller au
+     doigt, pas le suivre avec quatre dixièmes de retard — et pas de sélection
+     de texte, qui transformerait le geste en surlignage. */
+  .categories.glissee{transition:none;user-select:none;}
+  .categories.glissee,.categories.glissee *{cursor:grabbing;}
 
   .category{
     position:relative;
@@ -8690,7 +8695,16 @@ function measurePreviewBox(){ // largeur/position du panneau : dépend de la fen
 let geomRaf = 0;
 window.addEventListener('resize', () => { // une seule reprise par image pendant un redimensionnement
   geom.ready = false;
-  if (!geomRaf) geomRaf = requestAnimationFrame(() => { geomRaf = 0; render(); });
+  if (!geomRaf) geomRaf = requestAnimationFrame(() => {
+    geomRaf = 0;
+    render();
+    /* LA BARRE SE REMET DANS SES BORNES. On agrandit la fenêtre après avoir
+       tiré la barre pour atteindre une icône : la place est revenue, mais la
+       barre était restée poussée et les premières icônes sortaient à gauche,
+       sans que rien ne le dise. `poserBarre` la ramène au plus loin utile —
+       et ne fait rien si elle y est déjà. */
+    poserBarre(camShift);
+  });
 });
 // la largeur des lignes texte (repli sans WebGL) change quand la police arrive
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
@@ -8871,6 +8885,77 @@ function majIconesCachees(){
     els[ci].classList.toggle('masquee', ci !== activeCat && droite > p.right);
   });
 }
+
+/* ---- LA BARRE SE TIRE À LA SOURIS ----
+   Le problème : sur une fenêtre étroite, les dernières catégories passent
+   derrière la fiche et s'éteignent (voir majIconesCachees). On pouvait les
+   atteindre au clavier ou en sélectionnant de proche en proche, mais pas les
+   ATTEINDRE DIRECTEMENT — et rien ne disait comment.
+   On peut désormais saisir la barre et la tirer, comme une pellicule. Trois
+   décisions méritent d'être écrites :
+
+   1. UN SEUIL, parce que la barre est faite de boutons. Tant que la souris
+      n'a pas parcouru cinq pixels, le geste reste un clic et l'icône se
+      sélectionne comme avant. Au-delà, c'est un glissement, et le clic qui
+      suit le relâchement est avalé — sans quoi on changerait de catégorie
+      chaque fois qu'on lâche la barre.
+   2. ON NE TIRE QUE S'IL Y A DE QUOI. Quand tout tient à l'écran, le geste
+      n'existe pas : pas de curseur qui change, pas de barre qui bouge d'un
+      pixel pour revenir. La borne est le bord droit utile — celui de la
+      fiche quand elle est ouverte, celui de la fenêtre sinon.
+   3. LE CLAVIER GARDE LE DERNIER MOT. `scrollActiveIntoView` recalcule la
+      position à chaque changement de sélection : un glissement est un coup
+      d'œil, pas un réglage qu'on garde. C'est voulu — sans cela, la barre
+      resterait où on l'a laissée et la sélection pourrait sortir de l'écran.
+   La souris et le stylet seulement : le tactile a son propre mode (le bouton
+   « Mobile »), et lui prendre le glissement horizontal casserait son
+   défilement. */
+const GLISSE_SEUIL = 5;
+let glisse = null, glisseFin = 0;
+function glisseMax(){
+  const cats = geom.cats;
+  if (!cats.length) return 0;
+  const d = cats[cats.length - 1];
+  const fin = d.left + d.w + geom.extra;
+  const p = previewEl.classList.contains('show') ? previewEl.getBoundingClientRect() : null;
+  const bord = (p && p.width) ? p.left - 24 : window.innerWidth;
+  return Math.max(0, fin - bord);
+}
+function poserBarre(x){
+  camShift = Math.max(0, Math.min(x, glisseMax()));
+  categoriesEl.style.transform = `translateX(-${camShift}px)`;
+  majIconesCachees();
+}
+categoriesEl.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch' || e.button !== 0) return;
+  if (!geom.ready || glisseMax() <= 0) return;
+  glisse = { x: e.clientX, depart: camShift, bouge: false };
+});
+window.addEventListener('pointermove', (e) => {
+  if (!glisse) return;
+  const dx = e.clientX - glisse.x;
+  if (!glisse.bouge){
+    if (Math.abs(dx) < GLISSE_SEUIL) return;
+    glisse.bouge = true;
+    categoriesEl.classList.add('glissee');
+  }
+  poserBarre(glisse.depart - dx);
+});
+const finGlisse = () => {
+  if (!glisse) return;
+  if (glisse.bouge) glisseFin = performance.now();
+  glisse = null;
+  categoriesEl.classList.remove('glissee');
+};
+window.addEventListener('pointerup', finGlisse);
+window.addEventListener('pointercancel', finGlisse);
+/* Le clic qui suit un glissement est avalé. Une fenêtre de temps plutôt qu'un
+   écouteur posé pour une fois : si le relâchement se fait hors de la barre, le
+   clic ne vient jamais, et l'écouteur serait resté armé pour avaler le
+   prochain clic du visiteur — n'importe où, n'importe quand. */
+document.addEventListener('click', (e) => {
+  if (performance.now() - glisseFin < 250){ e.stopPropagation(); e.preventDefault(); }
+}, true);
 
 let lastPreviewCat = -1, previewSwapTimer = null, teaserJeu = '';
 // Changement de catégorie : le panneau perd son opacité, puis le nouveau
