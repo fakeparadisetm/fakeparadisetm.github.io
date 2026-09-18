@@ -531,7 +531,7 @@
   /* La lueur de bord (une nappe d'accent sur l'arête gauche, à la hauteur de
      l'icône cachée) a été retirée le 15 sept. 2026 à la demande : elle est
      remplacée par l'inverse, plus simple à lire — une icône qui ressortirait
-     à DROITE de la fiche ne se montre pas du tout (.category.masquee,
+     contre la fiche ne se montre pas du tout (.category.masquee,
      posée par majIconesCachees). */
 
   /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
@@ -8855,14 +8855,20 @@ function scrollActiveIntoView(){
   majTirable();          // la fiche a pu changer de largeur : il y a, ou non, de quoi tirer
 }
 
-/* Icônes qui ressortent à droite de la fiche (remplace la lueur de bord,
-   15 sept. 2026). La barre est plus large que la place laissée par le panneau :
-   les dernières catégories glissent derrière lui, puis réapparaissent dans la
-   marge de droite, trop étroite pour elles — on n'en voyait qu'une tranche
-   collée contre l'arête. Dès qu'une icône déborderait de ce bord droit, elle
-   s'éteint ; la transition d'opacité de .category l'emmène en même temps que
-   la barre glisse, donc on la voit s'effacer sous le panneau, pas disparaître
-   d'un coup.
+/* Icônes qui rencontrent la fiche (15 sept. 2026, revu le 18). La barre est
+   plus large que la place que le panneau lui laisse : les dernières catégories
+   finissent par le rencontrer.
+   ELLES S'ÉTEIGNENT AU BORD GAUCHE DE LA FICHE, c'est-à-dire au moment où
+   elles la rencontrent — et non au bord droit, où elles la quittaient. La
+   première règle les laissait passer DERRIÈRE le panneau, qui est translucide :
+   on les suivait au travers, floues et grisées, puis elles ressortaient dans
+   la marge de droite, trop étroite pour elles, et on n'en voyait qu'une
+   tranche collée contre l'arête. Rien ne se cachait vraiment, tout se
+   dégradait. Maintenant la fiche a un bord franc : ce qui l'atteint disparaît,
+   et rien ne se promène dessous.
+   La transition d'opacité de .category l'emmène en même temps que la barre
+   glisse, donc on la voit s'effacer contre le panneau, pas disparaître d'un
+   coup.
 
    Tout se calcule à partir des positions au repos (geom) en refaisant les mêmes
    transformations que render() vient d'appliquer, jamais en relisant le DOM :
@@ -8890,7 +8896,7 @@ function majIconesCachees(){
     const droite = gauche + g.icoW * s;
     // Le moindre dépassement suffit : une icône à moitié coupée par l'arête
     // est précisément ce qu'on ne veut plus voir.
-    els[ci].classList.toggle('masquee', ci !== activeCat && droite > p.right);
+    els[ci].classList.toggle('masquee', ci !== activeCat && droite > p.left);
   });
 }
 
