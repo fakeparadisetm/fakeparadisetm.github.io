@@ -5141,7 +5141,35 @@ const model3d = (() => {
     // profil du coussin : quart de sinus (arête nette au contour) pour les
     // vêtements, cosinusoïde adoucie (pente nulle aux deux bouts) pour le portrait
     const profil = doux ? (t => 0.5 - 0.5 * Math.cos(Math.PI * t)) : (t => Math.sin(t * Math.PI / 2));
-    const inside = (x, y) => { const ix = Math.round(x), iy = Math.round(y); return ix >= 0 && iy >= 0 && ix < N && iy < N && mask[iy*N+ix] === 1; };
+    /* LE CONTOUR SE LIT SUR UN CHAMP CONTINU, PAS SUR DES CASES.
+       Le masque est binaire : chaque test « dedans ou dehors » arrondissait à
+       la case la plus proche, et les points de passage tombaient donc sur sa
+       grille. La silhouette montait l'escalier, et comme une maille fait trois
+       cases de large, une manche courte n'avait qu'une poignée de segments
+       pour décrire sa courbe : on voyait les facettes.
+       On lit maintenant le même masque LÉGÈREMENT FLOUTÉ, échantillonné en
+       bilinéaire. Le contour est la ligne de niveau 0,5 de ce champ, cherchée
+       par dichotomie : il tombe entre les cases, à la fraction près, et le
+       flou arrondit au passage le tremblement de la découpe.
+       Ce qui ne change pas : la distance au contour, qui donne l'épaisseur du
+       coussin et le décalage de texture, reste lue sur le masque binaire. Elle
+       sert à mesurer une profondeur, pas à placer une arête. */
+    const champ = (() => {
+      const h = new Float32Array(N*N), v = new Float32Array(N*N);
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){ const i = y*N+x;
+        h[i] = (mask[i] + (x > 0 ? mask[i-1] : mask[i]) + (x < N-1 ? mask[i+1] : mask[i])) / 3; }
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){ const i = y*N+x;
+        v[i] = (h[i] + (y > 0 ? h[i-N] : h[i]) + (y < N-1 ? h[i+N] : h[i])) / 3; }
+      return v;
+    })();
+    const valeur = (x, y) => {           // bilinéaire ; hors cadre, c'est du fond
+      if (x < 0 || y < 0 || x > N-1 || y > N-1) return 0;
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+      const x1 = Math.min(N-1, x0+1), y1 = Math.min(N-1, y0+1);
+      const a = champ[y0*N+x0], b = champ[y0*N+x1], c = champ[y1*N+x0], d = champ[y1*N+x1];
+      return (a*(1-fx) + b*fx) * (1-fy) + (c*(1-fx) + d*fx) * fy;
+    };
+    const inside = (x, y) => valeur(x, y) >= 0.5;
     const clampX = x => Math.max(0, Math.min(N-1, Math.round(x)));
     const distAt = (x, y) => dist[clampX(y)*N + clampX(x)];
     const inward = (x, y) => { // direction vers l'intérieur : gradient de la distance au contour
@@ -5165,10 +5193,16 @@ const model3d = (() => {
       const p = relief ? relief(clampX(y) * N + clampX(x)) : 1;
       vx.push(x); vy.push(y); vz.push(THICK * bord * p); vu.push(ux); vv.push(uy);
       ids.set(key, id); return id; };
-    const crossing = (ax, ay, bx, by) => { // a intérieur, b extérieur : point de bascule du contour (8 pas)
-      let tIn = 0;
-      for (let s = 1; s <= 8; s++){ const t = s / 8; if (inside(ax + (bx-ax)*t, ay + (by-ay)*t)) tIn = t; else break; }
-      const t = tIn + 0.5 / 8; return [ax + (bx-ax)*t, ay + (by-ay)*t]; };
+    // a intérieur, b extérieur : la ligne de niveau 0,5, par dichotomie. Douze
+    // coupes en deux, soit le quart de millième de la maille — bien en deçà du
+    // visible, et l'ancienne recherche en huit pas en avant en coûtait autant.
+    const crossing = (ax, ay, bx, by) => {
+      let t0 = 0, t1 = 1;
+      for (let s = 0; s < 12; s++){
+        const t = (t0 + t1) / 2;
+        if (valeur(ax + (bx-ax)*t, ay + (by-ay)*t) >= 0.5) t0 = t; else t1 = t;
+      }
+      const t = (t0 + t1) / 2; return [ax + (bx-ax)*t, ay + (by-ay)*t]; };
     const tris = []; // triplets d'identifiants
     for (let j = 0; j < rows-1; j++) for (let i = 0; i < cols-1; i++){
       const cs = [[i,j],[i+1,j],[i+1,j+1],[i,j+1]]; // coins dans l'ordre du périmètre
