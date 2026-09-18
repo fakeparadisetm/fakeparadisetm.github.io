@@ -1000,7 +1000,39 @@
      deux cents pixels de marge, le glissement se voit et dit d'où sort la
      languette. Le galet se referme des DEUX côtés — c'est elle qui porte le
      bord droit quand elle est là. */
-  .cta-duo{display:inline-flex;align-items:stretch;}
+  /* ---- LA PILULE EST LE CONTENANT, PAS LES MOITIÉS ----
+     Tant que chaque moitié portait son fond, sa bordure et sa LUEUR, on
+     voyait deux bulles accolées : une lueur se dessine tout autour de sa
+     boîte, y compris le long de la couture, et deux lueurs adossées font une
+     ligne claire au milieu. Le survol achevait de les séparer — il
+     n'éclaircissait que la moitié gauche.
+     Le galet est donc dessiné UNE FOIS, sur le contenant : un fond, une
+     bordure, une lueur, un arrondi. Les deux moitiés à l'intérieur ne sont
+     plus que des zones cliquables transparentes ; elles n'apportent que leur
+     rembourrage, leur texte, et — au second temps — le refend. Le contenant
+     s'allonge parce que la moitié droite pousse, et ce qu'on voit s'étirer
+     est un seul corps.
+     `hidden` suit celui du bouton (voir majOngletPanier) : sans cela, les
+     fiches sans bouton — Livraison, Infos — auraient gardé une pilule vide. */
+  .cta-duo{
+    display:inline-flex;align-items:stretch;
+    background:rgba(var(--accent-rgb),0.15);
+    border:1px solid var(--blue);
+    border-radius:999px;
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+    transition:background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .cta-duo[hidden]{display:none;}
+  .cta-duo:hover{
+    background:rgba(var(--accent-rgb),0.24);
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.55), 0 0 28px rgba(var(--accent-rgb),0.3);
+  }
+  /* Les moitiés ne dessinent plus rien : le galet est au-dessus d'elles. */
+  .cta-duo > #addBtn{
+    background:none;border:0;box-shadow:none;
+    border-radius:999px 0 0 999px;
+  }
+  .cta-duo > #addBtn:hover{background:none;box-shadow:none;}
   /* ELLE SORT AVEC LES TAILLES, pas une fraction de seconde avant ni après.
      Survoler « Ajouter » déplie déjà la liste des tailles ; c'est le même
      geste, c'est donc le même moment — et la languette reste tant que la
@@ -1028,34 +1060,27 @@
   .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]){
-    max-width:42px;padding:0 12px;border-right-width:1px;
-    border-top-width:1px;border-bottom-width:1px;
+    max-width:42px;padding:0 12px;
   }
   /* second temps */
   .cta-duo.pret .cta-panier:not([hidden]){
     border-left-width:1px;pointer-events:auto;
   }
   .cta-duo.pret .cta-panier:not([hidden]) svg{opacity:1;}
-  /* Le galet perd son bord droit : c'est la moitié droite qui le porte. */
-  .preview.grown .cta-duo #addBtn,
-  .cta-duo:hover #addBtn,.cta-duo:focus-within #addBtn{
-    border-top-right-radius:0;border-bottom-right-radius:0;border-right-width:0;
-  }
   .cta-panier{
     display:inline-flex;align-items:center;justify-content:center;
     max-width:0;padding:0;overflow:hidden;
-    background:rgba(var(--accent-rgb),0.15);      /* le même fond que le bouton */
-    border:0 solid var(--blue);                   /* fermée : pas même un liseré d'un pixel */
+    background:none;box-shadow:none;              /* le galet est sur le contenant */
+    border:0 solid var(--blue);                   /* le refend arrive au second temps */
     border-radius:0 999px 999px 0;
     color:var(--white);cursor:pointer;
     pointer-events:none;                          /* jusqu'au second temps */
-    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
     transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.2s ease, background 0.25s ease;
   }
   .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
   /* Le survol de la seule moitié droite : c'est ainsi qu'on apprend qu'elle
-     mène ailleurs. La pilule reste une pilule, mais elle répond par moitiés. */
-  .cta-panier:hover{background:rgba(var(--accent-rgb),0.3);}
+     mène ailleurs. Un voile de plus par-dessus le galet, pas un second galet. */
+  .cta-duo.pret .cta-panier:hover{background:rgba(255,255,255,0.07);}
   .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.22s ease;}
   @media (prefers-reduced-motion:reduce){
     .cta-panier,.cta-panier svg{transition:none;}
@@ -3776,11 +3801,14 @@ const addBtn = document.getElementById('addBtn');
    trois conditions changent à des moments différents — on relit donc l'état
    plutôt que de se souvenir, et on appelle d'où que vienne le changement. */
 const addCart = document.getElementById('addCart');
+const addDuo = document.getElementById('addDuo');
 const PANIER_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L20 7H6"/>'
   + '<circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>';
 const ONGLET_LARGEUR = 44;      // le même que le max-width de .cta-panier
 function majOngletPanier(){
+  // le contenant porte le galet : il disparaît avec le bouton qu'il entoure
+  addDuo.hidden = addBtn.hidden;
   const cat = DATA[activeCat];
   const it = cat && cat.kind === 'shop' ? cat.items[activeItem] : null;
   let utile = !!it && !verrouille(it) && !addBtn.hidden && cart.length > 0;
@@ -3821,12 +3849,25 @@ function majOngletPanier(){
    rien qui puisse rester allumé d'un côté et éteint de l'autre.
    Le délai est celui de l'allongement (0,26 s) et pas un chiffre de plus :
    les deux temps se touchent, ils ne se chevauchent pas. */
-const addDuo = document.getElementById('addDuo');
 let ongletTimer = null;
+/* ON NE CROIT PAS L'ÉVÉNEMENT, ON RELIT L'ÉTAT. Le piège : quand la liste des
+   tailles se déplie, la rangée de boutons REMONTE de trente pixels sous le
+   curseur, et le navigateur envoie un `mouseleave` alors que la souris n'a pas
+   bougé. Un `ongletPret(false)` naïf annulait alors le minuteur, et le panier
+   n'apparaissait jamais — le galet restait allongé et vide.
+   Chaque appel demande donc au galet s'il est ouvert, quel que soit
+   l'événement qui l'a déclenché : tailles dépliées, souris dessus, ou clavier
+   dedans. Ouvert, le minuteur court (une seule fois) ; fermé, tout retombe. */
 function ongletPret(oui){
-  clearTimeout(ongletTimer);
-  if (!oui){ addDuo.classList.remove('pret'); return; }
-  ongletTimer = setTimeout(() => addDuo.classList.add('pret'), 270);
+  const ouvert = oui || previewEl.classList.contains('grown')
+    || addDuo.matches(':hover') || addDuo.contains(document.activeElement);
+  if (ouvert){
+    if (!ongletTimer && !addDuo.classList.contains('pret'))
+      ongletTimer = setTimeout(() => { ongletTimer = null; addDuo.classList.add('pret'); }, 270);
+    return;
+  }
+  clearTimeout(ongletTimer); ongletTimer = null;
+  addDuo.classList.remove('pret');
 }
 addDuo.addEventListener('mouseenter', () => ongletPret(true));
 addDuo.addEventListener('mouseleave', () => ongletPret(false));
@@ -4527,7 +4568,7 @@ function closeSizePicker(){
   sizePicker.classList.remove('open');
   sizePicker.classList.remove('libre');  // la fermeture doit de nouveau rogner
   previewEl.classList.remove('grown');
-  if (!addDuo.matches(':hover')) ongletPret(false);   // sauf si la souris y est encore
+  ongletPret(false);                  // qui vérifie lui-même si le galet reste ouvert
   previewEl.style.setProperty('--sq-size', '0px'); // le descriptif garde la sienne (--squeeze)
   sizePicker.setAttribute('aria-hidden', 'true');
   sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
