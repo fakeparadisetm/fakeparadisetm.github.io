@@ -6642,8 +6642,18 @@ const model3d = (() => {
      liste glisse relancerait un calcul de mise en page. */
   let swatchBox = null, lastX = null;
   const aSaisir = () => !!(current && current.saisir);   // la tête : on la PREND, on ne l'effleure pas
-  swatch.addEventListener('mouseenter', (e) => { swatchBox = swatch.getBoundingClientRect(); lastX = e.clientX; });
-  swatch.addEventListener('mousemove', (e) => {
+  /* On écoute la ZONE DE GALERIE, pas le visuel. Les deux bandes de défilement
+     sont ses SŒURS et non ses filles : tant que la souris se trouvait dessus,
+     le visuel ne recevait plus rien et le modèle se figeait — d'autant plus
+     depuis que ces bandes vont jusqu'aux arêtes du panneau. La zone les
+     contient toutes les deux, le mouvement ne se perd donc plus.
+     La référence reste la largeur du VISUEL : c'est elle qui vaut un tour
+     complet, et elle n'a pas à changer parce qu'on élargit ce qu'on écoute.
+     Au passage, aller d'une bande au visuel ne compte plus comme une sortie :
+     le micro-arrêt qu'on sentait en franchissant ce bord disparaît. */
+  const zoneSouris = document.getElementById('galleryZone') || swatch;
+  zoneSouris.addEventListener('mouseenter', (e) => { swatchBox = swatch.getBoundingClientRect(); lastX = e.clientX; });
+  zoneSouris.addEventListener('mousemove', (e) => {
     if (tap || aSaisir()) return; // figé par un toucher (écran hybride), ou modèle à saisir : la souris seule n'intervient pas
     if (!swatchBox) swatchBox = swatch.getBoundingClientRect();
     if (lastX === null){ lastX = e.clientX; return; } // premier repère : on ne tourne pas encore
@@ -6653,7 +6663,7 @@ const model3d = (() => {
     if (!hover){ hover = true; target = angle; } // on repart d'où le modèle est, sans à-coup
     target += dx / (swatchBox.width || 1) * Math.PI * 2;
   });
-  swatch.addEventListener('mouseleave', () => { hover = false; swatchBox = null; lastX = null; });
+  zoneSouris.addEventListener('mouseleave', () => { hover = false; swatchBox = null; lastX = null; });
   /* ---- prise à la main, pour la tête seule ----
      Un vêtement se regarde : le curseur le fait tourner en passant, sur un
      axe, et il revient à sa place. Une tête, on la MANIPULE — il faut la
