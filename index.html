@@ -322,38 +322,40 @@
     pointer-events:none;
   }
   /* ---- « il y en a encore par là » ----
-     Un chevron de part et d'autre, à la hauteur des icônes, allumé seulement
-     quand des catégories sont hors champ de ce côté. Il POINTE, il ne se
-     clique pas : la barre se tire, et un bouton de plus à côté d'une barre
-     qu'on tire dirait deux choses pour un seul geste. Discret par principe —
-     c'est un renseignement, pas un appel.
-     Il RESPIRE, à peine, et lentement : un signe fixe se confond avec le
-     décor, celui-ci se rappelle sans se faire remarquer. */
+     Un chevron de part et d'autre, allumé seulement quand des catégories sont
+     hors champ de ce côté-là. Il appartient à la barre et se donne donc son
+     costume : BLANC, et la même ombre portée que les glyphes — pas la couleur
+     d'accent, qui est celle de la sélection et ne doit désigner qu'elle.
+     IL SE CLIQUE, d'un cran de catégorie à chaque fois. Il montre où il y en a
+     encore, et il y mène ; le glissement reste là pour qui veut aller vite.
+     IL PULSE EN OPACITÉ et ne se déplace pas : un signe qui bouge à côté d'une
+     barre qui bouge fait deux mouvements pour un seul message. Lentement, et
+     sans jamais s'éteindre tout à fait — c'est un rappel, pas un clignotant.
+     SA HAUTEUR EST CELLE DES ICÔNES, relevée sur l'icône active (voir
+     `chevrons`) et non calculée : la boîte d'une catégorie contient aussi son
+     libellé et sa colonne, son centre n'est donc pas celui du glyphe. */
   .hors-champ{
     position:fixed;
-    top:var(--xmb-bar);
     transform:translateY(-50%);
-    width:22px;height:22px;
-    color:rgba(var(--accent-rgb),0.85);
+    width:26px;height:26px;
+    color:#fff;
     opacity:0;
     pointer-events:none;
+    cursor:pointer;
+    background:none;border:0;padding:0;
     transition:opacity 0.3s ease;
-    filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),0.45));
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));
     z-index:2;
   }
-  .hors-champ.gauche{left:18px;}
-  .hors-champ.on{opacity:1;animation:horsChamp 2.8s ease-in-out infinite;}
+  .hors-champ.gauche{left:16px;}
+  .hors-champ.on{pointer-events:auto;animation:horsChamp 2.6s ease-in-out infinite;}
+  .hors-champ.on:hover{animation:none;opacity:1;}
   .hors-champ svg{width:100%;height:100%;display:block;}
   @keyframes horsChamp{
-    0%,100%{transform:translateY(-50%) translateX(0);}
-    50%{transform:translateY(-50%) translateX(3px);}
+    0%,100%{opacity:0.34;}
+    50%{opacity:0.85;}
   }
-  .hors-champ.gauche.on{animation-name:horsChampGauche;}
-  @keyframes horsChampGauche{
-    0%,100%{transform:translateY(-50%) translateX(0);}
-    50%{transform:translateY(-50%) translateX(-3px);}
-  }
-  @media (prefers-reduced-motion:reduce){ .hors-champ.on{animation:none;} }
+  @media (prefers-reduced-motion:reduce){ .hors-champ.on{animation:none;opacity:0.7;} }
   .cat-icon{
     position:relative;
     width:104px;height:104px;
@@ -2537,15 +2539,15 @@
 
 <div class="stage">
   <div class="categories" id="categories"></div>
-  <!-- Les deux chevrons : ils disent qu'il reste des catégories de ce côté-là.
-       Hors de .categories, sinon ils glisseraient avec elle. Placés et
-       allumés par majIconesCachees. -->
-  <span class="hors-champ gauche" id="horsGauche" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
-  </span>
-  <span class="hors-champ droite" id="horsDroite" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
-  </span>
+  <!-- Les deux chevrons : ils disent qu'il reste des catégories de ce côté-là,
+       et ils y mènent. Hors de .categories, sinon ils glisseraient avec elle.
+       Placés, allumés et nommés par majIconesCachees / chevrons. -->
+  <button type="button" class="hors-champ gauche" id="horsGauche" tabindex="-1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+  </button>
+  <button type="button" class="hors-champ droite" id="horsDroite" tabindex="-1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
 </div>
 
 
@@ -8930,6 +8932,14 @@ function majIconesCachees(){
      lectures par image qu'il faut éviter. */
   const p = previewEl.getBoundingClientRect();
   if (!p.width) return montrer();
+  /* LA VOIE DU CHEVRON GAUCHE : les 44 premiers pixels, sa place (16 + 26 de
+     glyphe, et deux d'air). Ce qui y entre s'efface, sinon il s'allumerait
+     collé à une icône — on l'a vu, les deux blancs se touchaient.
+     Elle est bornée par le déplacement lui-même : au repos la barre n'a rien
+     derrière elle, donc pas de voie à réserver, et la première icône garde sa
+     place quelle que soit la largeur de la fenêtre — sur un écran étroit elle
+     commence vers 52 px, une voie fixe l'aurait effacée sans raison. */
+  const voie = Math.min(camShift, 44);
   let aGauche = 0, aDroite = 0;
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
@@ -8937,26 +8947,62 @@ function majIconesCachees(){
     const cx = g.left + g.w / 2;                            // l'échelle part du centre de la boîte (origine par défaut)
     const gauche = cx + (g.left + g.icoL - cx) * s + tx;
     const droite = gauche + g.icoW * s;
-    // Le moindre dépassement suffit : une icône à moitié coupée par l'arête
-    // est précisément ce qu'on ne veut plus voir.
-    const cachee = ci !== activeCat && droite > p.left;
-    els[ci].classList.toggle('masquee', cachee);
-    if (cachee) aDroite++;
-    else if (droite < 4) aGauche++;   // sortie par le bord de l'écran, à gauche
+    /* Le moindre dépassement suffit, d'un bord comme de l'autre : une icône à
+       moitié coupée est précisément ce qu'on ne veut plus voir. À droite c'est
+       la fiche qui coupe, à gauche l'écran.
+       LA RÈGLE DE GAUCHE EST VENUE AVEC LE CLIC. Tant que le chevron ne faisait
+       que pointer, on ne comptait à gauche que les icônes ENTIÈREMENT sorties,
+       et le reste était sans conséquence. Du jour où il se clique, une icône
+       aux trois quarts coupée mais pas comptée devient un cul-de-sac : le
+       chevron reste éteint, et il ne reste que le glissement pour revenir.
+       Elle est comptée dès qu'elle est entamée — et donc éteinte, sinon le
+       chevron s'allumerait PAR-DESSUS la tranche d'icône qu'il désigne.
+       LA CATÉGORIE ACTIVE COMPTE AUSSI, et c'est même la première à sortir par
+       la gauche. Elle ne s'éteint pas pour autant : sa boîte contient la
+       colonne d'articles qu'on est en train de parcourir, l'effacer effacerait
+       la liste. Elle compte sans disparaître — le chevron dit la vérité, la
+       liste reste là. */
+    const parDroite = ci !== activeCat && droite > p.left;
+    const parGauche = gauche < voie;              // le bord de l'écran ne fait pas d'exception
+    els[ci].classList.toggle('masquee', parDroite || (parGauche && ci !== activeCat));
+    if (parDroite) aDroite++;
+    else if (parGauche) aGauche++;
   });
   chevrons(aGauche, aDroite, p.left);
 }
 /* Les chevrons suivent le compte : celui de droite se pose contre l'arête de
    la fiche, là où les icônes s'arrêtent ; celui de gauche reste au bord de
    l'écran, là où elles sortent. On ne les allume que s'il y a vraiment
-   quelque chose derrière — un signe qui ment une fois n'est plus lu. */
+   quelque chose derrière — un signe qui ment une fois n'est plus lu.
+   Leur HAUTEUR est relevée sur l'icône active, la seule qui soit toujours là
+   et à pleine taille. La calculer serait plus rapide et plus faux : la boîte
+   d'une catégorie contient son libellé et sa colonne d'articles, son centre
+   n'a rien à voir avec celui du glyphe. */
 const horsGauche = document.getElementById('horsGauche');
 const horsDroite = document.getElementById('horsDroite');
 function chevrons(gauche, droite, bordFiche){
   horsGauche.classList.toggle('on', gauche > 0);
   horsDroite.classList.toggle('on', droite > 0);
-  if (droite > 0) horsDroite.style.left = Math.round(bordFiche - 34) + 'px';
+  if (gauche > 0 || droite > 0){
+    const ico = categoriesEl.querySelector('.category.active .cat-icon')
+             || categoriesEl.querySelector('.cat-icon');
+    if (ico){ const r = ico.getBoundingClientRect();
+      const y = Math.round(r.top + r.height / 2) + 'px';
+      horsGauche.style.top = y; horsDroite.style.top = y; }
+  }
+  if (droite > 0) horsDroite.style.left = Math.round(bordFiche - 36) + 'px';
+  horsGauche.setAttribute('aria-label', gauche + ' ' + T('hintBrowse'));
+  horsDroite.setAttribute('aria-label', droite + ' ' + T('hintBrowse'));
 }
+/* UN CRAN PAR CLIC, et le pas est celui de la barre elle-même : deux
+   catégories voisines. La barre a gardé sa transition, le déplacement se fait
+   donc tout seul et à la même vitesse que partout ailleurs. */
+function pasDeBarre(){
+  const c = geom.cats;
+  return (c.length > 1 ? c[1].left - c[0].left : 0) || 150;
+}
+horsGauche.addEventListener('click', () => { arreterElan(); poserBarre(camShift - pasDeBarre()); });
+horsDroite.addEventListener('click', () => { arreterElan(); poserBarre(camShift + pasDeBarre()); });
 
 /* ---- LA BARRE SE TIRE À LA SOURIS ----
    Le problème : sur une fenêtre étroite, les dernières catégories passent
