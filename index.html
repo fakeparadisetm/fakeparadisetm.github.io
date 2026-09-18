@@ -1010,31 +1010,48 @@
      `:hover` et `:focus-within` restent en secours : au clavier, ou si un
      jour le survol n'ouvre plus les tailles, la languette se montre quand
      même. */
+  /* UN SEUL GALET QUI S'ALLONGE, et le panier paraît dedans APRÈS. Deux
+     règles tiennent l'illusion, et elles comptent toutes les deux :
+     - la moitié droite a EXACTEMENT le fond, la bordure et la lueur de la
+       gauche, et aucune séparation entre les deux. Un fond plus clair ou un
+       trait de refend, et on voit deux boutons accolés au lieu d'une pilule ;
+     - l'icône ne voyage pas. Elle attend, immobile, que l'allongement soit
+       fini, puis elle apparaît en fondu. Sans cela, la boîte qui s'ouvre la
+       découvre par la gauche et elle a l'air de glisser depuis le bouton —
+       c'est ce qu'on voyait, et ce n'est pas ce qu'on veut voir. */
   .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]){
-    max-width:44px;padding:0 12px;border-left-width:1px;opacity:1;
+    max-width:42px;padding:0 12px;border-width:1px 1px 1px 0;
   }
+  .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg,
+  .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg,
+  .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg{
+    opacity:1;transition:opacity 0.2s ease 0.22s;   /* après l'allongement */
+  }
+  /* Le galet perd son bord droit : c'est la moitié droite qui le porte. */
   .preview.grown .cta-duo #addBtn,
   .cta-duo:hover #addBtn,.cta-duo:focus-within #addBtn{
-    border-top-right-radius:0;border-bottom-right-radius:0;
+    border-top-right-radius:0;border-bottom-right-radius:0;border-right-width:0;
   }
   .cta-panier{
-    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    display:inline-flex;align-items:center;justify-content:center;
     max-width:0;padding:0;overflow:hidden;
-    background:rgba(var(--accent-rgb),0.24);
-    border:1px solid var(--blue);border-left-width:0;
+    background:rgba(var(--accent-rgb),0.15);      /* le même fond que le bouton */
+    border:0 solid var(--blue);                   /* fermée : pas même un liseré d'un pixel */
     border-radius:0 999px 999px 0;
-    color:var(--white);font-size:13px;font-weight:550;letter-spacing:0.5px;
-    cursor:pointer;opacity:0;
-    transition:all 0.25s ease;
+    color:var(--white);cursor:pointer;
     box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+    transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.26s ease, background 0.25s ease;
   }
   .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
-  .cta-panier:hover{background:rgba(var(--accent-rgb),0.4);}
-  .cta-panier svg{width:15px;height:15px;flex:none;}
-  .cta-panier span{white-space:nowrap;}
-  @media (prefers-reduced-motion:reduce){ .cta-panier{transition:none;} }
+  /* Le survol de la seule moitié droite : c'est ainsi qu'on apprend qu'elle
+     mène ailleurs. La pilule reste une pilule, mais elle répond par moitiés. */
+  .cta-panier:hover{background:rgba(var(--accent-rgb),0.3);}
+  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.1s ease;}
+  @media (prefers-reduced-motion:reduce){
+    .cta-panier,.cta-panier svg{transition:none;}
+  }
   /* rangée de boutons : « + Add to cart » et « More info » côte à côte */
   .preview-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
   .preview-actions .preview-cta,.preview-actions .cta-duo{margin-top:0;}
