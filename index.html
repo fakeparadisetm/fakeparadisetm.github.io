@@ -7757,9 +7757,16 @@ const slider = (() => {
   /* Un clic au MILIEU de la galerie déplie la fiche. Les deux zones de bord et
      les pastilles arrêtent la propagation de leur côté : cliquer pour changer
      de vue ne déclenche donc pas l'ouverture, seul le centre le fait. */
+  /* La miniature de la liste fait ses trois tours, comme lorsqu'on choisit
+     l'article depuis la liste ou avec Entrée : c'est le même geste de
+     sélection, il mérite la même réponse.
+     Seulement si la fiche n'est PAS déjà dépliée, en revanche — sinon la
+     miniature tournerait à chaque clic sur une photo qu'on regarde depuis un
+     moment, alors que rien ne change à l'écran. C'est la règle que suit déjà
+     le petit toc de validation, juste à côté (voir ouvrirFiche). */
   swatch.addEventListener('click', (e) => {
     if (e.target.closest('.slide-edge, .slide-dots')) return;
-    ouvrirFiche(false);
+    ouvrirFiche(!ficheOuverte);
   });
   let sx = 0, sy = 0; // balayage horizontal au doigt
   swatch.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; });
