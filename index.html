@@ -901,7 +901,11 @@
   }
   @keyframes plusSweep{
     0%,72%,100%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0), inset 0 0 0 11px rgba(var(--accent-rgb),0);}
-    82%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.5), inset 0 0 0 11px rgba(var(--accent-rgb),0.5);}
+    /* 0,26 et non 0,5 comme les pastilles : à opacité égale le + criait deux
+       fois plus fort, parce qu'il est deux fois plus large et que le halo
+       remplit tout son rond alors que celui des pastilles ne couvre que
+       quelques pixels. On égalise ce qu'on VOIT, pas ce qui est écrit. */
+    82%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.26), inset 0 0 0 11px rgba(var(--accent-rgb),0.26);}
   }
   @media (prefers-reduced-motion:reduce){ .desc-toggle{animation:none;} }
   .desc-toggle::before,.desc-toggle::after{
