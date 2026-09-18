@@ -282,6 +282,13 @@
      doigt, pas le suivre avec quatre dixièmes de retard — et pas de sélection
      de texte, qui transformerait le geste en surlignage. */
   .categories.glissee{transition:none;user-select:none;}
+  /* LA MAIN ENTRE LES ICÔNES, ET LÀ SEULEMENT. Les icônes gardent la main qui
+     clique (.category : cursor pointer) — elles mènent quelque part, et c'est
+     ce qu'il faut dire en premier. C'est le VIDE entre elles qui annonce le
+     glissement : la barre, et pas ses boutons. Et seulement quand il y a de
+     quoi tirer (classe `tirable`, voir majTirable), sinon la main promettrait
+     un geste qui ne fait rien. */
+  .categories.tirable{cursor:grab;}
   .categories.glissee,.categories.glissee *{cursor:grabbing;}
 
   .category{
@@ -8845,6 +8852,7 @@ function scrollActiveIntoView(){
   camShift = Math.max(0, Math.min(shift, maxShift));
   categoriesEl.style.transform = `translateX(-${camShift}px)`;
   majIconesCachees();
+  majTirable();          // la fiche a pu changer de largeur : il y a, ou non, de quoi tirer
 }
 
 /* Icônes qui ressortent à droite de la fiche (remplace la lueur de bord,
@@ -8925,11 +8933,54 @@ function poserBarre(x){
   camShift = Math.max(0, Math.min(x, glisseMax()));
   categoriesEl.style.transform = `translateX(-${camShift}px)`;
   majIconesCachees();
+  majTirable();
 }
+function majTirable(){ categoriesEl.classList.toggle('tirable', glisseMax() > 0); }
+
+/* ---- UN PEU D'ÉLAN, ET PAS PLUS ----
+   Une barre qui s'arrête pile au relâchement se sent comme une image qu'on
+   déplace, pas comme un objet qu'on pousse. On lui laisse donc finir son
+   geste — mais très peu, parce que l'élan est ici un détail de toucher, pas
+   un moyen de se déplacer : on tire pour ATTEINDRE une icône, et une barre
+   qui continue de filer ferait manquer la cible.
+   D'où les deux garde-fous : la vitesse est PLAFONNÉE (1 px par milliseconde,
+   soit une centaine de pixels de glisse au maximum) et l'amortissement est
+   rapide — il reste un sixième de la vitesse au bout d'un dixième de seconde.
+   L'amorti est calculé sur le temps écoulé et non par image, sinon un écran à
+   144 Hz freinerait deux fois plus vite qu'un écran à 60.
+   Rien de tout cela si le visiteur a demandé moins d'animation. */
+const ELAN_MAX = 1.0;            // px/ms
+const ELAN_SEUIL = 0.08;         // en dessous, on ne lance rien
+let elanRaf = 0;
+const moinsDAnimation = window.matchMedia('(prefers-reduced-motion: reduce)');
+function lancerElan(v){
+  cancelAnimationFrame(elanRaf); elanRaf = 0;
+  if (moinsDAnimation.matches) return finElan();
+  v = Math.max(-ELAN_MAX, Math.min(ELAN_MAX, v));
+  if (Math.abs(v) < ELAN_SEUIL) return finElan();
+  let t0 = performance.now();
+  const pas = () => {
+    const t = performance.now(), dt = Math.min(32, t - t0); t0 = t;
+    const avant = camShift;
+    poserBarre(camShift + v * dt);
+    v *= Math.pow(0.86, dt / 16);
+    // on s'arrête aussi net contre une borne : insister n'y ferait rien
+    if (Math.abs(v) > 0.03 && camShift !== avant) elanRaf = requestAnimationFrame(pas);
+    else finElan();
+  };
+  elanRaf = requestAnimationFrame(pas);
+}
+function finElan(){ elanRaf = 0; categoriesEl.classList.remove('glissee'); }
+/* ARRÊTER L'ÉLAN, C'EST AUSSI RANGER DERRIÈRE SOI. Couper la boucle sans
+   passer par `finElan` laissait la classe `glissee` posée — donc la transition
+   de la barre coupée et le curseur en main fermée — pour le reste de la
+   session. Un seul point de sortie, et il nettoie. */
+function arreterElan(){ cancelAnimationFrame(elanRaf); finElan(); }
 categoriesEl.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' || e.button !== 0) return;
+  arreterElan();                        // on rattrape une barre encore lancée
   if (!geom.ready || glisseMax() <= 0) return;
-  glisse = { x: e.clientX, depart: camShift, bouge: false };
+  glisse = { x: e.clientX, depart: camShift, bouge: false, t: performance.now(), v: 0 };
 });
 window.addEventListener('pointermove', (e) => {
   if (!glisse) return;
@@ -8939,13 +8990,22 @@ window.addEventListener('pointermove', (e) => {
     glisse.bouge = true;
     categoriesEl.classList.add('glissee');
   }
+  /* La vitesse se relève SUR LA BARRE et non sur la souris : contre une
+     borne, la souris continue et la barre non — c'est la barre qui doit
+     s'arrêter, sans élan à rendre. Lissée, parce qu'une seule image de retard
+     dans le rapport de la souris suffirait à donner un chiffre absurde. */
+  const t = performance.now(), avant = camShift;
   poserBarre(glisse.depart - dx);
+  const dt = Math.max(8, t - glisse.t);
+  glisse.v = glisse.v * 0.6 + ((camShift - avant) / dt) * 0.4;
+  glisse.t = t;
 });
 const finGlisse = () => {
   if (!glisse) return;
+  const v = glisse.bouge ? glisse.v : 0;
   if (glisse.bouge) glisseFin = performance.now();
   glisse = null;
-  categoriesEl.classList.remove('glissee');
+  if (v) lancerElan(v); else finElan();
 };
 window.addEventListener('pointerup', finGlisse);
 window.addEventListener('pointercancel', finGlisse);
