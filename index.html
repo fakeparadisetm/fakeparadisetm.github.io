@@ -1101,11 +1101,16 @@
   }
 
   /* ---------- bottom hint bar ---------- */
-  /* L'annonce d'un déverrouillage : une pastille de verre qui monte, tient
-     quelques secondes et s'en va. En HAUT et au centre, loin du panneau et
-     loin de la barre d'aide — elle ne doit masquer ni ce qu'on manipule ni ce
-     qu'on lit. Elle ne se clique pas : il n'y a rien à y faire, elle dit
-     seulement où regarder. */
+  /* La pastille d'annonce : un jeton de verre qui monte, tient quelques
+     secondes et s'en va. En HAUT et au centre, loin du panneau et loin de la
+     barre d'aide — elle ne doit masquer ni ce qu'on manipule ni ce qu'on lit.
+     Elle ne se clique pas : il n'y a rien à y faire, elle dit seulement où
+     regarder.
+     Elle a servi d'abord aux déverrouillages, d'où son nom ; elle porte
+     maintenant aussi le « bientôt » du bouton Commander. Une fenêtre du
+     navigateur (alert) faisait le travail avant, mais elle sort du décor :
+     elle a le gris du système et le nom du site en titre, et sur une boutique
+     elle ressemble à une panne. */
   .egg-note{
     position:fixed;
     top:64px;left:50%;
@@ -3095,7 +3100,7 @@ let currentLang = "en";
 const STRINGS = {
   en:{
     cart:"CART", cartTitle:"Your cart", cartEmpty:"Your cart is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
-    checkoutAlert:"Checkout isn't wired up yet — connect this to your payment provider when ready.",
+    soon:"COMING SOON", soonSub:"The shop opens shortly",
     add:"+ Add to cart", added:"Added ✓", instagram:"Open Instagram ↗",
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
     sizeLabel:"Size", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
@@ -3157,7 +3162,7 @@ const STRINGS = {
   },
   fr:{
     cart:"PANIER", cartTitle:"Votre panier", cartEmpty:"Votre panier est vide.", remove:"Retirer", total:"Total", checkout:"Commander",
-    checkoutAlert:"Le paiement n'est pas encore branché — connectez votre prestataire de paiement quand vous serez prêt.",
+    soon:"BIENTÔT", soonSub:"La boutique ouvre prochainement",
     add:"+ Ajouter au panier", added:"Ajouté ✓", instagram:"Ouvrir Instagram ↗",
     moreInfo:"Plus d'infos", sizeGuide:"Guide des tailles", sizeNote:"Vêtement mesuré à plat, en centimètres, pouces en dessous.", hintInfo:"plus d'infos",
     sizeLabel:"Taille", hintSize:"choisir la taille", oneLess:"Un de moins", oneMore:"Un de plus",
@@ -7687,10 +7692,10 @@ const model3d = (() => {
 const TOURNE_DEBLOQUE = 7000 * Math.PI / 180;
 const eggNote = document.getElementById('eggNote');
 let eggFin = 0;
-function annoncerDeverrouillage(titre, ou){
+function annoncer(titre, detail){
   if (!eggNote) return;
   document.getElementById('eggNoteTitre').textContent = titre;
-  document.getElementById('eggNoteOu').textContent = ou;
+  document.getElementById('eggNoteOu').textContent = detail;
   eggNote.hidden = false;
   // une image d'attente : sans elle, le navigateur découvre l'élément et son
   // état final dans le même calcul, et la transition ne joue pas
@@ -7705,7 +7710,7 @@ model3d.surRotation((total) => {
   if (total < TOURNE_DEBLOQUE || DEBLOQUE.a('vertige')) return;
   DEBLOQUE.ajouter('vertige');        // la liste se refait, le nom masqué tombe
   sfx.win();
-  annoncerDeverrouillage(T('eggUnlocked'), T('eggWhere'));
+  annoncer(T('eggUnlocked'), T('eggWhere'));
 });
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -8671,7 +8676,10 @@ document.getElementById('cartClose').addEventListener('click', ()=> cartOverlay.
 cartOverlay.addEventListener('click', (e)=>{ if (e.target === cartOverlay) cartOverlay.classList.remove('open'); });
 document.getElementById('cartCheckout').addEventListener('click', ()=>{
   if (!cart.length) return;
-  alert(T('checkoutAlert'));
+  /* La boutique n'encaisse pas encore : le bouton le dit avec la pastille du
+     site plutôt qu'avec une fenêtre du navigateur. Le panier reste ouvert et
+     intact — rien n'est vidé, rien n'est perdu. */
+  annoncer(T('soon'), T('soonSub'));
 });
 
 addBtn.addEventListener('click', ()=>{
