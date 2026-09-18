@@ -987,9 +987,57 @@
     border-color:var(--blue);
     box-shadow:0 0 10px rgba(var(--accent-rgb),0.55), 0 0 28px rgba(var(--accent-rgb),0.3);
   }
+  /* ---- la languette « panier », au flanc d'« Ajouter » ----
+     Ajouter un article et aller au panier sont deux gestes voisins, et on ne
+     veut pas que le second coûte une traversée de l'écran jusqu'au coin. La
+     languette sort donc du bouton lui-même, au survol, et mène au panier ;
+     le bouton, lui, garde exactement ce qu'il faisait.
+     ELLE N'EXISTE QUE SI ELLE SERT : pas de panier vide à aller voir, pas de
+     languette sur « Jouer » ni sur « Instagram » (voir majOngletPanier).
+     AU REPOS ELLE NE PREND PAS DE PLACE — largeur nulle, bordure nulle, et le
+     galet est alors celui d'avant, au pixel près. En s'ouvrant elle pousse le
+     « Guide des tailles » vers la droite, et c'est voulu : la rangée a plus de
+     deux cents pixels de marge, le glissement se voit et dit d'où sort la
+     languette. Le galet se referme des DEUX côtés — c'est elle qui porte le
+     bord droit quand elle est là. */
+  .cta-duo{display:inline-flex;align-items:stretch;}
+  /* ELLE SORT AVEC LES TAILLES, pas une fraction de seconde avant ni après.
+     Survoler « Ajouter » déplie déjà la liste des tailles ; c'est le même
+     geste, c'est donc le même moment — et la languette reste tant que la
+     liste est là, le temps de descendre vers elle. `.grown` est posé sur la
+     fiche par openSizePicker et retiré par closeSizePicker : un seul état
+     pour « le bouton est ouvert », et rien à tenir en double.
+     `:hover` et `:focus-within` restent en secours : au clavier, ou si un
+     jour le survol n'ouvre plus les tailles, la languette se montre quand
+     même. */
+  .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]),
+  .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]),
+  .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]){
+    max-width:44px;padding:0 12px;border-left-width:1px;opacity:1;
+  }
+  .preview.grown .cta-duo #addBtn,
+  .cta-duo:hover #addBtn,.cta-duo:focus-within #addBtn{
+    border-top-right-radius:0;border-bottom-right-radius:0;
+  }
+  .cta-panier{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    max-width:0;padding:0;overflow:hidden;
+    background:rgba(var(--accent-rgb),0.24);
+    border:1px solid var(--blue);border-left-width:0;
+    border-radius:0 999px 999px 0;
+    color:var(--white);font-size:13px;font-weight:550;letter-spacing:0.5px;
+    cursor:pointer;opacity:0;
+    transition:all 0.25s ease;
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+  }
+  .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
+  .cta-panier:hover{background:rgba(var(--accent-rgb),0.4);}
+  .cta-panier svg{width:15px;height:15px;flex:none;}
+  .cta-panier span{white-space:nowrap;}
+  @media (prefers-reduced-motion:reduce){ .cta-panier{transition:none;} }
   /* rangée de boutons : « + Add to cart » et « More info » côte à côte */
   .preview-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;}
-  .preview-actions .preview-cta{margin-top:0;}
+  .preview-actions .preview-cta,.preview-actions .cta-duo{margin-top:0;}
   .preview-cta--secondary{
     background:rgba(255,255,255,0.03);
     border-color:rgba(255,255,255,0.12);
@@ -2408,7 +2456,15 @@
       </div>
       <div class="preview-desc" id="previewDesc"></div>
       <div class="preview-actions">
-        <button class="preview-cta" id="addBtn">+ Add to cart</button>
+        <!-- UN GALET, DEUX MOITIÉS. « Ajouter » ne bouge pas d'un pixel ; au
+             survol, une languette sort de son flanc droit et mène au panier.
+             Deux éléments et non un seul, parce qu'un bouton ne peut pas en
+             contenir un autre — et qu'il en faut bien deux pour deux gestes.
+             Voir `.cta-panier` pour le dessin, `majOngletPanier` pour le quand. -->
+        <span class="cta-duo" id="addDuo">
+          <button class="preview-cta" id="addBtn">+ Add to cart</button>
+          <button type="button" class="cta-panier" id="addCart" hidden></button>
+        </span>
         <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
       </div>
     </div>
@@ -3688,6 +3744,56 @@ let startupActive = true; // clavier ignoré tant que l'écran de démarrage est
 const categoriesEl = document.getElementById('categories');
 const previewEl = document.getElementById('preview');
 const addBtn = document.getElementById('addBtn');
+/* ---- la languette « panier » ----
+   Elle ne s'affiche que là où elle sert : sur une fiche de boutique, quand le
+   bouton « Ajouter » est bien celui d'un achat (ni « Jouer », ni « Instagram »,
+   ni une pièce verrouillée), et quand il y a quelque chose à aller voir. Ces
+   trois conditions changent à des moments différents — on relit donc l'état
+   plutôt que de se souvenir, et on appelle d'où que vienne le changement. */
+const addCart = document.getElementById('addCart');
+const PANIER_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L20 7H6"/>'
+  + '<circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>';
+const ONGLET_LARGEUR = 44;      // le même que le max-width de .cta-panier
+function majOngletPanier(){
+  const cat = DATA[activeCat];
+  const it = cat && cat.kind === 'shop' ? cat.items[activeItem] : null;
+  let utile = !!it && !verrouille(it) && !addBtn.hidden && cart.length > 0;
+  /* ET SEULEMENT SI LA RANGÉE A LA PLACE. En français les deux boutons sont
+     bien plus longs qu'en anglais ; sur une fiche étroite, les quarante pixels
+     de la languette faisaient passer le « Guide des tailles » à la ligne, où
+     il venait s'asseoir sur la liste des tailles. Plutôt qu'un seuil en
+     pixels, qui aurait vieilli au premier mot changé, on demande à la rangée
+     ce qu'elle a. Pas de place, pas de languette : le panier reste à sa
+     place habituelle, en haut à droite. */
+  if (utile){
+    const rangee = addBtn.parentElement.parentElement;      // .preview-actions
+    const guide = document.getElementById('infoBtn');
+    const large = rangee.clientWidth;
+    if (large > 0){
+      const tenu = addBtn.offsetWidth + ONGLET_LARGEUR + (guide.hidden ? 0 : guide.offsetWidth) + 20;
+      if (tenu > large) utile = false;
+    }
+  }
+  addCart.hidden = !utile;
+  if (!utile) return;
+  /* LE PANIER, SANS LE COMPTE. Il est déjà dans le bandeau, à trois
+     centimètres de là, et chaque chiffre coûte ici une douzaine de pixels que
+     la rangée n'a pas : le « Guide des tailles » passait à la ligne et venait
+     s'asseoir sur la liste des tailles. Une languette étroite tient dans la
+     place libre à toutes les largeurs de fiche. Le compte reste dit à ceux qui
+     n'ont pas d'yeux pour le bandeau. */
+  const n = cart.reduce((s, l) => s + l.qty, 0);
+  addCart.innerHTML = PANIER_ICONE;
+  addCart.setAttribute('aria-label', T('cart') + ' · ' + n);
+  addCart.title = T('cart');
+}
+/* Le même chemin que la pastille du bandeau : une seule façon d'ouvrir le
+   panier, donc un seul endroit où elle peut se casser. */
+addCart.addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('cartCount').click();
+});
 
 /* ---------------- bruitages ----------------
    Trois sons, fabriqués à la volée par le navigateur (Web Audio) : aucun
@@ -4502,6 +4608,7 @@ document.addEventListener('click', (e) => {
   if (panelMode && DATA[activeCat].kind === 'shop') exitPanel(); else closeSizePicker();
 });
 window.addEventListener('resize', () => { if (sizePicker.classList.contains('open')) mesurerTailles(); });
+window.addEventListener('resize', majOngletPanier);   // la place disponible a changé
 
 /* ---------------- aperçu 3D ----------------
    Modèle « très basique » généré à partir de la photo elle-même, sans
@@ -8851,6 +8958,13 @@ function fillPreview(){
     // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
     if (sizePicker.classList.contains('open')) buildSizePills(sizesFor(item));
   }
+  /* LA LANGUETTE EN DERNIER, ET POUR TOUTES LES FICHES. En dernier parce
+     qu'elle se décide sur la place qui reste, et que le « Guide des tailles »
+     vient d'être montré ou caché juste au-dessus. Pour toutes les fiches parce
+     qu'en quittant la boutique pour un mini-jeu, c'est ici — et nulle part
+     ailleurs — qu'on repasse : sans cela elle serait restée accrochée au
+     bouton « Jouer ». */
+  majOngletPanier();
   previewEl.classList.add('show');
 }
 
@@ -8899,6 +9013,7 @@ function selectCategory(ci){
 function updateCartCount(){
   const n = cart.reduce((s, l) => s + l.qty, 0); // nombre d'articles, quantités comprises
   document.getElementById('cartCount').textContent = `${T('cart')} · ${n}`;
+  majOngletPanier();            // le compte a changé, la languette aussi
 }
 
 function renderCart(){
