@@ -8919,10 +8919,16 @@ function scrollActiveIntoView(){
    juste après avoir posé un transform animé, le navigateur rend encore
    l'ancienne position, et une lecture par image ramènerait les recalculs de
    mise en page qu'on a passé la soirée à retirer. */
+/* COMBIEN D'ICÔNES SONT EN VUE, relevé au même passage que les masques : c'est
+   le pas des chevrons (voir `pasDeBarre`). Une valeur retenue plutôt que
+   recalculée au clic — le compte vient d'un tour de boucle qu'on fait déjà à
+   chaque pas de navigation, et le refaire au clic voudrait dire remesurer la
+   fiche pour rien. */
+let iconesVues = 0;
 function majIconesCachees(){
   const els = categoriesEl.querySelectorAll('.category'); // requête, pas de lecture de mise en page
   if (!geom.cats.length || els.length !== geom.cats.length) return;
-  const montrer = () => { els.forEach(el => el.classList.remove('masquee')); chevrons(0, 0, 0); };
+  const montrer = () => { els.forEach(el => el.classList.remove('masquee')); chevrons(0, 0, 0); iconesVues = els.length; };
   if (!previewEl.classList.contains('show')) return montrer();
   /* La fiche est mesurée ici, et pas reprise du cache de render() : sa largeur
      dépend du type de catégorie (les panneaux texte sont un peu plus étroits)
@@ -8940,7 +8946,7 @@ function majIconesCachees(){
      place quelle que soit la largeur de la fenêtre — sur un écran étroit elle
      commence vers 52 px, une voie fixe l'aurait effacée sans raison. */
   const voie = Math.min(camShift, 44);
-  let aGauche = 0, aDroite = 0;
+  let aGauche = 0, aDroite = 0, aVues = 0;
   geom.cats.forEach((g, ci) => {
     const s = ci === activeCat ? 1 : 0.82;                  // .category : scale(0.82) hors sélection
     const tx = (ci > activeCat ? geom.extra : 0) - camShift;
@@ -8967,7 +8973,9 @@ function majIconesCachees(){
     els[ci].classList.toggle('masquee', parDroite || (parGauche && ci !== activeCat));
     if (parDroite) aDroite++;
     else if (parGauche) aGauche++;
+    else aVues++;                                 // ni derrière la fiche, ni derrière le bord : en vue
   });
+  iconesVues = aVues;
   chevrons(aGauche, aDroite, p.left);
 }
 /* Les chevrons suivent le compte : celui de droite se pose contre l'arête de
@@ -8994,12 +9002,21 @@ function chevrons(gauche, droite, bordFiche){
   horsGauche.setAttribute('aria-label', gauche + ' ' + T('hintBrowse'));
   horsDroite.setAttribute('aria-label', droite + ' ' + T('hintBrowse'));
 }
-/* UN CRAN PAR CLIC, et le pas est celui de la barre elle-même : deux
-   catégories voisines. La barre a gardé sa transition, le déplacement se fait
-   donc tout seul et à la même vitesse que partout ailleurs. */
+/* UNE PAGE PAR CLIC : on défile d'autant d'icônes qu'il y en a EN VUE à
+   l'instant du clic. Le pas était d'une catégorie ; sur une fenêtre large, où
+   cinq ou six icônes tiennent à côté de la fiche, il fallait autant de clics
+   que de catégories pour faire le tour, alors que la barre pouvait en montrer
+   une rangée d'un coup.
+   Le compte est celui de l'instant, pas une constante : il change avec la
+   largeur de la fenêtre ET avec la fiche, qui n'a pas la même largeur selon la
+   catégorie. Deux clics de suite ne font donc pas forcément le même chemin,
+   et c'est voulu — le chevron déplace ce qu'on voit, pas un nombre.
+   L'écart entre deux voisines sert d'unité ; `poserBarre` borne le résultat,
+   un clic de trop ne dépasse donc jamais. */
 function pasDeBarre(){
   const c = geom.cats;
-  return (c.length > 1 ? c[1].left - c[0].left : 0) || 150;
+  const un = (c.length > 1 ? c[1].left - c[0].left : 0) || 150;
+  return un * Math.max(1, iconesVues);
 }
 horsGauche.addEventListener('click', () => { arreterElan(); poserBarre(camShift - pasDeBarre()); });
 horsDroite.addEventListener('click', () => { arreterElan(); poserBarre(camShift + pasDeBarre()); });
