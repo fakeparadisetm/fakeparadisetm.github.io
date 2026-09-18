@@ -6284,6 +6284,7 @@ const model3d = (() => {
   const keyOf = item => item.ajuste ? item.ajuste          // copie a encolure ouverte, deja nommee (voir encolure)
     : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.hautVisage || 0) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
+    : item.accessoire ? 'accessoire|' + item.accessoire
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -6361,11 +6362,93 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
+  /* ---- les accessoires du salon ----
+     Des modèles de l'utilisateur, convertis une fois comme la tête et le
+     mannequin. Leurs chiffres ne sont pas dans cette page mais dans
+     `models/accessoires.json`, lu à la première ouverture du salon : la page
+     est déjà lourde et tout le monde la télécharge, y compris qui n'ouvrira
+     jamais le portant — et remplacer un modèle ne doit pas demander d'ouvrir
+     index.html.
+     Repères du fichier : lunettes larges de 1, origine au centre des verres,
+     +z devant ; cigarette longue de 1, origine au filtre, +z vers le bout qui
+     brûle. Les COULEURS sont ici, le fichier ne porte que la géométrie : les
+     lunettes n'en avaient aucune (juste des matériaux), et les 3,3 Mo de
+     textures de la cigarette ne valent pas d'être servis pour un objet qui
+     fera dix pixels de large — à cette taille, un aplat par partie donne
+     exactement ce que la texture donnerait une fois moyennée. */
+  const ACCESSOIRES = {
+    lunettes:  ['#191a1e', '#3c3e45', '#1e242d'],   // monture, barre, verres fumés
+    cigarette: ['#c8964e', '#ece7dd'],              // filtre, papier
+  };
+  let accPromesse = null;
+  const accModeles = () => accPromesse || (accPromesse = fetch('models/accessoires.json').then(r => {
+    if (!r.ok) throw new Error('accessoires ' + r.status); return r.json(); }));
+  /* La palette : un damier d'aplats, un carré de 16 par couleur, échantillonné
+     au PLUS PROCHE (`brut`) pour qu'aucune ne bave sur sa voisine. Chaque
+     sommet vise le centre de son carré — c'est tout ce que ces modèles
+     demandent comme texture. */
+  function palette(cols){
+    const T = 16, c = document.createElement('canvas');
+    c.width = T * cols.length; c.height = T;
+    const g = c.getContext('2d');
+    cols.forEach((col, i) => { g.fillStyle = col; g.fillRect(i * T, 0, T, T); });
+    c.brut = true;
+    return c;
+  }
+  /* Maillage à facettes plates, comme la tête : une normale par TRIANGLE et
+     des sommets non partagés. C'est la lumière, pas la géométrie, qui fait
+     voir le low poly — et sur une monture de lunettes, des normales moyennées
+     rendraient le métal mou. */
+  function meshAccessoire(geo, nCoul){
+    const XYZ = geo.xyz, TRI = geo.tri, GR = geo.groupes;
+    const nT = TRI.length / 3, nV = nT * 3;
+    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
+    const groupeDe = (i) => { for (let g = GR.length - 1; g >= 0; g--) if (i >= GR[g][0]) return g; return 0; };
+    let k = 0, zmin = 9, zmax = -9;
+    for (let t = 0; t < nT; t++){
+      const A = TRI[t*3], B = TRI[t*3+1], C = TRI[t*3+2];
+      const P = [A, B, C].map(i => [XYZ[i*3], XYZ[i*3+1], XYZ[i*3+2]]);
+      const ux = P[1][0]-P[0][0], uy = P[1][1]-P[0][1], uz = P[1][2]-P[0][2];
+      const wx = P[2][0]-P[0][0], wy = P[2][1]-P[0][1], wz = P[2][2]-P[0][2];
+      let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
+      const ln = Math.hypot(nx, ny, nz) || 1; nx /= ln; ny /= ln; nz /= ln;
+      // les deux faces sont éclairées pareil : on ne sait pas de quel côté on
+      // regarde une branche de lunettes, et un triangle noir au milieu se voit
+      const d = Math.abs(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2]);
+      const rim = Math.pow(1 - Math.abs(nz), 3);
+      const u = (groupeDe(A) + 0.5) / nCoul;
+      for (let j = 0; j < 3; j++){
+        const o = k * STRIDE;
+        data[o] = P[j][0]; data[o+1] = P[j][1]; data[o+2] = P[j][2];
+        data[o+3] = u; data[o+4] = 0.5;
+        data[o+5] = 0.74 + 0.32*d; data[o+6] = rim*0.08;
+        if (P[j][2] < zmin) zmin = P[j][2];
+        if (P[j][2] > zmax) zmax = P[j][2];
+        index[k] = k; k++;
+      }
+    }
+    return { data, index, nFront: nV, nBack: 0, tris: nT, verts: nV, zmin, zmax, relief: true };
+  }
+  function prepareAccessoire(item, key){
+    const p = accModeles().then(tout => {
+      const geo = tout[item.accessoire], cols = ACCESSOIRES[item.accessoire];
+      if (!geo || !cols) throw new Error('accessoire inconnu : ' + item.accessoire);
+      let mesh = meshes.get(key);
+      if (!mesh){ mesh = meshAccessoire(geo, cols.length); meshes.set(key, mesh); }
+      const tex = palette(cols);
+      const a = { mesh, texF: tex, texB: tex };
+      ready.set(key, a);
+      if (list) list.warm(a);
+      return a;
+    }).catch(() => { ready.set(key, null); return null; });
+    assets.set(key, p); return p;
+  }
   function prepare(item){
     const key = keyOf(item);
     if (assets.has(key)) return assets.get(key);
     if (item.mannequin) return prepareMannequin(item, key);
     if (item.tete) return prepareTete(item, key);
+    if (item.accessoire) return prepareAccessoire(item, key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
     const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
