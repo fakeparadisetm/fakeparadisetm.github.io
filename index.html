@@ -3130,7 +3130,7 @@ const STRINGS = {
     jumpNewBest:"New best time!", jumpBack:"Back",
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
     jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked tee is yours.",
-    jumpSee:"See the item", jumpAgain:"Play again", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
+    jumpSee:"See the item", jumpAgain:"Play again", jumpFall:"fall", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
     locked:"???",
     /* Une pièce verrouillée ne dit plus COMMENT s'ouvrir (demande du 16 sept.
        2026 : « enlève les indices sur les pages des item bloqués »). Il reste
@@ -3184,7 +3184,7 @@ const STRINGS = {
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
     jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"Le t-shirt verrouillé est à vous.",
-    jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
+    jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFall:"chute", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
     locked:"???", lockedHow:"Verrouillé.",   // voir le commentaire côté anglais
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
     eggUnlocked:"Une pièce unique s'est déverrouillée", eggWhere:"Pièces uniques",
@@ -8830,10 +8830,15 @@ const arena = (() => {
      Relu à chaque ouverture, puisque catalogue.json peut l'avoir changé. ---- */
   function listerArticles(){
     const out = [];
-    // Sans photo, pas de combattant : le duel montre le vêtement en 3D, et la
-    // grille de choix sa vignette. Cela écarte au passage la pièce unique tant
-    // qu'elle n'est pas dessinée.
-    DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => { if (it.img) out.push({ it, cat }); }); });
+    /* Deux conditions, et la seconde a manqué longtemps :
+       — sans photo, pas de combattant : le duel montre le vêtement en 3D et la
+         grille sa vignette ;
+       — VERROUILLÉE, une pièce n'entre pas dans l'arène. La grille affiche le
+         nom ET la photo : elle vendait donc la mèche d'une pièce que la
+         boutique et le salon, eux, ne montrent que sous un cadenas. L'épreuve
+         passée, elle redevient un vêtement comme un autre et rejoint la grille
+         d'elle-même — celle-ci est reconstruite à chaque ouverture du jeu. */
+    DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => { if (it.img && !verrouille(it)) out.push({ it, cat }); }); });
     return out;
   }
 
@@ -9843,6 +9848,10 @@ const jumper = (() => {
   const btGo = document.getElementById('jumpGo'), btAgain = document.getElementById('jumpAgain'), btQuit = document.getElementById('jumpQuit');
   const btBest = document.getElementById('jumpBest');
   const hudP = document.getElementById('jumpProgress'), hudT = document.getElementById('jumpTime'), hudF = document.getElementById('jumpFalls');
+  /* « 1 chute » et non « 1 chutes ». Le seuil n'est pas le même d'une langue à
+     l'autre — le français met ZÉRO au singulier, l'anglais au pluriel —, donc
+     on laisse le navigateur trancher au lieu d'écrire la règle à la main. */
+  const motChutes = (n) => T(new Intl.PluralRules(currentLang).select(n) === 'one' ? 'jumpFall' : 'jumpFalls');
 
   const VW = 960, VH = 480;        // fenêtre logique
   const GRAV = 2000, RUN = 300, ACC = 2400, FRIC = 2800, AIR = 900;
@@ -10332,7 +10341,7 @@ const jumper = (() => {
       const pct = Math.round(Math.max(0, Math.min(1, joueur.x / NIVEAU.fin.x)) * 100);
       hudP.textContent = pct + '%';
       hudT.textContent = mmss(tempsMs);
-      hudF.textContent = chutes + ' ' + T('jumpFalls');
+      hudF.textContent = chutes + ' ' + motChutes(chutes);
     }
     secousse = Math.max(0, secousse - dt * 3);
     dessiner(now);
@@ -10360,7 +10369,7 @@ const jumper = (() => {
   function montrerRecord(){
     const r = RECORD.lire();
     montrerCarte(T('jumpBest'),
-      r ? T('jumpBestTime') + ' : ' + mmss(r.ms) + '\n' + T('jumpFalls') + ' : ' + r.chutes
+      r ? T('jumpBestTime') + ' : ' + mmss(r.ms) + '\n' + motChutes(r.chutes) + ' : ' + r.chutes
         : T('jumpNoBest'),
       T('jumpBack'), null, 'record');
   }
@@ -10378,7 +10387,7 @@ const jumper = (() => {
     const mieux = RECORD.poser(tempsMs, chutes);   // meilleur temps : écrit seulement s'il l'est
     sfx.win();
     montrerCarte(T('jumpWin'),
-      T('jumpWinSub') + '\n' + T('jumpBestTime') + ' : ' + mmss(tempsMs) + '   ' + T('jumpFalls') + ' : ' + chutes
+      T('jumpWinSub') + '\n' + T('jumpBestTime') + ' : ' + mmss(tempsMs) + '   ' + motChutes(chutes) + ' : ' + chutes
         + (mieux ? '\n' + T('jumpNewBest') : ''),
       T('jumpSee'), T('jumpAgain'), 'fin');
   }
@@ -10710,19 +10719,23 @@ const dressup = (() => {
 
      Pour en ajouter une : une image dans `dressup/`, une ligne en haut de son
      groupe. La coupe dit où elle se pose, le reste se mesure. */
+  /* Les noms sont donnés dans les DEUX langues. Ce ne sont pas des marques mais
+     des descriptions : contrairement aux noms de produits, ils se traduisent.
+     Les laisser en anglais était la seule chose du salon qui ne suivait pas la
+     langue choisie. */
   const VESTIAIRE = [
-    { img: 'dressup/galaxylegging2.png', nom: 'Galaxy leggings', cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/pyjamapants1.webp',  nom: 'Pyjama pants',    cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/pants1.webp',        nom: 'Cargo pants',     cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jogger2.webp',       nom: 'Grey jogger',     cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jogger1.png',        nom: 'Jogger',          cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans5.webp',        nom: 'Loose jeans',     cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans4.png',         nom: 'Dark jeans',      cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans3.webp',        nom: 'Washed jeans',    cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans2.png',         nom: 'Baggy jeans',     cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans1.jpg',         nom: 'Straight jeans',  cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/shoes2.png',         nom: 'Sneakers',        cat: 'pieds', coupe: 'chaussure' },
-    { img: 'dressup/shoes1.png',         nom: 'White sneakers',  cat: 'pieds', coupe: 'chaussure' },
+    { img: 'dressup/galaxylegging2.png', nom: { en: 'Galaxy leggings', fr: 'Legging galaxie' },  cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/pyjamapants1.webp',  nom: { en: 'Pyjama pants',    fr: 'Bas de pyjama' },    cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/pants1.webp',        nom: { en: 'Cargo pants',     fr: 'Pantalon cargo' },   cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jogger2.webp',       nom: { en: 'Grey jogger',     fr: 'Jogging gris' },     cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jogger1.png',        nom: { en: 'Jogger',          fr: 'Jogging' },          cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans5.webp',        nom: { en: 'Loose jeans',     fr: 'Jean loose' },       cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans4.png',         nom: { en: 'Dark jeans',      fr: 'Jean foncé' },       cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans3.webp',        nom: { en: 'Washed jeans',    fr: 'Jean délavé' },      cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans2.png',         nom: { en: 'Baggy jeans',     fr: 'Jean baggy' },       cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/jeans1.jpg',         nom: { en: 'Straight jeans',  fr: 'Jean droit' },       cat: 'bas',   coupe: 'pantalon' },
+    { img: 'dressup/shoes2.png',         nom: { en: 'Sneakers',        fr: 'Baskets' },          cat: 'pieds', coupe: 'chaussure' },
+    { img: 'dressup/shoes1.png',         nom: { en: 'White sneakers',  fr: 'Baskets blanches' }, cat: 'pieds', coupe: 'chaussure' },
   ];
 
   /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
@@ -10842,7 +10855,8 @@ const dressup = (() => {
     };
     /* Le vestiaire d'abord dans la liste de travail, la boutique ensuite : à
        l'affichage ils se retrouvent de toute façon rangés par catégorie. */
-    const tout = VESTIAIRE.map(v => ({ it: v, porte: null, nom: v.nom, cat: v.cat, coupe: v.coupe, verrou: false }));
+    // L() choisit la langue ; le portant est regarni à chaque ouverture du salon.
+    const tout = VESTIAIRE.map(v => ({ it: v, porte: null, nom: L(v.nom), cat: v.cat, coupe: v.coupe, verrou: false }));
     DATA.forEach(cat => {
       if (cat.kind !== 'shop') return;
       cat.items.forEach(it => {
