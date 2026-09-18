@@ -722,7 +722,7 @@
      qui s'arrêterait net juste au-dessus de lui tracerait un trait en travers
      du panneau et lui volerait la vedette : elle s'éteint donc AVANT, en
      fondu. L'arrondi du bas ne se voit plus — il n'a plus rien à border. */
-  .preview:not(.gallery) .slide-edge::before{
+  .preview:not(.gallery) .slide-glow::before{
     -webkit-mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
     mask-image:linear-gradient(to bottom, #000 66%, transparent 100%);
   }
@@ -758,29 +758,41 @@
      anciennes flèches. Invisibles au repos, elles s'allument sous la souris
      pour dire de quel côté on va. Elles se mesurent sur `.gallery-zone`, donc
      elles touchent les arêtes latérales et suivent l'arrondi du haut. */
-  /* LA ZONE SENSIBLE N'EST PAS LA LUEUR. Depuis que la lueur va d'une arête à
-     l'autre du panneau, prendre le bouton lui-même comme zone de survol
-     l'allumait dès qu'on approchait la souris du panneau, y compris bien
-     au-dessus ou bien en dessous de l'image — alors qu'avant elle ne
-     s'allumait qu'en allant au BORD du visuel.
-     Le bouton redevient donc une bande étroite, à la hauteur de l'image, et
-     c'est son `::before` qui peint la lueur en grand : elle remonte jusqu'au
-     coin arrondi du haut et redescend jusqu'en bas, que la souris n'y aille
-     jamais. Le geste retrouve sa taille d'avant, l'image garde la sienne. */
+  /* TROIS TAILLES, TROIS RÔLES, et il ne faut pas les confondre :
+       • le BOUTON est ce qu'on CLIQUE. Il va jusqu'aux arêtes du panneau —
+         on vise ces bandes vite et de loin, et la marge entre l'image et le
+         bord ne sert à rien d'autre. Lui-même ne se voit jamais.
+       • le CAPTEUR, dedans, est ce qui ALLUME. Il commence au bord de
+         l'IMAGE : sinon la lueur s'allume en frôlant le panneau, sans même
+         approcher la galerie — c'est le défaut corrigé le 16 sept.
+       • la PEINTURE (le `::before` du capteur) repart de l'arête et monte
+         jusqu'au coin arrondi : elle se montre en grand sans que la souris
+         ait à y aller.
+     Séparer les deux premiers demande un élément de plus, et il est DANS le
+     bouton : le clic remonte tout seul, il n'y a ni deuxième écouteur, ni
+     z-index à arbitrer, ni double commande pour un lecteur d'écran. */
   .slide-edge{
     position:absolute;
-    top:var(--pad);bottom:0;
-    width:16%;
+    top:0;bottom:0;
+    width:calc(16% + var(--pad));
     padding:0;border:none;background:none;
-    opacity:0;
     cursor:pointer;
-    transition:opacity 0.22s ease;
     z-index:3;
   }
+  .slide-glow{
+    position:absolute;
+    /* la marge du panneau appartient au bouton, pas au capteur : d'où ces
+       deux --pad qui le ramènent au bord de l'image. Sur .next le bouton est
+       retourné, donc « left » y désigne bien le côté image. */
+    top:var(--pad);bottom:0;
+    left:var(--pad);right:0;
+    opacity:0;
+    transition:opacity 0.22s ease;
+  }
   /* Repliée, la galerie descend jusqu'à l'arête : l'image s'arrête une marge
-     plus haut, et la zone sensible avec elle. */
-  .preview.gallery .slide-edge{bottom:var(--pad);}
-  .slide-edge::before{
+     plus haut, et le capteur avec elle. */
+  .preview.gallery .slide-glow{bottom:var(--pad);}
+  .slide-glow::before{
     content:'';
     position:absolute;
     /* la PEINTURE repart de l'arête du panneau et court jusqu'au bord intérieur
@@ -790,13 +802,14 @@
     background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
     pointer-events:none;
   }
-  .preview.gallery .slide-edge::before{bottom:calc(-1 * var(--pad));}
-  /* La bande commence au bord de L'IMAGE, pas du panneau : la marge qui les
-     sépare n'est pas la galerie, et s'y arrêter allumait la lueur avant d'y
-     être. La peinture, elle, repart de l'arête (voir ::before). */
-  .slide-edge.prev{left:var(--pad);}
-  .slide-edge.next{right:var(--pad);transform:scaleX(-1);}
-  .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
+  .preview.gallery .slide-glow::before{bottom:calc(-1 * var(--pad));}
+  .slide-edge.prev{left:0;}
+  .slide-edge.next{right:0;transform:scaleX(-1);}
+  /* Le survol se juge sur le capteur ; le focus clavier, lui, se pose sur le
+     bouton — au clavier il n'y a pas de pointeur, la bande s'allume entière. */
+  .slide-glow:hover,
+  .slide-edge:focus-visible .slide-glow{opacity:1;}
+  .slide-edge:focus-visible{outline:none;}
   /* Fiche au repos : seule la galerie est visible. C'est la sélection de
      l'article — un clic sur la miniature ou Entrée — qui déplie le reste.
      --info-h est mesuré au remplissage : sans lui l'animation partirait d'un
@@ -2345,8 +2358,10 @@
         <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
         <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
       </div>
-      <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
-      <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"></button>
+      <!-- le bouton = la cible du clic, jusqu'à l'arête ; le span dedans = ce
+           qui allume, au bord de l'image seulement (voir .slide-edge) -->
+      <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"><span class="slide-glow"></span></button>
+      <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"><span class="slide-glow"></span></button>
     </div>
     <!-- Aperçu fixe du mini-jeu, dans le panneau « Versus » : un décor, deux
          vêtements et une attaque en vol. Voir arena.apercu(). -->
