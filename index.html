@@ -891,7 +891,19 @@
     background:transparent;
     cursor:pointer;
     transition:border-color 0.2s ease, background 0.2s ease, transform 0.28s cubic-bezier(.2,.8,.2,1);
+    /* Même battement que les pastilles du haut (voir .dot::after) : même
+       durée, même courbe, même moment dans le cycle, même couleur. Les deux
+       pseudo-éléments du bouton étant pris par les deux traits du +, le halo
+       passe par une OMBRE plutôt que par un disque : une portée intérieure
+       qui remplit le rond, une extérieure qui déborde de 2 px comme le disque
+       des pastilles déborde du point. */
+    animation:plusSweep 2.6s ease-in-out infinite;
   }
+  @keyframes plusSweep{
+    0%,72%,100%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0), inset 0 0 0 11px rgba(var(--accent-rgb),0);}
+    82%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.5), inset 0 0 0 11px rgba(var(--accent-rgb),0.5);}
+  }
+  @media (prefers-reduced-motion:reduce){ .desc-toggle{animation:none;} }
   .desc-toggle::before,.desc-toggle::after{
     content:'';
     position:absolute;left:50%;top:50%;
