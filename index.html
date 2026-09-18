@@ -474,6 +474,14 @@
   .preview{
     --pad:32px;      /* padding ; repris par la sonde de mesure et la barre du descriptif */
     --radius:16px;   /* arrondi du panneau ; la galerie s'y cale (voir .gallery-zone) */
+    /* Arrondi du VISUEL. Il n'est pas égal à celui du panneau : le visuel est
+       plus petit que lui (546 px pour 610 px au plus large, soit 90 %), et
+       deux arrondis identiques sur deux formes de tailles différentes ne se
+       lisent pas pareil — le plus petit a l'air plus rond. On garde donc le
+       MÊME RAPPORT entre l'arrondi et la largeur, ce qui donne la même
+       courbure à l'œil. Un seul nombre à changer, --radius : les deux
+       suivent. */
+    --radius-img:calc(var(--radius) * 0.9);
     --reserve:436px; /* hauteur hors visuel : contenu fixe ≈ 240 px + barres haut/bas 160 px + marges 2×18 px */
     position:fixed;
     /* La fiche a grandi d'environ 17 % (demande utilisateur), et elle grandit
@@ -626,6 +634,13 @@
        débordait sur la barre d'aide. */
     width:min(100%, calc(100vh - var(--desc-h,0px) - var(--squeeze,0px) - var(--sq-size,0px) - var(--reserve)));
     aspect-ratio:1/1;
+    /* Les coins sont coupés ICI, sur le cadre, et non sur chaque vue : le
+       découpage vaut alors pour toutes en même temps — la vue 3D, la photo de
+       face, celle de dos, la tête de la page Info — et une vue ajoutée plus
+       tard en hérite sans qu'on y pense. Rien ne dépasse du carré, donc
+       `overflow` ne rogne que les angles. */
+    border-radius:var(--radius-img);
+    overflow:hidden;
     margin:0 auto;
     display:flex;
     align-items:center;justify-content:center;
