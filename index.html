@@ -1974,6 +1974,25 @@
     background:linear-gradient(160deg,#ffd7ef 0%,#ffe9c9 38%,#d6f2ff 100%);
     font-family:"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif;
   }
+  /* La braise de la cigarette : un rond de lueur posé sur la scène, à la place
+     du bout qui brûle. Elle RESPIRE — une braise n'est jamais fixe, elle
+     s'avive et retombe — et ne se clique pas. Son diamètre et sa place sont
+     donnés par le script, qui seul sait où la cigarette a été dessinée. */
+  .dress-braise{
+    /* Au-dessus du canvas (z-index 2), sinon la scene la couvre. */
+    position:absolute;z-index:3;pointer-events:none;border-radius:50%;
+    /* Un CŒUR franc et un halo court : une braise n'est pas un brouillard
+       orange, c'est un point incandescent qui deteint autour. Un degrade doux
+       sur toute la largeur ne se voyait pas a la taille ou elle est dessinee. */
+    background:radial-gradient(circle,
+      #fff6d2 0%, #ffcf5e 14%, #ff8c1e 30%,
+      rgba(255,96,22,0.55) 52%, rgba(255,70,0,0) 100%);
+    box-shadow:0 0 7px 2px rgba(255,146,46,0.55);
+    animation:braise 2.9s ease-in-out infinite;
+  }
+  .dress-braise[hidden]{display:none;}
+  @keyframes braise{0%,100%{opacity:0.70;transform:scale(0.90);}44%{opacity:1;transform:scale(1.14);}}
+  @media (prefers-reduced-motion:reduce){ .dress-braise{animation:none;opacity:0.88;} }
   /* les étoiles du fond : deux motifs répétés, rien de plus */
   .dress-stage::before{
     content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
@@ -2593,6 +2612,9 @@
     </div>
     <div class="dress-stage" id="dressStage">
       <canvas id="dressCv"></canvas>
+      <!-- le bout qui brûle : posé SUR le canvas, déplacé à chaque image par
+           braise() — voir le commentaire là-bas pour le pourquoi -->
+      <div class="dress-braise" id="dressBraise" hidden></div>
       <div class="dress-titre" id="dressTitre"></div>
       <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
            qu'on emporte l'image, pas du portant. -->
@@ -3144,7 +3166,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
-    dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats",
+    dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
     dressSkin:"Skin tone", dressSave:"Save the look", dressFaceSize:"Face size", dressFaceY:"Face height",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
@@ -3202,7 +3224,7 @@ const STRINGS = {
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
-    dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux",
+    dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
     dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
@@ -10826,10 +10848,18 @@ const dressup = (() => {
      Le rang donne l'ordre de dessin. Les chaussures passent EN DESSOUS de
      tout : l'ourlet d'un pantalon retombe sur la basket, et non l'inverse. */
   const CATEGORIES = {
-    pieds:   { rang: 0 },
-    bas:     { rang: 1 },
-    haut:    { rang: 2 },
-    chapeau: { rang: 3 },
+    pieds:    { rang: 0 },
+    bas:      { rang: 1 },
+    haut:     { rang: 2 },
+    chapeau:  { rang: 3 },
+    /* Les accessoires se posent sur la TÊTE, et ils y ont chacun leur place :
+       les lunettes sur les yeux, la cigarette à la bouche. Deux emplacements
+       et non un seul, pour qu'on puisse porter les deux — ils ne se gênent
+       pas, et c'est manifestement l'intérêt. Ils partagent en revanche UN
+       rayon dans le portant (voir GROUPES) : côté visiteur, c'est bien une
+       seule famille. */
+    lunettes: { rang: 4 },
+    bouche:   { rang: 5 },
   };
   /* Un ancrage ne dit plus QUE l'endroit : `y0`/`y1` la tranche de corps à
      couvrir, `ourlet` la largeur que doit avoir le bas du vêtement une fois
@@ -10857,6 +10887,26 @@ const dressup = (() => {
        photo — il ne s'étire plus dans un sens sans l'autre. */
     culotte:  { ceinture: 0.175, ceintureSeule: true, y0: 0.468 },
     chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
+  };
+  /* ---- les accessoires : un point, pas un ancrage ----
+     Un vêtement est une photo qu'on étire sur une tranche de corps ; un
+     accessoire est un objet, et il se pose. Ces trois nombres suffisent donc :
+     la taille en fractions de la hauteur du mannequin, et le point où l'objet
+     tombe — `y` compté comme sur le mannequin, 0 aux pieds et 1 au sommet du
+     crâne.
+     Les hauteurs sont relevées sur le maillage du mannequin, pas choisies : le
+     nez ressort à y 0,911 (le point le plus avancé du visage), le front est à
+     0,943, le menton à 0,889, et le crâne fait 0,102 de large au niveau des
+     tempes. Les lunettes sont donc un rien plus larges que la tête, posées
+     entre le front et le nez ; la cigarette part de la lèvre, sous le nez. */
+  const ACC_POSE = {
+    lunettes:  { l: 0.112, x: 0,     y: 0.933, ang: 0 },
+    /* La cigarette est TOURNÉE, sinon on ne la voit pas : le modèle part du
+       filtre vers l'avant, et de face elle pointerait droit sur nous — un
+       disque blanc de trois pixels au bout des lèvres. Un peu plus d'un
+       radian la met de trois quarts, au coin de la bouche : elle se lit comme
+       une cigarette, et c'est de toute façon comme ça qu'on la porte. */
+    cigarette: { l: 0.115, x: 0.018, y: 0.898, ang: 1.05 },
   };
   /* ---- le vestiaire du salon ----
      Des HABILLAGES, pas des produits. Ils n'existent que dans le jeu : ils ne
@@ -10888,6 +10938,12 @@ const dressup = (() => {
     { img: 'dressup/jeans1.jpg',         nom: { en: 'Straight jeans',  fr: 'Jean droit' },       cat: 'bas',   coupe: 'pantalon' },
     { img: 'dressup/shoes2.png',         nom: { en: 'Sneakers',        fr: 'Baskets' },          cat: 'pieds', coupe: 'chaussure' },
     { img: 'dressup/shoes1.png',         nom: { en: 'White sneakers',  fr: 'Baskets blanches' }, cat: 'pieds', coupe: 'chaussure' },
+    /* Les accessoires n'ont pas de photo : ils ont un MODÈLE, chargé par le
+       moteur 3D (voir ACCESSOIRES). Le portant les dessine donc comme tout le
+       reste — les cases du portant montrent déjà des maillages, pas des
+       images. */
+    { accessoire: 'lunettes',  nom: { en: 'Sunglasses', fr: 'Lunettes de soleil' }, cat: 'lunettes', coupe: 'lunettes' },
+    { accessoire: 'cigarette', nom: { en: 'Cigarette',  fr: 'Cigarette' },          cat: 'bouche',   coupe: 'cigarette' },
   ];
 
   /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
@@ -10977,6 +11033,8 @@ const dressup = (() => {
     { cat: 'haut',  cle: 'dressCatTop' },
     { cat: 'bas',   cle: 'dressCatBottom', dort: () => !portees.has('haut') },
     { cat: 'pieds', cle: 'dressCatShoes', dort: () => !portees.has('bas') },
+    // UN rayon, DEUX emplacements : voir CATEGORIES
+    { cats: ['lunettes', 'bouche'], cle: 'dressCatAcc' },
   ];
   /* Un groupe EN SOMMEIL se voit avant qu'on clique : les chaussures attendent
      un bas, autant que ça se lise. Le refus au clic reste, il est juste devenu
@@ -10985,7 +11043,8 @@ const dressup = (() => {
     GROUPES.forEach(g => {
       const dort = !!(g.dort && g.dort());
       if (g.el) g.el.classList.toggle('dress-groupe--dort', dort);
-      pieces.forEach(p => { if (p.cat === g.cat) p.el.classList.toggle('dress-case--dort', dort); });
+      const cats = g.cats || [g.cat];
+      pieces.forEach(p => { if (cats.includes(p.cat)) p.el.classList.toggle('dress-case--dort', dort); });
     });
     pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.cat) === q));
   }
@@ -11028,7 +11087,8 @@ const dressup = (() => {
       });
     });
     GROUPES.forEach(g => {
-      const lot = tout.filter(p => p.cat === g.cat);
+      const cats = g.cats || [g.cat];
+      const lot = tout.filter(p => cats.includes(p.cat));
       if (!lot.length) return;
       const t = g.el = document.createElement('div');
       t.className = 'dress-groupe';
@@ -11210,7 +11270,28 @@ const dressup = (() => {
      scène et un cadre — tout le reste (la pose, les découpes, les échelles)
      est identique de l'un à l'autre, ce qui est la seule façon d'être sûr que
      l'image enregistrée est bien ce qu'on voyait. */
+  /* ---- la braise ----
+     Le bout qui brûle. Ce n'est pas un objet de la scène : la scène est du
+     WebGL et n'a que des maillages plats, une lueur y coûterait une texture,
+     un mélange additif et un plan de plus. C'est un rond de dégradé posé
+     PAR-DESSUS le canvas, déplacé à chaque image — le navigateur le compose
+     sur la carte graphique comme le reste, et il respire tout seul en CSS.
+     Il suit le bout de la cigarette : le modèle part du filtre vers +z, donc
+     le bout est au-devant, à peu près aux trois quarts de la boîte. */
+  const braiseEl = document.getElementById('dressBraise');
+  function braise(cx, cy, s){
+    if (!braiseEl) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const d = Math.max(4, s * 0.30);
+    braiseEl.style.width = braiseEl.style.height = (d / k) + 'px';
+    // le bout, releve a l'ecran : un tiers de boite vers la droite, un chouia
+    // plus haut que la levre — la cigarette monte legerement en s'eloignant
+    braiseEl.style.left = ((cx + s * 0.33) / k - d / (2 * k)) + 'px';
+    braiseEl.style.top  = ((cy - s * 0.06) / k - d / (2 * k)) + 'px';
+    braiseEl.hidden = false;
+  }
   function habiller(sc, MX, MY, S){
+    if (braiseEl) braiseEl.hidden = true;   // rallumée plus bas si la cigarette est portée
     const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
     if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
     /* CADRER : la place exacte du vêtement dans la boîte du mannequin, et
@@ -11350,7 +11431,19 @@ const dressup = (() => {
       if (b.cintre) m = sc.cintrer(m, b.cintre, cle) || m;
       sc.draw(m, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
     };
+    /* Un accessoire ne se cadre pas, il se POSE : sa boîte est un carré centré
+       sur son point d'accrochage, à la taille voulue. Pas d'empreinte à
+       mesurer, pas de largeur à négocier — l'objet a sa forme, et c'est la
+       tête qui lui donne l'échelle. */
     couches.forEach(p => {
+      const P = p.it.accessoire && ACC_POSE[p.it.accessoire];
+      if (P){
+        sc.plan();
+        const s = S * P.l;
+        sc.draw(p.it, P.ang || 0, { x: MX + S * (0.5 + P.x) - s / 2, y: MY + S * (1 - P.y) - s / 2, s }, 1, null, 'front');
+        if (p.it.accessoire === 'cigarette') braise(MX + S * (0.5 + P.x), MY + S * (1 - P.y), s);
+        return;
+      }
       const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
       if (A.pieds){
         // la paire, soulier par soulier, chacun sur son pied
