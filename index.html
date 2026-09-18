@@ -1974,25 +1974,6 @@
     background:linear-gradient(160deg,#ffd7ef 0%,#ffe9c9 38%,#d6f2ff 100%);
     font-family:"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif;
   }
-  /* La braise de la cigarette : un rond de lueur posé sur la scène, à la place
-     du bout qui brûle. Elle RESPIRE — une braise n'est jamais fixe, elle
-     s'avive et retombe — et ne se clique pas. Son diamètre et sa place sont
-     donnés par le script, qui seul sait où la cigarette a été dessinée. */
-  .dress-braise{
-    /* Au-dessus du canvas (z-index 2), sinon la scene la couvre. */
-    position:absolute;z-index:3;pointer-events:none;border-radius:50%;
-    /* Un CŒUR franc et un halo court : une braise n'est pas un brouillard
-       orange, c'est un point incandescent qui deteint autour. Un degrade doux
-       sur toute la largeur ne se voyait pas a la taille ou elle est dessinee. */
-    background:radial-gradient(circle,
-      #fff6d2 0%, #ffcf5e 14%, #ff8c1e 30%,
-      rgba(255,96,22,0.55) 52%, rgba(255,70,0,0) 100%);
-    box-shadow:0 0 7px 2px rgba(255,146,46,0.55);
-    animation:braise 2.9s ease-in-out infinite;
-  }
-  .dress-braise[hidden]{display:none;}
-  @keyframes braise{0%,100%{opacity:0.70;transform:scale(0.90);}44%{opacity:1;transform:scale(1.14);}}
-  @media (prefers-reduced-motion:reduce){ .dress-braise{animation:none;opacity:0.88;} }
   /* les étoiles du fond : deux motifs répétés, rien de plus */
   .dress-stage::before{
     content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
@@ -2612,9 +2593,6 @@
     </div>
     <div class="dress-stage" id="dressStage">
       <canvas id="dressCv"></canvas>
-      <!-- le bout qui brûle : posé SUR le canvas, déplacé à chaque image par
-           braise() — voir le commentaire là-bas pour le pourquoi -->
-      <div class="dress-braise" id="dressBraise" hidden></div>
       <div class="dress-titre" id="dressTitre"></div>
       <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
            qu'on emporte l'image, pas du portant. -->
@@ -6400,8 +6378,20 @@ const model3d = (() => {
      exactement ce que la texture donnerait une fois moyennée. */
   const ACCESSOIRES = {
     lunettes:  ['#191a1e', '#3c3e45', '#1e242d'],   // monture, barre, verres fumés
-    cigarette: ['#c8964e', '#ece7dd'],              // filtre, papier
+    /* Le bout ALLUMÉ est une troisième partie du MODÈLE, et non une lueur
+       posée par-dessus : sur une vraie cigarette, c'est une tranche du
+       cylindre qui brûle. BRAISE_Z dit à partir d'où. Cette tranche prend la
+       dernière couleur et une lumière à elle, qui ne dépend plus de
+       l'orientation : une braise ÉMET, elle ne reçoit pas (voir
+       meshAccessoire). */
+    cigarette: ['#c8964e', '#ece7dd', '#e4430a'],   // filtre, papier, braise
   };
+  // a partir d'ou la cigarette est consumee, en fraction de sa longueur.
+  // 0,87 : le huitieme du bout. C'est la TAILLE D'AFFICHAGE qui commande ici et
+  // non l'anatomie — sur une vraie cigarette la partie qui rougeoie est bien
+  // plus courte, mais a la bouche du mannequin la cigarette fait trente pixels
+  // et une braise plus fine ne ferait qu'un point.
+  const BRAISE_Z = { cigarette: 0.87 };
   let accPromesse = null;
   const accModeles = () => accPromesse || (accPromesse = fetch('models/accessoires.json').then(r => {
     if (!r.ok) throw new Error('accessoires ' + r.status); return r.json(); }));
@@ -6421,15 +6411,73 @@ const model3d = (() => {
      des sommets non partagés. C'est la lumière, pas la géométrie, qui fait
      voir le low poly — et sur une monture de lunettes, des normales moyennées
      rendraient le métal mou. */
-  function meshAccessoire(geo, nCoul){
-    const XYZ = geo.xyz, TRI = geo.tri, GR = geo.groupes;
-    const nT = TRI.length / 3, nV = nT * 3;
-    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
+  function meshAccessoire(geo, nCoul, braiseZ){
+    const GR = geo.groupes, TRI = geo.tri, XYZ = geo.xyz;
+    /* L'ACCESSOIRE EST RECENTRÉ SUR SA PROPRE BOÎTE, et ce n'est pas de la
+       coquetterie. La boîte de dessin est AUSSI une fenêtre : ce qui en sort
+       est coupé net (voir render), et l'origine du modèle tombe toujours au
+       centre de cette fenêtre — il n'y a pas de réglage pour l'en écarter.
+       Or l'origine de la cigarette est à son filtre : posée aux lèvres, elle
+       partait du centre et sortait par le bord, et c'est justement son bout
+       allumé qu'on coupait. On ne voyait jamais qu'une demi-cigarette, blanche
+       jusqu'à la coupure, et la braise ne se montrait qu'aux angles où le bout
+       revenait vers nous. Agrandir la boîte n'y changeait rien : elle donne
+       aussi l'échelle, le modèle grandissait avec elle.
+       Recentré, tout objet tient dans sa fenêtre quel que soit son angle. En
+       échange, le point d'accrochage porte le MILIEU de l'accessoire et non
+       son origine : c'est ce que dit ACC_POSE, et c'est ce qui s'y règle. */
+    const CTR = (() => {
+      const mn = [9, 9, 9], mx = [-9, -9, -9];
+      for (let i = 0; i < XYZ.length; i += 3) for (let j = 0; j < 3; j++){
+        if (XYZ[i+j] < mn[j]) mn[j] = XYZ[i+j];
+        if (XYZ[i+j] > mx[j]) mx[j] = XYZ[i+j];
+      }
+      return mn.map((v, j) => (v + mx[j]) / 2);
+    })();
     const groupeDe = (i) => { for (let g = GR.length - 1; g >= 0; g--) if (i >= GR[g][0]) return g; return 0; };
+    /* ---- LA TRANCHE QUI BRÛLE ----
+       Sur une vraie cigarette, c'est un morceau du CYLINDRE qui est consumé,
+       et non un halo posé devant. Mais le modèle n'offre aucun anneau de
+       sommets où le trancher : son tube de papier est fait de quadrilatères
+       qui courent d'un bout à l'autre, de 0,26 jusqu'à l'extrémité. On l'ouvre
+       donc soi-même, au plan z = BRAISE_Z — chaque triangle traversé est rendu
+       en trois, et ceux qui se retrouvent au-dessus prennent la braise. Cela
+       coûte environ cent triangles sur six cents, pour un objet qu'on dessine
+       deux fois par image : rien du tout.
+       LA TENTATIVE D'AVANT EST NOTÉE ICI POUR QU'ON NE LA REFASSE PAS. Il
+       existe bien un anneau près du bout, le biseau de l'arête ; le reculer
+       jusqu'à BRAISE_Z aurait donné la bande sans ajouter un seul triangle.
+       Mais ce biseau est PLUS ÉTROIT que le tube : la bande rentrait dedans et
+       n'en ressortait pas. Il ne restait de braise que le disque du bout,
+       orange vu de face et invisible de partout ailleurs — la cigarette
+       paraissait blanche jusqu'au bout, ce qu'on cherchait justement à éviter. */
+    const couper = (P) => {
+      if (braiseZ == null) return [P];
+      const h = P.map(p => p[2] - braiseZ);
+      if (h[0] >= 0 && h[1] >= 0 && h[2] >= 0) return [P];
+      if (h[0] <= 0 && h[1] <= 0 && h[2] <= 0) return [P];
+      // le sommet resté seul de son côté : c'est par lui qu'on refend
+      let a = 0;
+      for (let i = 0; i < 3; i++)
+        if ((h[i] > 0) !== (h[(i+1)%3] > 0) && (h[i] > 0) !== (h[(i+2)%3] > 0)) a = i;
+      const b = (a+1)%3, c = (a+2)%3;
+      const sur = (p, q) => { const t = (braiseZ - p[2]) / (q[2] - p[2]);
+        return [p[0] + (q[0]-p[0])*t, p[1] + (q[1]-p[1])*t, braiseZ]; };
+      const ab = sur(P[a], P[b]), ac = sur(P[a], P[c]);
+      // l'ordre des sommets est conservé : le sens de rotation des faces aussi
+      return [[P[a], ab, ac], [ab, P[b], P[c]], [ab, P[c], ac]];
+    };
+    const morceaux = [];
+    for (let t = 0; t < TRI.length / 3; t++){
+      const A = TRI[t*3], g = groupeDe(A);
+      const P = [A, TRI[t*3+1], TRI[t*3+2]].map(i => [XYZ[i*3], XYZ[i*3+1], XYZ[i*3+2]]);
+      couper(P).forEach(m => morceaux.push([m, g]));
+    }
+    const nT = morceaux.length, nV = nT * 3;
+    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
     let k = 0, zmin = 9, zmax = -9;
     for (let t = 0; t < nT; t++){
-      const A = TRI[t*3], B = TRI[t*3+1], C = TRI[t*3+2];
-      const P = [A, B, C].map(i => [XYZ[i*3], XYZ[i*3+1], XYZ[i*3+2]]);
+      const P = morceaux[t][0];
       const ux = P[1][0]-P[0][0], uy = P[1][1]-P[0][1], uz = P[1][2]-P[0][2];
       const wx = P[2][0]-P[0][0], wy = P[2][1]-P[0][1], wz = P[2][2]-P[0][2];
       let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
@@ -6438,14 +6486,26 @@ const model3d = (() => {
       // regarde une branche de lunettes, et un triangle noir au milieu se voit
       const d = Math.abs(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2]);
       const rim = Math.pow(1 - Math.abs(nz), 3);
-      const u = (groupeDe(A) + 0.5) / nCoul;
+      // la tranche qui brule prend la derniere couleur, et elle EMET : sa
+      // lumiere ne depend plus de l'orientation, elle est au plafond
+      // plus aucun triangle n'enjambe le plan : le centre suffit à trancher
+      const bout = braiseZ != null && (P[0][2] + P[1][2] + P[2][2]) / 3 > braiseZ;
+      const u = ((bout ? nCoul - 1 : morceaux[t][1]) + 0.5) / nCoul;
       for (let j = 0; j < 3; j++){
         const o = k * STRIDE;
-        data[o] = P[j][0]; data[o+1] = P[j][1]; data[o+2] = P[j][2];
+        // la coupe s'est faite dans le repère du fichier ; le recentrage ne
+        // vient qu'ici, une fois qu'on n'a plus besoin de BRAISE_Z
+        data[o] = P[j][0] - CTR[0]; data[o+1] = P[j][1] - CTR[1]; data[o+2] = P[j][2] - CTR[2];
         data[o+3] = u; data[o+4] = 0.5;
-        data[o+5] = 0.74 + 0.32*d; data[o+6] = rim*0.08;
-        if (P[j][2] < zmin) zmin = P[j][2];
-        if (P[j][2] > zmax) zmax = P[j][2];
+        // La braise EMET, mais a peine plus que le reste ne recoit : pousser trop
+        // loin la delavait. Un multiplicateur de 1,55 et un liseré de 0,35
+        // portaient l'orange (255,122,24) au-dela du blanc apres saturation —
+        // on obtenait un bout de cigarette BLANC, exactement ce qu'on voulait
+        // eviter. C'est la couleur qui dit la braise, la lumiere ne fait que
+        // l'aviver.
+        data[o+5] = bout ? 1.22 : 0.74 + 0.32*d; data[o+6] = bout ? 0.05 : rim*0.08;
+        if (data[o+2] < zmin) zmin = data[o+2];
+        if (data[o+2] > zmax) zmax = data[o+2];
         index[k] = k; k++;
       }
     }
@@ -6456,7 +6516,7 @@ const model3d = (() => {
       const geo = tout[item.accessoire], cols = ACCESSOIRES[item.accessoire];
       if (!geo || !cols) throw new Error('accessoire inconnu : ' + item.accessoire);
       let mesh = meshes.get(key);
-      if (!mesh){ mesh = meshAccessoire(geo, cols.length); meshes.set(key, mesh); }
+      if (!mesh){ mesh = meshAccessoire(geo, cols.length, BRAISE_Z[item.accessoire]); meshes.set(key, mesh); }
       const tex = palette(cols);
       const a = { mesh, texF: tex, texB: tex };
       ready.set(key, a);
@@ -10899,14 +10959,19 @@ const dressup = (() => {
      0,943, le menton à 0,889, et le crâne fait 0,102 de large au niveau des
      tempes. Les lunettes sont donc un rien plus larges que la tête, posées
      entre le front et le nez ; la cigarette part de la lèvre, sous le nez. */
+  /* `x` et `y` donnent où tombe le MILIEU de l'accessoire, pas son origine :
+     les modèles sont recentrés sur leur boîte pour tenir dans la fenêtre de
+     dessin (voir meshAccessoire). Pour les lunettes cela revient au même, elles
+     sont symétriques ; pour la cigarette, le point à viser est le milieu du
+     bâton, donc en l'air à côté de la bouche et non sur la lèvre. */
   const ACC_POSE = {
-    lunettes:  { l: 0.112, x: 0,     y: 0.933, ang: 0 },
+    lunettes:  { l: 0.092, x: 0,     y: 0.910, ang: 0 },
     /* La cigarette est TOURNÉE, sinon on ne la voit pas : le modèle part du
        filtre vers l'avant, et de face elle pointerait droit sur nous — un
        disque blanc de trois pixels au bout des lèvres. Un peu plus d'un
        radian la met de trois quarts, au coin de la bouche : elle se lit comme
        une cigarette, et c'est de toute façon comme ça qu'on la porte. */
-    cigarette: { l: 0.115, x: 0.018, y: 0.898, ang: 1.05 },
+    cigarette: { l: 0.066, x: 0.038, y: 0.878, ang: 1.05 },
   };
   /* ---- le vestiaire du salon ----
      Des HABILLAGES, pas des produits. Ils n'existent que dans le jeu : ils ne
@@ -11270,28 +11335,21 @@ const dressup = (() => {
      scène et un cadre — tout le reste (la pose, les découpes, les échelles)
      est identique de l'un à l'autre, ce qui est la seule façon d'être sûr que
      l'image enregistrée est bien ce qu'on voyait. */
-  /* ---- la braise ----
-     Le bout qui brûle. Ce n'est pas un objet de la scène : la scène est du
-     WebGL et n'a que des maillages plats, une lueur y coûterait une texture,
-     un mélange additif et un plan de plus. C'est un rond de dégradé posé
-     PAR-DESSUS le canvas, déplacé à chaque image — le navigateur le compose
-     sur la carte graphique comme le reste, et il respire tout seul en CSS.
-     Il suit le bout de la cigarette : le modèle part du filtre vers +z, donc
-     le bout est au-devant, à peu près aux trois quarts de la boîte. */
-  const braiseEl = document.getElementById('dressBraise');
-  function braise(cx, cy, s){
-    if (!braiseEl) return;
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const d = Math.max(4, s * 0.30);
-    braiseEl.style.width = braiseEl.style.height = (d / k) + 'px';
-    // le bout, releve a l'ecran : un tiers de boite vers la droite, un chouia
-    // plus haut que la levre — la cigarette monte legerement en s'eloignant
-    braiseEl.style.left = ((cx + s * 0.33) / k - d / (2 * k)) + 'px';
-    braiseEl.style.top  = ((cy - s * 0.06) / k - d / (2 * k)) + 'px';
-    braiseEl.hidden = false;
-  }
+  /* ---- pourquoi il n'y a PAS de halo posé sur la scène ----
+     Il y en a eu un : un rond de dégradé en CSS, par-dessus le canvas,
+     déplacé à chaque image sur le bout de la cigarette. Il est parti, et le
+     souvenir vaut d'être gardé — c'était deux fois faux.
+     Un halo n'est pas une braise, c'est ce qu'une braise fait autour d'elle :
+     à la taille où la cigarette est dessinée, le rond mangeait le bâton et on
+     voyait une ampoule, pas un mégot. Et une lueur en CSS ne sait rien de la
+     scène : il fallait lui recalculer sa place à chaque image, de l'extérieur,
+     à partir d'un angle et d'une boîte — elle tombait juste pour une pose et
+     glissait pour toutes les autres.
+     Le bout qui brûle est donc DANS le modèle, une tranche du cylindre qui
+     porte sa propre couleur et sa propre lumière (voir meshAccessoire). Il
+     tourne avec la cigarette, il rapetisse avec elle, et il n'y a plus rien à
+     tenir en face. */
   function habiller(sc, MX, MY, S){
-    if (braiseEl) braiseEl.hidden = true;   // rallumée plus bas si la cigarette est portée
     const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
     if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
     /* CADRER : la place exacte du vêtement dans la boîte du mannequin, et
@@ -11441,7 +11499,6 @@ const dressup = (() => {
         sc.plan();
         const s = S * P.l;
         sc.draw(p.it, P.ang || 0, { x: MX + S * (0.5 + P.x) - s / 2, y: MY + S * (1 - P.y) - s / 2, s }, 1, null, 'front');
-        if (p.it.accessoire === 'cigarette') braise(MX + S * (0.5 + P.x), MY + S * (1 - P.y), s);
         return;
       }
       const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
@@ -11545,7 +11602,10 @@ const dressup = (() => {
       const s = Math.min(b.width, b.height) * 0.92;
       // une piece en sommeil s'efface avec sa case : le refus se lit avant le clic
       // les vignettes ne tournent plus : le vestiaire n'a plus de dos a montrer
-      scene.draw(p.it, 0, {
+      // un accessoire se montre sous l'angle ou on le porte : la cigarette de
+      // trois quarts dans le portant comme sur le mannequin, sans quoi sa case
+      // ne montre qu'un disque blanc
+      scene.draw(p.it, (p.it.accessoire && ACC_POSE[p.it.accessoire] && ACC_POSE[p.it.accessoire].ang) || 0, {
         x: (b.left - r.left + (b.width - s) / 2) * k,
         y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k, clip: fenetre },
         p.el.classList.contains('dress-case--dort') ? 0.4 : 1);
