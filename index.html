@@ -11564,29 +11564,31 @@ const dressup = (() => {
        profondeur : l'épaule ressortait au travers de la manche, la cuisse au
        travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
        papier n'a pas de volume, elle a des couches. */
-    /* L'OURLET DU HAUT PASSE PAR-DESSUS LE BAS. Si le sweat finit plus étroit
-       que les hanches, le pantalon ressort de chaque côté et le sweat a l'air
+    /* L'OURLET DU HAUT PASSE PAR-DESSUS LE BAS. Si le haut finit plus étroit
+       que les hanches, le pantalon ressort de chaque côté et le haut a l'air
        rentré dedans — ce n'est ni la coupe ni la façon de le porter.
        On mesure les deux à la hauteur de l'ourlet (voir `couvrirOurlet`) et on
-       élargit le bas du haut juste assez. UN BON SIXIÈME DE MARGE : l'ourlet
-       tombe DEVANT le pantalon, il doit se lire par-dessus et non affleurer —
-       à largeur égale les deux bords se superposent au pixel près, et le
+       élargit le bas du haut juste assez. UN DIXIÈME DE MARGE : l'ourlet tombe
+       DEVANT le pantalon, il doit se lire par-dessus et non affleurer — à
+       largeur égale les deux bords se superposent au pixel près, et le
        pantalon reparaît d'un côté au premier souffle.
-       UN PLAFOND À UN CINQUIÈME, et il sert. Élargir, c'est étirer la photo ;
-       au-delà d'un cinquième le bas du vêtement cesse de se lire comme un
-       ourlet et devient une petite jupe — les coins partent en cloche sous le
-       corps. Le legging et le pyjama y arrivaient : leurs photos sont étroites
-       et longues, elles sont donc posées dans une grande boîte et se trouvent
-       plus larges aux hanches que n'importe quel jean, alors qu'elles sont
-       plus fines partout ailleurs. Le pantalon qui déborde d'un cheveu se
-       remarque moins qu'un sweat en jupette.
+       LA RÈGLE VAUT POUR TOUS LES HAUTS, t-shirts et polos compris : un
+       ourlet passe par-dessus un pantalon, quel que soit le vêtement. Elle ne
+       leur demande d'ailleurs presque rien — leur ourlet tombe plus haut, sur
+       une taille plus étroite, et ils vont de 0,80 à 0,85 au plus.
+       UN PLAFOND À UN CINQUIÈME, et c'est un GARDE-FOU, pas la règle. Élargir,
+       c'est étirer la photo ; au-delà d'un cinquième le bas du vêtement cesse
+       de se lire comme un ourlet et devient une petite jupe, les coins en
+       cloche sous le corps. Aucun des douze bas n'y touche aujourd'hui (ils
+       tiennent entre 1,10 et 1,15) : il est là pour celui qu'on ajoutera.
        Faute de pantalon c'est le sous-vêtement qui sert de mesure, et il ne
        demande jamais rien.
        ARRONDI AU VINGTIÈME, et pas plus fin : cette valeur est la clé du
        maillage retouché. La ligne d'ourlet est cherchée de rangée en rangée,
        et selon la respiration du mannequin elle tombe tantôt sur l'une tantôt
        sur sa voisine — au centième, la mesure sautait de 1,12 à 1,18 et le
-       vêtement était remaillé pour rien. Au vingtième, elle tient. */
+       vêtement était remaillé pour rien. Au vingtième, elle tient : deux
+       tours complets du portant rendent les mêmes douze nombres. */
     const OURLET_MARGE = 1.10, OURLET_PLAFOND = 1.20;
     const ourletDe = (A) => {
       dernierOurlet = null;
