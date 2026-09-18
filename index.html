@@ -1010,25 +1010,32 @@
      `:hover` et `:focus-within` restent en secours : au clavier, ou si un
      jour le survol n'ouvre plus les tailles, la languette se montre quand
      même. */
-  /* UN SEUL GALET QUI S'ALLONGE, et le panier paraît dedans APRÈS. Deux
-     règles tiennent l'illusion, et elles comptent toutes les deux :
-     - la moitié droite a EXACTEMENT le fond, la bordure et la lueur de la
-       gauche, et aucune séparation entre les deux. Un fond plus clair ou un
-       trait de refend, et on voit deux boutons accolés au lieu d'une pilule ;
-     - l'icône ne voyage pas. Elle attend, immobile, que l'allongement soit
-       fini, puis elle apparaît en fondu. Sans cela, la boîte qui s'ouvre la
-       découvre par la gauche et elle a l'air de glisser depuis le bouton —
-       c'est ce qu'on voyait, et ce n'est pas ce qu'on veut voir. */
+  /* ---- DEUX TEMPS, ET DANS CET ORDRE ----
+     1. LE GALET S'ALLONGE. Rien d'autre ne bouge : la moitié qui pousse a
+        exactement le fond, la bordure et la lueur de l'autre, pas de refend,
+        rien dedans. On voit une pilule qui s'étire vers la droite, et c'est
+        tout ce qu'on doit voir. Deux fonds différents ou un trait entre les
+        deux, et ce sont deux boutons accolés qui glissent.
+     2. PUIS LE PANIER PARAÎT. Le refend et l'icône arrivent ensemble, en
+        fondu, une fois l'allongement fini — et c'est à ce moment-là, pas
+        avant, que la moitié droite devient cliquable. Tant qu'elle n'est pas
+        lisible elle n'est pas une cible : cliquer sur ce qui n'a pas encore
+        de sens ne doit pas emmener ailleurs.
+     Le second temps est porté par la classe `pret`, posée par le script un
+     peu après le premier (voir `ongletPret`). En CSS seul il aurait fallu un
+     délai sur la transition, ce qui aurait fait paraître le refend à l'heure
+     mais laissé la moitié droite cliquable dès la première image. */
   .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]),
   .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]){
-    max-width:42px;padding:0 12px;border-width:1px 1px 1px 0;
+    max-width:42px;padding:0 12px;border-right-width:1px;
+    border-top-width:1px;border-bottom-width:1px;
   }
-  .preview.grown #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg,
-  .cta-duo:hover #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg,
-  .cta-duo:focus-within #addBtn:not([hidden]) + .cta-panier:not([hidden]) svg{
-    opacity:1;transition:opacity 0.2s ease 0.22s;   /* après l'allongement */
+  /* second temps */
+  .cta-duo.pret .cta-panier:not([hidden]){
+    border-left-width:1px;pointer-events:auto;
   }
+  .cta-duo.pret .cta-panier:not([hidden]) svg{opacity:1;}
   /* Le galet perd son bord droit : c'est la moitié droite qui le porte. */
   .preview.grown .cta-duo #addBtn,
   .cta-duo:hover #addBtn,.cta-duo:focus-within #addBtn{
@@ -1041,14 +1048,15 @@
     border:0 solid var(--blue);                   /* fermée : pas même un liseré d'un pixel */
     border-radius:0 999px 999px 0;
     color:var(--white);cursor:pointer;
+    pointer-events:none;                          /* jusqu'au second temps */
     box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
-    transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.26s ease, background 0.25s ease;
+    transition:max-width 0.26s ease, padding 0.26s ease, border-width 0.2s ease, background 0.25s ease;
   }
   .cta-panier[hidden]{display:none;}   /* sans quoi le display ci-dessus l'emporte */
   /* Le survol de la seule moitié droite : c'est ainsi qu'on apprend qu'elle
      mène ailleurs. La pilule reste une pilule, mais elle répond par moitiés. */
   .cta-panier:hover{background:rgba(var(--accent-rgb),0.3);}
-  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.1s ease;}
+  .cta-panier svg{width:15px;height:15px;flex:none;opacity:0;transition:opacity 0.22s ease;}
   @media (prefers-reduced-motion:reduce){
     .cta-panier,.cta-panier svg{transition:none;}
   }
@@ -3805,6 +3813,25 @@ function majOngletPanier(){
   addCart.setAttribute('aria-label', T('cart') + ' · ' + n);
   addCart.title = T('cart');
 }
+/* ---- le second temps ----
+   Le refend, l'icône et la possibilité de cliquer arrivent ENSEMBLE, juste
+   après que le galet a fini de s'allonger. Trois portes mènent au premier
+   temps — le survol du bouton, l'ouverture des tailles, le clavier — et
+   toutes les trois passent par ici : une seule classe, un seul minuteur, et
+   rien qui puisse rester allumé d'un côté et éteint de l'autre.
+   Le délai est celui de l'allongement (0,26 s) et pas un chiffre de plus :
+   les deux temps se touchent, ils ne se chevauchent pas. */
+const addDuo = document.getElementById('addDuo');
+let ongletTimer = null;
+function ongletPret(oui){
+  clearTimeout(ongletTimer);
+  if (!oui){ addDuo.classList.remove('pret'); return; }
+  ongletTimer = setTimeout(() => addDuo.classList.add('pret'), 270);
+}
+addDuo.addEventListener('mouseenter', () => ongletPret(true));
+addDuo.addEventListener('mouseleave', () => ongletPret(false));
+addDuo.addEventListener('focusin',  () => ongletPret(true));
+addDuo.addEventListener('focusout', () => ongletPret(false));
 /* Le même chemin que la pastille du bandeau : une seule façon d'ouvrir le
    panier, donc un seul endroit où elle peut se casser. */
 addCart.addEventListener('click', (e) => {
@@ -4482,6 +4509,7 @@ function openSizePicker(keyboard){
   mesurerTailles();                                  // après les pastilles : leur hauteur en dépend
   sizePicker.classList.add('open');
   previewEl.classList.add('grown');
+  ongletPret(true);                   // le galet s'allonge : le panier suivra
   sizePicker.setAttribute('aria-hidden', 'false');
   if (keyboard){
     if (!panelMode){ panelMode = true; previewEl.classList.add('focused'); }
@@ -4499,6 +4527,7 @@ function closeSizePicker(){
   sizePicker.classList.remove('open');
   sizePicker.classList.remove('libre');  // la fermeture doit de nouveau rogner
   previewEl.classList.remove('grown');
+  if (!addDuo.matches(':hover')) ongletPret(false);   // sauf si la souris y est encore
   previewEl.style.setProperty('--sq-size', '0px'); // le descriptif garde la sienne (--squeeze)
   sizePicker.setAttribute('aria-hidden', 'true');
   sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
