@@ -603,19 +603,37 @@
      --grow calculé à l'ouverture : jamais plus que la place libre au-dessus de
      la barre d'aide. Ce qui manque, s'il manque, est repris sur le visuel
      (--squeeze), de sorte que les tailles soient toujours entières. */
+  /* LE MÊME DÉPLIAGE QUE LA FICHE, au chiffre près. Deux accordéons dans le
+     même panneau, à trois centimètres l'un de l'autre : le descriptif qui
+     s'ouvre quand on choisit un article, et les tailles qui s'ouvrent sous le
+     bouton. Ils n'avaient pas la même durée ni la même façon de faire paraître
+     leur contenu, et cela se sentait sans qu'on sache dire pourquoi.
+     La règle est celle de `.preview-info`, reprise telle quelle :
+     - À L'OUVERTURE, la boîte prend 0,34 s et le contenu ne paraît qu'APRÈS un
+       souffle (0,06 s) : on voit la place se faire, puis ce qui vient s'y
+       mettre. Sans ce retard, le contenu monte en même temps que la boîte et
+       on le lit à travers un rideau qui bouge.
+     - À LA FERMETURE, plus court (0,30 s) et le contenu s'efface tout de suite
+       (0,14 s, sans retard) : on ne regarde plus ce qui s'en va.
+     `margin-top` suit `max-height` — c'est la même ouverture, en deux
+     propriétés. La fermeture du galet « panier » est calée sur ces 0,30 s
+     (voir .cta-panier) : les changer ici demande de les changer là-bas. */
   .size-picker{
     max-height:0;
     overflow:hidden;
     opacity:0;
     margin-top:0;
-    transition:max-height 0.3s cubic-bezier(.2,.8,.2,1),
-               opacity 0.2s ease,
-               margin-top 0.3s cubic-bezier(.2,.8,.2,1);
+    transition:max-height 0.30s cubic-bezier(.2,.8,.2,1),
+               opacity 0.14s ease,
+               margin-top 0.30s cubic-bezier(.2,.8,.2,1);
   }
   .size-picker.open{
     max-height:var(--size-h,120px);
     opacity:1;
     margin-top:14px;
+    transition:max-height 0.34s cubic-bezier(.2,.8,.2,1),
+               opacity 0.22s ease 0.06s,
+               margin-top 0.34s cubic-bezier(.2,.8,.2,1);
   }
   .size-picker .settings-label{margin-bottom:9px;}
   .size-picker .pills{justify-content:center;gap:8px;}
