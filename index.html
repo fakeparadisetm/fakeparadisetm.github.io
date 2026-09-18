@@ -660,7 +660,13 @@
      photos de face et de dos, à plat. Points façon Instagram en bas, flèches
      au survol (voir JS « diaporama »). Sans WebGL (classe no-gl), la vue 3D
      est absente. */
-  .slide{position:absolute;inset:0;display:none;z-index:1;}
+  /* `pointer-events:none` : les vues ne sont plus des cibles. Elles passent
+     DEVANT les lueurs de défilement (voir .slide-edge), donc sans cela elles
+     avaleraient le clic sur la partie des bandes qui les recouvre. Rien n'est
+     perdu — tous les gestes du visuel (prendre la tête, balayer au doigt,
+     déplier la fiche) sont écoutés sur le CADRE, .preview-swatch, qui est
+     juste dessous. */
+  .slide{position:absolute;inset:0;display:none;z-index:1;pointer-events:none;}
   .slide.active{display:block;}
   .slide.flat{width:100%;height:100%;object-fit:cover;}
   .preview-swatch canvas{position:absolute;inset:0;width:100%;height:100%;}
@@ -774,7 +780,12 @@
     opacity:0;
     cursor:pointer;
     transition:opacity 0.22s ease;
-    z-index:3;
+    /* SOUS les photos (qui sont à 1) : la lueur ne teinte plus le vêtement,
+       elle ne se voit que dans la marge du panneau et au-dessus et au-dessous
+       de l'image — là où il n'y a rien à salir. Le bouton reste malgré tout
+       la cible du clic sur toute sa surface : les vues au-dessus ne prennent
+       pas les clics (voir .slide). */
+    z-index:0;
   }
   /* La peinture remplit le bouton. Elle est mise à part plutôt que sur le fond
      du bouton parce qu'elle porte le fondu du bas quand la fiche est dépliée
