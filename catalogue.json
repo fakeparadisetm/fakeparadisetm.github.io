@@ -610,7 +610,10 @@
       "fr": "270 GSM (48,8 % polyester, 47,6 % coton, 3,6 % élasthanne)\nCoupe boxy\nRouge\nÉtiquette personnalisée\nguide des taillestemp"
      },
      "sz": "tee",
-     "verrou": "jumper"
+     "verrou": "jumper",
+     "img": "products/fake-polo.jpg",
+     "img2": "products/fake-polo-2.jpg",
+     "v": 1789923499501
     },
     {
      "n": "KETAMINE POLO",
