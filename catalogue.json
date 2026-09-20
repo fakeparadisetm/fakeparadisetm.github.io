@@ -603,6 +603,26 @@
    },
    "items": [
     {
+     "n": "KETAMINE POLO",
+     "p": 25,
+     "d": {
+      "en": "270 GSM (48.8% polyester, 47.6% cotton，3.6% spandex)\nBoxy fit\nRed\nCustom label\nsizeguidetemp",
+      "fr": "270 GSM (48,8 % polyester, 47,6 % coton, 3,6 % élasthanne)\nCoupe boxy\nRouge\nÉtiquette personnalisée"
+     },
+     "sz": "tee",
+     "publie": false,
+     "img": "products/ketamine-polo.jpg",
+     "img2": "products/ketamine-polo-2.jpg",
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "2XL"
+     ],
+     "v": 1789922431087
+    },
+    {
      "n": "FUCK MY GWER LIFE TEE",
      "p": 25,
      "d": {
@@ -659,18 +679,6 @@
      "img": "products/hello-tee.jpg",
      "img2": "products/white-tee-back.jpg",
      "sz": "tee"
-    },
-    {
-     "n": "KETAMINE TEE",
-     "p": 25,
-     "d": {
-      "en": "280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print",
-      "fr": "280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée"
-     },
-     "img": "products/ketamine-tee.jpg",
-     "img2": "products/white-tee-back.jpg",
-     "sz": "tee",
-     "v": 1789911567890
     },
     {
      "n": "ACAB TEE",
