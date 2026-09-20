@@ -796,18 +796,6 @@
      "v": 1789581250893
     },
     {
-     "n": "VERTIGO TEE",
-     "p": 40,
-     "d": {
-      "en": "Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
-      "fr": "Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"
-     },
-     "sz": "tee",
-     "verrou": "vertige",
-     "max": 1,
-     "provisoire": true
-    },
-    {
      "n": "JUMPER TEE",
      "p": 40,
      "d": {
