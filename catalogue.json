@@ -681,7 +681,8 @@
      },
      "img": "products/acab-tee.jpg",
      "img2": "products/white-tee-back.jpg",
-     "sz": "tee"
+     "sz": "tee",
+     "v": 1789911988730
     },
     {
      "n": "SILK ROAD TEE",
@@ -717,17 +718,6 @@
      "img2": "products/im-so-woke-tee-2.jpg",
      "sz": "tee",
      "v": 1789911841052
-    },
-    {
-     "n": "STRIPPER RAGLAN TEE",
-     "p": 25,
-     "d": {
-      "en": "280 GSM (100% cotton)\nOversized fit\nWhite/black\nCustom neck print",
-      "fr": "280 g/m² (100 % coton)\nCoupe oversize\nBlanc/noir\nImpression au col personnalisée"
-     },
-     "img": "products/stripper-raglan-tee.jpg",
-     "img2": "products/stripper-raglan-tee-2.jpg",
-     "sz": "raglan"
     },
     {
      "n": "COCO&RICO MERCH TEE",
