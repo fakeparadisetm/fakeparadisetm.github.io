@@ -791,20 +791,6 @@
    },
    "items": [
     {
-     "n": "LOUSY TEE",
-     "p": 20,
-     "d": {
-      "en": "280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print",
-      "fr": "280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée"
-     },
-     "sz": "tee",
-     "verrou": "vertige",
-     "max": 1,
-     "img": "products/lousy-tee.jpg",
-     "img2": "products/lousy-tee-2.jpg",
-     "v": 1789581250893
-    },
-    {
      "n": "JUMPER TEE",
      "p": 40,
      "d": {
