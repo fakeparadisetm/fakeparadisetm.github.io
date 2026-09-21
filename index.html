@@ -2935,7 +2935,7 @@ const COMPANY = {
     carriers: "[Colissimo, Mondial Relay, UPS…]",
     returnAddress: "[Adresse de retour des colis]",
   },
-  updated: "2026-09-14", // date ISO de la dernière mise à jour des textes
+  updated: "2026-09-22", // date ISO de la dernière mise à jour des textes
 };
 
 const C = COMPANY;
@@ -3119,7 +3119,7 @@ Date : ______<br>
 { id:"cookies", label:"Cookies", title:"Cookies et traceurs", html:`
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
-<p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont celles de votre système : aucune ressource n'est chargée depuis un serveur tiers.</p>
+<p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont servies par le site lui-même : aucune ressource n'est chargée depuis un serveur tiers.</p>
 <p>Deux éléments sont conservés sur votre terminal, dans le stockage local de votre navigateur. Le premier est <strong>la liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans lui, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Le second est <strong>votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. Ces éléments ne contiennent aucune donnée personnelle, ne sont jamais envoyés à un serveur et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, et le record repart à zéro. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
@@ -3308,7 +3308,7 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
-<p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are those of your system: no resource is loaded from a third-party server.</p>
+<p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are served by the site itself: no resource is loaded from a third-party server.</p>
 <p>Two items are kept on your device, in your browser's local storage. The first is <strong>the list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. The second is <strong>your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. They hold no personal data, are never sent to a server and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time by clearing your browser's site data — the reward would then have to be earned again, and the record starts over. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
@@ -3320,8 +3320,10 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 /* ---------------- langues ----------------
    Anglais par défaut ; le réglage « Language » du menu Settings bascule
    tout le site (menu, panier, aide, banderole et textes légaux). Le choix
-   n'est pas mémorisé : le site n'utilise ni cookie ni stockage local,
-   comme l'annonce la rubrique Cookies. */
+   n'est pas mémorisé : le site ne dépose aucun cookie, et le stockage local
+   ne sert qu'aux deux clés que déclare la rubrique Cookies — les épreuves
+   passées et le record du Jumper. Une langue retrouvée au rechargement se
+   paierait d'une troisième clé pour un confort que le menu rend en un clic. */
 const LANGS = {
   en:{ label:"English",  locale:"en-US" },
   fr:{ label:"Français", locale:"fr-FR" },
