@@ -25,9 +25,12 @@
     --white-35:rgba(255,255,255,0.3);
     --sale:#d9b96a;
     --tint-neutral:rgba(255,255,255,0.7); /* marque et horloge : neutre, légèrement teinté par l'ambiance */
-    --footer-h:30px; /* hauteur réelle de la banderole légale, resynchronisée en JS */
+    --footer-h:30px; /* hauteur réelle de la banderole légale, resynchronisée en JS (syncFooterHeight) ;
+                        la valeur de départ est sa hauteur de repos (.legalbar min-height) */
     --xmb-bar:35vh;  /* hauteur du centre de la barre d'icônes XMB (50vh = milieu ; remontée pour
                         laisser 5 produits visibles sous la sélection sur un écran 1080p) */
+    --voile-flou:10px; /* flou de la page sous les fenêtres (mentions légales, guide des tailles) ;
+                          entre celui des barres (8 px) et celui du verre des panneaux (28 px) */
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   [hidden]{display:none!important;}
@@ -282,12 +285,15 @@
      doigt, pas le suivre avec quatre dixièmes de retard — et pas de sélection
      de texte, qui transformerait le geste en surlignage. */
   .categories.glissee{transition:none;user-select:none;}
-  /* LA MAIN ENTRE LES ICÔNES, ET LÀ SEULEMENT. Les icônes gardent la main qui
-     clique (.category : cursor pointer) — elles mènent quelque part, et c'est
-     ce qu'il faut dire en premier. C'est le VIDE entre elles qui annonce le
-     glissement : la barre, et pas ses boutons. Et seulement quand il y a de
-     quoi tirer (classe `tirable`, voir majTirable), sinon la main promettrait
-     un geste qui ne fait rien. */
+  /* LA MAIN OUVERTE ENTRE LES ICÔNES, ET LÀ SEULEMENT — mais le GESTE, lui,
+     se prend partout, icônes comprises (demande du 22 sept. 2026 ; c'est le
+     glisser-déposer natif des images qui l'empêchait, voir .cat-icon img).
+     Les icônes gardent la main qui clique (.category : cursor pointer) —
+     elles mènent quelque part, et c'est ce qu'il faut dire en premier ; dès
+     que la barre bouge, tout passe en main fermée (.glissee). C'est le VIDE
+     entre elles qui annonce le glissement : la barre, et pas ses boutons. Et
+     seulement quand il y a de quoi tirer (classe `tirable`, voir majTirable),
+     sinon la main promettrait un geste qui ne fait rien. */
   .categories.tirable{cursor:grab;}
   .categories.glissee,.categories.glissee *{cursor:grabbing;}
 
@@ -398,6 +404,12 @@
     width:58px;height:58px;object-fit:contain;
     filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55)) blur(0.9px);
     transition:filter 0.35s ease;
+    /* Une image se « glisse-dépose » toute seule : appuyer dessus et bouger
+       fait partir un fantôme de l'icône, et le navigateur annule alors le
+       pointeur (pointercancel) — la barre, qu'on croyait tenir, restait sur
+       place. C'est l'attribut draggable="false" (voir build) qui l'empêche ;
+       la ligne ci-dessous fait la même chose pour WebKit, qui a la sienne. */
+    -webkit-user-drag:none;
   }
   .category.active .cat-icon img{filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55));}
   .cat-label{
@@ -539,7 +551,10 @@
        34vw : à ces tailles rien ne bouge, il n'y a pas la place. */
     left:calc(88vw - min(34vw, 520px));
     top:calc(50% - 8px);     /* centré entre l'horloge et la barre d'aide (bas ≈ 16 px plus haut que le haut) */
-    transform:translateY(-50%);
+    /* --lift : de combien la fiche dépliée est remontée au repos pour laisser
+       la place des tailles sous elle (voir reserverTailles) ; nul sur les
+       écrans où la place existe déjà */
+    transform:translateY(calc(-50% - var(--lift,0px)));
     width:min(34vw,610px);   /* 610 = 520 + 17 % ; 34vw ménage la barre d'icônes sous 1530 px */
     z-index:6;
     opacity:0;
@@ -602,9 +617,18 @@
   .preview.show{opacity:1; pointer-events:auto;}
   /* Tailles ouvertes : la fiche s'allonge vers le BAS. Elle est centrée par
      translateY(-50%) ; ajouter la moitié de la croissance laisse donc le haut
-     en place et ne descend que le bas. */
-  .preview{transition:opacity 0.4s ease, transform 0.3s cubic-bezier(.2,.8,.2,1);}
-  .preview.grown{transform:translateY(calc(-50% + var(--grow,0px) / 2));}
+     en place et ne descend que le bas.
+     LA MÊME DURÉE QUE LES TAILLES, dans les deux sens : 0,34 s à l'ouverture,
+     0,30 s à la fermeture (voir .size-picker). Le haut de la fiche est la
+     somme de deux mouvements contraires — la boîte qui grandit et la
+     translation qui compense — et avec deux durées différentes leur écart
+     n'était nul qu'aux deux bouts : entre les deux, le haut et tout ce qu'il
+     porte, boutons compris, oscillaient de quelques pixels. */
+  .preview{transition:opacity 0.4s ease, transform 0.30s cubic-bezier(.2,.8,.2,1);}
+  .preview.grown{
+    transform:translateY(calc(-50% - var(--lift,0px) + var(--grow,0px) / 2));
+    transition:opacity 0.4s ease, transform 0.34s cubic-bezier(.2,.8,.2,1);
+  }
   /* changement de catégorie : le panneau s'assombrit vite, puis le nouveau
      contenu apparaît en regagnant son opacité (transition normale de 0,4 s) */
   .preview.swap{
@@ -646,10 +670,10 @@
   @media (prefers-reduced-motion:reduce){ .fly-to-cart{display:none;} }
   /* Tailles : dépliées DANS la fiche, sous les boutons, au survol d'« Ajouter
      au panier ». C'était auparavant un panneau flottant posé sous la fiche, qui
-     la chevauchait sur les écrans justes. La fiche s'allonge vers le bas d'un
-     --grow calculé à l'ouverture : jamais plus que la place libre au-dessus de
-     la barre d'aide. Ce qui manque, s'il manque, est repris sur le visuel
-     (--squeeze), de sorte que les tailles soient toujours entières. */
+     la chevauchait sur les écrans justes. La fiche s'allonge vers le bas de
+     toute leur hauteur (--grow) : la place sous elle est RÉSERVÉE D'AVANCE,
+     dès que la fiche est dépliée (voir reserverTailles), de sorte que le
+     dépliage ne déplace rien d'autre que le bas de la fiche. */
   /* LE MÊME DÉPLIAGE QUE LA FICHE, au chiffre près. Deux accordéons dans le
      même panneau, à trois centimètres l'un de l'autre : le descriptif qui
      s'ouvre quand on choisit un article, et les tailles qui s'ouvrent sous le
@@ -690,9 +714,9 @@
        l'image occupe directement la fiche. Sa taille est ce qui reste de la
        hauteur d'écran une fois retirés le descriptif déplié (--desc-h, nul
        quand il est replié), le contenu fixe (--reserve) et, le cas échéant, ce
-       que le descriptif (--squeeze) puis les tailles (--sq-size) n'ont pas pu
-       prendre vers le bas. Replié, le descriptif ne coûte donc rien et le
-       visuel est au plus grand.
+       que le descriptif (--squeeze) n'a pas pu prendre vers le bas et la place
+       que les tailles réservent au repos (--sq-size, voir reserverTailles).
+       Replié, le descriptif ne coûte donc rien et le visuel est au plus grand.
        Deux variables et non une : le descriptif et les tailles se cumulent.
        Tant qu'ils partageaient --squeeze, ouvrir les tailles effaçait la
        compensation du descriptif, le visuel regagnait 80 px et la fiche
@@ -1191,16 +1215,30 @@
     align-items:center;
     justify-content:center;
     padding:24px;
-    background:rgba(0,2,4,0);
     visibility:hidden;
     pointer-events:none;
-    transition:background-color 0.2s ease, visibility 0s linear 0.2s; /* même principe que .legal-overlay */
+    transition:visibility 0s linear 0.2s; /* même principe que .legal-overlay */
+  }
+  /* Le voile (assombrissement + flou de la page) est un pseudo-élément, voir
+     .legal-overlay::before : la même règle, le même pourquoi. */
+  .info-overlay::before{
+    content:"";
+    position:absolute;inset:0;
+    background:rgba(0,2,4,0);
+    backdrop-filter:blur(0px);
+    -webkit-backdrop-filter:blur(0px);
+    transition:background-color 0.2s ease, backdrop-filter 0.2s ease, -webkit-backdrop-filter 0.2s ease;
   }
   .info-overlay.open{
-    background:rgba(0,2,4,0.55);
     visibility:visible;
     pointer-events:auto;
-    transition:background-color 0.3s ease, visibility 0s;
+    transition:visibility 0s;
+  }
+  .info-overlay.open::before{
+    background:rgba(0,2,4,0.55);
+    backdrop-filter:blur(var(--voile-flou));
+    -webkit-backdrop-filter:blur(var(--voile-flou));
+    transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
   }
   /* Nommé .size-panel et non .info-panel : ce dernier désigne déjà le gabarit
      Contact / Réglages / Livraison du panneau d'aperçu (.preview.info-panel),
@@ -1362,15 +1400,24 @@
     right:min(90vw,380px); /* le voile s'arrête au panneau : le verre voit la page, pas un fond assombri */
     z-index:9;
     background:rgba(0,2,4,0);
+    /* Le voile floute aussi la page (22 sept. 2026, comme les fenêtres). Ici le
+       filtre peut être sur le voile lui-même : il est le FRÈRE du panneau,
+       pas son ancêtre, et il s'arrête à son bord — le verre du panneau
+       continue de voir la page telle quelle (voir .legal-overlay::before
+       pour le cas où le panneau est un enfant). */
+    backdrop-filter:blur(0px);
+    -webkit-backdrop-filter:blur(0px);
     visibility:hidden;
     pointer-events:none;
-    transition:background-color 0.3s ease, visibility 0s linear 0.35s;
+    transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease, visibility 0s linear 0.35s;
   }
   .cart-overlay.open{
     background:rgba(0,2,4,0.55);
+    backdrop-filter:blur(var(--voile-flou));
+    -webkit-backdrop-filter:blur(var(--voile-flou));
     visibility:visible;
     pointer-events:auto;
-    transition:background-color 0.3s ease, visibility 0s;
+    transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease, visibility 0s;
   }
 
   /* Le panneau est un frère du voile, pas son enfant : aucun ancêtre animé
@@ -1558,7 +1605,14 @@
     align-items:center;
     justify-content:center;
     gap:26px;
-    min-height:var(--footer-h);
+    /* Hauteur de repos EN DUR, et surtout pas var(--footer-h) : cette variable
+       est RELUE sur la banderole (syncFooterHeight écrit sa hauteur réelle),
+       elle ne doit pas la fixer. Les deux ensemble faisaient un cliquet —
+       une fenêtre étroite passe les liens sur deux lignes, la variable prend
+       137 px, la banderole ne peut plus redescendre sous 137 px, donc la
+       variable non plus : la barre d'aide restait perchée et la fiche la
+       chevauchait, même une fois la fenêtre agrandie (trouvé le 22 sept. 2026). */
+    min-height:30px;
     padding:0 48px;
     font-size:10.5px;
     font-weight:450;
@@ -1600,16 +1654,41 @@
     align-items:center;
     justify-content:center;
     padding:24px;
-    background:rgba(0,2,4,0);
     visibility:hidden;
     pointer-events:none;
-    transition:background-color 0.2s ease, visibility 0s linear 0.2s; /* même principe que .cart-overlay ; sortie rapide */
+    transition:visibility 0s linear 0.2s; /* même principe que .cart-overlay ; sortie rapide */
+  }
+  /* LE VOILE EST UN ENFANT DU CADRE, PAS LE CADRE LUI-MÊME. La fenêtre ouverte
+     assombrit la page et la FLOUTE (demande du 22 sept. 2026) : c'est un
+     backdrop-filter, et il ne peut pas être sur .legal-overlay. Un élément
+     à backdrop-filter devient une « racine de fond » pour ses descendants,
+     exactement comme un ancêtre à opacité < 1 (voir .cart-overlay) : le
+     verre du panneau, enfant du cadre, ne verrait plus la page mais le seul
+     contenu du cadre, et perdrait son flou. Essayé, mesuré : le panneau
+     devient une plaque grise et plate. Le voile est donc un pseudo-élément
+     posé sous le panneau, un FRÈRE dans l'ordre de peinture : il floute la
+     page, puis le verre floute ce résultat — c'est ce que le verre a toujours
+     fait, seulement sur une page déjà adoucie. Le flou monte avec le voile,
+     de zéro à sa valeur, à la même vitesse que l'assombrissement ; fermé, le
+     cadre est visibility:hidden et le voile avec lui : rien n'est peint. */
+  .legal-overlay::before{
+    content:"";
+    position:absolute;inset:0;
+    background:rgba(0,2,4,0);
+    backdrop-filter:blur(0px);
+    -webkit-backdrop-filter:blur(0px);
+    transition:background-color 0.2s ease, backdrop-filter 0.2s ease, -webkit-backdrop-filter 0.2s ease;
   }
   .legal-overlay.open{
-    background:rgba(0,2,4,0.6);
     visibility:visible;
     pointer-events:auto;
-    transition:background-color 0.3s ease, visibility 0s;
+    transition:visibility 0s;
+  }
+  .legal-overlay.open::before{
+    background:rgba(0,2,4,0.6);
+    backdrop-filter:blur(var(--voile-flou));
+    -webkit-backdrop-filter:blur(var(--voile-flou));
+    transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
   }
   .legal-panel{
     width:min(100%,980px);
@@ -4622,15 +4701,14 @@ function buildSizePills(sizes){
   });
 }
 
-/* Les tailles se déplient DANS la fiche. Il faut donc, à l'ouverture, décider
-   de combien la fiche peut s'allonger vers le bas : jamais au-delà de la barre
-   d'aide. Ce que la place libre ne permet pas est repris sur le visuel
-   (--squeeze), de sorte que les tailles soient toujours entières et cliquables.
-   Mesuré ici et pas en CSS : seul le script connaît la hauteur réelle des
-   pastilles et celle qui reste sous la fiche. */
+/* Les tailles se déplient DANS la fiche, qui s'allonge vers le bas de toute
+   leur hauteur : la place a été réservée au repos (reserverTailles), il n'y a
+   donc plus rien à décider à l'ouverture, seulement à mesurer la rangée.
+   Avant, c'est ici qu'on prenait sur le visuel ce qui manquait sous la fiche —
+   et tout ce qui est sous le visuel remontait d'autant, le bouton qu'on
+   survole compris. Mesuré ici et pas en CSS : seul le script connaît la
+   hauteur réelle des pastilles. */
 function mesurerTailles(){
-  const r = previewEl.getBoundingClientRect();
-  const barre = document.querySelector('.hintbar').getBoundingClientRect().top;
   /* scrollHeight donne la hauteur du CONTENU même quand la boîte est écrasée à
      zéro et masquée (overflow:hidden) : inutile de lever le plafond pour la
      lire. C'est même nuisible — poser max-height:none puis relire force le
@@ -4638,15 +4716,8 @@ function mesurerTailles(){
      transition entre « none » et une longueur : la rangée apparaissait d'un
      coup pendant que la fiche, elle, glissait. D'où le sursaut. */
   const besoin = sizePicker.scrollHeight + 14;       // + la marge que .open ajoute
-  const libre = Math.max(0, barre - r.bottom - 10);
-  const grow = Math.min(besoin, libre);
   previewEl.style.setProperty('--size-h', (besoin - 14) + 'px');
-  previewEl.style.setProperty('--grow', grow + 'px');
-  /* --sq-size et non --squeeze : cette dernière appartient au descriptif, qui
-     peut être déplié en même temps. Les deux se retranchent du visuel, l'une
-     après l'autre ; écrire dans la même variable rendait au visuel la place
-     que le descriptif avait prise, et la fiche recouvrait la barre d'aide. */
-  previewEl.style.setProperty('--sq-size', (besoin - grow) + 'px');
+  previewEl.style.setProperty('--grow', besoin + 'px');
 }
 function openSizePicker(keyboard){
   const cat = DATA[activeCat];
@@ -4676,7 +4747,7 @@ function closeSizePicker(){
   sizePicker.classList.remove('libre');  // la fermeture doit de nouveau rogner
   previewEl.classList.remove('grown');
   ongletPret(false);                  // qui vérifie lui-même si le galet reste ouvert
-  previewEl.style.setProperty('--sq-size', '0px'); // le descriptif garde la sienne (--squeeze)
+  // --sq-size reste : c'est la place réservée au repos, pas un effet de l'ouverture
   sizePicker.setAttribute('aria-hidden', 'true');
   sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
 }
@@ -8408,7 +8479,7 @@ function build(){
     wrap.innerHTML = `
       <div class="cat-icon">
         <span class="cat-glow"><span class="cat-glow-inner" style="--icon:url('${iconUrl}')"></span></span>
-        <img src="${iconUrl}" alt="">
+        <img src="${iconUrl}" alt="" draggable="false">
       </div>
       <div class="cat-label">${L(cat.name)}</div>
       <div class="item-column" data-col="${ci}"></div>
@@ -9035,7 +9106,9 @@ horsDroite.addEventListener('click', () => { arreterElan(); poserBarre(camShift 
       n'a pas parcouru cinq pixels, le geste reste un clic et l'icône se
       sélectionne comme avant. Au-delà, c'est un glissement, et le clic qui
       suit le relâchement est avalé — sans quoi on changerait de catégorie
-      chaque fois qu'on lâche la barre.
+      chaque fois qu'on lâche la barre. Le geste se prend sur toute la barre,
+      icônes comprises : ce sont leurs images qui, en se laissant
+      glisser-déposer, le coupaient net (voir .cat-icon img).
    2. ON NE TIRE QUE S'IL Y A DE QUOI. Quand tout tient à l'écran, le geste
       n'existe pas : pas de curseur qui change, pas de barre qui bouge d'un
       pixel pour revenir. La borne est le bord droit utile — celui de la
@@ -9190,13 +9263,80 @@ function mesurerInfo(){
 }
 function majInfoH(){
   previewEl.style.setProperty('--info-h', (infoBase + (descOuvert && descMax ? descMax + 14 : 0)) + 'px');
+  reserverTailles();                     // la hauteur de la fiche a changé : la place des tailles avec
 }
+
+/* ---- LA PLACE DES TAILLES EST PRISE AU REPOS ----
+   Les tailles se déplient sous les boutons, au survol d'« Ajouter ». Sur les
+   écrans où la fiche dépliée remplit déjà la bande entre l'horloge et la barre
+   d'aide, on prenait la place manquante sur le visuel AU MOMENT DE L'OUVERTURE :
+   le visuel rapetissait et tout ce qui est dessous — nom, prix, boutons —
+   remontait d'autant. Or c'est le survol du bouton qui ouvre les tailles : le
+   bouton filait sous le curseur, le survol cessait, les tailles se
+   refermaient, le bouton revenait sous le curseur, et la fiche tremblait
+   (signalé le 22 sept. 2026 « sur certains écrans plus petits »).
+   La place est donc prise D'AVANCE, dès que la fiche est dépliée : l'ouverture
+   ne fait plus que descendre le bas de la fiche, et aucun bouton ne bouge.
+   Ce qui manque sous la fiche est cherché d'abord EN HAUT — elle monte,
+   jusqu'à MARGE_BARRE de la barre du haut — et seulement ensuite sur le visuel
+   (--sq-size) : un visuel plus petit se voit, une fiche un peu plus haute non.
+   Sur un grand écran il y a la place, rien ne change et la fiche reste centrée.
+   TOUT EST CALCULÉ, RIEN N'EST RELU sur une boîte en transition : on arrive
+   ici au moment même où la fiche se déplie ou change de descriptif, et une
+   mesure prise alors rendrait un état intermédiaire (même piège que --info-h).
+   La hauteur de la fiche « nue » — sans réserve — se reconstruit donc de ses
+   parties, toutes connues : le cadre, le visuel selon sa propre formule CSS,
+   le bloc de texte (infoBase) et le descriptif s'il est déplié. */
+const MARGE_BARRE = 10;   // entre la fiche et chacune des deux barres (la même qu'appliquerDesc)
+function reserverTailles(){
+  const cat = DATA[activeCat];
+  const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
+  const poser = (sq, lift) => {
+    previewEl.style.setProperty('--sq-size', sq + 'px');
+    previewEl.style.setProperty('--lift', lift + 'px');
+  };
+  // pas de bouton « Ajouter » (galerie seule, panneau texte, pièce à gagner), ou pas de
+  // fiche du tout (gabarit mobile, display:none) : rien à réserver
+  if (!item || !ficheOuverte || verrouille(item) || !previewEl.clientWidth) return poser(0, 0);
+  buildSizePills(sizesFor(item));                     // la hauteur dépend du nombre de pastilles
+  const besoin = sizePicker.scrollHeight + 14;        // + la marge que .open ajoute
+  const cs = getComputedStyle(previewEl);
+  const pad = parseFloat(cs.getPropertyValue('--pad'));
+  const reserve = parseFloat(cs.getPropertyValue('--reserve'));
+  const cadre = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  const descH = descOuvert && descMax ? descMax : 0;
+  const squeeze = parseFloat(previewEl.style.getPropertyValue('--squeeze')) || 0;
+  /* le visuel, par la formule de .preview-swatch : la largeur de la fiche ou
+     ce que la hauteur d'écran laisse, le plus petit des deux */
+  const largeur = previewEl.clientWidth - 2 * pad;
+  const parHauteur = window.innerHeight - descH - squeeze - reserve;
+  const visuel = Math.min(largeur, parHauteur);
+  const haut = cadre + 2 * pad + visuel + infoBase + (descH ? descH + 14 : 0);
+  const centre = previewEl.offsetTop;                 // top:calc(50% - 8px) ; le transform n'y entre pas
+  const barre = document.querySelector('.hintbar').getBoundingClientRect().top;
+  const plafond = document.querySelector('.topbar').getBoundingClientRect().bottom;
+  const manque = Math.max(0, besoin - (barre - MARGE_BARRE - (centre + haut / 2)));
+  // ce que la fiche peut monter ; négatif si elle déborde déjà en haut (descriptif déplié sur un petit écran)
+  const marge = (centre - haut / 2) - plafond - MARGE_BARRE;
+  /* Rétrécir le visuel de S remonte le bas de S/2 (la fiche est centrée) ; la
+     remonter de L remonte le bas de L. Il faut S/2 + L = manque, et L − S/2
+     ne peut pas dépasser la marge du haut : d'où S = manque − marge au plus
+     petit, et L ce qui reste. */
+  const sq = Math.max(0, manque - marge);
+  /* --sq-size se retranche du terme « hauteur d'écran » de la formule ; quand
+     c'est la largeur qui limite le visuel, les premiers pixels retirés ne
+     changent rien. On les ajoute pour que le visuel perde bien S. */
+  const jeu = sq > 0 ? Math.max(0, parHauteur - largeur) : 0;
+  poser(sq + jeu, manque - sq / 2);
+}
+window.addEventListener('resize', reserverTailles);  // après measureDescHeight, qui repose le descriptif
 function appliquerFiche(){
   previewEl.classList.remove('libre');   // le bloc va bouger : il rogne de nouveau
   previewInfo.classList.remove('libre');
   const choisi = DATA[activeCat].kind === 'shop' && ficheOuverte;
   previewEl.classList.toggle('gallery', !choisi && DATA[activeCat].kind === 'shop');
   previewEl.classList.toggle('choisi', choisi);  // même cadre d'accent qu'en mode panneau
+  reserverTailles();                     // dépliée : la place des tailles ; repliée : rien à réserver
 }
 /* Clic sur le fond (demande du 15 sept. 2026) : la fiche revient à son état de
    repos, la galerie seule. On épargne ce qui a sa propre logique de clic — la
@@ -9376,8 +9516,10 @@ function fillPreview(){
     // le bouton dit ce qu'il ouvre : un guide des tailles, et rien d'autre.
     // « Plus d'infos » promettait n'importe quoi et ne tenait que les mesures.
     infoBtn.textContent = T('sizeGuide');
-    // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : tailles du nouveau produit
-    if (sizePicker.classList.contains('open')) buildSizePills(sizesFor(item));
+    // sélecteur ouvert au survol pendant un changement de produit (↑/↓, molette) : les
+    // pastilles du nouveau produit sont déjà là (reserverTailles, via appliquerFiche),
+    // reste à reprendre leur hauteur si la rangée n'a pas la même
+    if (sizePicker.classList.contains('open')) mesurerTailles();
   }
   /* LA LANGUETTE EN DERNIER, ET POUR TOUTES LES FICHES. En dernier parce
      qu'elle se décide sur la place qui reste, et que le « Guide des tailles »
@@ -9599,7 +9741,9 @@ function relabelLegal(){
 }
 
 // La banderole peut passer sur deux lignes en mobile : la barre d'aide
-// se cale sur sa hauteur réelle.
+// se cale sur sa hauteur réelle. La banderole elle-même ne relit PAS cette
+// variable (voir .legalbar) : la mesure est libre dans les deux sens, elle
+// redescend quand la fenêtre s'élargit.
 function syncFooterHeight(){
   document.documentElement.style.setProperty('--footer-h', legalbar.offsetHeight + 'px');
 }
