@@ -1562,7 +1562,11 @@
   }
   .profil-stat-l{font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--white-35);}
   .profil-stat-v{margin-top:3px;font-size:16px;font-weight:550;color:var(--white);white-space:nowrap;}
-  .profil-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto;padding-top:26px;}
+  /* Trois boutons sur UNE rangée : « Customize character » est long, on resserre
+     donc les trois dans le profil. Ils restent au-dessus de la cible tactile
+     recommandée (44 px de haut) et gardent leur cadre d'accent. */
+  .profil-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:auto;padding-top:26px;}
+  .profil-actions .preview-cta{margin-top:0;padding:12px 16px;font-size:13.5px;}
   /* sans profil : le nom en retrait, la barre à zéro, un seul bouton qui crée */
   .profil-bloc.vide .gt-nom{color:var(--white-35);}
   /* la fenêtre : la photo en grand au centre, le champ dessous */
@@ -2658,7 +2662,6 @@
   }
   .dress-bt--3 input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
   .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:999px;}
-  .dress-bt--4{background:#9be08a;border-color:#3d7a2e;box-shadow:0 3px 0 #3d7a2e;color:#22451a;}
   /* Le curseur de taille du visage. Il ne paraît QUE si une photo est posée :
      un réglage qui ne règle rien n'a rien à faire à l'écran. */
   .dress-bt--5{background:#d3b4f0;border-color:#6b3fa0;box-shadow:0 3px 0 #6b3fa0;color:#3a1f5c;}
@@ -2668,11 +2671,6 @@
   .dress-bt--5 input[type=range]{
     width:88px;height:14px;margin:0;cursor:pointer;accent-color:#6b3fa0;
   }
-  /* Le bouton d'enregistrement vit dans la scène, en bas à gauche, sous le
-     mannequin : ce qu'on emporte, c'est LUI. */
-  .dress-save{position:absolute;left:16px;bottom:14px;z-index:3;}
-  .dress-bt--4:hover{box-shadow:0 5px 0 #3d7a2e;}
-  .dress-bt--4:active{box-shadow:0 1px 0 #3d7a2e;}
   /* La mention sur la photo : elle doit être LISIBLE, pas discrète. Quelqu'un
      à qui on demande son visage a le droit de savoir en deux lignes ce qu'il
      en advient, sans aller chercher une page de mentions légales. */
@@ -2984,6 +2982,7 @@
       <div class="profil-actions">
         <button class="preview-cta" id="profilEditer"></button>
         <button class="preview-cta preview-cta--secondary" id="profilPerso"></button>
+        <button class="preview-cta preview-cta--secondary" id="profilPartager"></button>
       </div>
     </div>
     <div class="profil-droite">
@@ -3236,7 +3235,6 @@
       <div class="dress-titre" id="dressTitre"></div>
       <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
            qu'on emporte l'image, pas du portant. -->
-      <button class="dress-bt dress-bt--4 dress-save" id="dressSave"></button>
       <!-- Le portant et les outils : UNE colonne, pour que le cadre bleu ne
            vienne jamais mordre le cadre rose quand la mention s'allonge. -->
       <div class="dress-cote">
@@ -3800,6 +3798,7 @@ const STRINGS = {
     profilUid:"UID", profilInvite:"No gamertag yet", profilCreer:"Create my profile", profilEditer:"Edit profile", profilPerso:"Customize character",
     profilTitreCreer:"Your gamertag", profilTitreEditer:"Edit profile", profilSub:"Kept on this device only — never sent anywhere",
     profilPhotoAria:"Choose a profile picture", profilPhotoChoisir:"Choose a photo", profilPhotoRetirer:"Remove", profilNomLabel:"Gamertag",
+    profilPartager:"Share",
     profilNomAide:"2 to 16 characters — letters, digits, spaces, dots, dashes.", profilSauver:"Save",
     profilDepuis:"Member since", profilVisites:"Logins", profilTemps:"Time on site", profilDepense:"Total spent", profilCommandes:"Orders",
     profilPieces:"Pieces unlocked", profilJumper:"Jumper best", profilJour:"day", profilJours:"days", profilXpRegle:"10 XP per € spent",
@@ -3823,7 +3822,7 @@ const STRINGS = {
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
     dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
-    dressSkin:"Skin tone", dressSave:"Save the look", dressFaceSize:"Face size", dressFaceY:"Face height",
+    dressSkin:"Skin tone", dressFaceSize:"Face size", dressFaceY:"Face height",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
@@ -3871,6 +3870,7 @@ const STRINGS = {
     profilUid:"UID", profilInvite:"Pas encore de gamertag", profilCreer:"Créer mon profil", profilEditer:"Modifier le profil", profilPerso:"Personnaliser le personnage",
     profilTitreCreer:"Ton gamertag", profilTitreEditer:"Modifier le profil", profilSub:"Gardé sur cet appareil seulement — jamais envoyé",
     profilPhotoAria:"Choisir une photo de profil", profilPhotoChoisir:"Choisir une photo", profilPhotoRetirer:"Retirer", profilNomLabel:"Gamertag",
+    profilPartager:"Partager",
     profilNomAide:"2 à 16 caractères — lettres, chiffres, espaces, points, tirets.", profilSauver:"Enregistrer",
     profilDepuis:"Membre depuis", profilVisites:"Connexions", profilTemps:"Temps sur le site", profilDepense:"Dépense totale", profilCommandes:"Commandes",
     profilPieces:"Pièces débloquées", profilJumper:"Record Jumper", profilJour:"jour", profilJours:"jours", profilXpRegle:"10 XP par € dépensé",
@@ -3890,7 +3890,7 @@ const STRINGS = {
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
     dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
-    dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
+    dressSkin:"Couleur de peau", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée. Votre navigateur la garde pour que votre personnage retrouve son visage d'une visite à l'autre ; « Retirer mon visage » l'efface. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
@@ -10118,6 +10118,7 @@ const profil = (() => {
   const gtNom = document.getElementById('gtNom'), gtNiveau = document.getElementById('gtNiveau');
   const gtXp = document.getElementById('gtXp'), gtBarre = document.getElementById('gtBarre'), gtUid = document.getElementById('gtUid');
   const btEditer = document.getElementById('profilEditer'), btPerso = document.getElementById('profilPerso');
+  const btPartager = document.getElementById('profilPartager');
   const topGt = document.getElementById('topbarGt');
   const overlay = document.getElementById('profilOverlay');
   const champNom = document.getElementById('profilNom');
@@ -10212,6 +10213,7 @@ const profil = (() => {
       ligne('profilJumper', record && record.ms ? esc(mmss(record.ms)) : '—');
     btEditer.textContent = p ? T('profilEditer') : T('profilCreer');
     btPerso.textContent = T('profilPerso');
+    btPartager.textContent = T('profilPartager');
     // la barre du haut
     topGt.hidden = !p;
     if (p){
@@ -10320,6 +10322,178 @@ const profil = (() => {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) fermer(); });
   btEditer.addEventListener('click', editer);
   btPerso.addEventListener('click', () => dressup.open());
+
+  /* ---- partager ----
+     Une IMAGE du profil, téléchargée. Le profil n'a pas d'adresse à lui — il
+     vit sur cet appareil —, et le lien du site ne montrerait rien de
+     personnel : ce qu'on emporte est donc la carte, qui porte le gamertag, le
+     niveau, le personnage habillé et l'adresse de la boutique. Sans profil,
+     la même carte sans le nom. */
+  /* ---- la carte de partage : LE PROFIL, refait au pinceau ----
+     C'est l'image du panneau qu'on a sous les yeux — le cadre photo, le
+     gamertag, l'étoile et le niveau, la barre d'XP, l'identifiant, les
+     statistiques, et le personnage dans son cadre —, redessinée dans un
+     canvas au lieu d'être capturée : une page ne se photographie pas
+     elle-même (aucun navigateur ne le permet sans demander l'écran au
+     visiteur), et un dessin donne de toute façon une image propre, à la
+     résolution qu'on veut, sans le décor du site autour.
+     Tout est en fractions de la largeur : la carte se rend aussi bien en
+     1000 px pour un partage que plus grande si besoin. Les couleurs sont
+     celles de l'heure (--accent-rgb), comme le reste du site. */
+  function carte(W){
+    const H = Math.round(W * 0.62);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const lire = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    const acc = lire('--accent-rgb') || '90,140,255';
+    const A = (a) => 'rgba(' + acc + ',' + a + ')';
+    const police = '"Inter","Helvetica Neue",Helvetica,Arial,sans-serif';
+    const arrondi = (x, y, w, h, r) => {
+      const q = Math.max(0, Math.min(r, w/2, h/2));
+      g.beginPath(); g.moveTo(x+q, y);
+      g.arcTo(x+w, y, x+w, y+h, q); g.arcTo(x+w, y+h, x, y+h, q);
+      g.arcTo(x, y+h, x, y, q);     g.arcTo(x, y, x+w, y, q);
+      g.closePath();
+    };
+    // le fond du site : le dégradé de nuit, une lueur d'accent en haut
+    const fond = g.createLinearGradient(0, 0, 0, H);
+    fond.addColorStop(0, '#0d1f30'); fond.addColorStop(1, '#04080c');
+    g.fillStyle = fond; g.fillRect(0, 0, W, H);
+    const halo = g.createRadialGradient(W*0.5, -H*0.15, 0, W*0.5, -H*0.15, H*1.1);
+    halo.addColorStop(0, A(0.34)); halo.addColorStop(1, A(0));
+    g.fillStyle = halo; g.fillRect(0, 0, W, H);
+    // le panneau de verre
+    const M = W*0.045, PW = W - 2*M, PH = H - 2*M;
+    g.save();
+    arrondi(M, M, PW, PH, W*0.022); g.clip();
+    g.fillStyle = 'rgba(8,20,30,0.55)'; g.fillRect(M, M, PW, PH);
+    const gloss = g.createLinearGradient(M, M, M+PW*0.7, M+PH);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.07)'); gloss.addColorStop(0.45, 'rgba(255,255,255,0.015)'); gloss.addColorStop(1, 'rgba(255,255,255,0.03)');
+    g.fillStyle = gloss; g.fillRect(M, M, PW, PH);
+    g.restore();
+    g.lineWidth = Math.max(1, W*0.0012); g.strokeStyle = 'rgba(255,255,255,0.12)';
+    arrondi(M, M, PW, PH, W*0.022); g.stroke();
+
+    const pad = W*0.038, L = M + pad, haut = M + pad;
+    const colD = W*0.30, colG = PW - 2*pad - colD - W*0.03;
+
+    // ---- le cadre du personnage, à droite
+    const bx = M + PW - pad - colD, by = haut, bh = PH - 2*pad, br = W*0.014;
+    g.save(); arrondi(bx, by, colD, bh, br); g.clip();
+    const fb = g.createLinearGradient(bx, by, bx, by+bh);
+    fb.addColorStop(0, 'rgba(3,8,14,0.55)'); fb.addColorStop(1, 'rgba(3,8,14,0.80)');
+    g.fillStyle = fb; g.fillRect(bx, by, colD, bh);
+    const lueur = g.createRadialGradient(bx+colD/2, by+bh*0.08, 0, bx+colD/2, by+bh*0.08, colD*1.2);
+    lueur.addColorStop(0, A(0.30)); lueur.addColorStop(0.55, A(0.06)); lueur.addColorStop(1, A(0));
+    g.fillStyle = lueur; g.fillRect(bx, by, colD, bh);
+    g.fillStyle = A(0.06); g.fillRect(bx, by, colD, bh);
+    const perso = dressup.imagePersonnage(Math.round(bh * 1.1));
+    if (perso){
+      const dispo = bh * 0.90, S = Math.min(dispo, colD / 0.66);
+      g.drawImage(perso, bx + (colD - S)/2, by + (dispo - S)/2, S, S);
+    }
+    // l'ombre au sol
+    const sol = g.createRadialGradient(bx+colD/2, by+bh*0.92, 0, bx+colD/2, by+bh*0.92, colD*0.4);
+    sol.addColorStop(0, 'rgba(0,0,0,0.55)'); sol.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sol; g.fillRect(bx, by+bh*0.78, colD, bh*0.22);
+    g.restore();
+    g.lineWidth = Math.max(1, W*0.0012); g.strokeStyle = 'rgba(255,255,255,0.10)';
+    arrondi(bx, by, colD, bh, br); g.stroke();
+
+    // ---- le gamertag, à gauche
+    const ph = W*0.105, pr = W*0.014;
+    g.save(); arrondi(L, haut, ph, ph, pr); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(L, haut, ph, ph);
+    if (p && p.photo && photoCarte && photoCarte.complete && photoCarte.naturalWidth)
+      g.drawImage(photoCarte, L, haut, ph, ph);
+    else {
+      g.fillStyle = 'rgba(255,255,255,0.55)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '600 ' + Math.round(ph*0.42) + 'px ' + police;
+      g.fillText(p ? initialeDe(p.nom) : '?', L + ph/2, haut + ph/2);
+    }
+    g.restore();
+    g.lineWidth = Math.max(2, W*0.0022); g.strokeStyle = A(0.85);
+    arrondi(L, haut, ph, ph, pr); g.stroke();
+
+    const tx = L + ph + W*0.026;
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillStyle = '#fff'; g.font = '600 ' + Math.round(W*0.045) + 'px ' + police;
+    g.fillText(p ? p.nom : T('profilInvite'), tx, haut + W*0.040);
+    const x = xp(), nv = niveau(), dans = x % XP_NIVEAU;
+    g.fillStyle = A(1); g.font = '650 ' + Math.round(W*0.032) + 'px ' + police;
+    const etoile = '★ ' + nv;
+    g.fillText(etoile, tx, haut + W*0.075);
+    const largeurEtoile = g.measureText(etoile).width;
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.font = '450 ' + Math.round(W*0.021) + 'px ' + police;
+    g.fillText(x.toLocaleString(LANGS[currentLang].locale) + ' XP  ·  ' + dans + ' / ' + XP_NIVEAU, tx + largeurEtoile + W*0.014, haut + W*0.073);
+    // la barre d'XP
+    const barX = tx, barY = haut + W*0.089, barW = colG - ph - W*0.026, barH = W*0.011;
+    g.fillStyle = 'rgba(0,0,0,0.45)'; arrondi(barX, barY, barW, barH, barH/2); g.fill();
+    if (dans > 0){ g.fillStyle = A(0.9); arrondi(barX, barY, Math.max(barH, barW*dans/XP_NIVEAU), barH, barH/2); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,0.30)'; g.font = '450 ' + Math.round(W*0.017) + 'px ' + police;
+    if (p) g.fillText('UID ' + uidLisible(p.uid), barX, barY + W*0.032);
+
+    // ---- les statistiques, en grille de trois
+    const lignes = statsCarte();
+    const sx = L, sy = haut + W*0.150, cw = colG / 3, ch = W*0.055;
+    lignes.forEach((s, i) => {
+      const cx2 = sx + (i % 3) * cw, cy2 = sy + Math.floor(i / 3) * ch;
+      g.fillStyle = 'rgba(255,255,255,0.30)'; g.font = '450 ' + Math.round(W*0.0155) + 'px ' + police;
+      g.fillText(s[0].toUpperCase(), cx2, cy2);
+      g.fillStyle = '#fff'; g.font = '550 ' + Math.round(W*0.0235) + 'px ' + police;
+      g.fillText(s[1], cx2, cy2 + W*0.025);
+    });
+
+    // ---- l'adresse, en bas à gauche du panneau
+    g.fillStyle = A(1); g.font = '600 ' + Math.round(W*0.024) + 'px ' + police;
+    g.fillText(COMPANY.site, L, M + PH - pad*0.4);
+    return cv;
+  }
+  /* La photo de profil, décodée une fois pour la carte : `drawImage` veut une
+     image prête, et une data URL ne se décode pas instantanément. */
+  let photoCarte = null;
+  function preparerPhoto(){
+    if (!p || !p.photo){ photoCarte = null; return Promise.resolve(); }
+    if (photoCarte && photoCarte.src === p.photo) return Promise.resolve();
+    return new Promise(ok => {
+      const i = new Image();
+      i.onload = () => { photoCarte = i; ok(); };
+      i.onerror = () => { photoCarte = null; ok(); };
+      i.src = p.photo;
+    });
+  }
+  // les statistiques de la carte : les mêmes que le panneau, en couples (intitulé, valeur)
+  function statsCarte(){
+    const loc = LANGS[currentLang].locale, pl = new Intl.PluralRules(loc);
+    const pieces = piecesDebloquees(), record = STOCK.lire('fp.jumper', null);
+    return [
+      [T('profilDepuis'), p ? new Intl.DateTimeFormat(loc, { month: 'short', year: 'numeric' }).format(new Date(p.depuis + 'T12:00:00')) : '—'],
+      [T('profilVisites'), p ? (p.jours || 1) + ' ' + T(pl.select(p.jours || 1) === 'one' ? 'profilJour' : 'profilJours') : '—'],
+      [T('profilTemps'), p ? duree(p.temps || 0) : '—'],
+      [T('profilDepense'), p ? formatPrice(p.depense || 0) : '—'],
+      [T('profilCommandes'), p ? String(p.commandes || 0) : '—'],
+      [T('profilPieces'), pieces.ouvertes + ' / ' + pieces.total],
+    ];
+  }
+  /* Le bouton TÉLÉCHARGE la carte, toujours, sur toutes les machines (choix de
+     l'utilisateur, 22 sept. 2026). Il n'y a plus de partage d'adresse : le lien
+     du site n'a jamais rien montré de personnel, et l'image, elle, porte le
+     gamertag, le niveau, le personnage — et l'adresse écrite dessus. Elle part
+     donc là où le visiteur veut, sans que le site ait à deviner où.
+     Pas de `navigator.share` non plus : sa feuille de partage n'existe que sur
+     téléphone, et une seule façon de faire vaut mieux que deux comportements
+     selon la machine. */
+  async function partager(){
+    await preparerPhoto();
+    const cv = carte(1200);
+    const propre = (p ? p.nom : 'profil').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'profil';
+    const a = document.createElement('a');
+    a.download = 'fakeparadise-' + propre + '.png';
+    a.href = cv.toDataURL('image/png');
+    a.click();
+    sfx.photo();               // le déclencheur : on emporte une image du profil
+  }
+  btPartager.addEventListener('click', partager);
   topGt.addEventListener('click', () => {
     const ci = DATA.findIndex(c => c.kind === 'profil');
     if (ci >= 0) selectCategory(ci);
@@ -10330,7 +10504,7 @@ const profil = (() => {
     if (e.key === 'Escape'){ e.preventDefault(); fermer(); return; }
     if (e.key === 'Enter'){ e.preventDefault(); enregistrer(); }
   }
-  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, ouvert: () => overlay.classList.contains('open'),
+  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, partager, carte, preparerPhoto, ouvert: () => overlay.classList.contains('open'),
            existe: () => !!p, lire: () => p, niveau, xp };
 })();
 
@@ -12395,7 +12569,6 @@ const dressup = (() => {
   const champHaut = document.getElementById('dressHaut');
   const btHaut = document.getElementById('dressHautBt');
   const txtHaut = document.getElementById('dressHautTxt');
-  const btSave = document.getElementById('dressSave');
   const txtPeau = document.getElementById('dressPeauTxt');
   const btFaceTxt = document.getElementById('dressFaceTxt');
   const btNu = document.getElementById('dressNu');
@@ -12769,50 +12942,32 @@ const dressup = (() => {
     majMannequin();
     sauverTenue();
   }
-  /* ---- enregistrer le look ----
-     Une image PNG du personnage tel qu'il est, envoyée au dossier de
-     téléchargements du visiteur. Elle se fabrique à part, dans une scène à
-     elle : le canvas du salon a la taille de la fenêtre et porte le portant,
-     l'image, elle, doit être carrée, nette et sans décor d'interface.
-     `habiller` étant le même pour les deux, ce qui est enregistré est
-     exactement ce qu'on voyait — à la résolution près, qui est meilleure.
-     Le fond reprend le dégradé de la scène : sans lui on obtiendrait un
-     personnage sur du vide, et beaucoup de visionneuses affichent la
-     transparence en noir. */
+  /* ---- le personnage, hors écran ----
+     Le salon n'enregistre plus le look : le bouton vert est parti le 22 sept.
+     2026, et ce qu'on emporte est désormais la CARTE DU PROFIL, partagée
+     depuis le profil (voir `profil.carte`) — le personnage y est, avec le
+     gamertag et le reste, ce qui fait une image qui se lit toute seule.
+     Ce qui reste ici, c'est la fabrication du personnage seul, sur fond
+     transparent, dans un carré de N pixels : le canvas du salon a la taille
+     de la fenêtre et porte le portant, l'image, elle, doit être carrée, nette
+     et sans décor d'interface. `habiller` étant le même pour les deux, ce
+     qu'on partage est exactement ce qu'on voyait — à la résolution près, qui
+     est meilleure. Une seule scène hors écran, gardée d'une fois sur l'autre :
+     en créer une par appel épuiserait les contextes WebGL de la page. */
   let sceneShot = null, cvShot = null;
-  function enregistrer(){
-    const N = 1200;
-    if (!cvShot){
+  function imagePersonnage(N){
+    if (!cvShot || cvShot.width !== N){
       cvShot = document.createElement('canvas'); cvShot.width = cvShot.height = N;
+      if (sceneShot) sceneShot = null;
       sceneShot = model3d.makeScene(cvShot);
     }
-    if (!sceneShot) return;
+    if (!sceneShot) return null;
+    if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
+    sceneShot.load(mannequin); sceneShot.load(SOUS.it);
+    portees.forEach(p => { sceneShot.load(p.it); if (p.porte) sceneShot.load(p.porte); });
     sceneShot.clear();
     habiller(sceneShot, N * 0.06, N * 0.03, N * 0.88);
-    const sortie = document.createElement('canvas'); sortie.width = sortie.height = N;
-    const g = sortie.getContext('2d');
-    const deg = g.createLinearGradient(0, 0, N * 0.55, N);
-    deg.addColorStop(0, '#ffd7ef'); deg.addColorStop(0.38, '#ffe9c9'); deg.addColorStop(1, '#d6f2ff');
-    g.fillStyle = deg; g.fillRect(0, 0, N, N);
-    g.drawImage(cvShot, 0, 0);
-    /* La marque, en bas. L'image quitte le site : autant qu'elle dise d'où
-       elle vient, dans la même écriture que le titre du salon — rose cerné de
-       blanc, posé de travers. Assez gros pour se lire sur un téléphone, assez
-       discret pour ne pas manger le personnage. */
-    g.save();
-    g.translate(N * 0.5, N * 0.945);
-    g.rotate(-3 * Math.PI / 180);
-    g.font = '700 ' + Math.round(N * 0.052) + 'px "Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-    g.lineJoin = 'round'; g.lineWidth = Math.round(N * 0.014);
-    g.strokeStyle = '#ffffff'; g.strokeText('FakeParadise™', 0, 0);
-    g.fillStyle = '#ff4fa3'; g.fillText('FakeParadise™', 0, 0);
-    g.restore();
-    const a = document.createElement('a');
-    a.download = 'fakeparadise-dressup.png';
-    a.href = sortie.toDataURL('image/png');
-    a.click();
-    sfx.photo();
+    return cvShot;
   }
   /* ---- la photo du visage ----
      Lue sur place, jamais transmise. Depuis le 22 sept. 2026 elle est RETENUE
@@ -13263,7 +13418,6 @@ const dressup = (() => {
     txtHaut.textContent = T('dressFaceY');
     refletVisage();
     btNu.textContent = T('dressStrip');
-    btSave.textContent = T('dressSave');
     txtPeau.textContent = T('dressSkin');
     note.textContent = T('dressPrivacy');
     if (!scene) scene = model3d.makeScene(cv);
@@ -13305,7 +13459,7 @@ const dressup = (() => {
      dans l'ordre du document : le bouton vert y est écrit avant le portant,
      si bien que la première flèche tombait sur lui au lieu du premier
      vêtement. L'ordre de lecture est celui de l'œil, pas celui du fichier. */
-  const commandes = () => [...overlay.querySelectorAll('.dress-case, .dress-outils .dress-bt, .dress-save')]
+  const commandes = () => [...overlay.querySelectorAll('.dress-case, .dress-outils .dress-bt')]
     .filter(el => el.offsetParent !== null)
     .map(el => ({ el, r: el.getBoundingClientRect() }))
     .sort((a, b) => (Math.round(a.r.top / 8) - Math.round(b.r.top / 8)) || (a.r.left - b.r.left))
@@ -13383,7 +13537,6 @@ const dressup = (() => {
     overlay.addEventListener(e, reveiller, { capture: true, passive: true }));
   rack.addEventListener('scroll', reveiller, { passive: true });
   btNu.addEventListener('click', deshabiller);
-  btSave.addEventListener('click', enregistrer);
   champPeau.addEventListener('input', (e) => poserPeau(e.target.value));
   champZoom.addEventListener('input', (e) => poserZoomVisage(e.target.value));
   champHaut.addEventListener('input', (e) => poserHautVisage(e.target.value));
@@ -13396,7 +13549,7 @@ const dressup = (() => {
      n'est donc pas une capture du salon, c'est son PLAN — la même scène
      redessinée, chaque nombre repris de la feuille de style plus haut
      (`.dress-stage`, `.dress-cote`, `.dress-rack`, `.dress-case`,
-     `.dress-outils`, `.dress-titre`, `.dress-save`). D'où l'unité `u` : un
+     `.dress-outils`, `.dress-titre`). D'où l'unité `u` : un
      pixel CSS du salon, vu de loin.
      UNE VIGNETTE EST UNE AFFICHE, PAS UNE CAPTURE. Réduire fidèlement la vraie
      fenêtre — mesurée à 1178 px de large — donnerait des cases de trente
@@ -13672,15 +13825,6 @@ const dressup = (() => {
     g.fillStyle = '#ff4fa3'; g.fillText(mot, 0, 0);
     g.restore();
 
-    /* ---- « Enregistrer le look » (`.dress-save`) : le bouton vert, dans la
-       scène et en bas à gauche — ce qu'on emporte, c'est le personnage. */
-    g.font = '700 ' + fsB.toFixed(2) + 'px ' + VIG_POLICE;
-    g.textBaseline = 'middle';
-    const sw = g.measureText(EN('dressSave')).width + 30 * u, sy = H - 14 * u - bh;
-    g.fillStyle = '#3d7a2e'; arrondi(16 * u, sy + 3 * u, sw, bh, bh / 2); g.fill();
-    g.fillStyle = '#9be08a'; arrondi(16 * u, sy, sw, bh, bh / 2); g.fill();
-    g.lineWidth = 2 * u; g.strokeStyle = '#3d7a2e'; arrondi(16 * u, sy, sw, bh, bh / 2); g.stroke();
-    g.fillStyle = '#22451a'; g.fillText(EN('dressSave'), 31 * u, sy + bh * 0.54);
   }
 
   // contrôle : l'état du salon, et de quoi poser une pièce sans la cliquer
@@ -13711,7 +13855,7 @@ const dressup = (() => {
   }
   const tenueVide = () => !portees.size;
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug,
-           preparerPersonnage, dessinerPersonnage, tenueVide };
+           preparerPersonnage, dessinerPersonnage, imagePersonnage, tenueVide };
 })();
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
