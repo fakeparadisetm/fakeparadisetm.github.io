@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Le site tient en UNE page : le menu, la boutique, les textes légaux et les
+     mini-jeux vivent tous dans index.html. Le plan n'a donc qu'une adresse, et
+     c'est normal. À reprendre le jour où la boutique aura des pages propres
+     (Shopify, une fiche par produit). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://shopfakeparadise.com/</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

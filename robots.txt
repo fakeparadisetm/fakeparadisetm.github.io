@@ -1,0 +1,5 @@
+# FakeParadise™ — tout est public, il n'y a rien à cacher aux robots.
+User-agent: *
+Allow: /
+
+Sitemap: https://shopfakeparadise.com/sitemap.xml

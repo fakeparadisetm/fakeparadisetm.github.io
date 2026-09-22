@@ -3,7 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FakeParadise™</title>
+<!-- LE TITRE DIT CE QU'ON VEND. « FakeParadise™ » seul ne parle qu'à ceux qui
+     connaissent déjà la marque ; dans un onglet, un favori ou un résultat de
+     recherche, il faut la marque ET ce qu'elle fait. -->
+<title>FakeParadise™ — ugly clothes for cool people</title>
+<meta name="description" content="FakeParadise™ — ugly clothes for cool people. Tees, hoodies and one-off pieces, shipped from France.">
+<meta name="theme-color" content="#04080c">
+<!-- L'APERÇU D'UN LIEN PARTAGÉ. Sans ces quatre lignes, une adresse collée
+     dans un message ou une story n'affiche qu'un texte nu : les réseaux ne
+     devinent rien, ils lisent ces balises. L'image fait 1200 × 630, le format
+     que tous attendent (icons/partage.png). L'adresse est ABSOLUE, c'est une
+     exigence d'Open Graph. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FakeParadise™">
+<meta property="og:title" content="FakeParadise™ — ugly clothes for cool people">
+<meta property="og:description" content="Tees, hoodies and one-off pieces, shipped from France.">
+<meta property="og:url" content="https://shopfakeparadise.com/">
+<meta property="og:image" content="https://shopfakeparadise.com/icons/partage.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://shopfakeparadise.com/">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/favicon-180.png">
 <link rel="preload" as="image" href="icons/startup%20icon%20web.png">
 <link rel="preload" as="image" href="icons/startup%20icon2%20base.png">
 <link rel="preload" as="image" href="icons/startup%20icon2%20palm%20left.png">
@@ -22,7 +44,14 @@
     --bg-1-hex:#0d1f30;
     --white:#ffffff;
     --white-60:rgba(255,255,255,0.55);
-    --white-35:rgba(255,255,255,0.3);
+    /* LE TON EFFACÉ, ET LE SEUIL DE LISIBILITÉ. Il valait 0,30, ce qui donne un
+       contraste de 2,6 contre le fond de nuit : sous les 4,5 que demandent les
+       règles d'accessibilité pour un texte de cette taille, et franchement
+       pénible à lire pour qui n'a pas de bons yeux — or c'est le ton des
+       libellés, de la barre d'aide et des liens légaux. Mesuré sur le fond du
+       site : 0,45 donne 4,51. On garde donc l'idée (un gris discret, qui ne
+       dispute rien au blanc) en la rendant lisible. */
+    --white-35:rgba(255,255,255,0.45);
     --sale:#d9b96a;
     --tint-neutral:rgba(255,255,255,0.7); /* marque et horloge : neutre, légèrement teinté par l'ambiance */
     --footer-h:30px; /* hauteur réelle de la banderole légale, resynchronisée en JS (syncFooterHeight) ;
@@ -1873,10 +1902,14 @@
        chevauchait, même une fois la fenêtre agrandie (trouvé le 22 sept. 2026). */
     min-height:30px;
     padding:0 48px;
-    font-size:10.5px;
+    /* Plus grand et plus clair que le reste des tons effacés : ces liens sont
+       les mentions légales, ils DOIVENT se lire. 11,5 px à 0,62 de blanc
+       donnent 7,3 de contraste, de quoi tenir même quand le ruban passe
+       clair dessous. */
+    font-size:11.5px;
     font-weight:450;
-    letter-spacing:0.6px;
-    color:var(--white-35);
+    letter-spacing:0.5px;
+    color:rgba(255,255,255,0.62);
     background:linear-gradient(to top, rgba(0,2,4,0.6), rgba(0,2,4,0.25));
     border-top:1px solid rgba(var(--accent-rgb),0.14);
     backdrop-filter:blur(8px);
@@ -2846,7 +2879,9 @@
 <!-- Outil de développement temporaire : bascule vers l'aperçu mobile (mobile.html).
      À retirer, avec mobile.html, quand le site est prêt. -->
 <button type="button" class="dev-view" id="devView" hidden>📱 Mobile</button>
-<div class="brand">FakeParadise<b>™</b></div>
+<!-- Le nom de la marque EST le titre de la page : un document a besoin d'un
+     h1, et c'est celui-là. Son dessin ne change pas (voir .brand). -->
+<h1 class="brand">FakeParadise<b>™</b></h1>
 <div class="topbar">
   <!-- le gamertag, dès qu'un profil existe : la photo et le nom, un clic mène au profil -->
   <button class="topbar-gt" id="topbarGt" hidden><img id="topbarGtPhoto" alt="" draggable="false" hidden><span class="topbar-gt-initiale" id="topbarGtInitiale"></span><span id="topbarGtNom"></span><span class="topbar-gt-niveau" id="topbarGtNiveau"></span></button>
@@ -2868,7 +2903,9 @@
   </div>
 </div>
 
-<div class="stage">
+<!-- `main` : le repère du contenu principal, celui que les lecteurs d'écran et
+     les navigateurs cherchent pour sauter l'habillage. -->
+<main class="stage">
   <div class="categories" id="categories"></div>
   <!-- Les deux chevrons : ils disent qu'il reste des catégories de ce côté-là,
        et ils y mènent. Hors de .categories, sinon ils glisseraient avec elle.
@@ -2879,7 +2916,7 @@
   <button type="button" class="hors-champ droite" id="horsDroite" tabindex="-1">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
   </button>
-</div>
+</main>
 
 
 <div class="preview glass" id="preview">
@@ -10475,20 +10512,40 @@ const profil = (() => {
       [T('profilPieces'), pieces.ouvertes + ' / ' + pieces.total],
     ];
   }
-  /* Le bouton TÉLÉCHARGE la carte, toujours, sur toutes les machines (choix de
-     l'utilisateur, 22 sept. 2026). Il n'y a plus de partage d'adresse : le lien
-     du site n'a jamais rien montré de personnel, et l'image, elle, porte le
-     gamertag, le niveau, le personnage — et l'adresse écrite dessus. Elle part
-     donc là où le visiteur veut, sans que le site ait à deviner où.
-     Pas de `navigator.share` non plus : sa feuille de partage n'existe que sur
-     téléphone, et une seule façon de faire vaut mieux que deux comportements
-     selon la machine. */
+  /* Le bouton donne l'IMAGE du profil, et rien d'autre : pas de lien, pas de
+     texte à recopier — l'adresse de la boutique est écrite sur la carte.
+     LA FEUILLE DE PARTAGE DU SYSTÈME D'ABORD, partout où elle existe : c'est
+     elle qui mène en deux gestes vers Instagram, un message ou les fichiers,
+     là où un téléchargement oblige à retrouver l'image ensuite. Elle n'existe
+     guère que sur téléphone ; ailleurs — et si elle refuse le fichier, ou si
+     elle échoue —, la carte se télécharge. Dans les deux cas le visiteur
+     repart avec la même image.
+     Refermer la feuille sans rien choisir n'est pas une erreur (AbortError) :
+     on ne retombe pas sur le téléchargement, ce serait lui imposer ce qu'il
+     vient de refuser. */
+  const nomFichier = () => {
+    const propre = (p ? p.nom : 'profil').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return 'fakeparadise-' + (propre || 'profil') + '.png';
+  };
+  const blobDe = (cv) => new Promise(ok => cv.toBlob(ok, 'image/png'));
   async function partager(){
     await preparerPhoto();
-    const cv = carte(1200);
-    const propre = (p ? p.nom : 'profil').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'profil';
+    const cv = carte(1200), nom = nomFichier();
+    if (navigator.share && navigator.canShare){
+      try {
+        const b = await blobDe(cv);
+        const f = b && new File([b], nom, { type: 'image/png' });
+        if (f && navigator.canShare({ files: [f] })){
+          await navigator.share({ files: [f], title: 'FakeParadise™' });
+          sfx.photo();
+          return;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;   // refermée sans rien choisir : on n'insiste pas
+      }
+    }
     const a = document.createElement('a');
-    a.download = 'fakeparadise-' + propre + '.png';
+    a.download = nom;
     a.href = cv.toDataURL('image/png');
     a.click();
     sfx.photo();               // le déclencheur : on emporte une image du profil
