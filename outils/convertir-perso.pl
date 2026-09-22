@@ -48,13 +48,19 @@ my $SORTIE = 'models/perso.json';
 my @PIECES = (
   # le corps : bras, mains et cou. LE TORSE N'EXISTE PAS dans le pack — rien
   # n'est modélisé sous les vêtements —, d'où la règle du site : le
-  # personnage porte toujours un haut et un bas (voir le t-shirt de base).
+  # personnage porte toujours un haut et un bas (voir la tenue de base).
   { id => 'corps',   perso => 'Casual_2',      maille => 'Casual2_Body', mats => ['Skin'] },
   { id => 'tete',    perso => 'Casual_2',      maille => 'Casual2_Head', mats => ['Skin', 'Skin_Darker', 'Eyebrows', 'Eye'] },
-  { id => 'tshirt',  perso => 'Casual_2',      maille => 'Casual2_Body', mats => ['LightBrown'] },
-  { id => 'jean',    perso => 'Casual_2',      maille => 'Casual2_Legs', mats => ['LightBlue'] },
+  # LA TENUE DE BASE (demandée le 22 sept. 2026) : un t-shirt blanc tout bête
+  # et un pantalon bleu. Les couleurs du pack ne conviennent pas — son t-shirt
+  # est grège et son jean gris ardoise —, on les remplace ici plutôt que dans
+  # le site : c'est une propriété de la pièce, pas de son affichage.
+  { id => 'tshirt',  perso => 'Casual_2',      maille => 'Casual2_Body', mats => ['LightBrown'], couleurs => ['#f0efe9'] },
+  { id => 'jean',    perso => 'Casual_2',      maille => 'Casual2_Legs', mats => ['LightBlue'],  couleurs => ['#3d5a80'] },
   { id => 'baskets', perso => 'Casual_2',      maille => 'Casual2_Feet', mats => ['White', 'Red_Dark'] },
   { id => 'cheveux', perso => 'Casual_2',      maille => 'Casual2_Head', mats => ['Hair'] },
+  # le sweat à capuche : l'autre rayon de la boutique
+  { id => 'sweat',   perso => 'Casual_Hoodie', maille => 'Casual_Body',  mats => ['Purple'] },
 );
 
 # ---- lecture d'un glTF -----------------------------------------------------
@@ -185,7 +191,12 @@ for my $P (@PIECES) {
       $ww[-4] += 255 - $t;
     }
     push @tri, map { $_ + $base } @$idx;
-    push @groupes, [ $debut, scalar(@tri) - $debut, couleur($g, $pr->{material}) ];
+    my $col = $P->{couleurs} && $P->{couleurs}[ scalar(@groupes) ];
+    # LE RÔLE, quatrième valeur du groupe : la peau doit pouvoir changer de
+    # teinte sans toucher au reste (voir le rayon « peau » de la penderie).
+    # Il se lit sur le nom du matériau du pack, on ne le déclare nulle part.
+    my $role = $mat eq 'Skin' ? 'peau' : $mat eq 'Skin_Darker' ? 'peau2' : undef;
+    push @groupes, [ $debut, scalar(@tri) - $debut, $col || couleur($g, $pr->{material}), $role ];
   }
   $sortie{ $P->{id} } = { os => \@osPiece, xyz => \@xyz, j => \@jj, w => \@ww, tri => \@tri, groupes => \@groupes };
   printf "%-9s %5d sommets  %5d triangles  %2d os  %s\n",

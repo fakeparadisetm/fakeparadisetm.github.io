@@ -7292,6 +7292,7 @@ const model3d = (() => {
     : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.hautVisage || 0) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : item.accessoire ? 'accessoire|' + item.accessoire
+    : item.perso ? 'perso|' + item.perso + '|' + (item.peau || '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -7369,6 +7370,167 @@ const model3d = (() => {
     }).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
+  /* ================= LE PERSONNAGE DU SALON =================
+     Il vient du pack « Ultimate Modular Men » (Quaternius, CC0), converti une
+     fois par `outils/convertir-perso.pl` en `models/perso.json` — lu à la
+     première ouverture du salon, comme les accessoires, parce que la page est
+     déjà lourde et que tout le monde la télécharge.
+
+     CE QUI CHANGE PAR RAPPORT AU MANNEQUIN PSX. Celui-là était un bloc, et les
+     vêtements étaient des photos gonflées en coussins qu'on posait devant lui,
+     chacune sur son plan, la profondeur remise à zéro entre deux couches — une
+     poupée de papier, juste de face et fausse dès qu'on tournait. Ici le corps
+     et les vêtements sont des MAILLAGES, montés sur le même squelette de 24
+     os : ils s'emboîtent parce qu'ils ont été taillés sur ce corps-là, et rien
+     n'a besoin d'être cadré, étiré, ni resserré.
+
+     LA PEAU EST COUSUE UNE FOIS. La pose de repos ne bouge pas — c'est un
+     mannequin de vitrine, il se tient debout, bras le long du corps — donc on
+     calcule les positions déformées au chargement et on n'y revient jamais.
+     Le squelette ne sert qu'à cela pour l'instant ; il est là pour la suite.
+
+     UNE SEULE PALETTE POUR TOUT LE PERSONNAGE : un damier d'aplats de 16 px,
+     comme les accessoires, où chaque groupe de triangles a son carré. Les
+     groupes marqués « peau » y prennent la teinte choisie au rayon peau, les
+     autres gardent la leur. Changer de teinte ne refait donc qu'une image de
+     quelques centaines de pixels, jamais un maillage. */
+  const PERSO_BASE = ['corps', 'tete', 'jean', 'baskets'];   // ce qui donne sa taille au personnage
+  let persoPromesse = null;
+  const persoModele = () => persoPromesse || (persoPromesse = fetch('models/perso.json')
+    .then(r => { if (!r.ok) throw new Error('perso ' + r.status); return r.json(); })
+    .then(coudre));
+  // translation + quaternion + échelle : la transformation locale d'un os
+  function trs(t, q, e){
+    const x = q[0], y = q[1], z = q[2], w = q[3];
+    return new Float32Array([
+      (1-2*(y*y+z*z))*e[0], (2*(x*y+z*w))*e[0], (2*(x*z-y*w))*e[0], 0,
+      (2*(x*y-z*w))*e[1], (1-2*(x*x+z*z))*e[1], (2*(y*z+x*w))*e[1], 0,
+      (2*(x*z+y*w))*e[2], (2*(y*z-x*w))*e[2], (1-2*(x*x+y*y))*e[2], 0,
+      t[0], t[1], t[2], 1]);
+  }
+  /* COUDRE : la peau de toutes les pièces, et la boîte du personnage.
+     Chaque sommet est la moyenne de quatre matrices d'os, pesées. La boîte
+     n'est mesurée que sur PERSO_BASE : les cheveux et les chapeaux dépassent
+     du crâne, et le personnage rapetisserait en mettant un bonnet. */
+  function coudre(P){
+    const G = [], K = [];
+    P.os.forEach((o, i) => {
+      const loc = trs(o.t, o.r, o.s);
+      G[i] = o.p < 0 ? loc : mul(G[o.p], loc);
+      K[i] = mul(G[i], o.m);
+    });
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+    P.pal = []; P.slot = {};
+    Object.keys(P.pieces).forEach(id => {
+      const p = P.pieces[id], n = p.xyz.length / 3, V = new Float32Array(n * 3);
+      const base = PERSO_BASE.indexOf(id) >= 0;
+      for (let v = 0; v < n; v++){
+        const x = p.xyz[v*3], y = p.xyz[v*3+1], z = p.xyz[v*3+2];
+        let ax = 0, ay = 0, az = 0;
+        for (let c = 0; c < 4; c++){
+          const w = p.w[v*4+c];
+          if (!w) continue;
+          const m = K[p.os[p.j[v*4+c]]], f = w / 255;
+          ax += f * (m[0]*x + m[4]*y + m[8]*z + m[12]);
+          ay += f * (m[1]*x + m[5]*y + m[9]*z + m[13]);
+          az += f * (m[2]*x + m[6]*y + m[10]*z + m[14]);
+        }
+        V[v*3] = ax; V[v*3+1] = ay; V[v*3+2] = az;
+        if (base){
+          if (ax < x0) x0 = ax; if (ax > x1) x1 = ax;
+          if (ay < y0) y0 = ay; if (ay > y1) y1 = ay;
+          if (az < z0) z0 = az; if (az > z1) z1 = az;
+        }
+      }
+      p.V = V;
+      // chaque groupe de couleur prend sa case dans la palette commune
+      P.slot[id] = p.groupes.map(g => { P.pal.push(g); return P.pal.length - 1; });
+    });
+    /* La taille se mesure des pieds au sommet du crâne, et le CENTRE en x et z
+       est celui du corps : c'est le repère du mannequin d'avant — « pieds en
+       bas de la boîte, tête en haut, x et z au milieu » —, ce qui laisse tout
+       le cadrage du salon en place. */
+    P.ech = 1 / ((y1 - y0) || 1);
+    P.ctr = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+    return P;
+  }
+  /* Le maillage d'une pièce, dans le format du moteur : position, coordonnée
+     de palette, et l'éclairage cuit dans le sommet. NORMALES LISSÉES — la
+     normale de chaque face est accumulée sur ses trois sommets — parce que le
+     pack est un modèle arrondi et qu'on a choisi de le garder tel quel ; des
+     facettes plates en feraient un tout autre personnage. */
+  function meshPerso(P, id){
+    const p = P.pieces[id];
+    if (!p) return null;
+    const V = p.V, T = p.tri, n = V.length / 3, nT = T.length / 3;
+    const N = new Float32Array(n * 3);
+    for (let t = 0; t < nT; t++){
+      const a = T[t*3], b = T[t*3+1], c = T[t*3+2];
+      const ux = V[b*3]-V[a*3], uy = V[b*3+1]-V[a*3+1], uz = V[b*3+2]-V[a*3+2];
+      const wx = V[c*3]-V[a*3], wy = V[c*3+1]-V[a*3+1], wz = V[c*3+2]-V[a*3+2];
+      const nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
+      N[a*3] += nx; N[a*3+1] += ny; N[a*3+2] += nz;
+      N[b*3] += nx; N[b*3+1] += ny; N[b*3+2] += nz;
+      N[c*3] += nx; N[c*3+1] += ny; N[c*3+2] += nz;
+    }
+    const groupe = new Uint8Array(n);
+    p.groupes.forEach((g, gi) => { for (let k = g[0]; k < g[0] + g[1]; k++) groupe[T[k]] = gi; });
+    const data = new Float32Array(n * STRIDE), index = new Uint16Array(T.length);
+    const nPal = P.pal.length, cases = P.slot[id];
+    let zmin = 9, zmax = -9;
+    for (let v = 0; v < n; v++){
+      const o = v * STRIDE;
+      const z = (V[v*3+2] - P.ctr[2]) * P.ech;
+      data[o] = (V[v*3] - P.ctr[0]) * P.ech;
+      data[o+1] = (V[v*3+1] - P.ctr[1]) * P.ech;
+      data[o+2] = z;
+      data[o+3] = (cases[groupe[v]] + 0.5) / nPal; data[o+4] = 0.5;
+      let nx = N[v*3], ny = N[v*3+1], nz = N[v*3+2];
+      const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0);
+      const rim = Math.pow(1 - Math.max(nz, 0), 3);
+      data[o+5] = 0.74 + 0.34 * dif; data[o+6] = rim * 0.07;
+      if (z < zmin) zmin = z;
+      if (z > zmax) zmax = z;
+    }
+    for (let k = 0; k < T.length; k++) index[k] = T[k];
+    return { data, index, nFront: T.length, nBack: 0, tris: nT, verts: n, zmin, zmax, relief: true };
+  }
+  // la palette, une image par teinte de peau demandée (elles sont dix)
+  function palettePerso(P, peau){
+    P.palettes = P.palettes || {};
+    const cle = peau || PEAU_DEFAUT;
+    if (P.palettes[cle]) return P.palettes[cle];
+    const T = 16, c = document.createElement('canvas');
+    c.width = T * P.pal.length; c.height = T;
+    const g = c.getContext('2d');
+    P.pal.forEach((gr, i) => {
+      g.fillStyle = gr[3] === 'peau' ? cle : gr[3] === 'peau2' ? assombrir(cle, 0.90) : gr[2];
+      g.fillRect(i * T, 0, T, T);
+    });
+    c.brut = true;                 // texture() : aucun lissage, chaque carré net
+    return (P.palettes[cle] = c);
+  }
+  function preparePerso(item, key){
+    const p = persoModele().then(P => {
+      const cle = 'perso|' + item.perso;
+      let mesh = meshes.get(cle);
+      if (!mesh){ mesh = meshPerso(P, item.perso); meshes.set(cle, mesh); }
+      const tex = palettePerso(P, item.peau);
+      const a = mesh ? { mesh, texF: tex, texB: tex } : null;
+      ready.set(key, a);
+      if (list) list.warm(a);
+      return a;
+    }).catch(() => { ready.set(key, null); return null; });
+    assets.set(key, p); return p;
+  }
+  // contrôle : ce que le fichier du personnage contient une fois cousu
+  const debugPerso = () => persoModele().then(P => ({
+    os: P.os.length, echelle: +P.ech.toFixed(4), centre: P.ctr.map(v => +v.toFixed(4)),
+    palette: P.pal.length,
+    pieces: Object.keys(P.pieces).map(id => id + ':' + P.pieces[id].xyz.length / 3),
+  }));
+
   /* ---- les accessoires du salon ----
      Des modèles de l'utilisateur, convertis une fois comme la tête et le
      mannequin. Leurs chiffres ne sont pas dans cette page mais dans
@@ -7538,6 +7700,7 @@ const model3d = (() => {
     if (item.mannequin) return prepareMannequin(item, key);
     if (item.tete) return prepareTete(item, key);
     if (item.accessoire) return prepareAccessoire(item, key);
+    if (item.perso) return preparePerso(item, key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
     const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
       let bMask = back === front ? null : b.mask, texB = b.canvas;
@@ -8986,7 +9149,7 @@ const model3d = (() => {
      s'ouvre — est une affaire de boutique, et n'a rien à faire dans un moteur
      de rendu. Une seule fonction écoute, elle reçoit le total en radians. */
   const surRotation = fn => { surTour = fn; };
-  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, surRotation, debug, debugMask, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, surRotation, debug, debugMask, debugPerso, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- l'œuf de Pâques de la tête ----------------
