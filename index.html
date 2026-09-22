@@ -7402,7 +7402,7 @@ const model3d = (() => {
      groupes marqués « peau » y prennent la teinte choisie au rayon peau, les
      autres gardent la leur. Changer de teinte ne refait donc qu'une image de
      quelques centaines de pixels, jamais un maillage. */
-  const PERSO_BASE = ['corps', 'tete', 'jean', 'baskets'];   // ce qui donne sa taille au personnage
+  const PERSO_BASE = ['corps', 'visage1', 'jean', 'baskets'];   // ce qui donne sa taille au personnage
   let persoPromesse = null;
   const persoModele = () => persoPromesse || (persoPromesse = fetch('models/perso.json')
     .then(r => { if (!r.ok) throw new Error('perso ' + r.status); return r.json(); })
@@ -7432,10 +7432,19 @@ const model3d = (() => {
     Object.keys(P.pieces).forEach(id => {
       const p = P.pieces[id], n = p.xyz.length / 3, V = new Float32Array(n * 3);
       const base = PERSO_BASE.indexOf(id) >= 0;
+    /* UN SEUL OS, PAS DE POIDS. Une coiffure, un chapeau, un casque ne
+       tiennent qu'à l'os de la tête : le convertisseur n'écrit alors ni index
+       ni poids — quatre et quatre par sommet, tous identiques, pesaient la
+       moitié du fichier pour ne rien dire. */
+      const seul = p.j ? null : K[p.os[0]];
       for (let v = 0; v < n; v++){
         const x = p.xyz[v*3], y = p.xyz[v*3+1], z = p.xyz[v*3+2];
         let ax = 0, ay = 0, az = 0;
-        for (let c = 0; c < 4; c++){
+        if (seul){
+          ax = seul[0]*x + seul[4]*y + seul[8]*z + seul[12];
+          ay = seul[1]*x + seul[5]*y + seul[9]*z + seul[13];
+          az = seul[2]*x + seul[6]*y + seul[10]*z + seul[14];
+        } else for (let c = 0; c < 4; c++){
           const w = p.w[v*4+c];
           if (!w) continue;
           const m = K[p.os[p.j[v*4+c]]], f = w / 255;
@@ -13475,7 +13484,10 @@ const dressup = (() => {
      bras flottants. Le personnage est donc toujours habillé, comme un
      mannequin de vitrine l'est toujours. */
   const BASE3D = { haut: 'tshirt', bas: 'jean', pieds: 'baskets' };
-  let cheveux = 'cheveux';     // la coiffure choisie (voir le panneau du personnage)
+  /* Le visage et la coiffure : deux choix du personnage, pas deux vêtements.
+     Les coiffures ne tiennent qu'à l'os de la tête, elles se montent donc
+     indifféremment sur les trois visages. */
+  let visage = 'visage1', cheveux = 'cheveux2';
   /* ---- LE PERSONNAGE TOURNE ----
      C'est le geste qui manquait, et il n'a été possible qu'une fois les
      vêtements devenus des maillages : avec les coussins photo d'avant, un
@@ -13489,7 +13501,7 @@ const dressup = (() => {
   const FREIN = 0.90;                   // ce qu'il reste de l'élan après 16 ms
   let angle = 0, elan = 0, saisie = null, derniereImage = 0;
   const persoListe = () => {
-    const l = ['corps', 'tete'];
+    const l = ['corps', visage];
     if (cheveux) l.push(cheveux);
     ['bas', 'haut', 'pieds'].forEach(cat => {
       const p = portees.get(cat);

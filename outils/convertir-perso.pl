@@ -46,21 +46,56 @@ my $SORTIE = 'models/perso.json';
 # pack où la prendre, le maillage, et les matériaux à garder (dans l'ordre de
 # dessin). Tout le reste du pack est ignoré.
 my @PIECES = (
-  # le corps : bras, mains et cou. LE TORSE N'EXISTE PAS dans le pack — rien
-  # n'est modélisé sous les vêtements —, d'où la règle du site : le
-  # personnage porte toujours un haut et un bas (voir la tenue de base).
+  # ---- le corps ----
+  # bras, mains et cou. LE TORSE N'EXISTE PAS dans le pack — rien n'est
+  # modélisé sous les vêtements —, d'où la règle du site : le personnage porte
+  # toujours un haut et un bas (voir la tenue de base).
   { id => 'corps',   perso => 'Casual_2',      maille => 'Casual2_Body', mats => ['Skin'] },
-  { id => 'tete',    perso => 'Casual_2',      maille => 'Casual2_Head', mats => ['Skin', 'Skin_Darker', 'Eyebrows', 'Eye'] },
-  # LA TENUE DE BASE (demandée le 22 sept. 2026) : un t-shirt blanc tout bête
-  # et un pantalon bleu. Les couleurs du pack ne conviennent pas — son t-shirt
-  # est grège et son jean gris ardoise —, on les remplace ici plutôt que dans
-  # le site : c'est une propriété de la pièce, pas de son affichage.
+
+  # ---- les visages ----
+  # TROIS, ET PAS ONZE. Relevé sur les onze têtes du pack : Adventurer, Beach,
+  # Casual_2, Casual_Hoodie et Suit ont EXACTEMENT le même visage, à 982
+  # sommets près ; Farmer et Worker sont ce visage plus une moustache, King ce
+  # visage plus une barbe. Ne restent que trois vrais visages, choisis pour
+  # leurs yeux et leurs sourcils — et comme les coiffures ne tiennent qu'à l'os
+  # de la tête, elles se montent indifféremment sur les trois.
+  { id => 'visage1', perso => 'Casual_Hoodie', maille => 'Casual_Head',     mats => ['Skin', 'Eyebrows', 'Eye'] },
+  { id => 'visage2', perso => 'Adventurer',    maille => 'Adventurer_Head', mats => ['Skin', 'Eyebrows', 'Eye'] },
+  { id => 'visage3', perso => 'King',          maille => 'King_Head',       mats => ['Skin', 'Eye'] },
+
+  # ---- la tenue de base (demandée le 22 sept. 2026) ----
+  # Un t-shirt blanc tout bête et un pantalon bleu. Les couleurs du pack ne
+  # conviennent pas — son t-shirt est grège et son jean gris ardoise —, on les
+  # remplace ici plutôt que dans le site : c'est une propriété de la pièce,
+  # pas de son affichage.
   { id => 'tshirt',  perso => 'Casual_2',      maille => 'Casual2_Body', mats => ['LightBrown'], couleurs => ['#f0efe9'] },
   { id => 'jean',    perso => 'Casual_2',      maille => 'Casual2_Legs', mats => ['LightBlue'],  couleurs => ['#3d5a80'] },
   { id => 'baskets', perso => 'Casual_2',      maille => 'Casual2_Feet', mats => ['White', 'Red_Dark'] },
-  { id => 'cheveux', perso => 'Casual_2',      maille => 'Casual2_Head', mats => ['Hair'] },
-  # le sweat à capuche : l'autre rayon de la boutique
   { id => 'sweat',   perso => 'Casual_Hoodie', maille => 'Casual_Body',  mats => ['Purple'] },
+
+  # ---- les coiffures ----
+  # Toutes celles du pack. Plusieurs portent leur barbe dans le même matériau
+  # que les cheveux : on ne les sépare pas, c'est une tête entière qui se
+  # choisit. La crête et la barbichette du punk, elles, sont un SEUL matériau
+  # séparé par un vide franc (rien entre 1,62 et 1,64) : on coupe.
+  { id => 'cheveux1', perso => 'Casual_2',      maille => 'Casual2_Head',    mats => ['Hair'] },
+  { id => 'cheveux2', perso => 'Casual_Hoodie', maille => 'Casual_Head',     mats => ['Hair'] },
+  { id => 'cheveux3', perso => 'Suit',          maille => 'Suit_Head',       mats => ['Hair'] },
+  { id => 'cheveux4', perso => 'Beach',         maille => 'Beach_Head',      mats => ['Hair'] },
+  { id => 'cheveux5', perso => 'Adventurer',    maille => 'Adventurer_Head', mats => ['Hair'] },       # cheveux et barbe
+  { id => 'cheveux6', perso => 'King',          maille => 'King_Head',       mats => ['Hair_White'] }, # cheveux et barbe blanche
+  { id => 'crete',    perso => 'Punk',          maille => 'Punk_Head',       mats => ['Red'], sur   => 1.63 },
+  { id => 'barbiche', perso => 'Punk',          maille => 'Punk_Head',       mats => ['Red'], sous  => 1.63 },
+  { id => 'moustache',perso => 'Worker',        maille => 'Worker_Head',     mats => ['Moustache'] },
+
+  # ---- les accessoires de tête, tous à gagner ----
+  { id => 'couronne',  perso => 'King',      maille => 'King_Head',      mats => ['Gold'] },
+  { id => 'chapeau',   perso => 'Farmer',    maille => 'Farmer_Head',    mats => ['Beige', 'Red'] },
+  { id => 'chantier',  perso => 'Worker',    maille => 'Worker_Head',    mats => ['Worker_Yellow'] },
+  # Ces deux-là sont des casques FERMÉS : ils remplacent le visage, ils ne se
+  # posent pas dessus. Le site devra donc cacher la tête quand on les porte.
+  { id => 'swat',      perso => 'Swat',      maille => 'Swat_Head',      mats => ['Swat_Black', 'Swat', 'Visor'] },
+  { id => 'spatial',   perso => 'Spacesuit', maille => 'SpaceSuit_Head', mats => ['SciFi_Light', 'SciFi_Light_Accent', 'Grey'] },
 );
 
 # ---- lecture d'un glTF -----------------------------------------------------
@@ -164,11 +199,34 @@ for my $P (@PIECES) {
     my $jo  = lire($g, $pr->{attributes}{JOINTS_0});
     my $we  = lire($g, $pr->{attributes}{WEIGHTS_0});
     my $idx = lire($g, $pr->{indices});
+
+    # COUPER À UNE HAUTEUR : deux morceaux d'un même matériau qui n'ont rien à
+    # voir (la crête du punk et sa barbichette). On garde les triangles dont le
+    # milieu est du bon côté, puis on ne recopie que les sommets qui restent.
+    if (defined $P->{sur} || defined $P->{sous}) {
+      my (@garde, %vu, @neuf);
+      for (my $t = 0; $t < @$idx; $t += 3) {
+        my $y = ($pos->[$idx->[$t] * 3 + 1] + $pos->[$idx->[$t+1] * 3 + 1] + $pos->[$idx->[$t+2] * 3 + 1]) / 3;
+        next if defined $P->{sur}  && $y < $P->{sur};
+        next if defined $P->{sous} && $y > $P->{sous};
+        push @garde, @{$idx}[$t .. $t+2];
+      }
+      for my $i (@garde) { next if exists $vu{$i}; $vu{$i} = scalar(@neuf); push @neuf, $i; }
+      my (@p2, @j2, @w2);
+      for my $i (@neuf) {
+        push @p2, @{$pos}[ $i*3 .. $i*3+2 ];
+        push @j2, @{$jo} [ $i*4 .. $i*4+3 ];
+        push @w2, @{$we} [ $i*4 .. $i*4+3 ];
+      }
+      ($pos, $jo, $we, $idx) = (\@p2, \@j2, \@w2, [ map { $vu{$_} } @garde ]);
+    }
     my $base = @xyz / 3;
     my $debut = @tri;
 
     for my $v (0 .. @$pos / 3 - 1) {
-      push @xyz, map { 0 + sprintf('%.4f', $pos->[$v * 3 + $_]) } 0 .. 2;
+      # TROIS DÉCIMALES, c'est-à-dire le millimètre : invisible sur un
+      # personnage d'un mètre quatre-vingts, et un bon quart du fichier en moins.
+      push @xyz, map { 0 + sprintf('%.3f', $pos->[$v * 3 + $_]) } 0 .. 2;
       # quatre influences, ramenées aux os gardés puis renormalisées
       my %w;
       for my $c (0 .. 3) {
@@ -198,9 +256,16 @@ for my $P (@PIECES) {
     my $role = $mat eq 'Skin' ? 'peau' : $mat eq 'Skin_Darker' ? 'peau2' : undef;
     push @groupes, [ $debut, scalar(@tri) - $debut, $col || couleur($g, $pr->{material}), $role ];
   }
-  $sortie{ $P->{id} } = { os => \@osPiece, xyz => \@xyz, j => \@jj, w => \@ww, tri => \@tri, groupes => \@groupes };
-  printf "%-9s %5d sommets  %5d triangles  %2d os  %s\n",
-    $P->{id}, scalar(@xyz) / 3, scalar(@tri) / 3, scalar(@osPiece), join(' ', map { $_->[2] } @groupes);
+  # UN SEUL OS : on n'écrit ni les index ni les poids. Une coiffure, un
+  # chapeau, un casque ne tiennent qu'à l'os de la tête — quatre index et
+  # quatre poids par sommet, tous identiques, pesaient la moitié du fichier
+  # pour ne rien dire. Le site le lit : pas de `j`, tout tient au premier os.
+  my $piece = { os => \@osPiece, xyz => \@xyz, tri => \@tri, groupes => \@groupes };
+  if (@osPiece > 1) { $piece->{j} = \@jj; $piece->{w} = \@ww; }
+  $sortie{ $P->{id} } = $piece;
+  printf "%-10s %5d sommets  %5d triangles  %2d os%s  %s\n",
+    $P->{id}, scalar(@xyz) / 3, scalar(@tri) / 3, scalar(@osPiece),
+    (@osPiece > 1 ? '' : ' (sans poids)'), join(' ', map { $_->[2] } @groupes);
 }
 
 # ---- écriture --------------------------------------------------------------
