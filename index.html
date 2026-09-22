@@ -2658,6 +2658,39 @@
   }
   .dress-rack::before,.dress-outils::before{left:-1px;top:-1px;border-right:0;border-bottom:0;border-top-left-radius:8px;}
   .dress-rack::after,.dress-outils::after{right:-1px;bottom:-1px;border-left:0;border-top:0;border-bottom-right-radius:8px;}
+  /* LES DEUX ONGLETS, au-dessus de la penderie : ce qu'on met sur le
+     personnage d'un côté, ce qu'il EST de l'autre. Ils remplacent l'intitulé
+     du panneau — deux mots valent mieux qu'un titre quand il y a deux
+     contenus. L'onglet actif porte la barre d'accent que portait le titre. */
+  .dress-onglets{
+    flex:0 0 auto;display:flex;gap:6px;margin:0 0 10px;
+  }
+  .dress-onglet{
+    flex:1 1 0;
+    padding:8px 10px 7px;
+    border:1px solid rgba(255,255,255,0.10);border-radius:5px;
+    background:rgba(255,255,255,0.03);
+    color:var(--white-35);
+    font:inherit;font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
+    cursor:pointer;
+    transition:color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+  .dress-onglet:hover{color:var(--white-60);border-color:rgba(255,255,255,0.18);}
+  .dress-onglet.on{
+    color:var(--white);
+    border-color:rgba(var(--accent-rgb),0.55);
+    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.16), rgba(var(--accent-rgb),0.04));
+    box-shadow:inset 0 -2px 0 var(--blue), 0 0 14px rgba(var(--accent-rgb),0.20);
+  }
+  .dress-onglet:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;}
+  /* « Aucun » : une case vide, qui retire ce qu'on porte. Pas d'aperçu 3D —
+     il n'y a rien à montrer, et un visage tout seul se confondrait avec le
+     rayon d'à côté. */
+  .dress-case--rien{
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;color:var(--white-35);
+  }
+  .dress-case--rien::before{content:"\2014";}
   /* L'intitulé d'un panneau : une barre d'accent, le mot en capitales
      espacées, et un filet qui finit la ligne. */
   .dress-tete{
@@ -3415,9 +3448,11 @@
         <!-- le cadre pointillé dehors, la piste qui défile dedans : l'ascenseur
              ne vient plus se poser sur le pointillé (voir .dress-rack) -->
         <div class="dress-rack">
-          <!-- l'intitulé du panneau ; le nom de chaque case dit déjà le reste,
-               d'où l'aria-hidden -->
-          <div class="dress-tete" id="dressRackTitre" aria-hidden="true"></div>
+          <!-- deux onglets : ce qu'on lui met dessus, et ce qu'il est -->
+          <div class="dress-onglets" role="tablist">
+            <button class="dress-onglet on" id="dressOngletP" role="tab" aria-selected="true"></button>
+            <button class="dress-onglet" id="dressOngletC" role="tab" aria-selected="false"></button>
+          </div>
           <div class="dress-piste" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
         </div>
         <div class="dress-outils">
@@ -3977,7 +4012,8 @@ const STRINGS = {
     dressTitle:"Dress Up!", dressTurn:"turn the character", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressStrip:"Clear all",
     dressCatSkin:"skin", dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
-    dressRack:"Wardrobe", dressLook:"Appearance",
+    dressRack:"Wardrobe", dressLook:"Appearance", dressPerso:"Character",
+    dressCatFace:"face", dressCatHair:"hair", dressCatHead:"headwear", dressAucun:"none",
     dressSkin:"Skin tone",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
@@ -4046,7 +4082,8 @@ const STRINGS = {
     dressTitle:"Dress Up !", dressTurn:"tourner le personnage", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressStrip:"Tout effacer",
     dressCatSkin:"peau", dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
-    dressRack:"Penderie", dressLook:"Apparence",
+    dressRack:"Penderie", dressLook:"Apparence", dressPerso:"Personnage",
+    dressCatFace:"visage", dressCatHair:"cheveux", dressCatHead:"couvre-chef", dressAucun:"aucun",
     dressSkin:"Couleur de peau",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
@@ -7548,7 +7585,20 @@ const model3d = (() => {
     }
     const groupe = new Uint8Array(n);
     p.groupes.forEach((g, gi) => { for (let k = g[0]; k < g[0] + g[1]; k++) groupe[T[k]] = gi; });
-    const data = new Float32Array(n * STRIDE), index = new Uint16Array(T.length);
+    /* UN TRIANGLE NE PEUT PAS ENJAMBER DEUX RÉGIONS DE L'ATLAS, et c'est ce
+       qui faisait la couture sale sur les flancs. Les coordonnées sont
+       interpolées d'un sommet à l'autre : un triangle dont un sommet regardait
+       devant et l'autre de côté allait chercher sa matière EN TRAVERS de
+       l'atlas, quelque part entre la photo de face et l'aplat d'étoffe —
+       c'est-à-dire n'importe où. On dédouble donc les sommets des pièces
+       imprimées : trois par triangle, tous dans la même région, la région
+       étant décidée par la normale de la FACE. L'éclairage, lui, garde la
+       normale LISSÉE du sommet, sinon le vêtement se facetterait.
+       Ça triple les sommets — 1490 deviennent 2226 pour un t-shirt — et c'est
+       le prix d'une couture propre. */
+    const dedouble = !!imprime;
+    const nV = dedouble ? T.length : n;
+    const data = new Float32Array(nV * STRIDE), index = new Uint16Array(T.length);
     const nPal = P.pal.length, cases = P.slot[id];
     // la boîte de la pièce vue de face : c'est elle qui reçoit la photo
     let bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
@@ -7560,8 +7610,9 @@ const model3d = (() => {
     const bl = (bx1 - bx0) || 1, bh = (by1 - by0) || 1;
     const serre = (t) => t < 0.01 ? 0.01 : t > 0.99 ? 0.99 : t;
     let zmin = 9, zmax = -9;
-    for (let v = 0; v < n; v++){
-      const o = v * STRIDE;
+    // l'écriture d'un sommet, à sa place dans le tampon
+    const poser = (k, v, region) => {
+      const o = k * STRIDE;
       const z = (V[v*3+2] - P.ctr[2]) * P.ech;
       data[o] = (V[v*3] - P.ctr[0]) * P.ech;
       data[o+1] = (V[v*3+1] - P.ctr[1]) * P.ech;
@@ -7570,18 +7621,30 @@ const model3d = (() => {
       const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
       if (imprime){
         const u = serre((V[v*3] - bx0) / bl), w = serre((by1 - V[v*3+1]) / bh);
-        if (nz > 0.2){ data[o+3] = u * 0.5;           data[o+4] = w * 0.5; }          // la face
-        else if (nz < -0.2){ data[o+3] = (1 - u) * 0.5 + 0.5; data[o+4] = w * 0.5; }  // le dos, en miroir
-        else { data[o+3] = 0.25; data[o+4] = 0.75; }                                  // la tranche : l'étoffe
+        if (region > 0){ data[o+3] = u * 0.5;                  data[o+4] = w * 0.5; }   // la face
+        else if (region < 0){ data[o+3] = (1 - u) * 0.5 + 0.5; data[o+4] = w * 0.5; }   // le dos, en miroir
+        else { data[o+3] = 0.25; data[o+4] = 0.75; }                                    // la tranche : l'étoffe
       } else { data[o+3] = (cases[groupe[v]] + 0.5) / nPal; data[o+4] = 0.5; }
       const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0);
       const rim = Math.pow(1 - Math.max(nz, 0), 3);
       data[o+5] = 0.74 + 0.34 * dif; data[o+6] = rim * 0.07;
       if (z < zmin) zmin = z;
       if (z > zmax) zmax = z;
+    };
+    if (!dedouble){
+      for (let v = 0; v < n; v++) poser(v, v, 0);
+      for (let k = 0; k < T.length; k++) index[k] = T[k];
+    } else for (let t = 0; t < nT; t++){
+      const a = T[t*3], b = T[t*3+1], c = T[t*3+2];
+      // la normale de la FACE décide de la région : face, dos, ou tranche
+      const ux = V[b*3]-V[a*3], uy = V[b*3+1]-V[a*3+1], uz = V[b*3+2]-V[a*3+2];
+      const wx = V[c*3]-V[a*3], wy = V[c*3+1]-V[a*3+1], wz = V[c*3+2]-V[a*3+2];
+      const fz = ux*wy - uy*wx, fl = Math.hypot(uy*wz-uz*wy, uz*wx-ux*wz, fz) || 1;
+      const nz = fz / fl;
+      const region = nz > 0.30 ? 1 : nz < -0.30 ? -1 : 0;
+      [a, b, c].forEach((v, j) => { const k = t*3 + j; poser(k, v, region); index[k] = k; });
     }
-    for (let k = 0; k < T.length; k++) index[k] = T[k];
-    return { data, index, nFront: T.length, nBack: 0, tris: nT, verts: n, zmin, zmax, relief: true };
+    return { data, index, nFront: T.length, nBack: 0, tris: nT, verts: nV, zmin, zmax, relief: true };
   }
   // la palette, une image par teinte de peau demandée (elles sont dix)
   function palettePerso(P, peau){
@@ -13029,7 +13092,8 @@ const dressup = (() => {
   const titre = document.getElementById('dressTitre');
   const btNu = document.getElementById('dressNu');
   const stage = document.getElementById('dressStage');
-  const tetePenderie = document.getElementById('dressRackTitre');
+  const ongletP = document.getElementById('dressOngletP');
+  const ongletC = document.getElementById('dressOngletC');
   const teteLook = document.getElementById('dressLookTitre');
 
   /* ---- catégories et coupes ----
@@ -13156,6 +13220,11 @@ const dressup = (() => {
      des descriptions : contrairement aux noms de produits, ils se traduisent.
      Les laisser en anglais était la seule chose du salon qui ne suivait pas la
      langue choisie. */
+  /* TOUT EST OUVERT (22 sept. 2026, provisoire, à la demande) : les
+     récompenses des épreuves restent déclarées — chaque pièce garde son
+     `verrou` —, mais le cadenas ne tombe plus sur personne. Remettre ce
+     drapeau à `false` referme tout, sans rien avoir à retrouver. */
+  const TOUT_OUVERT = true;
   const VESTIAIRE = [
     { img: 'dressup/galaxylegging2.png', nom: { en: 'Galaxy leggings', fr: 'Legging galaxie' },  cat: 'bas',   coupe: 'pantalon' },
     { img: 'dressup/pyjamapants1.webp',  nom: { en: 'Pyjama pants',    fr: 'Bas de pyjama' },    cat: 'bas',   coupe: 'pantalon' },
@@ -13276,6 +13345,31 @@ const dressup = (() => {
      chaussures, chaque groupe sous son intertitre. Une liste où un jean voisine
      un t-shirt ne dit rien de ce qu'on est en train de faire ; rangée, elle se
      lit comme une penderie, et l'on voit d'un coup d'œil ce qui manque. */
+  /* ---- LE PANNEAU DU PERSONNAGE ----
+     La penderie dit ce qu'on lui MET ; celui-ci dit ce qu'il EST. Trois
+     rayons et rien de plus : le visage, les cheveux, le couvre-chef. Les
+     coiffures ne tiennent qu'à l'os de la tête, elles se montent donc sur les
+     trois visages indifféremment — barbes et moustache comprises, qui sont du
+     poil et se rangent avec les cheveux.
+     `''` est le choix « aucun » : il retire, il ne pose rien. Le visage, lui,
+     n'a pas d'« aucun » — on a toujours une tête. */
+  let panneau = 'penderie';
+  const GROUPES_PERSO = [
+    { cat: 'visage',   cle: 'dressCatFace' },
+    { cat: 'coiffure', cle: 'dressCatHair' },
+    { cat: 'couvre',   cle: 'dressCatHead' },
+  ];
+  const PERSO_CHOIX = {
+    visage:   ['visage1', 'visage2', 'visage3'],
+    coiffure: ['', 'cheveux1', 'cheveux2', 'cheveux3', 'cheveux4', 'cheveux5', 'cheveux6', 'crete', 'barbiche', 'moustache'],
+    couvre:   ['', 'couronne', 'chapeau', 'chantier', 'swat', 'spatial'],
+  };
+  const PORTE_PERSO = { visage: () => visage, coiffure: () => cheveux, couvre: () => couvre };
+  const POSER_PERSO = {
+    visage:   (v) => { if (v) visage = v; },     // on a toujours un visage
+    coiffure: (v) => { cheveux = v; },
+    couvre:   (v) => { couvre = v; },
+  };
   const GROUPES = [
     /* LA PEAU AVANT TOUT LE RESTE : c'est le corps, pas un vêtement. On
        commence par qui l'on est, on habille ensuite. */
@@ -13308,26 +13402,53 @@ const dressup = (() => {
     // la teinte du moment : celle qu'on a choisie, ou la plus proche de celle du moteur
     const teinte = peauProche(peau || PEAU_MOTEUR);
     pieces.forEach(q => { if (q.peau) q.el.classList.toggle('porte', q.peau === teinte); });
+    // et le visage, la coiffure, le couvre-chef du moment
+    pieces.forEach(q => { if (q.cat && PORTE_PERSO[q.cat]) q.el.classList.toggle('porte', PORTE_PERSO[q.cat]() === q.perso); });
+  }
+  /* Une case, quel que soit le panneau : un vêtement, une teinte, un visage,
+     une coiffure, ou le « aucun » qui retire. */
+  function caser(p){
+    const el = p.el = document.createElement('div');
+    el.className = 'dress-case';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'option');
+    el.title = p.nom;
+    el.addEventListener('click', () => basculer(p));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
+    el.addEventListener('animationend', () => el.classList.remove('refus'));
+    rack.appendChild(el);
+    pieces.push(p);
+    if (p.peau){                      // une pastille de teinte : pas de maillage, la case EST la couleur
+      el.classList.add('dress-case--teinte');
+      el.style.background = p.peau;
+    } else if (!p.it){                // « aucun » : une case vide, qui retire
+      el.classList.add('dress-case--rien');
+    } else if (scene){ scene.load(p.it); if (p.porte) scene.load(p.porte); }
+  }
+  /* Le panneau du personnage : trois rayons, une case par choix, et l'aperçu
+     est la TÊTE — le visage seul pour le rayon des visages, le visage coiffé
+     pour les deux autres (voir `dessiner`), sans quoi une perruque flotterait
+     toute seule dans sa case. */
+  function garnirPerso(){
+    GROUPES_PERSO.forEach(g => {
+      const t = g.el = document.createElement('div');
+      t.className = 'dress-groupe';
+      t.setAttribute('aria-hidden', 'true');
+      t.textContent = T(g.cle);
+      rack.appendChild(t);
+      PERSO_CHOIX[g.cat].forEach((id, i) => caser({
+        perso: id, cat: g.cat, verrou: false,
+        it: id ? { perso: id, peau } : null,
+        tete: g.cat !== 'visage',                   // la case montre le visage sous la pièce
+        nom: T(g.cle) + (id ? ' ' + (i + (PERSO_CHOIX[g.cat][0] ? 1 : 0)) : ' — ' + T('dressAucun')),
+      }));
+    });
+    refletEtat();
   }
   function garnir(){
     pieces = [];
     rack.innerHTML = '';
-    const caser = (p) => {
-      const el = p.el = document.createElement('div');
-      el.className = 'dress-case';
-      el.tabIndex = 0;
-      el.setAttribute('role', 'option');
-      el.title = p.nom;
-      el.addEventListener('click', () => basculer(p));
-      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
-      el.addEventListener('animationend', () => el.classList.remove('refus'));
-      rack.appendChild(el);
-      pieces.push(p);
-      if (p.peau){                      // une pastille de teinte : pas de maillage, la case EST la couleur
-        el.classList.add('dress-case--teinte');
-        el.style.background = p.peau;
-      } else if (scene){ scene.load(p.it); if (p.porte) scene.load(p.porte); }
-    };
+    if (panneau === 'perso') return garnirPerso();
     /* Le vestiaire d'abord dans la liste de travail, la boutique ensuite : à
        l'affichage ils se retrouvent de toute façon rangés par catégorie. */
     // L() choisit la langue ; le portant est regarni à chaque ouverture du salon.
@@ -13335,7 +13456,7 @@ const dressup = (() => {
       .concat(VESTIAIRE.map(v => {
         // une pièce du vestiaire peut être une récompense : même cadenas et même
         // nom masqué que pour un article de la boutique (voir `visuelDe`)
-        const ferme = !!(v.verrou && !DEBLOQUE.a(v.verrou));
+        const ferme = !TOUT_OUVERT && !!(v.verrou && !DEBLOQUE.a(v.verrou));
         return { it: ferme ? ITEM_VERROU : v, porte: null, nom: ferme ? T('locked') : L(v.nom),
                  cat: v.cat, coupe: v.coupe, verrou: ferme };
       }));
@@ -13387,6 +13508,17 @@ const dressup = (() => {
        peau. Recliquer celle qu'on porte ne fait donc rien de visible, et
        surtout ne renvoie personne à la teinte du moteur. */
     if (p.peau){ poserPeau(p.peau); refletEtat(); sfx.select(); return; }
+    /* Un choix de personnage : il REMPLACE celui de son rayon, il ne s'ajoute
+       pas. Recliquer celui qu'on porte ne le retire pas — pour cela il y a la
+       case « aucun », qui est un choix comme un autre. */
+    if (p.cat && POSER_PERSO[p.cat]){
+      POSER_PERSO[p.cat](p.perso);
+      chargerPerso(scene);
+      sauverTenue();
+      refletEtat();
+      sfx.select();
+      return;
+    }
     /* Même tremblement que pour un article verrouillé : un seul geste de refus
        dans tout le salon, il se reconnaît tout de suite. */
     /* ET ON NE SE RHABILLE PAS EN SE DÉSHABILLANT : une fois un haut posé, le
@@ -13484,7 +13616,7 @@ const dressup = (() => {
   function sauverTenue(){
     const p = {};
     portees.forEach((piece, cat) => { p[cat] = cleDe(piece); });
-    STOCK.ecrire('fp.tenue', { portees: p, peau });
+    STOCK.ecrire('fp.tenue', { portees: p, peau, visage, cheveux, couvre });
   }
   function restaurerTenue(){
     const t = STOCK.lire('fp.tenue', null);
@@ -13498,6 +13630,9 @@ const dressup = (() => {
     if (!portees.has('haut')) portees.delete('bas');
     if (!portees.has('bas')) portees.delete('pieds');
     peau = typeof t.peau === 'string' ? t.peau : null;
+    if (PERSO_CHOIX.visage.indexOf(t.visage) > 0) visage = t.visage;
+    if (PERSO_CHOIX.coiffure.indexOf(t.cheveux) >= 0) cheveux = t.cheveux;
+    if (PERSO_CHOIX.couvre.indexOf(t.couvre) >= 0) couvre = t.couvre;
     majMannequin();
     refletEtat();
   }
@@ -13560,7 +13695,16 @@ const dressup = (() => {
   /* Le visage et la coiffure : deux choix du personnage, pas deux vêtements.
      Les coiffures ne tiennent qu'à l'os de la tête, elles se montent donc
      indifféremment sur les trois visages. */
-  let visage = 'visage1', cheveux = 'cheveux2';
+  let visage = 'visage1', cheveux = 'cheveux2', couvre = '';
+  /* DEUX CASQUES SONT FERMÉS : ils ne se posent pas sur la tête, ils la
+     remplacent. Les porter cache donc le visage et la coiffure — sans quoi un
+     nez et une mèche sortiraient du plexiglas. */
+  const CASQUES_FERMES = ['swat', 'spatial'];
+  /* L'aperçu des pièces de tête : de combien on agrandit la boîte, et de
+     combien on la descend pour amener la tête au milieu de la case. Relevé à
+     l'œil sur la grille — le personnage occupe un peu moins de la moitié de sa
+     boîte, et sa tête est au dernier cinquième. */
+  const TETE_ZOOM = 4.2, TETE_HAUT = 0.395;
   /* ---- LE PERSONNAGE TOURNE ----
      C'est le geste qui manquait, et il n'a été possible qu'une fois les
      vêtements devenus des maillages : avec les coussins photo d'avant, un
@@ -13579,8 +13723,13 @@ const dressup = (() => {
      la penderie, avec son imprimé, et non un t-shirt générique. La tenue de
      base, elle, n'a pas de photo : elle garde sa couleur. */
   const persoListe = () => {
-    const l = [{ perso: 'corps', peau }, { perso: visage, peau }];
-    if (cheveux) l.push({ perso: cheveux, peau });
+    const ferme = CASQUES_FERMES.indexOf(couvre) >= 0;
+    const l = [{ perso: 'corps', peau }];
+    if (!ferme){
+      l.push({ perso: visage, peau });
+      if (cheveux) l.push({ perso: cheveux, peau });
+    }
+    if (couvre) l.push({ perso: couvre, peau });
     ['bas', 'haut', 'pieds'].forEach(cat => {
       const p = portees.get(cat);
       const id = (p && PIECE3D[p.coupe]) || BASE3D[cat];
@@ -13716,9 +13865,23 @@ const dressup = (() => {
     const rr = rack.getBoundingClientRect();
     const fenetre = { x: (rr.left - r.left) * k, y: (rr.top - r.top) * k, l: rr.width * k, h: rr.height * k };
     pieces.forEach((p, i) => {
-      if (p.peau) return;                 // une teinte n'a pas de maillage : sa case porte la couleur
+      if (p.peau || !p.it) return;        // une teinte ou un « aucun » n'a pas de maillage
       const b = p.el.getBoundingClientRect();
       if (b.bottom < rr.top || b.top > rr.bottom) return;   // sorti du cadre par le défilement
+      /* LES PIÈCES DE TÊTE SE MONTRENT EN GROS PLAN. Dessinées comme un
+         vêtement, elles feraient trois pixels au sommet d'un corps entier :
+         on agrandit donc la boîte et on la descend pour que la tête vienne au
+         milieu de la case, le rognage se chargeant du reste. */
+      if (p.cat && PORTE_PERSO[p.cat]){
+        const s0 = Math.min(b.width, b.height) * 0.92;
+        const s2 = s0 * TETE_ZOOM;
+        const bo = { x: (b.left - r.left + (b.width - s0) / 2 - (s2 - s0) / 2) * k,
+                     y: (b.top - r.top + (b.height - s0) / 2 - (s2 - s0) / 2 + s2 * TETE_HAUT) * k,
+                     s: s2 * k, clip: fenetre };
+        if (p.tete && CASQUES_FERMES.indexOf(p.perso) < 0) scene.draw({ perso: visage, peau }, 0, bo, 1);
+        scene.draw(p.it, 0, bo, 1);
+        return;
+      }
       const s = Math.min(b.width, b.height) * 0.92;
       // une piece en sommeil s'efface avec sa case : le refus se lit avant le clic
       // les vignettes ne tournent plus : le vestiaire n'a plus de dos a montrer
@@ -13764,7 +13927,8 @@ const dressup = (() => {
        créé — elle dit ce qu'est la fenêtre. */
     const moi = profil.existe() && profil.lire();
     titre.textContent = (moi && moi.nom) || T('dressTitle');
-    tetePenderie.textContent = T('dressRack');
+    ongletP.textContent = T('dressRack');
+    ongletC.textContent = T('dressPerso');
     teteLook.textContent = T('dressLook');
     btNu.textContent = T('dressStrip');
     const fil = document.getElementById('dressEtape');
@@ -13895,6 +14059,22 @@ const dressup = (() => {
     overlay.addEventListener(e, reveiller, { capture: true, passive: true }));
   rack.addEventListener('scroll', reveiller, { passive: true });
   btNu.addEventListener('click', deshabiller);
+  /* Passer d'un panneau à l'autre regarnit la grille : les deux ne partagent
+     ni leurs cases ni leurs rayons, et `pieces` ne contient jamais que ce qui
+     est à l'écran — c'est lui que le canvas parcourt pour peindre les aperçus. */
+  const onglet = (quel) => {
+    if (panneau === quel) return;
+    panneau = quel;
+    ongletP.classList.toggle('on', quel === 'penderie');
+    ongletC.classList.toggle('on', quel === 'perso');
+    ongletP.setAttribute('aria-selected', String(quel === 'penderie'));
+    ongletC.setAttribute('aria-selected', String(quel === 'perso'));
+    rack.scrollTop = 0;
+    garnir();
+    sfx.select();
+  };
+  ongletP.addEventListener('click', () => onglet('penderie'));
+  ongletC.addEventListener('click', () => onglet('perso'));
   document.getElementById('dressClose').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
