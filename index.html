@@ -584,7 +584,7 @@
      contre la fiche ne se montre pas du tout (.category.masquee,
      posée par majIconesCachees). */
 
-  /* Contact, Réglages, Shipping Info : même gabarit pour les trois, un peu
+  /* Contact, Shipping Info : même gabarit pour les deux, un peu
      plus grand, contenu centré (marges égales) pour la lecture et la navigation */
   .preview.info-panel{
     width:min(34vw,586px);
@@ -603,6 +603,60 @@
   .preview.info-panel .preview-head{flex-direction:column;align-items:center;gap:7px;}
   .preview.info-panel .preview-name{white-space:normal;font-size:32px;}
   .preview.info-panel .preview-price{font-size:19px;margin-left:0;}
+  /* ---------- Contact : la carte du profil Instagram ----------
+     L'en-tête de la page du compte, refait dans le verre du site : la photo
+     ronde à gauche, l'identifiant, les compteurs, le nom et la bio à droite —
+     l'ordre et les graisses d'Instagram, ses couleurs remplacées par les
+     nôtres. Alignée à gauche dans un panneau centré, comme l'en-tête l'est
+     sur Instagram. Toute la carte est un lien vers le profil, comme le bouton. */
+  /* Le bloc prend toute la hauteur du panneau : le titre en haut, la carte
+     dessous, et le bouton descend au pied du panneau (margin-top:auto),
+     quelle que soit la place qui reste (demande du 22 sept. 2026 : « l'encart
+     plus grand, Open Instagram dans le bas du panel »). Le panneau garde son
+     centrage pour les autres gabarits (Livraison) : la classe `contact` ne
+     vaut que pour lui. Quatre classes, pour passer devant les règles
+     .preview.info-panel .preview-actions, y compris celle des grands écrans. */
+  .preview.info-panel.contact #previewProduct{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
+  .preview.info-panel.contact .preview-info{display:flex;flex-direction:column;flex:1 1 auto;}
+  /* Mise en page arrêtée sur la MAQUETTE de l'utilisateur (22 sept. 2026) :
+     plus de titre, la carte remplit le panneau, la photo et le texte en haut à
+     gauche, et le bouton « Open Instagram » est posé DANS le coin bas droit de
+     la carte — en absolu par rapport au panneau (position:fixed), à la marge
+     du panneau plus celle de la carte, ce qui le met à l'intérieur de la carte
+     puisqu'elle remplit le panneau. */
+  .preview.info-panel.contact .preview-head{display:none;}
+  .preview.info-panel.contact .insta-card{flex:1 1 auto;margin:0;align-items:flex-start;padding:30px 32px;gap:30px;}
+  .preview.info-panel.contact .preview-actions{position:absolute;right:calc(var(--pad) + 24px);bottom:calc(var(--pad) + 22px);margin:0;padding:0;}
+  .insta-card{
+    display:flex;align-items:center;gap:26px;
+    margin:26px auto 0;
+    padding:22px 26px;
+    width:100%;
+    text-align:left;
+    color:inherit;text-decoration:none;
+    background:rgba(255,255,255,0.045);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:14px;
+    transition:background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .insta-card:hover,.insta-card:focus-visible{background:rgba(255,255,255,0.075);border-color:rgba(255,255,255,0.2);outline:none;}
+  .insta-card[hidden]{display:none;}
+  .insta-avatar{
+    flex:0 0 auto;
+    width:124px;height:124px;
+    border-radius:50%;
+    /* le disque blanc du profil sur le verre sombre : une fine bordure claire l'assoit */
+    box-shadow:0 0 0 1px rgba(255,255,255,0.18), 0 6px 18px rgba(0,0,0,0.4);
+    -webkit-user-drag:none;
+  }
+  .insta-text{min-width:0;line-height:1.35;}
+  .insta-handle{font-size:27px;font-weight:600;letter-spacing:0.1px;color:var(--white);}
+  /* le compteur — un seul, les followers (les publications et les abonnements ont été retirés à la demande) */
+  .insta-stats{display:flex;flex-wrap:wrap;gap:3px 16px;margin-top:10px;font-size:17px;color:var(--white-60);}
+  .insta-stats span{white-space:nowrap;}
+  .insta-stats b{font-weight:600;color:var(--white);}
+  .insta-name{margin-top:14px;font-size:16.5px;font-weight:600;color:var(--white);}
+  .insta-bio{font-size:16px;color:var(--white-60);white-space:pre-line;}
   .preview.info-panel .preview-desc:not(.preview-desc-probe){ /* la sonde garde les métriques produit */
     font-size:16px;
     line-height:1.7;
@@ -611,9 +665,6 @@
   }
   .preview.info-panel .preview-actions{justify-content:center;margin-top:28px;}
   .preview.info-panel .preview-cta{font-size:15px;padding:14px 26px;}
-  .preview.info-panel .settings-label{font-size:14px;}
-  .preview.info-panel .pills{justify-content:center;}
-  .preview.info-panel .pill{font-size:15px;padding:11px 20px;}
   .preview.show{opacity:1; pointer-events:auto;}
   /* Tailles ouvertes : la fiche s'allonge vers le BAS. Elle est centrée par
      translateY(-50%) ; ajouter la moitié de la croissance laisse donc le haut
@@ -635,7 +686,7 @@
     opacity:0.12;
     transition:opacity 0.16s ease;
   }
-  /* mode panneau (Entrée sur Réglages / Shipping Info) : cadre accentué */
+  /* mode panneau (Entrée sur Shipping Info) : cadre accentué */
   /* mode panneau : le cadre d'accent est lui aussi fondu (pas de trait net),
      mais assez présent pour signaler le focus clavier.
      .choisi : même cadre dès qu'un article est CHOISI (clic ou Entrée sur la
@@ -1241,7 +1292,7 @@
     transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
   }
   /* Nommé .size-panel et non .info-panel : ce dernier désigne déjà le gabarit
-     Contact / Réglages / Livraison du panneau d'aperçu (.preview.info-panel),
+     Contact / Livraison du panneau d'aperçu (.preview.info-panel),
      que ces règles (enfants masqués hors ouverture) avaient fait disparaître. */
   .size-panel{
     width:min(92vw,560px);
@@ -1283,9 +1334,7 @@
   .size-table .alt{display:block;font-size:11px;color:var(--white-35);}
   .info-note{margin-top:14px;font-size:12px;color:var(--white-35);}
 
-  /* ---------- settings panel ---------- */
-  .settings-panel{ display:none; }
-  .settings-panel.active{ display:block; }
+  /* ---------- réglages : groupes de pastilles (fenêtre Réglages, sélecteur de tailles) ---------- */
   .settings-group{ margin-bottom:26px; }
   .settings-group:last-child{ margin-bottom:0; }
   .settings-label{
@@ -1360,6 +1409,47 @@
     letter-spacing:0.3px;
   }
   .hintbar span{display:flex;align-items:center;gap:7px;}
+  /* ---------- bouton Réglages ----------
+     En bas à droite, sur la ligne de la barre d'aide (centré sur ses 58 px),
+     à droite du texte de l'aide qui, lui, est centré. Le glyphe de l'ancienne
+     icône de catégorie, en plus petit ; même effacement au repos et même
+     lueur d'accent au survol que les liens de la banderole. Le padding donne
+     une cible de 44 px sans grossir le dessin. */
+  .reglages-bouton{
+    position:fixed;
+    right:30px;
+    bottom:calc(var(--footer-h) + 7px);
+    z-index:6;
+    width:44px;height:44px;
+    padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;
+    cursor:pointer;
+    opacity:0.55;
+    transition:opacity 0.2s ease, filter 0.2s ease;
+  }
+  .reglages-bouton img{
+    width:24px;height:24px;object-fit:contain;
+    filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+    transition:filter 0.2s ease;
+    -webkit-user-drag:none;
+  }
+  .reglages-bouton:hover,
+  .reglages-bouton:focus-visible{opacity:1;outline:none;}
+  .reglages-bouton:hover img,
+  .reglages-bouton:focus-visible img{filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(var(--accent-rgb),0.7));}
+  .reglages-bouton:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;border-radius:50%;}
+  /* ---------- fenêtre Réglages ----------
+     Le gabarit du guide des tailles (.info-overlay + .size-panel), en plus
+     étroit ; les groupes sont centrés, comme ils l'étaient dans l'ancien
+     panneau de la barre. */
+  .reglages-panel{width:min(92vw,520px);}
+  .reglages-panel .info-body{padding:8px 28px 28px;text-align:center;}
+  .reglages-panel .settings-group{margin-bottom:24px;}
+  .reglages-panel .settings-group:last-child{margin-bottom:0;}
+  .reglages-panel .settings-label{font-size:13px;margin-bottom:11px;}
+  .reglages-panel .pills{justify-content:center;}
+  .reglages-panel .pill{font-size:14px;padding:10px 18px;}
   .key{
     display:inline-flex;align-items:center;justify-content:center;
     width:18px;height:18px;
@@ -1897,8 +1987,6 @@
     .preview.info-panel .preview-desc:not(.preview-desc-probe){font-size:17.5px;margin-top:22px;}
     .preview.info-panel .preview-actions{margin-top:31px;}
     .preview.info-panel .preview-cta{font-size:16.5px;padding:15px 29px;}
-    .preview.info-panel .settings-label{font-size:15.5px;}
-    .preview.info-panel .pill{font-size:16.5px;padding:12px 22px;}
   }
 
   @media (max-height:820px){
@@ -1916,7 +2004,6 @@
     .preview.info-panel .preview-name{font-size:28px;}
     .preview.info-panel .preview-price{font-size:17px;}
     .preview.info-panel .preview-desc:not(.preview-desc-probe){font-size:15px;}
-    .preview.info-panel .pill{font-size:14px;padding:10px 18px;}
   }
 
   @media (max-width:1280px){
@@ -2674,6 +2761,18 @@
         <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
         <div class="preview-price" id="previewPrice"></div>
       </div>
+      <!-- Contact : le profil Instagram, tel qu'il se présente en tête de la
+           page du compte (photo, identifiant, compteurs, nom, bio). Un lien
+           vers le profil, comme le bouton dessous. Voir CONTACT_INSTA. -->
+      <a class="insta-card" id="instaCard" hidden target="_blank" rel="noopener">
+        <img class="insta-avatar" id="instaAvatar" alt="" draggable="false">
+        <div class="insta-text">
+          <div class="insta-handle" id="instaHandle"></div>
+          <div class="insta-stats" id="instaStats"></div>
+          <div class="insta-name" id="instaName"></div>
+          <div class="insta-bio" id="instaBio"></div>
+        </div>
+      </a>
       <div class="preview-desc" id="previewDesc"></div>
       <div class="preview-actions">
         <!-- UN GALET, DEUX MOITIÉS. « Ajouter » ne bouge pas d'un pixel ; au
@@ -2695,20 +2794,6 @@
       <div class="pills" id="sizePills"></div>
     </div>
   </div>
-  <div id="previewSettings" class="settings-panel">
-    <div class="settings-group">
-      <div class="settings-label" data-i18n="language">Language</div>
-      <div class="pills" id="langPills"></div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label" data-i18n="currency">Currency</div>
-      <div class="pills" id="currencyPills"></div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label" data-i18n="sound">Sound</div>
-      <div class="pills" id="soundPills"></div>
-    </div>
-  </div>
   <div class="preview-desc preview-desc-probe" id="descProbe" aria-hidden="true"></div>
 </div>
 
@@ -2727,6 +2812,50 @@
   <span data-hint="enter"><span class="key">⏎</span> <span data-label>add to cart</span></span>
   <span data-hint="info"><span class="key">I</span> <span data-label>more info</span></span>
   <span data-hint="back" hidden><span class="key wide">esc</span> <span data-label>back</span></span>
+</div>
+
+<!-- Réglages : plus une icône de la barre (demande du 22 sept. 2026), un bouton
+     en bas à droite, à la hauteur de la barre d'aide, qui ouvre une fenêtre du
+     même modèle que le guide des tailles. -->
+<button type="button" class="reglages-bouton" id="reglagesBouton" data-i18n-aria="settings" aria-label="Settings">
+  <img src="icons/settings icon.png" alt="" draggable="false">
+</button>
+<div class="info-overlay" id="reglagesOverlay" role="dialog" aria-modal="true" aria-labelledby="reglagesTitle">
+  <div class="size-panel reglages-panel glass">
+    <div class="info-header">
+      <div>
+        <h2 id="reglagesTitle" data-i18n="settings">Settings</h2>
+        <div class="info-sub" data-i18n="settingsSub">Nothing is stored</div>
+      </div>
+      <button class="legal-close" id="reglagesClose" data-i18n-aria="close" aria-label="Close">✕</button>
+    </div>
+    <div class="info-body">
+      <div class="settings-group">
+        <div class="settings-label" data-i18n="language">Language</div>
+        <div class="pills" id="langPills"></div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label" data-i18n="currency">Currency</div>
+        <div class="pills" id="currencyPills"></div>
+      </div>
+      <!-- Deux interrupteurs et non un : la musique (la nappe du menu, les
+           motifs des jeux) et les bruitages se coupent chacun de leur côté. -->
+      <div class="settings-group">
+        <div class="settings-label" data-i18n="music">Music</div>
+        <div class="pills" id="musicPills"></div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label" data-i18n="effects">Sound effects</div>
+        <div class="pills" id="effectsPills"></div>
+      </div>
+    </div>
+    <div class="legal-hint">
+      <span><span class="key">←</span><span class="key">→</span> <span data-i18n="hintChoose">choose</span></span>
+      <span><span class="key">↑</span><span class="key">↓</span> <span data-i18n="hintSection">section</span></span>
+      <span><span class="key">⏎</span> <span data-i18n="hintApply">apply</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
 </div>
 
 <!-- Fiche « More info » : guide des tailles du produit sélectionné -->
@@ -2962,6 +3091,20 @@
 <script>
 /* ---------------- data ---------------- */
 const INSTAGRAM_URL = "https://www.instagram.com/fakeparadisetm/";
+/* Le profil Instagram tel qu'il se présente en tête de sa page (relevé le
+   22 sept. 2026, compte non connecté), montré dans le panneau Contact. Les
+   compteurs sont une PHOTO À CETTE DATE, tenus à la main comme les taux de
+   change : le site ne parle pas à Instagram — aucun tiers, comme l'annonce la
+   rubrique Cookies. La photo de profil est l'emblème du site sur un disque
+   blanc, la même image que sur le compte, refaite en 320 px depuis les calques
+   de l'écran de démarrage pour rester nette (icons/instagram-avatar.png). */
+const CONTACT_INSTA = {
+  handle: "fakeparadisetm",
+  nom: "FakeParadise™",
+  abonnes: 1646,             // seul compteur montré (demande du 22 sept. 2026 : « garde seulement les followers »)
+  bio: "ugly clothes for cool people\nwebsite soon 🤤",
+  avatar: "icons/instagram-avatar.png",
+};
 
 /* ---------------- informations légales ----------------
    Tout ce qui est entre crochets [ ] est un champ À COMPLÉTER avant mise en
@@ -3413,11 +3556,13 @@ const STRINGS = {
   en:{
     cart:"CART", cartTitle:"Your cart", cartEmpty:"Your cart is empty.", remove:"Remove", total:"Total", checkout:"Checkout",
     soon:"COMING SOON", soonSub:"Opening announced on Instagram",
-    add:"+ Add to cart", added:"Added ✓", instagram:"Open Instagram ↗",
+    add:"+ Add to cart", added:"Added ✓", instagram:"Contact me on Instagram ↗",
+    instaFollowers:"followers",
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
     sizeLabel:"Size", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
-    language:"Language", currency:"Currency", sound:"Sound", soundOn:"On", soundOff:"Off",
+    language:"Language", currency:"Currency", music:"Music", effects:"Sound effects", soundOn:"On", soundOff:"Off",
+    settings:"Settings", settingsSub:"Nothing is stored — the choices last for this visit",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
     play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"ITEM VERSUS", descToggle:"Show details",
@@ -3475,11 +3620,13 @@ const STRINGS = {
   fr:{
     cart:"PANIER", cartTitle:"Votre panier", cartEmpty:"Votre panier est vide.", remove:"Retirer", total:"Total", checkout:"Commander",
     soon:"BIENTÔT", soonSub:"Ouverture annoncée sur Instagram",
-    add:"+ Ajouter au panier", added:"Ajouté ✓", instagram:"Ouvrir Instagram ↗",
+    add:"+ Ajouter au panier", added:"Ajouté ✓", instagram:"Me contacter sur Instagram ↗",
+    instaFollowers:"followers",
     moreInfo:"Plus d'infos", sizeGuide:"Guide des tailles", sizeNote:"Vêtement mesuré à plat, en centimètres, pouces en dessous.", hintInfo:"plus d'infos",
     sizeLabel:"Taille", hintSize:"choisir la taille", oneLess:"Un de moins", oneMore:"Un de plus",
     photo:"Photo", prevPhoto:"Vue précédente", nextPhoto:"Vue suivante",
-    language:"Langue", currency:"Devise", sound:"Son", soundOn:"Activé", soundOff:"Coupé",
+    language:"Langue", currency:"Devise", music:"Musique", effects:"Bruitages", soundOn:"Activé", soundOff:"Coupé",
+    settings:"Réglages", settingsSub:"Rien n'est enregistré — les choix valent pour cette visite",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
     play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"ITEM VERSUS", descToggle:"Afficher le détail",
@@ -3537,6 +3684,7 @@ function applyLanguage(code){
   if (cartOverlay.classList.contains('open')) renderCart();
   relabelLegal();
   if (legalOverlay.classList.contains('open')) showLegal(legalIndex);
+  renderSettingsPanel();   // les pastilles des Réglages portent des libellés traduits (Activé / Coupé)
   build();
 }
 
@@ -3601,8 +3749,10 @@ const SIZE_CHARTS = {
 };
 
 /* ---------------- catalogue ----------------
-   icon : fichier du dossier icons/. kind : shop (produit), contact,
-   settings, info (texte seul, sans visuel). Les champs n et d acceptent
+   icon : fichier du dossier icons/. kind : shop (produit), contact, game,
+   about, info (texte seul, sans visuel). Les Réglages ne sont plus une
+   catégorie : ils s'ouvrent par le bouton en bas à droite (voir
+   #reglagesOverlay). Les champs n et d acceptent
    une chaîne ou un objet {en, fr}. Prix p en euros.
 
    Les produits ci-dessous sont la version de secours, celle qui s'affiche si
@@ -3704,7 +3854,6 @@ const DATA = [
   // d'explication : l'adresse dit déjà où écrire.
   { name:{en:"Contact", fr:"Contact"}, icon:"instagram icon.png", kind:"contact", items:[],
     panel:{ n:"Contact via DM" } },
-  { name:{en:"Settings", fr:"Réglages"}, icon:"settings icon.png", kind:"settings", items:[] },
   { name:{en:"Shipping", fr:"Livraison"}, icon:"shipping icon.svg", kind:"info", items:[],
     panel:{ n:{en:"Delivery", fr:"Livraison"},
       d:"No exchanges. Returns within 14 days per our policy.\nItems are 100% made and printed in China unless specified.\nYou will receive confirmation of your order and your tracking number by e-mail.\nHave questions about your order? Check the contact section.\nOrders may take 2-3 weeks to be delivered.\nStay ballin" } },
@@ -4074,27 +4223,37 @@ addCart.addEventListener('click', (e) => {
    notes pour l'ajout au panier.
    Le contexte audio n'est créé qu'au premier geste de l'utilisateur : les
    navigateurs refusent le son avant, et rien ne doit sonner pendant l'écran
-   de démarrage. Réglable dans Réglages › Son (non mémorisé, comme la langue
+   de démarrage. Réglable dans Réglages › Musique et Bruitages (non mémorisé, comme la langue
    et la devise : le site ne stocke rien). */
 const sfx = (() => {
   /* Le son est ALLUMÉ à l'arrivée (rétabli le 16 sept. 2026, après une période
-     où il démarrait coupé). Tout passe par ce seul drapeau : audio() renvoie
-     null tant qu'il est faux, si bien qu'aucun contexte audio n'est même créé,
-     et le panneau Réglages › Son ne fait rien d'autre que le basculer.
+     où il démarrait coupé). DEUX INTERRUPTEURS depuis le 22 sept. 2026
+     (Réglages) : `musique` — la nappe du menu et les motifs des jeux — et
+     `bruitages` — tout le reste. Chacun se coupe de son côté. Les bruitages
+     passent tous par `note` et `burst`, c'est là qu'ils sont retenus ; la
+     musique a ses propres départs (ambientStart, combatStart), qui regardent
+     `musique`. Les deux coupés, audio() renvoie null et aucun contexte audio
+     n'est même créé.
      Allumé ne veut pas dire bruyant tout de suite : les navigateurs refusent le
      son avant un geste de l'utilisateur, et le contexte n'est créé qu'au
      premier clic ou à la première touche. */
-  let ctx = null, master = null, noise = null, on = true;
+  let ctx = null, master = null, noise = null, musique = true, bruitages = true;
+  const on = () => musique || bruitages;
   const api = {};
-  // Réglages › Son : couper arrête aussi la nappe de fond, rallumer la relance
-  Object.defineProperty(api, 'enabled', {
-    get: () => on,
-    set: v => { on = !!v;
-      if (!on){ ambientStop(); combatStop(); }
-      else if (ctx){ if (arene) combatStart(); else ambientStart(); } }, // on relance ce qui a cours
+  // Réglages › Musique : couper arrête la nappe (ou le motif du jeu en cours), rallumer relance ce qui a cours
+  Object.defineProperty(api, 'musique', {
+    get: () => musique,
+    set: v => { musique = !!v;
+      if (!musique){ ambientStop(); combatStop(); }
+      else if (ctx){ if (arene) combatStart(); else ambientStart(); } },
+  });
+  // Réglages › Bruitages : rien d'autre à faire que retenir le drapeau, `note` et `burst` le lisent
+  Object.defineProperty(api, 'bruitages', {
+    get: () => bruitages,
+    set: v => { bruitages = !!v; },
   });
   function audio(){
-    if (!on || startupActive) return null;
+    if (!on() || startupActive) return null;
     if (!ctx){
       const C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
@@ -4181,7 +4340,7 @@ const sfx = (() => {
      et c'est pour cela qu'il ne peut pas passer par `api.combat`. */
   let sansFond = false;
   function ambientStart(){
-    if (amb || sansFond || arene || !ctx || !on) return;
+    if (amb || sansFond || arene || !ctx || !musique) return;
     const g = ctx.createGain();
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
     lp.connect(g); g.connect(master);
@@ -4266,7 +4425,10 @@ const sfx = (() => {
     }
     node.gain.setValueCurveAtTime(a, t0, dur);
   };
-  function burst(t0, { freq, q, peak, attack, decay, sweep, type, lp, soft, bell }){ // bruit filtré : le clic et le souffle
+  // bruit filtré : le clic et le souffle. `bus` : la percussion des motifs de jeu passe par ici aussi,
+  // branchée sur le gain du thème — c'est de la musique, elle suit l'interrupteur Musique et non Bruitages
+  function burst(t0, { freq, q, peak, attack, decay, sweep, type, lp, soft, bell, bus }){
+    if (!bus && !bruitages) return;                  // Réglages › Bruitages coupés : rien n'est programmé
     const src = ctx.createBufferSource(); src.buffer = noise;
     const f = ctx.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q;
     if (sweep){ f.frequency.setValueAtTime(freq, t0); f.frequency.exponentialRampToValueAtTime(sweep, t0 + attack + decay); }
@@ -4275,10 +4437,11 @@ const sfx = (() => {
     else env(g, t0, peak, attack, decay, soft);
     let tail = f;
     if (lp){ const l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = lp; l.Q.value = 0.7; f.connect(l); tail = l; } // adoucit le haut du spectre
-    src.connect(f); tail.connect(g); g.connect(master);
+    src.connect(f); tail.connect(g); g.connect(bus || master);
     src.start(t0); src.stop(t0 + attack + decay + 0.05);
   }
   function note(t0, from, to, peak, dur, type, attack, bell){
+    if (!bruitages) return;                          // idem : la musique ne passe pas par ici, elle a ses propres oscillateurs
     const o = ctx.createOscillator(); o.type = type || 'sine';
     o.frequency.setValueAtTime(from, t0);
     if (to !== from) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
@@ -4463,7 +4626,7 @@ const sfx = (() => {
   let cbt = null, arene = false, piste = 'duel';
   function combatStart(nom){
     if (nom) piste = nom;
-    if (cbt || !ctx || !on) return;
+    if (cbt || !ctx || !musique) return;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.6);
@@ -4483,11 +4646,11 @@ const sfx = (() => {
         // arpège : une voix de remplissage, en triangle pour qu'elle se
         // distingue des deux carrées sans leur prendre la place
         if (p.arpege && p.arpege[i] !== null) voix(t, demi(p.arpege[i] + 12), 0.011, 0.062, 'triangle');
-        if (i % 2 === 1) burst(t, { freq: 6200, q: 0.9, peak: 0.007, attack: 0.001, decay: 0.028 });
+        if (i % 2 === 1) burst(t, { freq: 6200, q: 0.9, peak: 0.007, attack: 0.001, decay: 0.028, bus: cbt.g });
         if (p.perc){
           // grosse caisse sur les temps forts, caisse claire à contretemps
-          if (i % 8 === 0) burst(t, { freq: 160, q: 1.2, peak: 0.030, attack: 0.001, decay: 0.07, sweep: 60, lp: 900 });
-          if (i % 8 === 4) burst(t, { freq: 1900, q: 0.8, peak: 0.016, attack: 0.001, decay: 0.055, lp: 5200 });
+          if (i % 8 === 0) burst(t, { freq: 160, q: 1.2, peak: 0.030, attack: 0.001, decay: 0.07, sweep: 60, lp: 900, bus: cbt.g });
+          if (i % 8 === 4) burst(t, { freq: 1900, q: 0.8, peak: 0.016, attack: 0.001, decay: 0.055, lp: 5200, bus: cbt.g });
         }
       }
       cbt.pas++; cbt.quand += p.pas;
@@ -8607,9 +8770,6 @@ function updateHints(){
   } else if (panelMode && cat.kind === 'shop'){ // sélecteur de tailles ouvert
     show('browse', true, T('hintSize')); show('select', false);
     show('enter', true, T('hintAdd')); show('info', false); show('back', true, T('hintBack'));
-  } else if (panelMode && cat.kind === 'settings'){
-    show('browse', true, T('hintChoose')); show('select', true, T('hintSection'));
-    show('enter', true, T('hintApply')); show('info', false); show('back', true, T('hintBack'));
   } else if (panelMode){
     show('browse', false); show('select', true, T('hintScroll'));
     show('enter', false); show('info', false); show('back', true, T('hintBack'));
@@ -8663,8 +8823,7 @@ document.getElementById('infoClose').addEventListener('click', closeInfo);
 infoOverlay.addEventListener('click', (e) => { if (e.target === infoOverlay) closeInfo(); });
 
 /* ---------------- mode panneau ----------------
-   Entrée « entre » dans le panneau, sans autre effet. Réglages : les flèches
-   naviguent entre pastilles, Entrée applique. Shipping Info : ↑/↓ font
+   Entrée « entre » dans le panneau, sans autre effet. Shipping Info : ↑/↓ font
    défiler le texte. Fiche produit : ↑/↓ passent du visuel aux boutons ; sur
    le visuel, → (et Entrée) passe à la vue suivante en boucle (3D / face /
    dos), ← à la précédente, seul moyen clavier d'en changer ; sur les
@@ -8672,7 +8831,6 @@ infoOverlay.addEventListener('click', (e) => { if (e.target === infoOverlay) clo
    ouvre le sélecteur de tailles (puis Entrée ajoute) ou la fiche. Échap, ←
    sur la vue 3D ou ← sur « Ajouter » reviennent à la barre. */
 let panelMode = false;
-let panelGroup = 0, panelIndex = 0;
 let productPart = null; // fiche produit : partie en surbrillance, 'visual' | 'add' | 'info' | null (sélecteur de tailles ouvert)
 function setProductPart(part){
   productPart = part;
@@ -8681,20 +8839,12 @@ function setProductPart(part){
   document.getElementById('infoBtn').classList.toggle('focus', part === 'info');
 }
 
-function panelGroups(){ return [...document.querySelectorAll('#previewSettings .pills')]; }
-
 function enterPanel(){
   const cat = DATA[activeCat];
-  if (cat.kind !== 'shop' && cat.kind !== 'settings' && cat.kind !== 'info') return;
+  if (cat.kind !== 'shop' && cat.kind !== 'info') return;
   panelMode = true;
   previewEl.classList.add('focused');
   if (cat.kind === 'shop') setProductPart('add'); // fiche produit : on entre sur « Ajouter au panier », rien n'est ajouté
-  if (cat.kind === 'settings'){
-    panelGroup = 0;
-    const pills = [...panelGroups()[0].children];
-    panelIndex = Math.max(0, pills.findIndex(p => p.classList.contains('active')));
-    updatePanelFocus();
-  }
   updateHints();
 }
 function exitPanel(){
@@ -8706,35 +8856,10 @@ function exitPanel(){
   setProductPart(null);
   updateHints();
 }
-function updatePanelFocus(){
-  document.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
-  const g = panelGroups()[panelGroup];
-  if (!g) return;
-  const pills = [...g.children];
-  panelIndex = Math.max(0, Math.min(panelIndex, pills.length - 1));
-  if (pills[panelIndex]) pills[panelIndex].classList.add('focus');
-}
 function panelKey(e){
   const cat = DATA[activeCat];
   if (e.key === 'Escape'){ exitPanel(); return; }
-  if (cat.kind === 'settings'){
-    const groups = panelGroups();
-    if (e.key === 'ArrowRight'){ panelIndex += 1; updatePanelFocus(); }
-    if (e.key === 'ArrowLeft'){
-      if (panelIndex <= 0){ exitPanel(); return; } // ← sur la pastille la plus à gauche : retour à la barre
-      panelIndex -= 1; updatePanelFocus();
-    }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
-      panelGroup = Math.max(0, Math.min(groups.length - 1, panelGroup + (e.key === 'ArrowDown' ? 1 : -1)));
-      const pills = [...groups[panelGroup].children];
-      panelIndex = Math.max(0, pills.findIndex(p => p.classList.contains('active')));
-      updatePanelFocus();
-    }
-    if (e.key === 'Enter'){
-      const pill = groups[panelGroup] && groups[panelGroup].children[panelIndex];
-      if (pill) pill.click(); // applique ; le panneau est reconstruit et la surbrillance réappliquée
-    }
-  } else if (cat.kind === 'shop'){
+  if (cat.kind === 'shop'){
     if (sizePicker.classList.contains('open') && sizePills.querySelector('.pill.focus')){
       // sélecteur de tailles ouvert au clavier : ←/→ choisissent, Entrée ajoute,
       // ← sur la première taille ou ↑ referme et revient sur « Ajouter au panier »
@@ -9367,29 +9492,34 @@ function ouvrirFiche(anim){
   ficheOuverte = true;
   appliquerFiche();
 }
+/* La carte du profil Instagram du panneau Contact (voir CONTACT_INSTA) :
+   remplie à chaque affichage, parce que les compteurs se lisent dans la
+   langue du moment (1,646 / 1 646) et que leurs libellés se traduisent. */
+const instaCard = document.getElementById('instaCard');
+function remplirInsta(){
+  const I = CONTACT_INSTA, n = v => v.toLocaleString(LANGS[currentLang].locale);
+  instaCard.href = INSTAGRAM_URL;
+  document.getElementById('instaAvatar').src = I.avatar;
+  document.getElementById('instaHandle').textContent = I.handle;
+  document.getElementById('instaStats').innerHTML =
+    `<span><b>${n(I.abonnes)}</b> ${esc(T('instaFollowers'))}</span>`;
+  document.getElementById('instaName').textContent = I.nom;
+  document.getElementById('instaBio').textContent = I.bio;
+}
 function fillPreview(){
   const cat = DATA[activeCat];
   const previewProduct = document.getElementById('previewProduct');
-  const previewSettings = document.getElementById('previewSettings');
 
   /* « Info » a un pied dans chaque gabarit : son contenu est du texte, mais il
      s'accompagne d'un VISUEL 3D. Il garde donc la mise en page d'une fiche
      produit (visuel en haut, titre, texte dessous) et non la colonne centrée
      des panneaux texte. */
   const estAbout = cat.kind === 'about';
-  // Contact, Réglages, Shipping Info : même gabarit, contenu centré
+  // Contact, Shipping Info : même gabarit, contenu centré (les Réglages ont leur fenêtre, voir openReglages)
   previewEl.classList.toggle('info-panel', cat.kind !== 'shop' && !estAbout);
-
-  if (cat.kind === 'settings'){
-    previewProduct.style.display = 'none';
-    model3d.hide(); // pas de rendu 3D tant que le visuel produit n'est pas à l'écran
-    previewSettings.classList.add('active');
-    renderSettingsPanel();
-    previewEl.classList.add('show');
-    return;
-  }
-  previewProduct.style.display = 'block';
-  previewSettings.classList.remove('active');
+  previewEl.classList.toggle('contact', cat.kind === 'contact');   // la carte en grand, le bouton au pied (voir .preview.contact)
+  // (plus de display en ligne sur #previewProduct : l'ancien panneau Réglages était le seul à le cacher,
+  // et une valeur en ligne passerait devant le display:flex du gabarit Contact)
 
   // Contact et Shipping Info : pas de sous-menu ni de visuel produit, le
   // contenu vient de cat.panel et s'affiche dès que l'icône est active.
@@ -9487,9 +9617,14 @@ function fillPreview(){
 
   const infoBtn = document.getElementById('infoBtn');
   infoBtn.hidden = true;
+  /* Contact : la carte du profil (demande du 22 sept. 2026) porte déjà
+     l'identifiant, le nom et la bio ; la ligne « @fakeparadisetm » en accent
+     qui la précédait ferait doublon, elle s'efface. Reste le titre, la carte,
+     le bouton. */
+  instaCard.hidden = cat.kind !== 'contact';
   if (cat.kind === 'contact'){
-    priceEl.hidden = false;
-    priceEl.textContent = '@fakeparadisetm'; // la poignée, pas l'adresse entière : le bouton s'occupe d'y mener
+    priceEl.hidden = true;
+    remplirInsta();
     addBtn.hidden = false;
     addBtn.textContent = T('instagram');
   } else if (cat.kind === 'info' || cat.kind === 'game' || estAbout){
@@ -9552,17 +9687,81 @@ function renderSettingsPanel(){
     currencyPills.appendChild(pill);
   });
 
-  const soundPills = document.getElementById('soundPills');
-  soundPills.innerHTML = '';
-  [[true, 'soundOn'], [false, 'soundOff']].forEach(([val, key]) => {
-    const pill = document.createElement('button');
-    pill.className = 'pill' + (sfx.enabled === val ? ' active' : '');
-    pill.textContent = T(key);
-    pill.addEventListener('click', () => { sfx.enabled = val; if (val) sfx.tick(); renderSettingsPanel(); });
-    soundPills.appendChild(pill);
+  /* Musique et bruitages : deux interrupteurs indépendants (demande du 22 sept.
+     2026). Rallumer les bruitages fait entendre un clic tout de suite — la
+     preuve qu'ils sont revenus ; rallumer la musique, elle revient d'elle-même
+     en fondu (sfx.musique relance la nappe). */
+  [['musicPills', 'musique'], ['effectsPills', 'bruitages']].forEach(([id, prop]) => {
+    const box = document.getElementById(id);
+    box.innerHTML = '';
+    [[true, 'soundOn'], [false, 'soundOff']].forEach(([val, key]) => {
+      const pill = document.createElement('button');
+      pill.className = 'pill' + (sfx[prop] === val ? ' active' : '');
+      pill.textContent = T(key);
+      pill.addEventListener('click', () => { sfx[prop] = val; if (val && prop === 'bruitages') sfx.tick(); renderSettingsPanel(); });
+      box.appendChild(pill);
+    });
   });
-  if (panelMode) updatePanelFocus(); // les pastilles viennent d'être recréées
+  if (reglagesOverlay.classList.contains('open')) updateReglagesFocus(); // les pastilles viennent d'être recréées
 }
+
+/* ---------------- fenêtre Réglages ----------------
+   Le bouton en bas à droite l'ouvre ; même fenêtre que le guide des tailles.
+   Au clavier, comme l'ancien panneau de la barre : ←/→ choisissent une
+   pastille, ↑/↓ changent de groupe, Entrée applique, Échap ferme. La
+   surbrillance arrive sur la pastille active du premier groupe, pour qu'on
+   voie d'abord où l'on est. Le bouton de fermeture prend le focus (lecteurs
+   d'écran) ; Entrée est retenue avant lui, sinon elle fermerait la fenêtre au
+   lieu d'appliquer la pastille en surbrillance. */
+const reglagesOverlay = document.getElementById('reglagesOverlay');
+let reglGroup = 0, reglIndex = 0;
+function reglagesGroups(){ return [...reglagesOverlay.querySelectorAll('.pills')]; }
+function updateReglagesFocus(){
+  reglagesOverlay.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
+  const g = reglagesGroups()[reglGroup];
+  if (!g) return;
+  const pills = [...g.children];
+  reglIndex = Math.max(0, Math.min(reglIndex, pills.length - 1));
+  if (pills[reglIndex]) pills[reglIndex].classList.add('focus');
+}
+function openReglages(){
+  if (reglagesOverlay.classList.contains('open')) return;
+  exitPanel();
+  closeSizePicker();
+  renderSettingsPanel();
+  reglGroup = 0;
+  reglIndex = Math.max(0, [...reglagesGroups()[0].children].findIndex(p => p.classList.contains('active')));
+  reglagesOverlay.classList.add('open');
+  updateReglagesFocus();
+  document.getElementById('reglagesClose').focus();
+}
+function closeReglages(){
+  reglagesOverlay.classList.remove('open');
+  reglagesOverlay.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
+  // ni le bouton d'ouverture ni celui de fermeture ne gardent le focus : Entrée, plus tard, rouvrirait ou refermerait
+  if (document.activeElement && (document.activeElement.id === 'reglagesBouton' || reglagesOverlay.contains(document.activeElement))) document.activeElement.blur();
+}
+function reglagesKey(e){
+  if (e.key === 'Escape'){ closeReglages(); return; }
+  const groups = reglagesGroups();
+  if (e.key === 'ArrowRight'){ e.preventDefault(); reglIndex += 1; updateReglagesFocus(); }
+  if (e.key === 'ArrowLeft'){ e.preventDefault(); reglIndex -= 1; updateReglagesFocus(); }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault();
+    reglGroup = Math.max(0, Math.min(groups.length - 1, reglGroup + (e.key === 'ArrowDown' ? 1 : -1)));
+    const pills = [...groups[reglGroup].children];
+    reglIndex = Math.max(0, pills.findIndex(p => p.classList.contains('active')));
+    updateReglagesFocus();
+  }
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    const pill = groups[reglGroup] && groups[reglGroup].children[reglIndex];
+    if (pill) pill.click(); // applique ; les pastilles sont reconstruites et la surbrillance réappliquée
+  }
+}
+document.getElementById('reglagesBouton').addEventListener('click', openReglages);
+document.getElementById('reglagesClose').addEventListener('click', closeReglages);
+reglagesOverlay.addEventListener('click', (e) => { if (e.target === reglagesOverlay) closeReglages(); });
 
 function selectCategory(ci){
   const moved = ci !== activeCat;
@@ -12883,6 +13082,8 @@ window.addEventListener('keydown', (e)=>{
   // Dress Up rend les touches dont il ne fait rien : le salon d'essayage se
   // joue à la souris, seules Échap et les flèches l'intéressent.
   if (dressup.isOpen() && dressup.key(e)) return;
+  // Réglages ouverts : flèches, Entrée, Échap — voir reglagesKey.
+  if (reglagesOverlay.classList.contains('open')){ reglagesKey(e); return; }
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
   if (infoOverlay.classList.contains('open')){
     if (e.key === 'Escape') closeInfo();
@@ -12920,7 +13121,7 @@ window.addEventListener('keydown', (e)=>{
   // Entrée sur un bouton qui a le focus (banderole, panier, pastilles…)
   // déclenche déjà son clic natif : on ne double pas avec l'ajout au panier.
   if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)){
-    // produit : sélecteur de tailles ; Réglages / Livraison : mode panneau ; Contact : Instagram
+    // produit : sélecteur de tailles ; Livraison : mode panneau ; Contact : Instagram
     const k = DATA[activeCat].kind;
     // Contact et Versus agissent tout de suite. Sur une fiche produit, Entrée
     // fait la même chose qu'un clic sur la miniature : elle tourne et la fiche
@@ -12951,7 +13152,7 @@ const WHEEL_FAST = 200; // ms sous lesquelles deux crans comptent comme un défi
 let wheelAcc = 0, wheelLast = 0, wheelStepAt = 0;
 window.addEventListener('wheel', (e) => {
   if (startupActive || panelMode || arena.isOpen()) return;
-  if (infoOverlay.classList.contains('open') || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
+  if (infoOverlay.classList.contains('open') || reglagesOverlay.classList.contains('open') || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
   const scrollable = e.target.closest && e.target.closest('.preview-desc, .legal-body, .info-body, .cart-items');
   if (scrollable && scrollable.scrollHeight > scrollable.clientHeight) return;
   const count = DATA[activeCat].items.length;
