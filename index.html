@@ -13103,12 +13103,8 @@ const dressup = (() => {
     { accessoire: 'cigarette', verrou: 'jumper',  nom: { en: 'Cigarette',  fr: 'Cigarette' },          cat: 'bouche',   coupe: 'cigarette' },
   ];
 
-  /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
-     vitrine n'est pas nu, et un jeu d'habillage ne demande à personne de le
-     déshabiller d'abord. Il est de catégorie `bas`, donc il tombe au premier
-     rang — sous les hauts, jamais par-dessus — et le jour où un pantalon
-     arrive, c'est la règle ordinaire qui l'enlève : une pièce par catégorie. */
-  const SOUS = { it: { img: 'dressup/undiesdefault.png' }, cat: 'bas', coupe: 'culotte' };
+  /* LE SOUS-VÊTEMENT A DISPARU avec le mannequin PSX : le personnage du pack
+     porte une tenue de base (voir BASE3D), il n'est jamais nu. */
   /* ---- le guide des tailles décide de tout ----
      Une ligne par taille, et tout ce qui concerne cette taille y est. `sz`
      dit déjà les DIMENSIONS du vêtement — c'est sa définition même — donc
@@ -13164,18 +13160,10 @@ const dressup = (() => {
   let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
   const portees = new Map();  // catégorie -> pièce
   let peau = null;            // teinte choisie au nuancier, ou rien (voir PEAU_DEFAUT)
-  /* LE VISAGE PHOTO A ÉTÉ RETIRÉ (22 sept. 2026, à la demande) : on ne pose
-     plus la photo de personne sur le mannequin, et plus rien de tel n'est
-     gardé sur l'appareil. Le champ reste à `null` dans l'objet passé au
-     moteur — c'est sa forme attendue — et l'atlas se rabat sur le visage du
-     modèle. */
-  let mannequin = { mannequin: true, visage: null, peau: null };
   // Le mannequin est décrit en UN endroit : trois champs qui bougent, et
   // autant d'occasions d'en oublier un si chacun le réécrit de son côté.
-  const majMannequin = () => {
-    mannequin = { mannequin: true, visage: null, peau };
-    if (scene) scene.load(mannequin);
-  };
+  // la teinte a changé : les pièces sont recousues sous une autre clé (voir keyOf)
+  const majMannequin = () => chargerPerso(scene);
   /* ---- LES TEINTES DE PEAU ----
      Elles étaient laissées au nuancier du navigateur : une pipette, un cercle
      chromatique, et à l'arrivée un vert pomme aussi facile à choisir qu'une
@@ -13395,7 +13383,7 @@ const dressup = (() => {
     }
     if (!sceneShot) return null;
     if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
-    sceneShot.load(mannequin); sceneShot.load(SOUS.it);
+    chargerPerso(sceneShot);
     portees.forEach(p => { sceneShot.load(p.it); if (p.porte) sceneShot.load(p.porte); });
     sceneShot.clear();
     habiller(sceneShot, N * 0.06, N * 0.03, N * 0.88);
@@ -13457,230 +13445,69 @@ const dressup = (() => {
      porte sa propre couleur et sa propre lumière (voir meshAccessoire). Il
      tourne avec la cigarette, il rapetisse avec elle, et il n'y a plus rien à
      tenir en face. */
-  let dernierOurlet = null;   // contrôle : l'élargissement d'ourlet du dernier dessin (voir debug)
-  function habiller(sc, MX, MY, S){
-    const couches = [...portees.values()].sort((a, b) => CATEGORIES[a.cat].rang - CATEGORIES[b.cat].rang);
-    if (!portees.has('bas')) couches.unshift(SOUS);   // rien sur le bas : le sous-vêtement reste
-    /* CADRER : la place exacte du vêtement dans la boîte du mannequin, et
-       elle ne se cale pas au même endroit selon ce qu'on habille.
+  /* ---- HABILLER : le personnage et ce qu'il porte, dans une boîte donnée ----
+     Le même dessin sert à trois endroits : la scène du salon, le personnage du
+     panneau profil, et l'image qu'on emporte. Il ne prend donc ni canvas ni
+     fenêtre, mais une scène et un cadre — tout le reste est identique de l'un
+     à l'autre, seule façon d'être sûr que l'image enregistrée est bien ce
+     qu'on voyait.
 
-       UN HAUT SE CALE SUR SON OURLET, la seule mesure qui parle du buste : la
-       largeur totale ne distingue pas un débardeur étroit d'un t-shirt aux
-       manches écartées. La hauteur s'étire du col aux hanches, et `serre`
-       resserre la largeur pour qu'un vêtement porté ne fasse pas la largeur
-       d'un vêtement à plat.
+     CE QU'IL FAISAIT AVANT, ET QU'IL NE FAIT PLUS. Il cadrait des PHOTOS : il
+     mesurait l'empreinte de chaque vêtement à plat, la calait sur l'ourlet ou
+     sur la ceinture, la resserrait aux épaules, l'élargissait sur le pantalon,
+     découpait l'encolure, pliait les bras du mannequin pour les faire entrer
+     dans les manches, et remettait la profondeur à zéro entre chaque couche
+     pour que la suivante recouvre la précédente. Deux cent vingt lignes pour
+     poser des images de papier sur un bloc, et qui ne tenaient que de face.
+     Les vêtements sont maintenant des MAILLAGES taillés sur ce corps-là et
+     montés sur le même squelette : il n'y a plus rien à cadrer, rien à
+     étirer, rien à plier. On les dessine, et ils tombent juste.
 
-       UN BAS SE CALE SUR SA LONGUEUR, et garde ses propres proportions. Les
-       dix photos de pantalons sont des poses à plat, toutes cadrées
-       différemment : leur bas est tantôt deux chevilles, tantôt une seule
-       colonne quand les jambes sont jointes, et leur haut tantôt une ceinture,
-       tantôt des hanches évasées. Aucune largeur ne se compare d'une photo à
-       l'autre — le legging galaxie se mesurait sur une demi-jambe et arrivait
-       deux fois trop large, les jeans amples devenaient des jupes-culottes. La
-       LONGUEUR, elle, se compare : de la ceinture à l'ourlet, c'est la même
-       chose sur les dix. On l'étale donc de la taille aux chevilles et on
-       garde l'échelle pour la largeur — ainsi un jean baggy reste ample, un
-       legging reste moulant, et c'est la photo qui décide, pas nous. Seule la
-       CEINTURE est garantie : elle doit tomber sur les hanches.
-
-       UNE CHAUSSURE SE CALE SUR SON PIED, et elle arrive par moitiés : la
-       photo est une paire, on la coupe en deux et chaque soulier se pose sur
-       le sien, à ses propres proportions (voir `demiChaussure`). */
-    const cadrer = (m, A, corps, cote) => {
-      const e = sc.empreinte(m);
-      if (!e) return null;
-      let axe = 0.5;
-      if (A.pieds){
-        const pi = sc.empreintePieds(corps ? corps.jambes : 0);
-        if (!pi) return null;                 // pas encore mesurable : à l'image suivante
-        const p = cote ? pi[cote] : pi.paire;
-        /* La TAILLE vient du pied — une basket ne grossit pas parce que le
-           pantalon est ample — mais la PLACE vient du bas de jambe dès qu'il y
-           en a un : c'est lui qu'on voit, et une chaussure qui dépasse à
-           l'intérieur du pantalon se remarque tout de suite. */
-        axe = (p[0] + p[1]) / 2;
-        if (cote && jambesBas && jambesBas[cote] != null) axe = jambesBas[cote];
-        A = Object.assign({}, A, { ourlet: (p[1] - p[0]) * A.pieds });
-      }
-      if (A.ceinture){
-        /* Et l'OURLET ne peut pas être plus étroit que l'écart des deux pieds :
-           sinon le pied sort à côté du bas de jambe au lieu d'en sortir, et il
-           a l'air posé là. Le legging, le loose et le washed étaient dans ce
-           cas — leurs jambes se rejoignent bien plus que celles du mannequin,
-           qui ne peuvent plus se fermer autant depuis qu'on empêche les pieds
-           de se croiser. Deux garde-fous, un à chaque bout : la ceinture sur
-           les hanches, l'ourlet sur les chevilles. */
-        let pieds = 0;
-        if (A.chevilles){
-          const pi = sc.empreintePieds(corps ? corps.jambes : 0);
-          if (pi) pieds = A.chevilles * (pi.d[1] - pi.g[0]) / (e.o1 - e.o0);
-        }
-        /* Un bas ne peut pas avoir la ceinture plus étroite que les hanches.
-           Elle l'était sur la moitié des photos — 0,131 pour le jogger, 0,135
-           pour le cargo, contre 0,170 de hanche — et le bassin débordait
-           au-dessus du pantalon. On élargit alors tout le vêtement juste
-           assez, et pas plus. Le centrage se fait sur la ceinture et non sur
-           la boîte : celle du jogger tombe à 0,467 parce que ses jambes
-           partent de biais, et le pantalon se posait de travers. */
-        const haut = A.y1 != null ? (A.y1 - A.y0) / (e.y1 - e.y0) : 0;
-        // `ceintureSeule` : la ceinture décide, et la hauteur suit l'échelle de
-        // la largeur — le vêtement garde les proportions de sa photo.
-        const l = A.ceintureSeule ? A.ceinture / (e.c1 - e.c0)
-                                  : Math.max(haut, A.ceinture / (e.c1 - e.c0), pieds);
-        const h = A.ceintureSeule ? l : haut;
-        /* Si ce sont les CHEVILLES qui ont commandé l'échelle, la ceinture est
-           désormais trop large : on la reprend (voir `cintrer`), sans toucher
-           à l'ourlet. C'est le seul moyen de tenir les deux mesures à la fois
-           avec une photo rigide. */
-        const cin = (A.ceinture / (e.c1 - e.c0)) / l;
-        return { x: 0.5 - (e.c0 + e.c1) / 2 * l, y: A.y0 - e.y0 * h, l, h, cintre: cin < 0.999 ? cin : 0 };
-      }
-      const base = A.ourlet / (e.o1 - e.o0);
-      /* `serre` : le RESSERREMENT horizontal, de manche à manche. Une photo à
-         plat est plus large qu'un vêtement porté — elle montre le tour de
-         buste mis à plat, donc une demi-circonférence là où le corps n'offre
-         qu'un diamètre — et le t-shirt tombait à 0,32 de large sur une taille
-         de 0,144. Maintenant que le buste disparaît sous le vêtement, plus
-         rien n'oblige à le couvrir largement.
-         La limite n'est pas un nombre choisi : c'est l'ÉPAULE, et elle se
-         vérifie article par article (voir `couvrirEpaules`). Un vêtement dont
-         la ligne d'épaule tombe bas — le polo et son grand col ouvert — est
-         réélargi juste assez pour que le trapèze ne ressorte pas. */
-      let l = base * (A.serre || 1);
-      /* `fidele` : un rendu PORTÉ a déjà la bonne forme, on le met à l'échelle
-         sans l'étirer. L'étirement n'existe que pour rattraper une photo à
-         plat, large et courte, sur un buste haut et étroit. */
-      const h = A.fidele ? base : (A.y1 - A.y0) / (e.y1 - e.y0);
-      const pose = () => ({ x: axe - (e.o0 + e.o1) / 2 * l, y: A.y0 - e.y0 * h, l, h });
-      if (!A.serre) return pose();
-      /* Le relevé se fait sur le mannequin NU : celui qu'on dessine a le buste
-         retiré sous le vêtement, et ses épaules avec. */
-      const k = sc.couvrirEpaules(m, pose(), mannequin);
-      if (k > 1.001) l = Math.min(l * k, base * 1.15);      // jamais plus large que la photo
-      return pose();
-    };
-    const boiteDe = (p) => cadrer(p.porte || p.it, ANCRAGES[p.coupe]);   // la pose : pas de pieds à caler ici
-    let jambesBas = null;      // où tombent les deux bas de jambe du pantalon porté
-    /* LA POSE VIENT DES VÊTEMENTS, ET ELLE SE MESURE aux deux bouts : le haut
-       dit où sont les bras, le bas où sont les jambes. Le mannequin est seul à
-       avoir un squelette, c'est donc lui qui se plie — aucun vêtement n'est
-       déformé pour rejoindre un membre.
-       Et ce qu'un vêtement habille, il le REMPLACE : le haut prend le buste,
-       le bas les jambes, la paire les pieds (voir MAN_CHEVILLE). Le
-       sous-vêtement, lui, ne remplace rien — il se pose par-dessus, comme sur
-       une poupée. */
-    const haut = portees.get('haut'), bh = haut && boiteDe(haut);
-    const bas = portees.get('bas'), bb = bas && boiteDe(bas);
-    const corps = Object.assign({}, mannequin,
-      bh ? sc.poseBras(haut.porte || haut.it, bh) : { bras: 0, allonge: 1, coude: 0 },
-      bb ? sc.poseJambes(bas.porte || bas.it, bb) : { jambes: 0 },
-      { cache: (haut ? 'b' : '') + (bas ? 'j' : '') + (portees.has('pieds') ? 'p' : '') });
-    // le pantalon est posé : ses deux bas de jambe donnent l'axe des chaussures
-    if (bas && bb) jambesBas = sc.ourletsBas(bas.porte || bas.it, bb);
-    if (!sc.ready(corps)) sc.load(corps);
-    sc.draw(corps, 0, { x: MX, y: MY, s: S }, 1, null, 'front');
-    /* Les pièces portées, dans l'ordre des rangs, CHACUNE SUR SON PLAN.
-       `sc.plan()` remet la profondeur à zéro sans toucher à l'image, si bien
-       que la couche qui vient recouvre entièrement celle d'en dessous. Sans
-       lui, le vêtement et le corps sont deux surfaces cousues à la même
-       profondeur : l'épaule ressortait au travers de la manche, la cuisse au
-       travers de l'ourlet, et le sweat en était mangé au quart. Une poupée de
-       papier n'a pas de volume, elle a des couches. */
-    /* L'OURLET DU HAUT PASSE PAR-DESSUS LE BAS. Si le haut finit plus étroit
-       que les hanches, le pantalon ressort de chaque côté et le haut a l'air
-       rentré dedans — ce n'est ni la coupe ni la façon de le porter.
-       On mesure les deux à la hauteur de l'ourlet (voir `couvrirOurlet`) et on
-       élargit le bas du haut juste assez. UN DIXIÈME DE MARGE : l'ourlet tombe
-       DEVANT le pantalon, il doit se lire par-dessus et non affleurer — à
-       largeur égale les deux bords se superposent au pixel près, et le
-       pantalon reparaît d'un côté au premier souffle.
-       LA RÈGLE VAUT POUR TOUS LES HAUTS, t-shirts et polos compris : un
-       ourlet passe par-dessus un pantalon, quel que soit le vêtement. Elle ne
-       leur demande d'ailleurs presque rien — leur ourlet tombe plus haut, sur
-       une taille plus étroite, et ils vont de 0,80 à 0,85 au plus.
-       UN PLAFOND À UN CINQUIÈME, et c'est un GARDE-FOU, pas la règle. Élargir,
-       c'est étirer la photo ; au-delà d'un cinquième le bas du vêtement cesse
-       de se lire comme un ourlet et devient une petite jupe, les coins en
-       cloche sous le corps. Aucun des douze bas n'y touche aujourd'hui (ils
-       tiennent entre 1,10 et 1,15) : il est là pour celui qu'on ajoutera.
-       Faute de pantalon c'est le sous-vêtement qui sert de mesure, et il ne
-       demande jamais rien.
-       ARRONDI AU VINGTIÈME, et pas plus fin : cette valeur est la clé du
-       maillage retouché. La ligne d'ourlet est cherchée de rangée en rangée,
-       et selon la respiration du mannequin elle tombe tantôt sur l'une tantôt
-       sur sa voisine — au centième, la mesure sautait de 1,12 à 1,18 et le
-       vêtement était remaillé pour rien. Au vingtième, elle tient : deux
-       tours complets du portant rendent les mêmes douze nombres. */
-    const OURLET_MARGE = 1.10, OURLET_PLAFOND = 1.20;
-    const ourletDe = (A) => {
-      dernierOurlet = null;
-      if (!A.effile || !haut || !bh) return A.effile;
-      const socle = bas || SOUS, bsocle = bb || boiteDe(SOUS);
-      if (!socle || !bsocle) return A.effile;
-      const vetu = socle.porte || socle.it;
-      // la même copie reprise à la taille que celle qui sera peinte. Tant
-      // qu'elle n'est pas prête, ON NE MESURE PAS : se rabattre sur la photo
-      // d'origine donnerait un ourlet trop large pour une image ou deux, et
-      // ce maillage-là resterait en cache.
-      const pose = bsocle.cintre ? sc.cintrer(vetu, bsocle.cintre, socle.coupe) : vetu;
-      if (!pose) return A.effile;
-      const q = sc.couvrirOurlet(haut.porte || haut.it, bh, vetu, bsocle, pose);
-      if (!(q > 0)) return A.effile;
-      const k = Math.round(Math.min(OURLET_PLAFOND, Math.max(A.effile, q * OURLET_MARGE)) * 20) / 20;
-      dernierOurlet = k;
-      return k;
-    };
-    const poser = (modele, A, cle, cps, cote) => {
-      const b = cadrer(modele, A, cps, cote);
-      if (!b) return;
-      sc.plan();
-      /* Le maillage retouché se dessine dans la boîte du maillage d'ORIGINE :
-         c'est ce qui laisse l'épaule où elle est (voir `effiler`) et les
-         chevilles où elles sont (voir `cintrer`). Le remesurer ferait
-         regonfler le vêtement pour lui rendre sa largeur d'avant. */
-      // la clé porte l'élargissement : deux pantalons de largeurs différentes
-      // ne demandent pas le même ourlet, et ce sont deux maillages
-      const eff = ourletDe(A);
-      let m = sc.effiler(modele, eff, cle + '@' + eff) || modele;
-      if (b.cintre) m = sc.cintrer(m, b.cintre, cle) || m;
-      sc.draw(m, 0, { x: MX + S * b.x, y: MY + S * b.y, s: S * b.l, h: S * b.h }, 1, null, 'front');
-    };
-    /* Un accessoire ne se cadre pas, il se POSE : sa boîte est un carré centré
-       sur son point d'accrochage, à la taille voulue. Pas d'empreinte à
-       mesurer, pas de largeur à négocier — l'objet a sa forme, et c'est la
-       tête qui lui donne l'échelle. */
-    couches.forEach(p => {
-      const P = p.it.accessoire && ACC_POSE[p.it.accessoire];
-      if (P){
-        sc.plan();
-        const s = S * P.l;
-        sc.draw(p.it, P.ang || 0, { x: MX + S * (0.5 + P.x) - s / 2, y: MY + S * (1 - P.y) - s / 2, s }, 1, null, 'front');
-        return;
-      }
-      const A = ANCRAGES[p.coupe], vetu = p.porte || p.it;
-      if (A.pieds){
-        // la paire, soulier par soulier, chacun sur son pied
-        ['g', 'd'].forEach(cote => {
-          const demi = sc.demiChaussure(vetu, cote);
-          if (demi) poser(demi, A, p.coupe + cote, corps, cote);
-        });
-        return;
-      }
-      const b0 = cadrer(vetu, A, corps);
-      if (!b0) return;                        // pas encore mesurable : à l'image suivante
-      /* Le col s'ouvre sur le cou : un vêtement ne couvre pas le cou. On cadre
-         une première fois pour savoir OÙ tombera le cou, on découpe, puis on
-         recadre sur le modèle découpé — son empreinte a très peu bougé, mais
-         autant la prendre juste. */
-      poser(sc.encolure(vetu, corps, b0, p.coupe) || vetu, A, p.coupe, corps);
+     UNE SEULE PROFONDEUR POUR TOUT LE PERSONNAGE : un seul `plan()` avant, et
+     plus jamais entre deux pièces. C'est ce qui fait qu'un bras passe DEVANT
+     le t-shirt quand il est devant et DERRIÈRE quand il est derrière — donc
+     ce qui permet de tourner. */
+  const PIECE3D = { tee: 'tshirt', sweat: 'sweat', pantalon: 'jean', chaussure: 'baskets' };
+  /* LA TENUE DE BASE (demandée le 22 sept. 2026) : t-shirt blanc, pantalon
+     bleu, et les baskets avec. Ce n'est pas une coquetterie — LE PACK NE
+     MODÉLISE RIEN SOUS LES VÊTEMENTS : pas de torse nu, pas de cuisses, pas de
+     pieds. Sans cette tenue-là, « tout effacer » laisserait une tête et deux
+     bras flottants. Le personnage est donc toujours habillé, comme un
+     mannequin de vitrine l'est toujours. */
+  const BASE3D = { haut: 'tshirt', bas: 'jean', pieds: 'baskets' };
+  let cheveux = 'cheveux';     // la coiffure choisie (voir le panneau du personnage)
+  const persoListe = () => {
+    const l = ['corps', 'tete'];
+    if (cheveux) l.push(cheveux);
+    ['bas', 'haut', 'pieds'].forEach(cat => {
+      const p = portees.get(cat);
+      const id = (p && PIECE3D[p.coupe]) || BASE3D[cat];
+      if (id) l.push(id);
     });
-    /* LE COL PASSE DEVANT LE COU, et c'est le vêtement lui-même qui le fait.
-       On redessinait la tête et le cou par-dessus la capuche, dans une tranche
-       découpée à l'horizontale : la coupure ne suivait aucune couture, et la
-       tête avait l'air POSÉE sur le vêtement au lieu d'y être passée. Il n'y a
-       rien à redessiner — le bord du col est déjà la limite du maillage, et ce
-       qui est au-dessus, c'est le corps. Une bordure de vêtement qui recouvre
-       la peau, c'est exactement ce qu'on voit sur quelqu'un d'habillé. */
+    return l;
+  };
+  const chargerPerso = (sc) => { if (sc) persoListe().forEach(id => sc.load({ perso: id, peau })); };
+  function habiller(sc, MX, MY, S, ang){
+    const boite = { x: MX, y: MY, s: S }, a = ang || 0;
+    sc.plan();
+    persoListe().forEach(id => {
+      const it = { perso: id, peau };
+      if (!sc.ready(it)) sc.load(it);          // pas encore cousu : il paraîtra à l'image suivante
+      sc.draw(it, a, boite, 1, null, 'front');
+    });
+    /* Les accessoires gardent leur modèle et leur point d'accrochage : ce sont
+       des objets qu'on POSE, pas des vêtements qu'on enfile. Ils passent après
+       une remise à zéro de la profondeur parce qu'ils sont dessinés dans leur
+       propre petite fenêtre, avec leur propre projection — leurs profondeurs
+       ne se comparent pas à celles du personnage. Sur un visage, passer
+       par-dessus est de toute façon ce qu'il faut. */
+    sc.plan();
+    [...portees.values()].forEach(p => {
+      const P = p.it.accessoire && ACC_POSE[p.it.accessoire];
+      if (!P) return;
+      const s = S * P.l;
+      sc.draw(p.it, (P.ang || 0) + a, { x: MX + S * (0.5 + P.x) - s / 2, y: MY + S * (1 - P.y) - s / 2, s }, 1, null, 'front');
+    });
     sc.plan();
   }
   /* ---- LE SOUFFLE ----
@@ -13826,7 +13653,7 @@ const dressup = (() => {
     fil.hidden = !etapeDe;
     if (etapeDe) fil.textContent = T('profilEtape').replace('%1', String(etapeDe)).replace('%2', '2');
     if (!scene) scene = model3d.makeScene(cv);
-    if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
+    chargerPerso(scene);
     garnir();
     restaurerTenue();
     tirerHaut();
@@ -13933,7 +13760,7 @@ const dressup = (() => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
              dessins,     // contrôle : images réellement peintes depuis l'ouverture
-             ourlet: dernierOurlet };          // contrôle : l'élargissement d'ourlet du dernier dessin
+             perso: persoListe() };            // contrôle : les pièces 3D réellement dessinées
   };
   /* ---- le personnage du profil ----
      Le mannequin tel qu'il est habillé, dessiné dans la scène du PANNEAU
@@ -13946,8 +13773,8 @@ const dressup = (() => {
   function preparerPersonnage(sc){
     // la première fois : le portant, la tenue retenue, et un haut au hasard s'il n'y en a pas — comme à l'ouverture du salon
     if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
-    sc.load(mannequin); sc.load(SOUS.it);
-    portees.forEach(p => { sc.load(p.it); if (p.porte) sc.load(p.porte); });
+    chargerPerso(sc);
+    portees.forEach(p => { if (p.it.accessoire) sc.load(p.it); });   // seuls les accessoires gardent leur modèle
   }
   function dessinerPersonnage(sc, MX, MY, S, t){
     if (!garniPourProfil) preparerPersonnage(sc);
