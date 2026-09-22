@@ -1624,6 +1624,14 @@
   .champ:focus{border-color:rgba(var(--accent-rgb),0.8);box-shadow:0 0 12px rgba(var(--accent-rgb),0.35);}
   .champ.refus{border-color:rgba(255,90,90,0.8);box-shadow:0 0 12px rgba(255,90,90,0.35);}
   .profil-aide{margin-top:9px;font-size:12px;color:var(--white-35);}
+  /* le fil des étapes : au-dessus du titre, en accent, petit et espacé */
+  .profil-etape{
+    font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
+    color:var(--blue);
+    text-shadow:0 0 10px rgba(var(--accent-rgb),0.5);
+    margin-bottom:5px;
+  }
+  .profil-etape[hidden]{display:none;}
   .profil-actions--fenetre{justify-content:center;margin-top:0;padding-top:4px;}
   /* le gamertag de la barre du haut : la photo, le nom, le niveau — un bouton vers le profil */
   .topbar-gt{
@@ -2516,147 +2524,246 @@
      d'aide) : c'est le SITE, il ne change pas d'un jeu à l'autre. Ce qui
      change est à l'intérieur — un seul canvas, dessiné net en pleine
      résolution, là où Versus peint dans un tampon de 320 px. */
-  /* ---------- mini-jeu « Dress Up » ----------
-     La fenêtre reste celle du site ; dedans, on change d'époque. Les jeux
-     d'habillage en Flash de la fin des années 2000 avaient tous la même
-     grammaire : un fond pastel en dégradé, des cadres arrondis en pointillés,
-     un titre cerné de blanc et posé de travers, des boutons bonbon à ombre
-     franche. C'est joyeusement laid, et c'est la citation. */
+  /* ---------- l'atelier du personnage (« Dress Up ») ----------
+     IL A CHANGÉ D'ÉPOQUE (22 sept. 2026). Il citait jusqu'ici les jeux
+     d'habillage en Flash — fond pastel, Comic Sans, cadres en pointillés
+     roses, boutons bonbon. C'était juste tant qu'il était un mini-jeu parmi
+     d'autres ; il est devenu l'endroit où l'on fabrique le personnage de son
+     profil, et la citation jurait avec la console qui l'entoure.
+     On lui donne donc la grammaire des CRÉATEURS DE PERSONNAGE : un studio
+     sombre, le personnage seul dans la lumière sur un socle, et à droite une
+     grille d'emplacements puis des réglages, en capitales espacées.
+     Rien n'est inventé pour l'occasion : la lumière d'accent de l'heure, le
+     fond teinté et l'ombre au sol viennent du cadre du personnage dans le
+     profil (`.profil-droite`), les liserés et les lueurs du reste du site. */
   .dress-stage{
     position:relative;flex:1 1 auto;min-height:0;overflow:hidden;
-    background:linear-gradient(160deg,#ffd7ef 0%,#ffe9c9 38%,#d6f2ff 100%);
-    font-family:"Comic Sans MS","Chalkboard SE","Segoe UI",system-ui,sans-serif;
+    /* LA BOÎTE DU PERSONNAGE, écrite par le script à chaque changement de
+       disposition (voir `poserSocle`). Le canvas est en WebGL et ne sait
+       peindre que des maillages : la lumière, l'ombre et le socle sont donc
+       en CSS, et ces trois nombres leur disent où se placer. */
+    --perso-x:0px; --perso-y:0px; --perso-s:0px;
+    background:
+      radial-gradient(120% 80% at 50% -12%, rgba(var(--accent-rgb),0.15), transparent 58%),
+      linear-gradient(180deg, #081420 0%, #050d15 52%, #02060a 100%);
   }
-  /* les étoiles du fond : deux motifs répétés, rien de plus */
+  /* la lumière du studio : une nappe derrière le personnage, qui le suit
+     partout où la disposition le met */
   .dress-stage::before{
-    content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
-    background-image:radial-gradient(circle at 12% 18%, rgba(255,255,255,0.9) 0 3px, transparent 4px),
-                     radial-gradient(circle at 78% 62%, rgba(255,255,255,0.75) 0 2px, transparent 3px);
-    background-size:130px 130px, 90px 90px;
-    opacity:0.8;
+    content:"";position:absolute;z-index:0;pointer-events:none;
+    left:calc(var(--perso-x) + var(--perso-s) * 0.5);
+    top:calc(var(--perso-y) + var(--perso-s) * 0.42);
+    width:calc(var(--perso-s) * 1.55);
+    height:calc(var(--perso-s) * 1.20);
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:radial-gradient(50% 50% at 50% 50%, rgba(var(--accent-rgb),0.22), rgba(var(--accent-rgb),0.05) 52%, transparent 74%);
   }
-  /* LE CANVAS PASSE AU-DESSUS DU PORTANT, et ne prend aucun clic. Il était
-     dessous, si bien que chaque aperçu se voyait à travers DEUX voiles blancs
-     — celui du portant (0,58) puis celui de la case (0,5) — et arrivait délavé
-     à moins de la moitié de ses couleurs. Au-dessus, le vêtement sort à pleine
+  /* et le noir aux quatre coins : il creuse la pièce et ramène l'œil au
+     milieu. Il passe sous les panneaux, qui ont leur propre fond, donc il ne
+     les assombrit pas. */
+  .dress-stage::after{
+    content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(125% 95% at 42% 45%, transparent 52%, rgba(0,0,0,0.62) 100%);
+  }
+  /* LE SOCLE. Trois couches dans un seul élément, et l'ordre de peinture les
+     empile dans le bon sens : la tache de lumière (le fond), l'ombre de
+     contact sous les pieds (::before), le rebord du disque (::after). Son
+     centre est à 0,978 de la boîte — la plante des pieds du mannequin. */
+  .dress-socle{
+    position:absolute;z-index:1;pointer-events:none;
+    left:calc(var(--perso-x) + var(--perso-s) * 0.5);
+    top:calc(var(--perso-y) + var(--perso-s) * 0.978);
+    width:calc(var(--perso-s) * 0.80);
+    height:calc(var(--perso-s) * 0.175);
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:radial-gradient(50% 50% at 50% 50%, rgba(var(--accent-rgb),0.26), rgba(var(--accent-rgb),0.06) 58%, transparent 76%);
+  }
+  .dress-socle::before{
+    content:"";position:absolute;left:30%;right:30%;top:30%;bottom:30%;
+    border-radius:50%;
+    background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.62), transparent 70%);
+  }
+  .dress-socle::after{
+    content:"";position:absolute;inset:14% 8%;
+    border-radius:50%;
+    border:1px solid rgba(var(--accent-rgb),0.42);
+    box-shadow:0 0 24px rgba(var(--accent-rgb),0.22), inset 0 0 26px rgba(var(--accent-rgb),0.10);
+  }
+  /* LE CANVAS PASSE AU-DESSUS DE TOUT, et ne prend aucun clic. Il était sous
+     les emplacements, si bien que chaque aperçu se voyait à travers le voile
+     du panneau et arrivait délavé. Au-dessus, le vêtement sort à pleine
      teinte ; partout où il n'y a pas d'étoffe le canvas reste transparent,
-     donc la case, son cadre, son fond jaune et sa coche continuent de se voir
-     dessous. `pointer-events:none` laisse les clics traverser jusqu'aux cases,
-     qui restent seules à écouter. */
-  #dressCv{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2;pointer-events:none;}
+     donc l'emplacement, son cadre et sa pastille continuent de se voir
+     dessous. `pointer-events:none` laisse les clics traverser. */
+  #dressCv{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:5;pointer-events:none;}
+  /* LA PLAQUE, en haut à gauche : l'étape du parcours quand on est en train
+     de créer son profil, puis le nom du personnage souligné d'un filet
+     d'accent. C'est l'en-tête des écrans de personnage, et elle remplace le
+     titre autocollant posé de travers de l'ancien salon. */
+  .dress-hud{
+    position:absolute;left:26px;top:20px;z-index:6;
+    max-width:44%;pointer-events:none;
+  }
+  .dress-etape{
+    font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
+    color:var(--blue);
+    text-shadow:0 0 10px rgba(var(--accent-rgb),0.55);
+    margin-bottom:7px;
+  }
+  .dress-etape[hidden]{display:none;}
   .dress-titre{
-    position:absolute;left:16px;top:10px;
-    font-size:clamp(20px,3.4vw,34px);font-weight:800;
-    color:#ff4fa3;
-    -webkit-text-stroke:3px #ffffff;
-    paint-order:stroke fill;
-    text-shadow:3px 3px 0 rgba(120,20,80,0.35);
-    transform:rotate(-4deg);
-    pointer-events:none;letter-spacing:1px;z-index:3;
-    /* Le titre se balance. Un autocollant posé de travers sur un jeu en Flash
-       ne tenait jamais tout à fait droit ; quelques degrés, très lentement,
-       suffisent à le rendre vivant sans attirer l'œil hors du mannequin. */
-    animation:dressTitreBalance 6.5s ease-in-out infinite;
-    transform-origin:8% 70%;
+    font-size:clamp(19px,2.4vw,26px);font-weight:600;letter-spacing:0.4px;
+    color:var(--white);
+    text-shadow:0 0 18px rgba(var(--accent-rgb),0.28), 0 2px 6px rgba(0,0,0,0.75);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  @keyframes dressTitreBalance{
-    0%,100%{transform:rotate(-6.5deg);}
-    50%{transform:rotate(-1.5deg);}
+  .dress-titre::after{
+    content:"";display:block;margin-top:8px;width:62px;height:2px;
+    background:linear-gradient(90deg, var(--blue), rgba(var(--accent-rgb),0));
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.55);
   }
-  @media (prefers-reduced-motion:reduce){ .dress-titre{animation:none;} }
-  /* La colonne de droite : le portant, puis les outils. UNE COLONNE FLEX, et
-     non deux blocs posés chacun dans son coin — le pavé bleu grandit avec la
-     longueur de la mention sur la photo, qui change avec la langue et la
-     largeur de la fenêtre, et il finissait par mordre sur le cadre rose du
-     portant. Ici c'est le portant qui cède la place, et les deux pointillés ne
-     se touchent jamais. */
+  /* La colonne de droite : la penderie, puis les réglages. UNE COLONNE FLEX,
+     et non deux blocs posés chacun dans son coin — le pavé du bas grandit
+     avec la longueur de la mention sur la photo, qui change avec la langue et
+     la largeur de la fenêtre, et il finissait par mordre sur la penderie. Ici
+     c'est la penderie qui cède la place, et les deux cadres ne se touchent
+     jamais. Elle reste SOUS le canvas : c'est lui qui peint les aperçus. */
   .dress-cote{
-    position:absolute;right:10px;top:10px;bottom:10px;width:min(52%,430px);z-index:1;
-    display:flex;flex-direction:column;gap:8px;min-height:0;
+    position:absolute;right:16px;top:16px;bottom:16px;width:min(50%,412px);z-index:3;
+    display:flex;flex-direction:column;gap:10px;min-height:0;
   }
-  /* Le portant. Fond blanc translucide, pointillés, et une case par pièce —
-     l'aperçu 3D y est dessiné par le canvas du dessous, à la position de la
-     case : aucune image n'est recopiée par vignette. Les pièces sont rangées
-     par catégorie, chaque groupe sous son intertitre. */
-  /* DEUX BOÎTES, ET IL EN FAUT DEUX. Le cadre pointillé est sur l'extérieur,
-     le défilement sur l'intérieur. Quand les deux étaient sur le même élément,
+  /* Les deux panneaux ont le même cadre : verre sombre, liseré clair d'un
+     pixel, et deux équerres d'accent aux coins opposés — le cadre des menus
+     de jeu, pour le prix de deux pseudo-éléments. */
+  .dress-rack,.dress-outils{
+    position:relative;
+    background:linear-gradient(180deg, rgba(10,20,30,0.74), rgba(3,8,13,0.88));
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:8px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.07), 0 16px 38px rgba(0,0,0,0.45);
+  }
+  .dress-rack::before,.dress-rack::after,
+  .dress-outils::before,.dress-outils::after{
+    content:"";position:absolute;width:13px;height:13px;pointer-events:none;
+    border:1px solid rgba(var(--accent-rgb),0.55);
+  }
+  .dress-rack::before,.dress-outils::before{left:-1px;top:-1px;border-right:0;border-bottom:0;border-top-left-radius:8px;}
+  .dress-rack::after,.dress-outils::after{right:-1px;bottom:-1px;border-left:0;border-top:0;border-bottom-right-radius:8px;}
+  /* L'intitulé d'un panneau : une barre d'accent, le mot en capitales
+     espacées, et un filet qui finit la ligne. */
+  .dress-tete{
+    flex:0 0 auto;display:flex;align-items:center;gap:9px;
+    margin:0 2px 10px;
+    font-size:10.5px;font-weight:600;letter-spacing:2.4px;text-transform:uppercase;
+    color:var(--white-60);
+  }
+  .dress-tete::before{content:"";width:3px;height:12px;background:var(--blue);box-shadow:0 0 9px rgba(var(--accent-rgb),0.9);}
+  .dress-tete::after{content:"";flex:1 1 auto;height:1px;background:linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0));}
+  /* La penderie. Une case par pièce — l'aperçu 3D y est dessiné par le canvas
+     du dessus, à la position de la case : aucune image n'est recopiée par
+     vignette. Les pièces sont rangées par catégorie, chaque groupe sous son
+     intertitre.
+     DEUX BOÎTES, ET IL EN FAUT DEUX. Le cadre est sur l'extérieur, le
+     défilement sur l'intérieur. Quand les deux étaient sur le même élément,
      le navigateur peignait l'ascenseur contre l'arête intérieure de la
-     bordure : la barre rose venait mordre le pointillé rose, et les deux se
-     confondaient. La marge de l'extérieur l'en écarte maintenant, quoi que
-     fasse le navigateur — et il en fait à sa tête, voir juste en dessous. */
+     bordure. */
   .dress-rack{
     flex:1 1 auto;min-height:0;
-    display:flex;
-    padding:10px;overflow:hidden;
-    background:rgba(255,255,255,0.58);
-    border:3px dashed #ff8ec4;border-radius:18px;
+    display:flex;flex-direction:column;
+    padding:12px 12px 10px;overflow:hidden;
   }
   .dress-piste{
     flex:1 1 auto;min-width:0;
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
-    grid-auto-rows:min-content;gap:7px;
-    overflow-y:auto;
-    /* L'ascenseur : le navigateur en pose un gris d'interface au milieu d'un
-       décor rose pointillé, et ça se voit. On lui donne la même grammaire que
-       le reste — piste blanche, pouce rose bonbon.
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+    grid-auto-rows:min-content;gap:8px;
+    overflow-y:auto;padding-right:7px;
+    /* L'ascenseur : le navigateur en pose un gris d'interface, et ça se voit
+       sur un fond de nuit. On lui donne la couleur de l'heure.
        DEUX ÉCRITURES POUR LA MÊME CHOSE, et ce n'est pas du zèle : Chrome
-       ignore désormais les `::-webkit-scrollbar` dès que `scrollbar-width` est
-       posé, tandis que les navigateurs plus anciens ne connaissent que
+       ignore désormais les `::-webkit-scrollbar` dès que `scrollbar-width`
+       est posé, tandis que les navigateurs plus anciens ne connaissent que
        celles-là. Chacun prend ce qu'il sait lire. */
-    scrollbar-width:thin;scrollbar-color:#ff77b8 rgba(255,255,255,0.5);
+    scrollbar-width:thin;scrollbar-color:rgba(var(--accent-rgb),0.75) rgba(255,255,255,0.06);
   }
-  .dress-piste::-webkit-scrollbar{width:13px;}
-  .dress-piste::-webkit-scrollbar-track{
-    background:rgba(255,255,255,0.5);border-radius:999px;margin:4px 0;
-    box-shadow:inset 0 0 0 1px rgba(255,142,196,0.55);
-  }
+  .dress-piste::-webkit-scrollbar{width:10px;}
+  /* Chrome pose DEUX BOUTONS aux bouts de la piste dès qu'on lui dessine un
+     ascenseur, et ils héritaient du fond de la piste : deux pastilles claires
+     en haut et en bas du cadre, que personne n'avait demandées. */
+  .dress-piste::-webkit-scrollbar-button{display:none;height:0;width:0;}
+  .dress-piste::-webkit-scrollbar-track{background:rgba(255,255,255,0.05);border-radius:999px;margin:2px 0;}
   .dress-piste::-webkit-scrollbar-thumb{
-    background:#ff77b8;border:2px solid #b0307a;border-radius:999px;
-    background-clip:padding-box;
+    background:rgba(var(--accent-rgb),0.6);border-radius:999px;
+    border:2px solid transparent;background-clip:padding-box;
   }
-  .dress-piste::-webkit-scrollbar-thumb:hover{background:#ff4fa3;}
-  .dress-piste::-webkit-scrollbar-thumb:active{background:#e0357f;}
-  /* L'intertitre d'une catégorie : toute la largeur du portant, un filet
-     pointillé pour finir la ligne — le même trait que les cadres. */
+  .dress-piste::-webkit-scrollbar-thumb:hover{background:rgba(var(--accent-rgb),0.95);background-clip:padding-box;}
+  /* L'intertitre d'une catégorie : toute la largeur de la penderie, un filet
+     pour finir la ligne. */
   .dress-groupe{
     grid-column:1/-1;display:flex;align-items:center;gap:8px;
-    margin:4px 0 -1px;padding:0 2px;
-    font-size:11.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;
-    color:#b0307a;
+    margin:10px 0 1px;padding:0 1px;
+    font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;
+    color:var(--white-35);
   }
   .dress-groupe:first-child{margin-top:0;}
-  .dress-groupe::after{content:"";flex:1 1 auto;height:0;border-top:2px dashed rgba(255,142,196,0.8);}
+  .dress-groupe::after{content:"";flex:1 1 auto;height:1px;background:linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0));}
+  /* UN EMPLACEMENT. Carré, liseré d'un pixel, angles à peine cassés : la case
+     d'inventaire, qui ne ressemble à rien d'autre sur le site. */
   .dress-case{
-    position:relative;height:74px;
-    border:2px solid rgba(255,120,180,0.45);border-radius:12px;
-    background:rgba(255,255,255,0.5);
-    cursor:pointer;transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+    position:relative;height:72px;
+    border:1px solid rgba(255,255,255,0.13);border-radius:4px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015));
+    cursor:pointer;
+    transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, border-color 0.14s ease;
   }
-  /* Le survol grossit franchement : le portant ne tourne plus ses aperçus, il
-     lui faut un autre signe de vie. */
-  .dress-case:hover{transform:translateY(-5px) scale(1.16);z-index:2;box-shadow:0 7px 0 rgba(255,120,180,0.55);background:rgba(255,255,255,0.9);}
-  .dress-case.porte{background:#fff2c2;border-color:#ffb020;box-shadow:inset 0 0 0 2px #ffdf8a;}
-  .dress-case.porte::after{content:"\2713";position:absolute;right:4px;top:2px;color:#e07800;font-weight:800;font-size:14px;}
-  .dress-case:focus-visible{outline:3px solid #ff4fa3;outline-offset:2px;}
-  /* Le prune du cerne des boutons : il se voit sur les quatre couleurs, là
-     où le rose du portant disparaîtrait sur le bouton rose. */
-  .dress-bt:focus-visible{outline:3px solid #b0307a;outline-offset:3px;}
+  /* Le survol s'allume franchement : la penderie ne tourne plus ses aperçus,
+     il lui faut un autre signe de vie. */
+  .dress-case:hover{
+    transform:translateY(-3px) scale(1.06);z-index:2;
+    border-color:rgba(var(--accent-rgb),0.9);
+    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.20), rgba(var(--accent-rgb),0.05));
+    box-shadow:0 0 18px rgba(var(--accent-rgb),0.35), 0 8px 18px rgba(0,0,0,0.5);
+  }
+  .dress-case.porte{
+    border-color:var(--blue);
+    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.26), rgba(var(--accent-rgb),0.07));
+    box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),0.30), 0 0 16px rgba(var(--accent-rgb),0.30);
+  }
+  /* la pastille de la pièce portée, au coin : le carré d'accent et sa coche
+     sombre, le marquage des grilles d'inventaire */
+  .dress-case.porte::after{
+    content:"\2713";
+    position:absolute;right:-1px;top:-1px;
+    width:17px;height:17px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--blue);color:#03080d;
+    font-size:10px;font-weight:700;line-height:1;
+    border-radius:0 4px 0 5px;
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.7);
+  }
+  .dress-case:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;}
+  .dress-bt:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:3px;}
   /* EN SOMMEIL : un groupe dont rien n'est posable. Les chaussures attendent
      un bas — le refus le dit au clic, mais il vaut mieux le dire AVANT :
-     pâlies et sans relief, elles se lisent comme « pas encore », et la case
-     tremble quand même si on insiste. */
-  .dress-groupe--dort{color:rgba(176,48,122,0.45);}
-  .dress-groupe--dort::after{border-top-color:rgba(255,142,196,0.35);}
+     éteints et cernés de tirets, ces emplacements se lisent comme « pas
+     encore », et la case tremble quand même si on insiste. */
+  .dress-groupe--dort{color:rgba(255,255,255,0.22);}
+  .dress-groupe--dort::after{background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0));}
   .dress-case--dort{
-    opacity:0.45;filter:saturate(0.4);
-    border-style:dotted;border-color:rgba(255,120,180,0.3);
+    opacity:0.55;
+    border-style:dashed;border-color:rgba(255,255,255,0.18);
+    background:rgba(255,255,255,0.02);
   }
-  .dress-case--dort:hover{transform:none;box-shadow:none;background:rgba(255,255,255,0.5);}
-  /* Refus : la case tremble, elle ne se coche pas. Un article verrouillé reste
-     dans le portant — le cadenas dit qu'il existe et qu'il se gagne — mais il
-     ne se pose pas sur le mannequin. Le tremblement est court et sec, et la
-     case rougit le temps de la secousse : deux signaux pour la même chose,
-     parce qu'un mouvement seul se rate si l'œil est ailleurs. */
+  .dress-case--dort:hover{
+    transform:none;box-shadow:none;
+    background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.18);
+  }
+  /* Refus : la case tremble, elle ne s'équipe pas. Un article verrouillé
+     reste dans la penderie — le cadenas dit qu'il existe et qu'il se gagne —
+     mais il ne se pose pas sur le mannequin. Le tremblement est court et sec,
+     et la case rougit le temps de la secousse : deux signaux pour la même
+     chose, parce qu'un mouvement seul se rate si l'œil est ailleurs. */
   @keyframes dressRefus{
     0%,100%{transform:translateX(0);}
     15%{transform:translateX(-5px) rotate(-2deg);}
@@ -2667,60 +2774,76 @@
   }
   .dress-case.refus{
     animation:dressRefus 0.36s ease;
-    border-color:#e0405c;background:rgba(255,215,220,0.9);
+    border-color:#e0556c;
+    background:linear-gradient(180deg, rgba(224,85,108,0.28), rgba(224,85,108,0.08));
+    box-shadow:0 0 18px rgba(224,85,108,0.40);
   }
   .dress-case.refus:hover{transform:none;}
+  /* Les réglages d'apparence : des pastilles techniques, capitales espacées
+     et liseré fin, qui s'allument à l'accent de l'heure. */
   .dress-outils{
     flex:0 0 auto;
     display:flex;flex-wrap:wrap;align-items:center;gap:8px;
-    padding:9px 12px;
-    background:rgba(255,255,255,0.72);
-    border:3px dashed #7fd0f0;border-radius:16px;
+    padding:12px;
   }
+  .dress-outils .dress-tete{flex:1 1 100%;margin-bottom:2px;}
   .dress-bt{
-    display:inline-flex;align-items:center;gap:6px;
-    padding:8px 15px;border:2px solid #b0307a;border-radius:999px;
-    background:#ff77b8;color:#fff;font:inherit;font-size:12.5px;font-weight:700;
-    cursor:pointer;box-shadow:0 3px 0 #b0307a;
-    transition:transform 0.12s ease, box-shadow 0.12s ease;
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 14px;
+    border:1px solid rgba(255,255,255,0.16);border-radius:6px;
+    background:rgba(255,255,255,0.045);
+    color:var(--white-60);
+    font:inherit;font-size:10.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+    cursor:pointer;
+    transition:border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
   }
-  .dress-bt:hover{transform:translateY(-2px);box-shadow:0 5px 0 #b0307a;}
-  .dress-bt:active{transform:translateY(2px);box-shadow:0 1px 0 #b0307a;}
-  .dress-bt--2{background:#7fd0f0;border-color:#1d7ea8;box-shadow:0 3px 0 #1d7ea8;}
-  .dress-bt--2:hover{box-shadow:0 5px 0 #1d7ea8;}
-  .dress-bt--2:active{box-shadow:0 1px 0 #1d7ea8;}
+  .dress-bt:hover{
+    border-color:rgba(var(--accent-rgb),0.85);
+    background:rgba(var(--accent-rgb),0.14);
+    color:var(--white);
+    box-shadow:0 0 16px rgba(var(--accent-rgb),0.28);
+  }
+  .dress-bt:active{background:rgba(var(--accent-rgb),0.22);}
+  /* « Tout effacer » déshabille : il vire au rouge au survol, seul geste du
+     salon qui défait tout d'un coup. */
+  .dress-bt--2:hover{
+    border-color:rgba(224,85,108,0.85);
+    background:rgba(224,85,108,0.14);
+    box-shadow:0 0 16px rgba(224,85,108,0.25);
+  }
   /* Le bouton de teinte porte la couleur choisie : la pastille EST le champ,
-     agrandie et arrondie, si bien qu'on voit ce qu'on va changer. */
-  .dress-bt--3{background:#ffd166;border-color:#a9761a;box-shadow:0 3px 0 #a9761a;color:#6b3f00;}
-  .dress-bt--3:hover{box-shadow:0 5px 0 #a9761a;}
-  .dress-bt--3:active{box-shadow:0 1px 0 #a9761a;}
+     si bien qu'on voit ce qu'on va changer. */
   .dress-bt--3 input[type=color]{
-    width:22px;height:22px;padding:0;border:2px solid #a9761a;border-radius:999px;
+    width:20px;height:20px;padding:0;
+    border:1px solid rgba(255,255,255,0.35);border-radius:4px;
     background:none;cursor:pointer;
   }
   .dress-bt--3 input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
-  .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:999px;}
-  /* Le curseur de taille du visage. Il ne paraît QUE si une photo est posée :
-     un réglage qui ne règle rien n'a rien à faire à l'écran. */
-  .dress-bt--5{background:#d3b4f0;border-color:#6b3fa0;box-shadow:0 3px 0 #6b3fa0;color:#3a1f5c;}
-  .dress-bt--5:hover{box-shadow:0 5px 0 #6b3fa0;}
-  .dress-bt--5:active{box-shadow:0 1px 0 #6b3fa0;}
+  .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
+  .dress-bt--3 input[type=color]::-moz-color-swatch{border:none;border-radius:3px;}
+  /* Les curseurs du visage prennent TOUTE LA LARGEUR, intitulé à gauche et
+     course à droite : c'est la ligne de réglage des créateurs de personnage,
+     et elle se manie bien mieux qu'une course de 88 px coincée entre deux
+     boutons. Ils ne paraissent QUE si une photo est posée — un réglage qui ne
+     règle rien n'a rien à faire à l'écran (voir `refletVisage`). */
+  .dress-bt--5{flex:1 1 100%;justify-content:space-between;gap:14px;}
   .dress-bt--5[hidden]{display:none;}
   .dress-bt--5 input[type=range]{
-    width:88px;height:14px;margin:0;cursor:pointer;accent-color:#6b3fa0;
+    flex:0 1 220px;height:16px;margin:0;cursor:pointer;accent-color:var(--blue);
   }
   /* La mention sur la photo : elle doit être LISIBLE, pas discrète. Quelqu'un
      à qui on demande son visage a le droit de savoir en deux lignes ce qu'il
      en advient, sans aller chercher une page de mentions légales. */
   .dress-note{
-    flex:1 1 100%;margin:0;
-    font-size:10.5px;line-height:1.45;color:#7a4a66;
+    flex:1 1 100%;margin:2px 0 0;
+    font-size:10.5px;line-height:1.5;color:var(--white-35);
   }
-  /* Écran étroit : la colonne passe sous le mannequin, sur toute la largeur.
-     Elle garde sa structure — portant puis outils — donc rien ne se chevauche
-     là non plus. */
+  /* Écran étroit : la colonne passe sous le personnage, sur toute la largeur.
+     Elle garde sa structure — penderie puis réglages — donc rien ne se
+     chevauche là non plus, et le socle suit le personnage tout seul. */
   @media (max-width:820px){
-    .dress-cote{left:10px;right:10px;width:auto;top:auto;bottom:10px;max-height:58%;}
+    .dress-cote{left:12px;right:12px;width:auto;top:auto;bottom:12px;max-height:58%;}
+    .dress-hud{max-width:none;left:20px;right:26px;top:16px;}
   }
   .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#5c94fc;}
   /* Le tampon fait la moitié de la boîte et le navigateur l'agrandit au PLUS
@@ -3040,8 +3163,11 @@
   <div class="size-panel reglages-panel profil-panel glass">
     <div class="info-header">
       <div>
+        <!-- « Étape 1 sur 2 » : n'apparaît qu'à la création, quand la fenêtre
+             est le premier pas d'un parcours et non un réglage isolé. -->
+        <div class="profil-etape" id="profilEtape" hidden></div>
         <h2 id="profilTitre"></h2>
-        <div class="info-sub" data-i18n="profilSub">Kept on this device only</div>
+        <div class="info-sub" id="profilSousTitre" data-i18n="profilSub">Kept on this device only</div>
       </div>
       <button class="legal-close" id="profilFermer" data-i18n-aria="close" aria-label="Close">✕</button>
     </div>
@@ -3273,8 +3399,17 @@
       <button class="legal-close" id="dressClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
     </div>
     <div class="dress-stage" id="dressStage">
+      <!-- Le socle : la tache de lumière, l'ombre de contact et le rebord du
+           disque, posés sous les pieds du personnage. Le canvas est en WebGL
+           et ne peint que des maillages ; c'est donc le CSS qui tient le
+           décor, à la place que `poserSocle` lui indique. -->
+      <div class="dress-socle" aria-hidden="true"></div>
       <canvas id="dressCv"></canvas>
-      <div class="dress-titre" id="dressTitre"></div>
+      <!-- la plaque : l'étape du parcours, puis le nom du personnage -->
+      <div class="dress-hud">
+        <div class="dress-etape" id="dressEtape" hidden></div>
+        <div class="dress-titre" id="dressTitre"></div>
+      </div>
       <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
            qu'on emporte l'image, pas du portant. -->
       <!-- Le portant et les outils : UNE colonne, pour que le cadre bleu ne
@@ -3285,9 +3420,13 @@
         <!-- le cadre pointillé dehors, la piste qui défile dedans : l'ascenseur
              ne vient plus se poser sur le pointillé (voir .dress-rack) -->
         <div class="dress-rack">
+          <!-- l'intitulé du panneau ; le nom de chaque case dit déjà le reste,
+               d'où l'aria-hidden -->
+          <div class="dress-tete" id="dressRackTitre" aria-hidden="true"></div>
           <div class="dress-piste" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
         </div>
         <div class="dress-outils">
+          <div class="dress-tete" id="dressLookTitre" aria-hidden="true"></div>
           <label class="dress-bt" id="dressFaceBt" tabindex="0">
             <span id="dressFaceTxt"></span>
             <input type="file" id="dressFace" accept="image/*" hidden>
@@ -3838,9 +3977,10 @@ const STRINGS = {
     language:"Language", currency:"Currency", music:"Music", effects:"Sound effects", soundOn:"On", soundOff:"Off",
     settings:"Settings", settingsSub:"Saved on this device, for your next visits",
     profilUid:"UID", profilInvite:"No gamertag yet", profilCreer:"Create my profile", profilEditer:"Edit profile", profilPerso:"Customize character",
-    profilTitreCreer:"Your gamertag", profilTitreEditer:"Edit profile", profilSub:"Kept on this device only — never sent anywhere",
+    profilTitreCreer:"Create a profile", profilTitreEditer:"Edit profile", profilSub:"Kept on this device only — never sent anywhere",
     profilPhotoAria:"Choose a profile picture", profilPhotoChoisir:"Choose a photo", profilPhotoRetirer:"Remove", profilNomLabel:"Gamertag",
     profilPartager:"Share",
+    profilEtape:"Step %1 of %2", profilContinuer:"Continue →", profilPret:"Profile created",
     profilNomAide:"2 to 16 characters — letters, digits, spaces, dots, dashes.", profilSauver:"Save",
     profilDepuis:"Member since", profilVisites:"Logins", profilTemps:"Time on site", profilDepense:"Total spent", profilCommandes:"Orders",
     profilPieces:"Pieces unlocked", profilJumper:"Jumper best", profilJour:"day", profilJours:"days", profilXpRegle:"10 XP per € spent",
@@ -3864,6 +4004,7 @@ const STRINGS = {
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
     dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
+    dressRack:"Wardrobe", dressLook:"Appearance",
     dressSkin:"Skin tone", dressFaceSize:"Face size", dressFaceY:"Face height",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
@@ -3910,9 +4051,10 @@ const STRINGS = {
     language:"Langue", currency:"Devise", music:"Musique", effects:"Bruitages", soundOn:"Activé", soundOff:"Coupé",
     settings:"Réglages", settingsSub:"Retenus sur cet appareil, pour vos prochaines visites",
     profilUid:"UID", profilInvite:"Pas encore de gamertag", profilCreer:"Créer mon profil", profilEditer:"Modifier le profil", profilPerso:"Personnaliser le personnage",
-    profilTitreCreer:"Ton gamertag", profilTitreEditer:"Modifier le profil", profilSub:"Gardé sur cet appareil seulement — jamais envoyé",
+    profilTitreCreer:"Créer un profil", profilTitreEditer:"Modifier le profil", profilSub:"Gardé sur cet appareil seulement — jamais envoyé",
     profilPhotoAria:"Choisir une photo de profil", profilPhotoChoisir:"Choisir une photo", profilPhotoRetirer:"Retirer", profilNomLabel:"Gamertag",
     profilPartager:"Partager",
+    profilEtape:"Étape %1 sur %2", profilContinuer:"Continuer →", profilPret:"Profil créé",
     profilNomAide:"2 à 16 caractères — lettres, chiffres, espaces, points, tirets.", profilSauver:"Enregistrer",
     profilDepuis:"Membre depuis", profilVisites:"Connexions", profilTemps:"Temps sur le site", profilDepense:"Dépense totale", profilCommandes:"Commandes",
     profilPieces:"Pièces débloquées", profilJumper:"Record Jumper", profilJour:"jour", profilJours:"jours", profilXpRegle:"10 XP par € dépensé",
@@ -3932,6 +4074,7 @@ const STRINGS = {
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
     dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
+    dressRack:"Penderie", dressLook:"Apparence",
     dressSkin:"Couleur de peau", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
     dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée. Votre navigateur la garde pour que votre personnage retrouve son visage d'une visite à l'autre ; « Retirer mon visage » l'efface. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
@@ -10303,6 +10446,7 @@ const profil = (() => {
     bloc.hidden = !oui;
     if (oui){
       rafraichir();
+      if (!p) setTimeout(inviter, 260);    // le panneau se montre d'abord, la fenêtre vient dessus
       if (!scene) scene = model3d.makeScene(cvScene);
       if (!scene) return;                       // sans WebGL : pas de personnage, le reste du profil vit
       dressup.preparerPersonnage(scene);
@@ -10321,11 +10465,28 @@ const profil = (() => {
     apercuInitiale.textContent = champNom.value.trim() ? initialeDe(champNom.value) : '+';
     document.getElementById('profilPhotoRetirer').hidden = !photoEnCours;
   }
-  function editer(){
+  /* ---- LE PARCOURS DE CRÉATION (22 sept. 2026) ----
+     Un visiteur qui arrive sans profil est mené par la main, en deux temps :
+     d'abord son nom et sa photo, puis son personnage au salon d'essayage. Le
+     reste du site ne bouge pas — ce sont les deux mêmes fenêtres qu'un habitué
+     rouvre pour se modifier ; seules changent les mentions d'étape et le
+     libellé du bouton, qui dit « Continuer » quand quelque chose suit et
+     « Enregistrer » quand on ne fait que corriger.
+     ON NE PIÈGE PERSONNE : Échap et la croix ferment, comme partout ailleurs
+     sur ce site. Quelqu'un qui vient voir des vêtements et ne veut pas de
+     compte doit pouvoir passer — le bouton « Créer mon profil » l'attend sur
+     la première icône, et la fenêtre ne se rouvrira pas d'elle-même. */
+  let parcours = false;
+  function editer(creation){
     if (overlay.classList.contains('open')) return;
+    parcours = !!creation && !p;
     exitPanel();
     closeSizePicker();
+    const etape = document.getElementById('profilEtape');
+    etape.hidden = !parcours;
+    if (parcours) etape.textContent = T('profilEtape').replace('%1', '1').replace('%2', '2');
     document.getElementById('profilTitre').textContent = T(p ? 'profilTitreEditer' : 'profilTitreCreer');
+    document.getElementById('profilSauver').textContent = T(parcours ? 'profilContinuer' : 'profilSauver');
     champNom.value = p ? p.nom : '';
     champNom.classList.remove('refus');
     photoEnCours = p ? p.photo : null;
@@ -10333,6 +10494,30 @@ const profil = (() => {
     refletApercu();
     overlay.classList.add('open');
     champNom.focus();
+  }
+  /* LE PARCOURS PART DE L'ICÔNE PROFIL, ET DE NULLE PART AILLEURS. On entre
+     dans la boutique sans rien demander à personne : un visiteur venu voir des
+     vêtements n'a pas à se présenter d'abord. C'est en allant sur le profil
+     qu'on est mené à s'en créer un — et une seule fois par visite : la
+     première icône de la barre est celle qu'on frôle en revenant vers la
+     gauche, et une fenêtre qui se rouvrirait à chaque passage serait un
+     piège. Refermée, elle laisse le panneau vide et son bouton. */
+  let invite = false;
+  function demarrer(){
+    if (p) return;
+    const ci = DATA.findIndex(c => c.kind === 'profil');
+    if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
+    editer(true);
+  }
+  function inviter(){        // appelé en arrivant sur le profil (voir montrer)
+    if (p || invite || overlay.classList.contains('open')) return;
+    invite = true;
+    editer(true);
+  }
+  // le second pas : le salon, qui sait qu'il termine un parcours (voir dressup.open)
+  function etape2(){
+    parcours = false;
+    dressup.open({ etape: 2 });
   }
   function fermer(){
     overlay.classList.remove('open');
@@ -10345,9 +10530,11 @@ const profil = (() => {
       sfx.refus();
       return;
     }
+    const premier = !p;
     modifier(nom, photoEnCours);
     sfx.add();
     fermer();
+    if (parcours && premier) setTimeout(etape2, 260);   // le temps que la fenêtre s'en aille
   }
   fichier.addEventListener('change', () => {
     const f = fichier.files && fichier.files[0];
@@ -10362,7 +10549,7 @@ const profil = (() => {
   document.getElementById('profilSauver').addEventListener('click', enregistrer);
   document.getElementById('profilFermer').addEventListener('click', fermer);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) fermer(); });
-  btEditer.addEventListener('click', editer);
+  btEditer.addEventListener('click', () => editer(!p));   // sans profil, le bouton ouvre le PARCOURS, pas un simple réglage
   btPerso.addEventListener('click', () => dressup.open());
 
   /* ---- partager ----
@@ -10566,7 +10753,9 @@ const profil = (() => {
     if (e.key === 'Escape'){ e.preventDefault(); fermer(); return; }
     if (e.key === 'Enter'){ e.preventDefault(); enregistrer(); }
   }
-  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, partager, carte, preparerPhoto, ouvert: () => overlay.classList.contains('open'),
+  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, partager, carte, preparerPhoto, demarrer,
+           fini: () => { const c = DATA.find(c => c.kind === 'profil'); rafraichir(); annoncer(T('profilPret'), c ? L(c.name) : ''); },
+           ouvert: () => overlay.classList.contains('open'),
            existe: () => !!p, lire: () => p, niveau, xp };
 })();
 
@@ -12635,6 +12824,9 @@ const dressup = (() => {
   const btFaceTxt = document.getElementById('dressFaceTxt');
   const btNu = document.getElementById('dressNu');
   const note = document.getElementById('dressNote');
+  const stage = document.getElementById('dressStage');
+  const tetePenderie = document.getElementById('dressRackTitre');
+  const teteLook = document.getElementById('dressLookTitre');
 
   /* ---- catégories et coupes ----
      Deux choses qu'on confondait sous un seul nom.
@@ -13411,6 +13603,23 @@ const dressup = (() => {
     eveilAt = performance.now();
     if (dort && ouvert){ dort = false; cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle); }
   }
+  /* ---- le socle ----
+     La lumière du studio, l'ombre de contact et le rebord du disque sont
+     dessinés par le CSS et non par le canvas : celui-ci est en WebGL, il ne
+     sait peindre que des maillages. On lui donne donc la boîte du personnage
+     en trois variables et le décor se place tout seul.
+     ON N'ÉCRIT QUE QUAND ÇA BOUGE : cette boîte ne change qu'au
+     redimensionnement de la fenêtre, il serait absurde de toucher au style
+     soixante fois par seconde pour y réécrire les mêmes nombres. */
+  let socleCle = '';
+  function poserSocle(x, y, s){
+    const cle = Math.round(x) + '|' + Math.round(y) + '|' + Math.round(s);
+    if (cle === socleCle) return;
+    socleCle = cle;
+    stage.style.setProperty('--perso-x', x.toFixed(1) + 'px');
+    stage.style.setProperty('--perso-y', y.toFixed(1) + 'px');
+    stage.style.setProperty('--perso-s', s.toFixed(1) + 'px');
+  }
   function dessiner(t, eveil){
     if (!scene) return;
     const r = cv.getBoundingClientRect();
@@ -13430,7 +13639,9 @@ const dressup = (() => {
     const hDispo = sous ? co.top - r.top - 6 : r.height;
     const libre = Math.min(r.width * 0.46, hDispo * 0.92);
     const S = libre * k;
-    const MX = (sous ? (r.width - libre) / 2 : r.width * 0.045) * k, MY = ((hDispo - libre) / 2) * k;
+    const px = sous ? (r.width - libre) / 2 : r.width * 0.045, py = (hDispo - libre) / 2;
+    const MX = px * k, MY = py * k;
+    poserSocle(px, py, libre);   // le décor du studio, en CSS, sous le canvas
     // le souffle : la boîte grandit autour des PIEDS, donc la tête monte et
     // les pieds ne quittent pas le sol
     const S2 = S * (1 + SOUFFLE.ampleur * souffle(t) * eveil);
@@ -13454,7 +13665,9 @@ const dressup = (() => {
       scene.draw(p.it, (p.it.accessoire && ACC_POSE[p.it.accessoire] && ACC_POSE[p.it.accessoire].ang) || 0, {
         x: (b.left - r.left + (b.width - s) / 2) * k,
         y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k, clip: fenetre },
-        p.el.classList.contains('dress-case--dort') ? 0.4 : 1);
+        // 0,55 et non 0,4 : sur le fond de nuit du studio, un vêtement à 0,4
+        // d'opacité disparaît pour de bon — la case en sommeil devenait un trou
+        p.el.classList.contains('dress-case--dort') ? 0.55 : 1);
     });
   }
   let ipsSalon = 0, dessins = 0;
@@ -13472,16 +13685,32 @@ const dressup = (() => {
     if (eveil <= 0){ cancelAnimationFrame(raf); raf = 0; dort = true; }
   }
 
-  function ouvrir(){
+  /* `opts.etape` : le salon est ici le second pas du parcours de création
+     (voir profil.demarrer). Il ne change rien à son fonctionnement — on écrit
+     juste d'où l'on vient au-dessus du titre, et sa fermeture prévient le
+     profil que le parcours est fini. */
+  let etapeDe = 0;
+  function ouvrir(opts){
     if (ouvert) return;
     ouvert = true;
-    titre.textContent = T('dressTitle');
+    etapeDe = (opts && opts.etape) || 0;
+    /* LA PLAQUE PORTE LE NOM DU PERSONNAGE quand il y en a un : c'est de lui
+       qu'on s'occupe ici, et un créateur de personnage affiche celui qu'on
+       est en train d'habiller. Sans profil — on peut venir ici sans en avoir
+       créé — elle dit ce qu'est la fenêtre. */
+    const moi = profil.existe() && profil.lire();
+    titre.textContent = (moi && moi.nom) || T('dressTitle');
+    tetePenderie.textContent = T('dressRack');
+    teteLook.textContent = T('dressLook');
     txtZoom.textContent = T('dressFaceSize');
     txtHaut.textContent = T('dressFaceY');
     refletVisage();
     btNu.textContent = T('dressStrip');
     txtPeau.textContent = T('dressSkin');
     note.textContent = T('dressPrivacy');
+    const fil = document.getElementById('dressEtape');
+    fil.hidden = !etapeDe;
+    if (etapeDe) fil.textContent = T('profilEtape').replace('%1', String(etapeDe)).replace('%2', '2');
     if (!scene) scene = model3d.makeScene(cv);
     if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
     garnir();
@@ -13506,6 +13735,7 @@ const dressup = (() => {
     const ci = DATA.findIndex(c => c.kind === 'profil');
     if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
     else profil.rafraichir();   // déjà sur le profil : la tenue vient de changer
+    if (etapeDe){ etapeDe = 0; profil.fini(); }   // fin du parcours de création : le profil l'annonce
   }
   /* ---- navigation au clavier ----
      Le salon se joue à la souris, mais il doit aussi se parcourir aux flèches
