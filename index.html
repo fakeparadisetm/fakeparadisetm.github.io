@@ -2538,6 +2538,11 @@
      profil (`.profil-droite`), les liserés et les lueurs du reste du site. */
   .dress-stage{
     position:relative;flex:1 1 auto;min-height:0;overflow:hidden;
+    /* ON ATTRAPE LE PERSONNAGE POUR LE TOURNER : le curseur le dit avant
+       qu'on essaie. `touch-action:none` empêche le doigt de faire défiler la
+       page au lieu de tourner — et la colonne de droite le reprend aussitôt,
+       sans quoi la penderie ne défilerait plus au doigt. */
+    cursor:grab;touch-action:none;
     /* LA BOÎTE DU PERSONNAGE, écrite par le script à chaque changement de
        disposition (voir `poserSocle`). Le canvas est en WebGL et ne sait
        peindre que des maillages : la lumière, l'ombre et le socle sont donc
@@ -2570,6 +2575,7 @@
      empile dans le bon sens : la tache de lumière (le fond), l'ombre de
      contact sous les pieds (::before), le rebord du disque (::after). Son
      centre est à 0,978 de la boîte — la plante des pieds du mannequin. */
+  .dress-stage.tourne{cursor:grabbing;}
   .dress-socle{
     position:absolute;z-index:1;pointer-events:none;
     left:calc(var(--perso-x) + var(--perso-s) * 0.5);
@@ -2632,6 +2638,7 @@
      jamais. Elle reste SOUS le canvas : c'est lui qui peint les aperçus. */
   .dress-cote{
     position:absolute;right:16px;top:16px;bottom:16px;width:min(50%,412px);z-index:3;
+    cursor:auto;touch-action:auto;
     display:flex;flex-direction:column;gap:10px;min-height:0;
   }
   /* Les deux panneaux ont le même cadre : verre sombre, liseré clair d'un
@@ -3423,6 +3430,7 @@
       <span><span class="key">&#8592;</span><span class="key">&#8594;</span><span class="key">&#8593;</span><span class="key">&#8595;</span> <span data-i18n="hintBrowse">browse</span></span>
       <!-- un seul indice : les deux gestes font la même chose, deux lignes
            laissaient croire le contraire -->
+      <span><span class="key wide">glisser</span> <span data-i18n="dressTurn">turn the character</span></span>
       <span><span class="key wide">clic / enter</span> <span data-i18n="dressPick">pick a piece</span></span>
       <span><span class="key wide">clic / enter</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
@@ -3948,7 +3956,7 @@ const STRINGS = {
     profilEtape:"Step %1 of %2", profilContinuer:"Continue →", profilPret:"Profile created",
     profilNomAide:"2 to 16 characters — letters, digits, spaces, dots, dashes.", profilSauver:"Save",
     profilDepuis:"Member since", profilVisites:"Logins", profilTemps:"Time on site", profilDepense:"Total spent", profilCommandes:"Orders",
-    profilPieces:"Pieces unlocked", profilJumper:"Jumper best", profilJour:"day", profilJours:"days", profilXpRegle:"10 XP per € spent",
+    profilJumper:"Jumper best", profilJour:"day", profilJours:"days", profilXpRegle:"10 XP per € spent",
     hintProfil:"edit profile",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
@@ -3966,7 +3974,7 @@ const STRINGS = {
        usuelle de « jumper ». */
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
-    dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
+    dressTitle:"Dress Up!", dressTurn:"turn the character", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressStrip:"Clear all",
     dressCatSkin:"skin", dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
     dressRack:"Wardrobe", dressLook:"Appearance",
@@ -4021,7 +4029,7 @@ const STRINGS = {
     profilEtape:"Étape %1 sur %2", profilContinuer:"Continuer →", profilPret:"Profil créé",
     profilNomAide:"2 à 16 caractères — lettres, chiffres, espaces, points, tirets.", profilSauver:"Enregistrer",
     profilDepuis:"Membre depuis", profilVisites:"Connexions", profilTemps:"Temps sur le site", profilDepense:"Dépense totale", profilCommandes:"Commandes",
-    profilPieces:"Pièces débloquées", profilJumper:"Record Jumper", profilJour:"jour", profilJours:"jours", profilXpRegle:"10 XP par € dépensé",
+    profilJumper:"Record Jumper", profilJour:"jour", profilJours:"jours", profilXpRegle:"10 XP par € dépensé",
     hintProfil:"modifier le profil",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
@@ -4035,7 +4043,7 @@ const STRINGS = {
     jumpReady:"PRÊT ?", jumpStart:"Commencer",
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
-    dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
+    dressTitle:"Dress Up !", dressTurn:"tourner le personnage", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressStrip:"Tout effacer",
     dressCatSkin:"peau", dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
     dressRack:"Penderie", dressLook:"Apparence",
@@ -10509,11 +10517,6 @@ const profil = (() => {
     return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min';
   };
   const mmss = (ms) => { const t = Math.round(ms / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
-  function piecesDebloquees(){
-    let total = 0, ouvertes = 0;
-    DATA.forEach(c => Array.isArray(c.items) && c.items.forEach(it => { if (it.verrou){ total++; if (DEBLOQUE.a(it.verrou)) ouvertes++; } }));
-    return { total, ouvertes };
-  }
   function rafraichir(){
     bloc.classList.toggle('vide', !p);
     const photo = p && p.photo;
@@ -10527,7 +10530,6 @@ const profil = (() => {
     gtBarre.style.width = (dans / XP_NIVEAU * 100) + '%';
     gtUid.textContent = p ? uidLisible(p.uid) : '—';
     const loc = LANGS[currentLang].locale, pl = new Intl.PluralRules(loc);
-    const pieces = piecesDebloquees();
     const record = STOCK.lire('fp.jumper', null);
     const ligne = (cle, val) => `<div><div class="profil-stat-l">${esc(T(cle))}</div><div class="profil-stat-v">${val}</div></div>`;
     stats.innerHTML =
@@ -10536,7 +10538,6 @@ const profil = (() => {
       ligne('profilTemps', p ? esc(duree(p.temps || 0)) : '—') +
       ligne('profilDepense', p ? esc(formatPrice(p.depense || 0)) : '—') +
       ligne('profilCommandes', p ? (p.commandes || 0) : '—') +
-      ligne('profilPieces', pieces.ouvertes + ' / ' + pieces.total) +
       ligne('profilJumper', record && record.ms ? esc(mmss(record.ms)) : '—');
     btEditer.textContent = p ? T('profilEditer') : T('profilCreer');
     btPerso.textContent = T('profilPerso');
@@ -10836,14 +10837,13 @@ const profil = (() => {
   // les statistiques de la carte : les mêmes que le panneau, en couples (intitulé, valeur)
   function statsCarte(){
     const loc = LANGS[currentLang].locale, pl = new Intl.PluralRules(loc);
-    const pieces = piecesDebloquees(), record = STOCK.lire('fp.jumper', null);
+    const record = STOCK.lire('fp.jumper', null);
     return [
       [T('profilDepuis'), p ? new Intl.DateTimeFormat(loc, { month: 'short', year: 'numeric' }).format(new Date(p.depuis + 'T12:00:00')) : '—'],
       [T('profilVisites'), p ? (p.jours || 1) + ' ' + T(pl.select(p.jours || 1) === 'one' ? 'profilJour' : 'profilJours') : '—'],
       [T('profilTemps'), p ? duree(p.temps || 0) : '—'],
       [T('profilDepense'), p ? formatPrice(p.depense || 0) : '—'],
       [T('profilCommandes'), p ? String(p.commandes || 0) : '—'],
-      [T('profilPieces'), pieces.ouvertes + ' / ' + pieces.total],
     ];
   }
   /* Le bouton donne l'IMAGE du profil, et rien d'autre : pas de lien, pas de
@@ -13476,6 +13476,18 @@ const dressup = (() => {
      mannequin de vitrine l'est toujours. */
   const BASE3D = { haut: 'tshirt', bas: 'jean', pieds: 'baskets' };
   let cheveux = 'cheveux';     // la coiffure choisie (voir le panneau du personnage)
+  /* ---- LE PERSONNAGE TOURNE ----
+     C'est le geste qui manquait, et il n'a été possible qu'une fois les
+     vêtements devenus des maillages : avec les coussins photo d'avant, un
+     quart de tour montrait des plaques de carton et des bras qui traversaient
+     les manches.
+     On le pousse et il CONTINUE, comme la tête de la page Info : un élan qui
+     retombe en une seconde. La rotation ne se retient pas d'une visite à
+     l'autre — c'est une façon de regarder, pas une propriété du personnage —
+     et chaque ouverture du salon le remet de face. */
+  const TOUR_PX = 2 * Math.PI / 420;    // un tour complet en 420 px de glissement
+  const FREIN = 0.90;                   // ce qu'il reste de l'élan après 16 ms
+  let angle = 0, elan = 0, saisie = null, derniereImage = 0;
   const persoListe = () => {
     const l = ['corps', 'tete'];
     if (cheveux) l.push(cheveux);
@@ -13587,10 +13599,20 @@ const dressup = (() => {
     const px = sous ? (r.width - libre) / 2 : r.width * 0.045, py = (hDispo - libre) / 2;
     const MX = px * k, MY = py * k;
     poserSocle(px, py, libre);   // le décor du studio, en CSS, sous le canvas
+    /* L'élan retombe au fil des images. Il est en radians par milliseconde,
+       donc il ne dépend pas de la cadence : sauter une image ne le ralentit
+       pas, elle est simplement plus longue. */
+    const dt = Math.min(64, derniereImage ? t - derniereImage : 16);
+    derniereImage = t;
+    if (!saisie && elan){
+      angle += elan * dt;
+      elan *= Math.pow(FREIN, dt / 16);
+      if (Math.abs(elan) < 2e-5) elan = 0;
+    }
     // le souffle : la boîte grandit autour des PIEDS, donc la tête monte et
     // les pieds ne quittent pas le sol
     const S2 = S * (1 + SOUFFLE.ampleur * souffle(t) * eveil);
-    habiller(scene, MX - (S2 - S) / 2, MY - (S2 - S), S2);
+    habiller(scene, MX - (S2 - S) / 2, MY - (S2 - S), S2, angle);
     /* Le portant : chaque aperçu à la place de sa case, ROGNÉ au cadre du
        portant. Sans ce rognage, une case à moitié sortie par le défilement
        peignait quand même son vêtement en entier, par-dessus les outils et le
@@ -13640,6 +13662,7 @@ const dressup = (() => {
     if (ouvert) return;
     ouvert = true;
     etapeDe = (opts && opts.etape) || 0;
+    angle = 0; elan = 0; saisie = null;   // on revient toujours de face
     /* LA PLAQUE PORTE LE NOM DU PERSONNAGE quand il y en a un : c'est de lui
        qu'on s'occupe ici, et un créateur de personnage affiche celui qu'on
        est en train d'habiller. Sans profil — on peut venir ici sans en avoir
@@ -13744,6 +13767,31 @@ const dressup = (() => {
     }
     return true;   // le salon garde la main : aucune touche ne file au XMB derrière
   }
+  /* LE GLISSEMENT NE PREND QUE LA SCÈNE : la colonne de droite garde ses
+     clics et son défilement. On mesure la vitesse sur le dernier déplacement,
+     c'est elle qui devient l'élan au relâchement. */
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.dress-cote')) return;
+    saisie = { id: e.pointerId, x: e.clientX, a: angle, t: e.timeStamp, v: 0 };
+    elan = 0;
+    stage.classList.add('tourne');
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (!saisie || e.pointerId !== saisie.id) return;
+    const avant = angle;
+    angle = saisie.a + (e.clientX - saisie.x) * TOUR_PX;
+    const dt = e.timeStamp - saisie.t;
+    if (dt > 0){ saisie.v = (angle - avant) / dt; saisie.t = e.timeStamp; }
+  });
+  const lacher = (e) => {
+    if (!saisie || e.pointerId !== saisie.id) return;
+    elan = saisie.v;
+    saisie = null;
+    stage.classList.remove('tourne');
+  };
+  stage.addEventListener('pointerup', lacher);
+  stage.addEventListener('pointercancel', lacher);
   /* Tout geste dans la fenêtre du salon réveille le souffle : bouger la
      souris, cliquer, taper, faire défiler le portant. On écoute à la CAPTURE
      pour être sûr d'être prévenu même quand l'événement est arrêté plus bas,
