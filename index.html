@@ -7300,7 +7300,7 @@ const model3d = (() => {
     : item.mannequin ? 'mannequin|' + (item.visage || '') + '|' + (item.peau || '') + '|' + (item.zoomVisage || 1) + '|' + (item.hautVisage || 0) + '|' + (item.bras || 0) + '|' + (item.jambes || 0) + '|' + (item.allonge || 1) + '|' + (item.coude || 0) + '|' + (item.cache || '')
     : item.tete ? 'tete|' + encodeURI(item.atlas || '')
     : item.accessoire ? 'accessoire|' + item.accessoire
-    : item.perso ? 'perso|' + item.perso + '|' + (item.peau || '')
+    : item.perso ? 'perso|' + item.perso + '|' + (item.peau || '') + (item.img ? '|' + encodeURI(item.img) + '|' + encodeURI(item.img2 || '') : '')
     : encodeURI(item.img) + '|' + encodeURI(item.img2 || item.img) + (item.depth ? '|p:' + encodeURI(item.depth) : '');
   /* Carte de profondeur (facultative, par article). Une image en niveaux de
      gris de la MÊME taille que la photo : clair = près de l'objectif. Elle
@@ -7476,7 +7476,63 @@ const model3d = (() => {
      normale de chaque face est accumulée sur ses trois sommets — parce que le
      pack est un modèle arrondi et qu'on a choisi de le garder tel quel ; des
      facettes plates en feraient un tout autre personnage. */
-  function meshPerso(P, id){
+  /* ---- L'IMPRIMÉ DU VÊTEMENT ----
+     Le t-shirt qu'on choisit dans la penderie est une PHOTO ; le t-shirt que
+     porte le personnage est un maillage. Pour que ce soit le même vêtement, on
+     projette l'une sur l'autre, à plat : un imprimé est plat sur une poitrine,
+     c'est comme cela qu'il est posé dans la vraie vie, et c'est donc la bonne
+     projection — pas un dépliage savant.
+
+     LA BOÎTE DU MAILLAGE VA SUR LA BOÎTE DE LA SILHOUETTE. Une photo de
+     vêtement à plat et un vêtement en 3D vus de face ont le même contour : un
+     buste au milieu, deux manches sur les côtés. Mesuré sur les douze hauts de
+     la boutique, le buste occupe 61 à 64 % de la largeur totale de la photo ;
+     sur le maillage, c'est du même ordre. L'imprimé tombe donc sur la
+     poitrine sans qu'on ait à découper quoi que ce soit.
+
+     TROIS RÉGIONS DANS UN ATLAS CARRÉ de 512 px, parce que le moteur
+     rééchantillonne toute texture non brute en carré : la face en haut à
+     gauche, le DOS en haut à droite (la photo `img2`, que les douze hauts
+     possèdent, et qui se superpose à la face à 91-99,8 %), l'étoffe moyenne en
+     bas à gauche. Chaque sommet choisit sa région selon l'orientation de sa
+     normale. Le dos est pris EN MIROIR : vu de derrière, la gauche du vêtement
+     est à droite de l'œil. */
+  const atlasVet = new Map();
+  function moyenneEtoffe(e){
+    const N = MASK_N, c = document.createElement('canvas');
+    c.width = N; c.height = N;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(e.canvas, 0, 0, N, N);
+    const d = g.getImageData(0, 0, N, N).data;
+    let r = 0, v = 0, b = 0, k = 0;
+    for (let i = 0; i < N * N; i += 7) if (e.mask[i]){ r += d[i*4]; v += d[i*4+1]; b += d[i*4+2]; k++; }
+    if (!k) return '#808080';
+    return 'rgb(' + Math.round(r/k) + ',' + Math.round(v/k) + ',' + Math.round(b/k) + ')';
+  }
+  function atlasVetement(front, dos, cle){
+    if (atlasVet.has(cle)) return atlasVet.get(cle);
+    const T = 256, c = document.createElement('canvas');
+    c.width = T * 2; c.height = T * 2;
+    const g = c.getContext('2d');
+    const poser = (e, qx, qy) => {
+      const N = MASK_N, m = e.mask;
+      let x0 = N, x1 = -1, y0 = N, y1 = -1;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (m[y*N+x]){
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      if (x1 < 0){ x0 = 0; y0 = 0; x1 = N - 1; y1 = N - 1; }
+      const k = e.canvas.width / N;
+      g.drawImage(e.canvas, x0*k, y0*k, (x1-x0+1)*k, (y1-y0+1)*k, qx*T, qy*T, T, T);
+    };
+    poser(front, 0, 0);
+    poser(dos, 1, 0);
+    g.fillStyle = moyenneEtoffe(front);
+    g.fillRect(0, T, T, T);
+    atlasVet.set(cle, c);
+    return c;
+  }
+  function meshPerso(P, id, imprime){
     const p = P.pieces[id];
     if (!p) return null;
     const V = p.V, T = p.tri, n = V.length / 3, nT = T.length / 3;
@@ -7494,6 +7550,15 @@ const model3d = (() => {
     p.groupes.forEach((g, gi) => { for (let k = g[0]; k < g[0] + g[1]; k++) groupe[T[k]] = gi; });
     const data = new Float32Array(n * STRIDE), index = new Uint16Array(T.length);
     const nPal = P.pal.length, cases = P.slot[id];
+    // la boîte de la pièce vue de face : c'est elle qui reçoit la photo
+    let bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    if (imprime) for (let v = 0; v < n; v++){
+      const x = V[v*3], y = V[v*3+1];
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+      if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+    const bl = (bx1 - bx0) || 1, bh = (by1 - by0) || 1;
+    const serre = (t) => t < 0.01 ? 0.01 : t > 0.99 ? 0.99 : t;
     let zmin = 9, zmax = -9;
     for (let v = 0; v < n; v++){
       const o = v * STRIDE;
@@ -7501,9 +7566,14 @@ const model3d = (() => {
       data[o] = (V[v*3] - P.ctr[0]) * P.ech;
       data[o+1] = (V[v*3+1] - P.ctr[1]) * P.ech;
       data[o+2] = z;
-      data[o+3] = (cases[groupe[v]] + 0.5) / nPal; data[o+4] = 0.5;
       let nx = N[v*3], ny = N[v*3+1], nz = N[v*3+2];
       const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      if (imprime){
+        const u = serre((V[v*3] - bx0) / bl), w = serre((by1 - V[v*3+1]) / bh);
+        if (nz > 0.2){ data[o+3] = u * 0.5;           data[o+4] = w * 0.5; }          // la face
+        else if (nz < -0.2){ data[o+3] = (1 - u) * 0.5 + 0.5; data[o+4] = w * 0.5; }  // le dos, en miroir
+        else { data[o+3] = 0.25; data[o+4] = 0.75; }                                  // la tranche : l'étoffe
+      } else { data[o+3] = (cases[groupe[v]] + 0.5) / nPal; data[o+4] = 0.5; }
       const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0);
       const rim = Math.pow(1 - Math.max(nz, 0), 3);
       data[o+5] = 0.74 + 0.34 * dif; data[o+6] = rim * 0.07;
@@ -7529,11 +7599,14 @@ const model3d = (() => {
     return (P.palettes[cle] = c);
   }
   function preparePerso(item, key){
-    const p = persoModele().then(P => {
-      const cle = 'perso|' + item.perso;
+    const photos = item.img
+      ? Promise.all([loadImage(encodeURI(item.img)), loadImage(encodeURI(item.img2 || item.img))])
+      : Promise.resolve(null);
+    const p = Promise.all([persoModele(), photos]).then(([P, ph]) => {
+      const cle = 'perso|' + item.perso + (ph ? '|imprime' : '');
       let mesh = meshes.get(cle);
-      if (!mesh){ mesh = meshPerso(P, item.perso); meshes.set(cle, mesh); }
-      const tex = palettePerso(P, item.peau);
+      if (!mesh){ mesh = meshPerso(P, item.perso, !!ph); meshes.set(cle, mesh); }
+      const tex = ph ? atlasVetement(ph[0], ph[1], key) : palettePerso(P, item.peau);
       const a = mesh ? { mesh, texF: tex, texB: tex } : null;
       ready.set(key, a);
       if (list) list.warm(a);
@@ -13500,22 +13573,32 @@ const dressup = (() => {
   const TOUR_PX = 2 * Math.PI / 420;    // un tour complet en 420 px de glissement
   const FREIN = 0.90;                   // ce qu'il reste de l'élan après 16 ms
   let angle = 0, elan = 0, saisie = null, derniereImage = 0;
+  /* Ce que le personnage porte, en objets prêts à dessiner. LE VÊTEMENT
+     CHOISI DONNE SA PHOTO : c'est elle qui sera projetée sur le maillage (voir
+     `atlasVetement`), si bien que le t-shirt du personnage est bien celui de
+     la penderie, avec son imprimé, et non un t-shirt générique. La tenue de
+     base, elle, n'a pas de photo : elle garde sa couleur. */
   const persoListe = () => {
-    const l = ['corps', visage];
-    if (cheveux) l.push(cheveux);
+    const l = [{ perso: 'corps', peau }, { perso: visage, peau }];
+    if (cheveux) l.push({ perso: cheveux, peau });
     ['bas', 'haut', 'pieds'].forEach(cat => {
       const p = portees.get(cat);
       const id = (p && PIECE3D[p.coupe]) || BASE3D[cat];
-      if (id) l.push(id);
+      if (!id) return;
+      const it = { perso: id, peau };
+      // LA PHOTO À PLAT, jamais le rendu porté : c'est un contour de vêtement
+      // étalé qu'on projette sur le maillage, pas une vue en situation.
+      const vu = p && p.it;
+      if (p && PIECE3D[p.coupe] && vu && vu.img){ it.img = vu.img; it.img2 = vu.img2 || vu.img; }
+      l.push(it);
     });
     return l;
   };
-  const chargerPerso = (sc) => { if (sc) persoListe().forEach(id => sc.load({ perso: id, peau })); };
+  const chargerPerso = (sc) => { if (sc) persoListe().forEach(it => sc.load(it)); };
   function habiller(sc, MX, MY, S, ang){
     const boite = { x: MX, y: MY, s: S }, a = ang || 0;
     sc.plan();
-    persoListe().forEach(id => {
-      const it = { perso: id, peau };
+    persoListe().forEach(it => {
       if (!sc.ready(it)) sc.load(it);          // pas encore cousu : il paraîtra à l'image suivante
       sc.draw(it, a, boite, 1, null, 'front');
     });
@@ -13820,7 +13903,7 @@ const dressup = (() => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
              dessins,     // contrôle : images réellement peintes depuis l'ouverture
-             perso: persoListe() };            // contrôle : les pièces 3D réellement dessinées
+             perso: persoListe().map(it => it.perso + (it.img ? '*' : '')) };   // contrôle : les pièces 3D dessinées, * = imprimée
   };
   /* ---- le personnage du profil ----
      Le mannequin tel qu'il est habillé, dessiné dans la scène du PANNEAU
