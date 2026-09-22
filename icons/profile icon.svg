@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icône de la catégorie « Profile » (22 sept. 2026) : la silhouette d'un
+       buste, la tête au-dessus des épaules — le signe du menu « Users » de la
+       console dont le site s'inspire. Même style que les autres icônes du
+       menu : glyphe plein, blanc, angles arrondis, aucun trait. Le fichier
+       sert aussi de masque pour la lueur de l'icône sélectionnée. -->
+  <g fill="#fff">
+    <circle cx="256" cy="168" r="92"/>
+    <path d="M92 428 C92 330 166 284 256 284 C346 284 420 330 420 428 A28 28 0 0 1 392 456 H120 A28 28 0 0 1 92 428 Z"/>
+  </g>
+</svg>

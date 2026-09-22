@@ -1450,6 +1450,171 @@
   .reglages-panel .settings-label{font-size:13px;margin-bottom:11px;}
   .reglages-panel .pills{justify-content:center;}
   .reglages-panel .pill{font-size:14px;padding:10px 18px;}
+
+  /* ---------- le profil ----------
+     Sur le modèle d'un profil de joueur (capture fournie par l'utilisateur le
+     22 sept. 2026) dans le verre du site : à gauche le gamertag — la photo
+     dans un cadre d'accent, le nom, l'étoile et le niveau, la barre d'XP,
+     l'identifiant —, puis les statistiques en petites capitales grises sur
+     leur valeur en blanc, puis les deux actions ; à droite, sur toute la
+     hauteur, le personnage du salon d'essayage. Le panneau est plus large que
+     les autres : deux colonnes ne tiennent pas dans 610 px. */
+  .preview.profil{width:min(46vw,860px);left:calc(88vw - min(46vw,860px));max-height:min(82vh,760px);}
+  .preview.profil #previewProduct{display:none;}
+  .preview.profil #previewProfil{display:flex;}
+  .profil-bloc{
+    display:none;
+    gap:28px;
+    min-height:0;
+    flex:1 1 auto;
+  }
+  .profil-bloc[hidden]{display:none!important;}
+  .profil-gauche{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;}
+  /* LE CADRE DU PERSONNAGE. Le panneau est translucide : sur le ruban qui
+     passe derrière, un personnage sombre se perdait. On lui donne donc un
+     fond À LUI, contrasté et flou (demande du 22 sept. 2026) — la page
+     floutée comme sous les fenêtres (`backdrop-filter`), assombrie, et une
+     lueur d'accent en haut qui détache la silhouette. Le flou peut être ici :
+     ce cadre ne contient aucun verre, seulement un canvas. */
+  .profil-droite{
+    flex:0 0 38%;
+    position:relative;
+    border-radius:14px;
+    /* le fond est TRÈS LÉGÈREMENT teinté de la couleur d'ambiance (0,07 / 0,05),
+       posé sur le bleu nuit : la teinte se sent sans que le cadre devienne une
+       tache de couleur, et elle suit l'heure comme le reste du site */
+    background:
+      radial-gradient(120% 75% at 50% 8%, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.06) 55%, transparent 76%),
+      linear-gradient(180deg, rgba(var(--accent-rgb),0.07), rgba(var(--accent-rgb),0.05)),
+      linear-gradient(180deg, rgba(3,8,14,0.55), rgba(3,8,14,0.80));
+    backdrop-filter:blur(var(--voile-flou)) saturate(1.2);
+    -webkit-backdrop-filter:blur(var(--voile-flou)) saturate(1.2);
+    border:1px solid rgba(255,255,255,0.10);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 40px rgba(0,0,0,0.45);
+    overflow:hidden;
+    min-height:380px;
+  }
+  /* le sol : une ombre douce sous les pieds, qui assoit le personnage au lieu
+     de le laisser flotter dans le cadre */
+  .profil-droite::after{
+    content:"";
+    position:absolute;left:12%;right:12%;bottom:8%;
+    height:26px;
+    border-radius:50%;
+    background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.55), transparent 72%);
+    pointer-events:none;
+  }
+  .profil-droite canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;}
+  .gamertag{display:flex;align-items:center;gap:18px;}
+  /* Le cadre de la photo : un liseré d'accent à double trait, comme le cadre
+     doré de la capture, dans la couleur du moment. Sans photo, l'initiale. */
+  .gt-cadre{
+    position:relative;flex:0 0 auto;
+    width:96px;height:96px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.05);
+    border:2px solid rgba(var(--accent-rgb),0.85);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.5), 0 0 0 4px rgba(var(--accent-rgb),0.25), 0 8px 24px rgba(0,0,0,0.45);
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .gt-cadre img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;-webkit-user-drag:none;}
+  /* L'initiale, faute de photo. CENTRÉE POUR DE BON : une lettre est dessinée
+     sur sa ligne de base, pas au milieu de sa boîte — même centrée par le
+     flex du cadre, elle paraissait basse et poussée à droite par son
+     interlettrage. Elle occupe donc tout le cadre et se centre par le texte
+     (`line-height:1`, `display:grid` et `place-items:center` du cadre), sans
+     interlettrage à droite. */
+  .gt-initiale{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:38px;line-height:1;font-weight:600;
+    color:var(--white-60);
+    letter-spacing:0;
+    text-indent:0;
+  }
+  .gt-texte{min-width:0;flex:1 1 auto;}
+  .gt-nom{font-size:26px;font-weight:600;letter-spacing:0.2px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    text-shadow:0 0 14px rgba(var(--accent-rgb),0.25), 0 2px 5px rgba(0,0,0,0.55);}
+  .gt-niveau{display:flex;align-items:baseline;gap:7px;margin-top:4px;font-size:15px;color:var(--white-60);}
+  .gt-etoile{color:var(--blue);text-shadow:0 0 10px rgba(var(--accent-rgb),0.7);}
+  .gt-niveau b{font-size:20px;font-weight:650;color:var(--blue);text-shadow:0 0 10px rgba(var(--accent-rgb),0.5);}
+  .gt-xp{font-size:12px;letter-spacing:0.4px;}
+  /* la barre d'XP : un rail sombre, la part gagnée en accent lumineux */
+  .gt-barre{
+    margin-top:8px;height:8px;border-radius:5px;
+    background:rgba(0,0,0,0.45);
+    border:1px solid rgba(255,255,255,0.10);
+    overflow:hidden;
+  }
+  .gt-barre i{display:block;height:100%;width:0;border-radius:5px;
+    background:linear-gradient(90deg, rgba(var(--accent-rgb),0.75), var(--blue));
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.7);
+    transition:width 0.6s cubic-bezier(.2,.8,.2,1);}
+  .gt-uid{margin-top:8px;font-size:11px;letter-spacing:0.8px;color:var(--white-35);font-variant-numeric:tabular-nums;}
+  /* les statistiques : trois par rangée, l'intitulé en petites capitales
+     grises, la valeur en blanc dessous — la grille de la capture */
+  .profil-stats{
+    display:grid;grid-template-columns:repeat(3, 1fr);gap:18px 14px;
+    margin-top:26px;
+    padding-top:22px;
+    border-top:1px solid rgba(255,255,255,0.08);
+  }
+  .profil-stat-l{font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--white-35);}
+  .profil-stat-v{margin-top:3px;font-size:16px;font-weight:550;color:var(--white);white-space:nowrap;}
+  .profil-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto;padding-top:26px;}
+  /* sans profil : le nom en retrait, la barre à zéro, un seul bouton qui crée */
+  .profil-bloc.vide .gt-nom{color:var(--white-35);}
+  /* la fenêtre : la photo en grand au centre, le champ dessous */
+  .profil-panel .info-body{text-align:center;}
+  .profil-photo-choix{display:flex;flex-direction:column;align-items:center;gap:14px;margin:4px 0 26px;}
+  .gt-cadre--grand{width:128px;height:128px;cursor:pointer;padding:0;font:inherit;color:inherit;}
+  .gt-cadre--grand .gt-initiale{font-size:52px;}
+  .gt-cadre--grand:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:3px;}
+  .profil-photo-boutons{display:flex;gap:8px;justify-content:center;}
+  .champ{
+    display:block;width:min(100%,320px);margin:0 auto;
+    padding:12px 16px;
+    font:inherit;font-size:16px;letter-spacing:0.3px;text-align:center;
+    color:var(--white);
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:14px;
+    outline:none;
+    transition:border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .champ:focus{border-color:rgba(var(--accent-rgb),0.8);box-shadow:0 0 12px rgba(var(--accent-rgb),0.35);}
+  .champ.refus{border-color:rgba(255,90,90,0.8);box-shadow:0 0 12px rgba(255,90,90,0.35);}
+  .profil-aide{margin-top:9px;font-size:12px;color:var(--white-35);}
+  .profil-actions--fenetre{justify-content:center;margin-top:0;padding-top:4px;}
+  /* le gamertag de la barre du haut : la photo, le nom, le niveau — un bouton vers le profil */
+  .topbar-gt{
+    display:flex;align-items:center;gap:9px;
+    background:none;border:none;padding:0;
+    font:inherit;letter-spacing:0.4px;
+    color:var(--white-60);
+    cursor:pointer;
+    transition:color 0.2s ease;
+  }
+  .topbar-gt:hover,.topbar-gt:focus-visible{color:var(--white);outline:none;}
+  .topbar-gt img,.topbar-gt-initiale{
+    width:24px;height:24px;border-radius:7px;
+    border:1px solid rgba(var(--accent-rgb),0.7);
+    object-fit:cover;
+    -webkit-user-drag:none;
+  }
+  .topbar-gt-initiale{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:rgba(255,255,255,0.06);}
+  .topbar-gt-initiale[hidden],.topbar-gt img[hidden]{display:none;}
+  .topbar-gt-niveau{color:var(--blue);text-shadow:0 0 10px rgba(var(--accent-rgb),0.5);}
+  @media (max-width:1280px){
+    .preview.profil{left:auto;right:5vw;width:min(58vw,720px);}
+  }
+  @media (max-height:820px){
+    .preview.profil{max-height:min(86vh,700px);}
+    .profil-droite{min-height:300px;}
+    .gt-cadre{width:80px;height:80px;}
+    .gt-nom{font-size:22px;}
+  }
   .key{
     display:inline-flex;align-items:center;justify-content:center;
     width:18px;height:18px;
@@ -2685,6 +2850,8 @@
 <button type="button" class="dev-view" id="devView" hidden>📱 Mobile</button>
 <div class="brand">FakeParadise<b>™</b></div>
 <div class="topbar">
+  <!-- le gamertag, dès qu'un profil existe : la photo et le nom, un clic mène au profil -->
+  <button class="topbar-gt" id="topbarGt" hidden><img id="topbarGtPhoto" alt="" draggable="false" hidden><span class="topbar-gt-initiale" id="topbarGtInitiale"></span><span id="topbarGtNom"></span><span class="topbar-gt-niveau" id="topbarGtNiveau"></span></button>
   <button class="cart" id="cartCount">CART · 0</button>
   <span class="clock" id="clock"></span>
 </div>
@@ -2794,7 +2961,75 @@
       <div class="pills" id="sizePills"></div>
     </div>
   </div>
+  <!-- LE PROFIL (22 sept. 2026), sur le modèle d'un profil de joueur : à
+       gauche le gamertag — photo dans son cadre, nom, niveau et barre d'XP
+       tirés de la dépense, identifiant —, les statistiques et les actions ;
+       à droite le personnage habillé au salon d'essayage, dessiné en 3D.
+       Rempli par le module `profil` ; montré pour la seule catégorie « profil ». -->
+  <div id="previewProfil" class="profil-bloc" hidden>
+    <div class="profil-gauche">
+      <div class="gamertag">
+        <div class="gt-cadre">
+          <img class="gt-photo" id="gtPhoto" alt="" draggable="false" hidden>
+          <span class="gt-initiale" id="gtInitiale">?</span>
+        </div>
+        <div class="gt-texte">
+          <div class="gt-nom" id="gtNom"></div>
+          <div class="gt-niveau"><span class="gt-etoile">★</span><b id="gtNiveau">1</b><span class="gt-xp" id="gtXp"></span></div>
+          <div class="gt-barre"><i id="gtBarre"></i></div>
+          <div class="gt-uid"><span data-i18n="profilUid">UID</span> <span id="gtUid"></span></div>
+        </div>
+      </div>
+      <div class="profil-stats" id="profilStats"></div>
+      <div class="profil-actions">
+        <button class="preview-cta" id="profilEditer"></button>
+        <button class="preview-cta preview-cta--secondary" id="profilPerso"></button>
+      </div>
+    </div>
+    <div class="profil-droite">
+      <canvas id="profilScene"></canvas>
+          </div>
+  </div>
   <div class="preview-desc preview-desc-probe" id="descProbe" aria-hidden="true"></div>
+</div>
+
+<!-- La fenêtre du profil : créer son gamertag, ou le modifier — le nom et la
+     photo. Même modèle que les Réglages. -->
+<div class="info-overlay" id="profilOverlay" role="dialog" aria-modal="true" aria-labelledby="profilTitre">
+  <div class="size-panel reglages-panel profil-panel glass">
+    <div class="info-header">
+      <div>
+        <h2 id="profilTitre"></h2>
+        <div class="info-sub" data-i18n="profilSub">Kept on this device only</div>
+      </div>
+      <button class="legal-close" id="profilFermer" data-i18n-aria="close" aria-label="Close">✕</button>
+    </div>
+    <div class="info-body">
+      <div class="profil-photo-choix">
+        <button type="button" class="gt-cadre gt-cadre--grand" id="profilPhotoBt" data-i18n-aria="profilPhotoAria" aria-label="Choose a profile picture">
+          <img id="profilPhotoApercu" alt="" draggable="false" hidden>
+          <span class="gt-initiale" id="profilPhotoInitiale">+</span>
+        </button>
+        <input type="file" id="profilPhotoFichier" accept="image/*" hidden>
+        <div class="profil-photo-boutons">
+          <button type="button" class="pill" id="profilPhotoChoisir" data-i18n="profilPhotoChoisir">Choose a photo</button>
+          <button type="button" class="pill" id="profilPhotoRetirer" data-i18n="profilPhotoRetirer">Remove</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label" for="profilNom" data-i18n="profilNomLabel">Gamertag</label>
+        <input type="text" class="champ" id="profilNom" maxlength="16" autocomplete="nickname" spellcheck="false">
+        <div class="profil-aide" data-i18n="profilNomAide">2 to 16 characters — letters, digits, dots, dashes.</div>
+      </div>
+      <div class="profil-actions profil-actions--fenetre">
+        <button type="button" class="preview-cta" id="profilSauver" data-i18n="profilSauver">Save</button>
+      </div>
+    </div>
+    <div class="legal-hint">
+      <span><span class="key">⏎</span> <span data-i18n="profilSauver">Save</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
 </div>
 
 <!-- L'annonce d'un déverrouillage. Elle vit hors du panneau : la pièce qui
@@ -3329,7 +3564,7 @@ Date : ______<br>
 <tr><td data-label="Traitement">Communications commerciales (nouveautés, drops)</td><td data-label="Données">Adresse e-mail</td><td data-label="Base légale">Consentement, retirable à tout moment</td><td data-label="Conservation">3 ans après le dernier contact ou jusqu'au retrait du consentement</td></tr>
 </tbody>
 </table>
-<p>Le site ne crée pas de compte client et ne dépose aucun traceur publicitaire ou de mesure d'audience (voir <a data-legal-link="cookies">Cookies</a>) ; le contenu du panier n'est conservé qu'en mémoire, le temps de la visite. Seule la liste des mini-jeux terminés est conservée dans le navigateur, sans donnée personnelle.</p>
+<p>Le site ne dépose aucun traceur publicitaire ou de mesure d'audience (voir <a data-legal-link="cookies">Cookies</a>) ; le contenu du panier n'est conservé qu'en mémoire, le temps de la visite. Le <strong>profil</strong> que vous pouvez créer sur le site (gamertag, photo de profil, statistiques de visite) et le <strong>personnage</strong> que vous habillez au salon d'essayage (tenue, photo de visage) sont enregistrés uniquement dans votre navigateur, sur votre appareil : nous n'y avons pas accès, rien n'est transmis, et vous les effacez vous-même depuis le site ou en vidant les données de site. Ce ne sont pas des comptes clients au sens d'un traitement par ${C.legalName}.</p>
 <h3>Destinataires</h3>
 <p>Les données sont destinées à ${C.brand} et, dans la stricte mesure nécessaire, à ses sous-traitants : prestataire de paiement (${C.payment}), transporteurs (${C.shipping.carriers}), hébergeur (${C.host.name}) et, le cas échéant, prestataire d'e-mailing. Elles ne sont jamais vendues. Certains prestataires peuvent être établis hors de l'Union européenne ; les transferts sont alors encadrés par des garanties appropriées (décision d'adéquation ou clauses contractuelles types de la Commission européenne).</p>
 <h3>Vos droits</h3>
@@ -3342,7 +3577,7 @@ Date : ______<br>
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont servies par le site lui-même : aucune ressource n'est chargée depuis un serveur tiers.</p>
-<p>Deux éléments sont conservés sur votre terminal, dans le stockage local de votre navigateur. Le premier est <strong>la liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans lui, un simple rechargement de page vous reprendrait une récompense déjà gagnée. Le second est <strong>votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. Ces éléments ne contiennent aucune donnée personnelle, ne sont jamais envoyés à un serveur et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, et le record repart à zéro. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>La tenue de votre personnage</strong> (clé <code>fp.tenue</code>) : les pièces choisies au salon d'essayage, la couleur de peau, et la photo de visage que vous y déposez, avec ses réglages. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil et le visage depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
 <h3>Paramétrage de votre navigateur</h3>
@@ -3518,7 +3753,7 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 <tr><td data-label="Processing">Marketing communications (new releases, drops)</td><td data-label="Data">E-mail address</td><td data-label="Legal basis">Consent, which can be withdrawn at any time</td><td data-label="Retention">3 years after last contact or until consent is withdrawn</td></tr>
 </tbody>
 </table>
-<p>The site does not create customer accounts and sets no advertising or analytics tracker (see <a data-legal-link="cookies">Cookies</a>); the contents of your cart are kept in memory only, for the duration of your visit. Only the list of completed minigames is kept in your browser, with no personal data.</p>
+<p>The site sets no advertising or analytics tracker (see <a data-legal-link="cookies">Cookies</a>); the contents of your cart are kept in memory only, for the duration of your visit. The <strong>profile</strong> you may create on the site (gamertag, profile picture, visit statistics) and the <strong>character</strong> you dress in the dressing room (outfit, face photo) are stored only in your browser, on your device: we have no access to them, nothing is transmitted, and you erase them yourself from the site or by clearing your site data. They are not customer accounts in the sense of a processing by ${C.legalName}.</p>
 <h3>Recipients</h3>
 <p>Data is intended for ${C.brand} and, strictly where necessary, for its processors: payment provider (${C.payment}), carriers (${C.shipping.carriers}), hosting provider (${C.host.name}) and, where applicable, e-mailing provider. It is never sold. Some providers may be established outside the European Union; transfers are then governed by appropriate safeguards (adequacy decision or the European Commission's standard contractual clauses).</p>
 <h3>Your rights</h3>
@@ -3531,7 +3766,7 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are served by the site itself: no resource is loaded from a third-party server.</p>
-<p>Two items are kept on your device, in your browser's local storage. The first is <strong>the list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. The second is <strong>your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. They hold no personal data, are never sent to a server and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time by clearing your browser's site data — the reward would then have to be earned again, and the record starts over. This is why no consent banner is displayed.</p>
+<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character's outfit</strong> (key <code>fp.tenue</code>): the pieces chosen in the dressing room, the skin tone, and the face photo you add there, with its settings. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture and the face from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
 <h3>Browser settings</h3>
@@ -3540,12 +3775,11 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 };
 
 /* ---------------- langues ----------------
-   Anglais par défaut ; le réglage « Language » du menu Settings bascule
-   tout le site (menu, panier, aide, banderole et textes légaux). Le choix
-   n'est pas mémorisé : le site ne dépose aucun cookie, et le stockage local
-   ne sert qu'aux deux clés que déclare la rubrique Cookies — les épreuves
-   passées et le record du Jumper. Une langue retrouvée au rechargement se
-   paierait d'une troisième clé pour un confort que le menu rend en un clic. */
+   Anglais par défaut ; le réglage « Language » de la fenêtre Réglages bascule
+   tout le site (menu, panier, aide, banderole et textes légaux). Depuis le
+   22 sept. 2026 le choix est RETENU (fp.reglages, avec la devise et les deux
+   interrupteurs de son) — l'utilisateur l'a demandé ; toujours pas de
+   cookie, du stockage local, déclaré dans la rubrique Cookies. */
 const LANGS = {
   en:{ label:"English",  locale:"en-US" },
   fr:{ label:"Français", locale:"fr-FR" },
@@ -3562,7 +3796,14 @@ const STRINGS = {
     sizeLabel:"Size", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
     language:"Language", currency:"Currency", music:"Music", effects:"Sound effects", soundOn:"On", soundOff:"Off",
-    settings:"Settings", settingsSub:"Nothing is stored — the choices last for this visit",
+    settings:"Settings", settingsSub:"Saved on this device, for your next visits",
+    profilUid:"UID", profilInvite:"No gamertag yet", profilCreer:"Create my profile", profilEditer:"Edit profile", profilPerso:"Customize character",
+    profilTitreCreer:"Your gamertag", profilTitreEditer:"Edit profile", profilSub:"Kept on this device only — never sent anywhere",
+    profilPhotoAria:"Choose a profile picture", profilPhotoChoisir:"Choose a photo", profilPhotoRetirer:"Remove", profilNomLabel:"Gamertag",
+    profilNomAide:"2 to 16 characters — letters, digits, spaces, dots, dashes.", profilSauver:"Save",
+    profilDepuis:"Member since", profilVisites:"Logins", profilTemps:"Time on site", profilDepense:"Total spent", profilCommandes:"Orders",
+    profilPieces:"Pieces unlocked", profilJumper:"Jumper best", profilJour:"day", profilJours:"days", profilXpRegle:"10 XP per € spent",
+    hintProfil:"edit profile",
     hintBrowse:"browse", hintSelect:"select", hintAdd:"add to cart", hintInstagram:"open Instagram", hintOpen:"open",
     // Mini-jeu « Versus » (provisoire)
     play:"Play", hintPlay:"play", hintPick:"pick", arenaTitle:"ITEM VERSUS", descToggle:"Show details",
@@ -3587,7 +3828,7 @@ const STRINGS = {
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
        que se pose quelqu'un à qui on demande son visage est « ça part où ? ». */
-    dressPrivacy:"Your photo stays on your device: it is never uploaded, never stored, and it is gone when you close this window or reload the page. It is not used to train any AI.",
+    dressPrivacy:"Your photo stays on your device: it is never uploaded. Your browser keeps it so your character keeps its face between visits; “Remove my face” erases it. It is not used to train any AI.",
     jumpBest:"Best time", jumpBestTime:"Time", jumpNoBest:"No run finished yet.",
     jumpNewBest:"New best time!", jumpBack:"Back",
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
@@ -3626,7 +3867,14 @@ const STRINGS = {
     sizeLabel:"Taille", hintSize:"choisir la taille", oneLess:"Un de moins", oneMore:"Un de plus",
     photo:"Photo", prevPhoto:"Vue précédente", nextPhoto:"Vue suivante",
     language:"Langue", currency:"Devise", music:"Musique", effects:"Bruitages", soundOn:"Activé", soundOff:"Coupé",
-    settings:"Réglages", settingsSub:"Rien n'est enregistré — les choix valent pour cette visite",
+    settings:"Réglages", settingsSub:"Retenus sur cet appareil, pour vos prochaines visites",
+    profilUid:"UID", profilInvite:"Pas encore de gamertag", profilCreer:"Créer mon profil", profilEditer:"Modifier le profil", profilPerso:"Personnaliser le personnage",
+    profilTitreCreer:"Ton gamertag", profilTitreEditer:"Modifier le profil", profilSub:"Gardé sur cet appareil seulement — jamais envoyé",
+    profilPhotoAria:"Choisir une photo de profil", profilPhotoChoisir:"Choisir une photo", profilPhotoRetirer:"Retirer", profilNomLabel:"Gamertag",
+    profilNomAide:"2 à 16 caractères — lettres, chiffres, espaces, points, tirets.", profilSauver:"Enregistrer",
+    profilDepuis:"Membre depuis", profilVisites:"Connexions", profilTemps:"Temps sur le site", profilDepense:"Dépense totale", profilCommandes:"Commandes",
+    profilPieces:"Pièces débloquées", profilJumper:"Record Jumper", profilJour:"jour", profilJours:"jours", profilXpRegle:"10 XP par € dépensé",
+    hintProfil:"modifier le profil",
     hintBrowse:"parcourir", hintSelect:"sélectionner", hintAdd:"ajouter au panier", hintInstagram:"ouvrir Instagram", hintOpen:"ouvrir",
     // Mini-jeu « Versus » (provisoire)
     play:"Jouer", hintPlay:"jouer", hintPick:"choisir", arenaTitle:"ITEM VERSUS", descToggle:"Afficher le détail",
@@ -3643,7 +3891,7 @@ const STRINGS = {
     dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
     dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
     dressSkin:"Couleur de peau", dressSave:"Enregistrer le look", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
-    dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée, jamais enregistrée, et elle disparaît dès que vous fermez cette fenêtre ou rechargez la page. Elle ne sert à entraîner aucune IA.",
+    dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée. Votre navigateur la garde pour que votre personnage retrouve son visage d'une visite à l'autre ; « Retirer mon visage » l'efface. Elle ne sert à entraîner aucune IA.",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
@@ -3685,6 +3933,7 @@ function applyLanguage(code){
   relabelLegal();
   if (legalOverlay.classList.contains('open')) showLegal(legalIndex);
   renderSettingsPanel();   // les pastilles des Réglages portent des libellés traduits (Activé / Coupé)
+  profil.rafraichir();     // le gamertag de la barre du haut et les intitulés du profil
   build();
 }
 
@@ -3768,6 +4017,11 @@ const DESC = {
   teeWhite: { en:"280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print", fr:"280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée" },
 };
 const DATA = [
+  /* Le PROFIL en tête, comme la colonne « Users » de la console : le compte
+     local du visiteur (gamertag, photo, niveau tiré de sa dépense, statistiques)
+     et son personnage habillé au salon (demande du 22 sept. 2026, sur une
+     capture de profil de jeu). Voir le module `profil`. */
+  { id:"profil", name:{en:"Profile", fr:"Profil"}, icon:"profile icon.svg", kind:"profil", items:[] },
   // T-shirts : catalogue repris de la boutique Wix (chronicallyonline, 14 sept. 2026),
   // prix en euros tels qu'affichés là-bas. img = photo (dossier products/),
   // img2 = seconde photo révélée au survol, sz = guide des tailles (SIZE_CHARTS).
@@ -3844,7 +4098,6 @@ const DATA = [
        code ne compte sur la position — l'aperçu du panneau et le raccourci du
        salon cherchent le jeu par son nom (`jeu`), pas par son rang. */
     { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
-    { n:"Dress Up", jeu:"dressup", img:"icons/dressup icon.png" },
     { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
@@ -3970,6 +4223,57 @@ const CURRENCIES = {
 };
 let currentCurrency = "EUR";
 
+/* ---------------- stockage local ----------------
+   Tout ce que le site garde sur l'appareil du visiteur passe par ici, protégé :
+   un navigateur en navigation privée peut refuser l'accès, et une valeur
+   abîmée ne doit pas casser la page. Les clés, toutes déclarées dans la
+   rubrique Cookies : fp.debloque (épreuves passées), fp.jumper (record du
+   mini-jeu), et depuis le 22 sept. 2026 fp.reglages (langue, devise, musique,
+   bruitages — l'utilisateur a demandé que les réglages soient retenus),
+   fp.profil (le compte local : gamertag, photo, dépense, statistiques) et
+   fp.tenue (la tenue et le visage du personnage). Rien ne quitte l'appareil. */
+const STOCK = {
+  lire: (cle, defaut) => { try { const v = JSON.parse(localStorage.getItem(cle)); return v == null ? defaut : v; } catch (e) { return defaut; } },
+  ecrire: (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  effacer: (cle) => { try { localStorage.removeItem(cle); } catch (e) {} },
+};
+/* Les réglages retenus d'une visite à l'autre. Lus une fois ici ; la devise
+   s'applique tout de suite, la langue au premier applyLanguage (voir le
+   démarrage), la musique et les bruitages une fois le module son en place. */
+const REGLAGES = STOCK.lire('fp.reglages', {});
+if (REGLAGES && CURRENCIES[REGLAGES.devise]) currentCurrency = REGLAGES.devise;
+function sauverReglages(){
+  STOCK.ecrire('fp.reglages', { lang: currentLang, devise: currentCurrency, musique: sfx.musique, bruitages: sfx.bruitages });
+}
+/* Une image déposée par le visiteur (photo de profil, visage du personnage),
+   réduite AVANT d'être gardée : `max` pixels de côté au plus — le rapport est
+   gardé, ou l'image est recadrée au carré par le centre avec `carre` —, en
+   JPEG. Un cliché de téléphone fait 12 Mo ; réduit à 512 px il en fait
+   quelques dizaines de Ko, ce que le stockage local retient sans peine.
+   Rendu en data URL : elle survit à la page, une URL d'objet non. Lue sur
+   place, jamais envoyée. */
+function reduireImage(fichier, max, qualite, carre){
+  return new Promise((ok) => {
+    if (!fichier || !fichier.type || !fichier.type.startsWith('image/')) return ok(null);
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth, h = img.naturalHeight;
+      if (!w || !h) return ok(null);
+      let sx = 0, sy = 0, sw = w, sh = h;
+      if (carre){ const c = Math.min(w, h); sx = (w - c) / 2; sy = (h - c) / 2; sw = sh = c; }
+      const k = Math.min(1, max / Math.max(sw, sh));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(sw * k)); cv.height = Math.max(1, Math.round(sh * k));
+      cv.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+      ok(cv.toDataURL('image/jpeg', qualite || 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); ok(null); };
+    img.src = url;
+  });
+}
+
 function formatPrice(eur){
   const c = CURRENCIES[currentCurrency];
   return new Intl.NumberFormat(LANGS[currentLang].locale, {
@@ -4054,14 +4358,15 @@ function applyMood(){
 
 
 /* ---------------- state ---------------- */
-let activeCat = 0;
+let activeCat = Math.max(0, DATA.findIndex(c => c.kind === 'shop')); // on arrive sur la boutique, pas sur le profil qui la précède dans la barre
 let activeItem = 0;
 let cart = [];
 
 /* Ce que le visiteur a débloqué en jouant (aujourd'hui : le mini-jeu Jumper,
    qui ouvre l'accès au t-shirt de la catégorie « Unique Items »).
 
-   C'est la SEULE chose que le site écrive sur la machine du visiteur, et il le
+   C'était la seule chose que le site écrivait sur la machine du visiteur
+   (depuis le 22 sept. 2026, voir STOCK : réglages, profil et tenue s'y ajoutent), et il le
    faut : sans elle, un rechargement de page reprendrait une récompense déjà
    gagnée — ce qui serait vécu comme une tricherie, et ferait perdre la vente.
    localStorage plutôt qu'un cookie : la valeur n'a aucune raison de partir
@@ -4825,6 +5130,9 @@ const sfx = (() => {
   };
   return api;
 })();
+// les interrupteurs retenus de la dernière visite (voir REGLAGES) ; absents, tout est allumé
+if (REGLAGES.musique === false) sfx.musique = false;
+if (REGLAGES.bruitages === false) sfx.bruitages = false;
 
 /* ---------------- sélecteur de tailles ----------------
    Fiche produit : survoler « + Add to cart » (ou Entrée, ou un clic/toucher
@@ -8781,7 +9089,7 @@ function updateHints(){
     const verrouIci = cat.kind === 'shop' && verrouille(cat.items[activeItem]);
     const jeuIci = verrouIci ? jeuDuVerrou(cat.items[activeItem]) : null;
     // Info : rien à ouvrir, tout est déjà à l'écran — pas d'aide « entrée »
-    show('enter', cat.kind !== 'about' && !(verrouIci && !jeuIci), verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : T('hintOpen'));
+    show('enter', cat.kind !== 'about' && !(verrouIci && !jeuIci), verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : cat.kind === 'profil' ? T('hintProfil') : T('hintOpen'));
     show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
@@ -9510,6 +9818,19 @@ function fillPreview(){
   const cat = DATA[activeCat];
   const previewProduct = document.getElementById('previewProduct');
 
+  /* Le PROFIL a son propre bloc (#previewProfil) et son propre gabarit : rien
+     du panneau produit ne s'y applique. On le montre, et on s'arrête là. */
+  const estProfil = cat.kind === 'profil';
+  previewEl.classList.toggle('profil', estProfil);
+  profil.montrer(estProfil);
+  if (estProfil){
+    previewEl.classList.remove('info-panel', 'info', 'gallery', 'choisi', 'contact', 'desc-open');
+    model3d.hide();
+    closeSizePicker();
+    previewEl.classList.add('show');
+    return;
+  }
+
   /* « Info » a un pied dans chaque gabarit : son contenu est du texte, mais il
      s'accompagne d'un VISUEL 3D. Il garde donc la mise en page d'une fiche
      produit (visuel en haut, titre, texte dessous) et non la colonne centrée
@@ -9552,7 +9873,6 @@ function fillPreview(){
     document.getElementById('teaserGL').style.opacity = jeu === 'versus' ? '1' : '0';
     requestAnimationFrame(() => {
       if (jeu === 'versus') arena.apercu(change);
-      else if (jeu === 'dressup') dressup.apercu(change);
       else jumper.apercu(change);
     });
   }
@@ -9673,7 +9993,7 @@ function renderSettingsPanel(){
     const pill = document.createElement('button');
     pill.className = 'pill' + (code === currentLang ? ' active' : '');
     pill.textContent = LANGS[code].label;
-    pill.addEventListener('click', () => applyLanguage(code));
+    pill.addEventListener('click', () => { applyLanguage(code); sauverReglages(); });
     langPills.appendChild(pill);
   });
 
@@ -9683,7 +10003,7 @@ function renderSettingsPanel(){
     const pill = document.createElement('button');
     pill.className = 'pill' + (code === currentCurrency ? ' active' : '');
     pill.textContent = `${CURRENCIES[code].symbol} ${code}`;
-    pill.addEventListener('click', () => { currentCurrency = code; render(); if (document.getElementById('cartOverlay').classList.contains('open')) renderCart(); });
+    pill.addEventListener('click', () => { currentCurrency = code; sauverReglages(); render(); if (document.getElementById('cartOverlay').classList.contains('open')) renderCart(); });
     currencyPills.appendChild(pill);
   });
 
@@ -9698,7 +10018,7 @@ function renderSettingsPanel(){
       const pill = document.createElement('button');
       pill.className = 'pill' + (sfx[prop] === val ? ' active' : '');
       pill.textContent = T(key);
-      pill.addEventListener('click', () => { sfx[prop] = val; if (val && prop === 'bruitages') sfx.tick(); renderSettingsPanel(); });
+      pill.addEventListener('click', () => { sfx[prop] = val; sauverReglages(); if (val && prop === 'bruitages') sfx.tick(); renderSettingsPanel(); });
       box.appendChild(pill);
     });
   });
@@ -9762,6 +10082,257 @@ function reglagesKey(e){
 document.getElementById('reglagesBouton').addEventListener('click', openReglages);
 document.getElementById('reglagesClose').addEventListener('click', closeReglages);
 reglagesOverlay.addEventListener('click', (e) => { if (e.target === reglagesOverlay) closeReglages(); });
+
+/* ---------------- le profil ----------------
+   Le compte du visiteur, sur le modèle d'un profil de joueur (capture de
+   Call of Duty Mobile fournie par l'utilisateur le 22 sept. 2026) : un
+   gamertag avec sa photo, un niveau et une barre d'XP, un identifiant, des
+   statistiques, et son personnage — le mannequin du salon d'essayage, qui
+   n'est plus un mini-jeu mais l'atelier où l'on habille son personnage.
+
+   UN COMPTE LOCAL, ET C'EST DIT. Le site n'a pas de serveur : rien ne peut
+   être créé « chez nous ». Le profil vit dans le stockage du navigateur
+   (fp.profil), sur cet appareil, et n'est envoyé nulle part — la photo non
+   plus. Un vrai compte partagé entre appareils, relié aux commandes,
+   viendra avec la boutique Shopify : ce module est écrit pour qu'elle n'ait
+   qu'à REMPLIR `depense` et `commandes` (voir ajouterDepense), le reste
+   suit.
+
+   L'XP EST LA DÉPENSE : 10 XP par euro dépensé (XP_PAR_EURO), un niveau
+   tous les 200 XP (XP_NIVEAU), soit un niveau par tranche de 20 €. Sans
+   commande, niveau 1, barre vide — c'est l'état de tout le monde tant que la
+   boutique ne vend pas. Les autres chiffres sont réels : jours de visite,
+   temps passé sur le site (la page visible), pièces débloquées, record du
+   Jumper.
+
+   L'identifiant : seize chiffres tirés au sort à la création, comme sur la
+   capture. Il ne sert à rien d'autre qu'à ressembler à un compte — il le
+   sera le jour où un serveur en donnera un vrai. */
+const profil = (() => {
+  const CLE = 'fp.profil';
+  const XP_PAR_EURO = 10, XP_NIVEAU = 200;   // 10 XP par euro, un niveau tous les 200 XP — soit un niveau par tranche de 20 € (réglé par l'utilisateur le 22 sept. 2026)
+  const NOM_OK = /^[\p{L}\p{N} ._-]{2,16}$/u;
+  const bloc = document.getElementById('previewProfil');
+  const stats = document.getElementById('profilStats');
+  const gtPhoto = document.getElementById('gtPhoto'), gtInitiale = document.getElementById('gtInitiale');
+  const gtNom = document.getElementById('gtNom'), gtNiveau = document.getElementById('gtNiveau');
+  const gtXp = document.getElementById('gtXp'), gtBarre = document.getElementById('gtBarre'), gtUid = document.getElementById('gtUid');
+  const btEditer = document.getElementById('profilEditer'), btPerso = document.getElementById('profilPerso');
+  const topGt = document.getElementById('topbarGt');
+  const overlay = document.getElementById('profilOverlay');
+  const champNom = document.getElementById('profilNom');
+  const apercuPhoto = document.getElementById('profilPhotoApercu'), apercuInitiale = document.getElementById('profilPhotoInitiale');
+  const fichier = document.getElementById('profilPhotoFichier');
+
+  let p = STOCK.lire(CLE, null);
+  if (!p || typeof p !== 'object' || typeof p.nom !== 'string') p = null;
+  const jourISO = () => new Date().toISOString().slice(0, 10);
+  const sauver = () => { if (p) STOCK.ecrire(CLE, p); };
+  function uid(){
+    const a = new Uint32Array(2);
+    (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : (a[0] = Math.random() * 4294967296, a[1] = Math.random() * 4294967296);
+    return (String(a[0]).padStart(10, '0') + String(a[1]).padStart(10, '0')).slice(0, 16);
+  }
+  const xp = () => p ? Math.round((p.depense || 0) * XP_PAR_EURO) : 0;
+  const niveau = () => 1 + Math.floor(xp() / XP_NIVEAU);
+
+  function creer(nom, photo){
+    p = { nom, photo: photo || null, uid: uid(), depuis: jourISO(), depense: 0, commandes: 0,
+          jours: 1, dernierJour: jourISO(), temps: 0 };
+    sauver();
+    rafraichir();
+  }
+  function modifier(nom, photo){
+    if (!p) return creer(nom, photo);
+    p.nom = nom; p.photo = photo || null;
+    sauver();
+    rafraichir();
+  }
+  /* La boutique (Shopify, à venir) appellera ceci à chaque commande confirmée :
+     la dépense monte, l'XP avec, et le niveau suit. */
+  function ajouterDepense(euros, commandes){
+    if (!p || !(euros > 0)) return;
+    p.depense = (p.depense || 0) + euros;
+    p.commandes = (p.commandes || 0) + (commandes || 1);
+    sauver();
+    rafraichir();
+  }
+  /* La présence : un jour de plus à la première visite de la journée ; le
+     temps passé, compté par tranches de trente secondes quand la page est
+     visible et écrit une fois sur deux — assez souvent pour ne rien perdre
+     qui compte, pas au point d'user le stockage. */
+  function pointer(){
+    if (!p) return;
+    const j = jourISO();
+    if (p.dernierJour !== j){ p.jours = (p.jours || 0) + 1; p.dernierJour = j; sauver(); }
+  }
+  pointer();
+  setInterval(() => {
+    if (!p || document.hidden) return;
+    p.temps = (p.temps || 0) + 30;
+    if ((p.temps / 30) % 2 === 0) sauver();
+  }, 30000);
+
+  // ---- l'affichage ----
+  const initialeDe = (nom) => (nom || '?').trim().charAt(0).toUpperCase() || '?';
+  const uidLisible = (u) => String(u || '').replace(/(\d{4})(?=\d)/g, '$1 ');
+  const duree = (s) => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min';
+  };
+  const mmss = (ms) => { const t = Math.round(ms / 1000); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  function piecesDebloquees(){
+    let total = 0, ouvertes = 0;
+    DATA.forEach(c => Array.isArray(c.items) && c.items.forEach(it => { if (it.verrou){ total++; if (DEBLOQUE.a(it.verrou)) ouvertes++; } }));
+    return { total, ouvertes };
+  }
+  function rafraichir(){
+    bloc.classList.toggle('vide', !p);
+    const photo = p && p.photo;
+    gtPhoto.hidden = !photo; if (photo) gtPhoto.src = photo;
+    gtInitiale.hidden = !!photo; gtInitiale.textContent = p ? initialeDe(p.nom) : '?';
+    gtNom.textContent = p ? p.nom : T('profilInvite');
+    const x = xp(), n = niveau(), dans = x % XP_NIVEAU;
+    gtNiveau.textContent = n;
+    gtXp.textContent = x.toLocaleString(LANGS[currentLang].locale) + ' XP · ' + dans.toLocaleString(LANGS[currentLang].locale) + ' / ' + XP_NIVEAU;
+    gtXp.title = T('profilXpRegle');
+    gtBarre.style.width = (dans / XP_NIVEAU * 100) + '%';
+    gtUid.textContent = p ? uidLisible(p.uid) : '—';
+    const loc = LANGS[currentLang].locale, pl = new Intl.PluralRules(loc);
+    const pieces = piecesDebloquees();
+    const record = STOCK.lire('fp.jumper', null);
+    const ligne = (cle, val) => `<div><div class="profil-stat-l">${esc(T(cle))}</div><div class="profil-stat-v">${val}</div></div>`;
+    stats.innerHTML =
+      ligne('profilDepuis', p ? esc(new Intl.DateTimeFormat(loc, { month: 'long', year: 'numeric' }).format(new Date(p.depuis + 'T12:00:00'))) : '—') +
+      ligne('profilVisites', p ? (p.jours || 1) + ' ' + esc(T(pl.select(p.jours || 1) === 'one' ? 'profilJour' : 'profilJours')) : '—') +
+      ligne('profilTemps', p ? esc(duree(p.temps || 0)) : '—') +
+      ligne('profilDepense', p ? esc(formatPrice(p.depense || 0)) : '—') +
+      ligne('profilCommandes', p ? (p.commandes || 0) : '—') +
+      ligne('profilPieces', pieces.ouvertes + ' / ' + pieces.total) +
+      ligne('profilJumper', record && record.ms ? esc(mmss(record.ms)) : '—');
+    btEditer.textContent = p ? T('profilEditer') : T('profilCreer');
+    btPerso.textContent = T('profilPerso');
+    // la barre du haut
+    topGt.hidden = !p;
+    if (p){
+      const tp = document.getElementById('topbarGtPhoto'), ti = document.getElementById('topbarGtInitiale');
+      tp.hidden = !photo; if (photo) tp.src = photo;
+      ti.hidden = !!photo; ti.textContent = initialeDe(p.nom);
+      document.getElementById('topbarGtNom').textContent = p.nom;
+      document.getElementById('topbarGtNiveau').textContent = 'LV ' + n;
+    }
+    /* La tenue a pu changer pendant que le profil était à l'écran — le salon
+       est une fenêtre par-dessus, il ne le cache pas. On redemande donc les
+       pièces portées à chaque rafraîchissement : `load` est mis en cache par
+       article, redemander ce qui est déjà là ne coûte rien. */
+    if (visible && scene) dressup.preparerPersonnage(scene);
+  }
+
+  // ---- le personnage ----
+  /* Une scène à part sur le canvas du panneau : le module du salon y dessine
+     le mannequin habillé, avec son souffle, tant que le profil est à l'écran
+     et la page visible. Même plafond que le reste du site. */
+  const cvScene = document.getElementById('profilScene');
+  let scene = null, raf = 0, ipsPerso = 0, visible = false;
+  function boucle(t){
+    raf = requestAnimationFrame(boucle);
+    if (t - ipsPerso < IPS_PAS - 0.5 || document.hidden) return;
+    ipsPerso = t;
+    const r = cvScene.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(r.width * k), h = Math.round(r.height * k);
+    if (cvScene.width !== w || cvScene.height !== h){ cvScene.width = w; cvScene.height = h; }
+    scene.clear();
+    /* La boîte du mannequin est carrée et le corps n'en occupe que les deux
+       tiers en largeur (bras compris) : sur une colonne haute et étroite, on
+       laisse la boîte déborder des côtés pour que le personnage prenne toute
+       la hauteur — ce qui dépasse est vide, et rogné par le canvas. */
+    // les pieds se posent sur l'ombre du cadre (::after, à 8 % du bas)
+    const dispo = h * 0.90;
+    const S = Math.min(dispo, w / 0.66);
+    dressup.dessinerPersonnage(scene, (w - S) / 2, (dispo - S) / 2, S, t);
+  }
+  function montrer(oui){
+    if (oui === visible) { if (oui) rafraichir(); return; }
+    visible = oui;
+    bloc.hidden = !oui;
+    if (oui){
+      rafraichir();
+      if (!scene) scene = model3d.makeScene(cvScene);
+      if (!scene) return;                       // sans WebGL : pas de personnage, le reste du profil vit
+      dressup.preparerPersonnage(scene);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(boucle);
+    } else {
+      cancelAnimationFrame(raf); raf = 0;
+    }
+  }
+
+  // ---- la fenêtre : créer, modifier ----
+  let photoEnCours = null;   // la photo choisie dans la fenêtre, pas encore enregistrée
+  function refletApercu(){
+    apercuPhoto.hidden = !photoEnCours; if (photoEnCours) apercuPhoto.src = photoEnCours;
+    apercuInitiale.hidden = !!photoEnCours;
+    apercuInitiale.textContent = champNom.value.trim() ? initialeDe(champNom.value) : '+';
+    document.getElementById('profilPhotoRetirer').hidden = !photoEnCours;
+  }
+  function editer(){
+    if (overlay.classList.contains('open')) return;
+    exitPanel();
+    closeSizePicker();
+    document.getElementById('profilTitre').textContent = T(p ? 'profilTitreEditer' : 'profilTitreCreer');
+    champNom.value = p ? p.nom : '';
+    champNom.classList.remove('refus');
+    photoEnCours = p ? p.photo : null;
+    fichier.value = '';
+    refletApercu();
+    overlay.classList.add('open');
+    champNom.focus();
+  }
+  function fermer(){
+    overlay.classList.remove('open');
+    if (overlay.contains(document.activeElement)) document.activeElement.blur();
+  }
+  function enregistrer(){
+    const nom = champNom.value.trim();
+    if (!NOM_OK.test(nom)){
+      champNom.classList.remove('refus'); void champNom.offsetWidth; champNom.classList.add('refus');
+      sfx.refus();
+      return;
+    }
+    modifier(nom, photoEnCours);
+    sfx.add();
+    fermer();
+  }
+  fichier.addEventListener('change', () => {
+    const f = fichier.files && fichier.files[0];
+    if (!f) return;
+    // carrée, 256 px : la photo d'un cadre de 96 px, nette sur un écran dense, et légère à retenir
+    reduireImage(f, 256, 0.85, true).then(url => { if (url){ photoEnCours = url; refletApercu(); sfx.tick(); } });
+  });
+  document.getElementById('profilPhotoBt').addEventListener('click', () => fichier.click());
+  document.getElementById('profilPhotoChoisir').addEventListener('click', () => fichier.click());
+  document.getElementById('profilPhotoRetirer').addEventListener('click', () => { photoEnCours = null; fichier.value = ''; refletApercu(); });
+  champNom.addEventListener('input', () => { champNom.classList.remove('refus'); if (!photoEnCours) refletApercu(); });
+  document.getElementById('profilSauver').addEventListener('click', enregistrer);
+  document.getElementById('profilFermer').addEventListener('click', fermer);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fermer(); });
+  btEditer.addEventListener('click', editer);
+  btPerso.addEventListener('click', () => dressup.open());
+  topGt.addEventListener('click', () => {
+    const ci = DATA.findIndex(c => c.kind === 'profil');
+    if (ci >= 0) selectCategory(ci);
+  });
+  /* Les touches de la fenêtre : Entrée enregistre, Échap ferme, le reste va
+     au champ — c'est le seul endroit du site où l'on tape du texte. */
+  function touche(e){
+    if (e.key === 'Escape'){ e.preventDefault(); fermer(); return; }
+    if (e.key === 'Enter'){ e.preventDefault(); enregistrer(); }
+  }
+  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, ouvert: () => overlay.classList.contains('open'),
+           existe: () => !!p, lire: () => p, niveau, xp };
+})();
 
 function selectCategory(ci){
   const moved = ci !== activeCat;
@@ -9874,7 +10445,6 @@ addBtn.addEventListener('click', ()=>{
   if (cat.kind === 'game'){
     const jeu = cat.items[activeItem] && cat.items[activeItem].jeu;
     if (jeu === 'jumper') jumper.open();
-    else if (jeu === 'dressup') dressup.open();
     else arena.open();
     return;
   }
@@ -12165,6 +12735,7 @@ const dressup = (() => {
     if (!portees.has('haut')) portees.delete('bas');
     if (!portees.has('bas')) portees.delete('pieds');
     refletEtat();
+    sauverTenue();
     if (dedans === p) sfx.retirer(); else sfx.select();
   }
   /* UN HAUT AU HASARD À L'OUVERTURE. Le mannequin en sous-vêtement est le seul
@@ -12180,10 +12751,12 @@ const dressup = (() => {
     if (!libres.length) return;
     portees.set('haut', libres[Math.floor(Math.random() * libres.length)]);
     refletEtat();
+    sauverTenue();
   }
   function deshabiller(){
     portees.clear();
     refletEtat();
+    sauverTenue();
     sfx.vider();
   }
 
@@ -12194,6 +12767,7 @@ const dressup = (() => {
   function poserPeau(hex){
     peau = hex;
     majMannequin();
+    sauverTenue();
   }
   /* ---- enregistrer le look ----
      Une image PNG du personnage tel qu'il est, envoyée au dossier de
@@ -12241,29 +12815,69 @@ const dressup = (() => {
     sfx.photo();
   }
   /* ---- la photo du visage ----
-     Lue sur place, jamais transmise. On révoque l'URL précédente à chaque
-     changement : une URL d'objet retient le fichier en mémoire tant qu'elle
-     vit, et en accumuler une par essai ferait grossir la page sans raison. */
+     Lue sur place, jamais transmise. Depuis le 22 sept. 2026 elle est RETENUE
+     sur l'appareil (fp.tenue) : le personnage du profil doit retrouver son
+     visage d'une visite à l'autre. Elle est donc réduite à 512 px et gardée
+     en data URL (une URL d'objet ne survit pas à la page) ; « Retirer mon
+     visage » l'efface. Le moteur 3D la lit comme n'importe quelle adresse. */
   function poserVisage(fichier){
     if (!fichier) return;
-    if (visageURL) URL.revokeObjectURL(visageURL);
-    visageURL = URL.createObjectURL(fichier);
-    /* Une nouvelle photo repart à la taille automatique. Garder le réglage de
-       la précédente n'aurait aucun sens : il avait été fait pour un cadrage
-       qui n'est plus là. */
-    zoomVisage = 1; champZoom.value = '1';
-    hautVisage = 0; champHaut.value = '0';
-    majMannequin();
-    refletVisage();
-    sfx.add();
+    reduireImage(fichier, 512, 0.86).then(url => {
+      if (!url) return;
+      visageURL = url;
+      /* Une nouvelle photo repart à la taille automatique. Garder le réglage de
+         la précédente n'aurait aucun sens : il avait été fait pour un cadrage
+         qui n'est plus là. */
+      zoomVisage = 1; champZoom.value = '1';
+      hautVisage = 0; champHaut.value = '0';
+      majMannequin();
+      refletVisage();
+      sauverTenue();
+      sfx.add();
+    });
   }
   function oterVisage(){
-    if (visageURL){ URL.revokeObjectURL(visageURL); visageURL = null; }
+    visageURL = null;
     zoomVisage = 1; champZoom.value = '1';
     hautVisage = 0; champHaut.value = '0';
     majMannequin();
     refletVisage();
     champFace.value = '';
+    sauverTenue();
+  }
+  /* ---- la tenue retenue (fp.tenue) ----
+     Ce qui est porté, la peau, le visage et ses réglages : écrit à chaque
+     changement, relu quand le portant est regarni (les pièces sont de
+     nouveaux objets à chaque fois, on les retrouve par leur clé). Une pièce
+     de boutique se retrouve par le chemin de sa photo, sans le cachet de
+     version ; un accessoire par son nom. Une pièce disparue du catalogue, ou
+     verrouillée, est simplement laissée de côté. */
+  const cleDe = (p) => p.it.accessoire ? 'acc:' + p.it.accessoire : String(p.it.img || '').split('?')[0];
+  function sauverTenue(){
+    const p = {};
+    portees.forEach((piece, cat) => { p[cat] = cleDe(piece); });
+    STOCK.ecrire('fp.tenue', { portees: p, peau, zoomVisage, hautVisage, visage: visageURL });
+  }
+  function restaurerTenue(){
+    const t = STOCK.lire('fp.tenue', null);
+    if (!t) return;
+    portees.clear();
+    Object.entries(t.portees || {}).forEach(([cat, cle]) => {
+      const piece = pieces.find(q => q.cat === cat && !q.verrou && cleDe(q) === cle);
+      if (piece) portees.set(cat, piece);
+    });
+    // la même règle d'ordre qu'au clic : pas de bas sans haut, pas de chaussures sans bas
+    if (!portees.has('haut')) portees.delete('bas');
+    if (!portees.has('bas')) portees.delete('pieds');
+    peau = typeof t.peau === 'string' ? t.peau : null;
+    zoomVisage = Math.min(1.6, Math.max(0.6, Number(t.zoomVisage) || 1));
+    hautVisage = Math.min(1, Math.max(-1, Number(t.hautVisage) || 0));
+    visageURL = (typeof t.visage === 'string' && t.visage.startsWith('data:image/')) ? t.visage : null;
+    champZoom.value = String(zoomVisage); champHaut.value = String(hautVisage);
+    if (champPeau && peau) champPeau.value = peau;
+    majMannequin();
+    refletVisage();
+    refletEtat();
   }
   /* Le libellé du bouton photo et la présence du curseur disent la même chose :
      y a-t-il un visage posé ? Autant que ce soit écrit une seule fois. */
@@ -12280,12 +12894,14 @@ const dressup = (() => {
     if (Math.abs(z - zoomVisage) < 0.001) return;
     zoomVisage = z;
     majMannequin();
+    sauverTenue();
   }
   function poserHautVisage(v){
     const h = Math.min(1, Math.max(-1, Number(v) || 0));
     if (Math.abs(h - hautVisage) < 0.001) return;
     hautVisage = h;
     majMannequin();
+    sauverTenue();
   }
 
   /* ---- le dessin ----
@@ -12653,6 +13269,7 @@ const dressup = (() => {
     if (!scene) scene = model3d.makeScene(cv);
     if (scene){ scene.load(mannequin); scene.load(SOUS.it); }
     garnir();
+    restaurerTenue();
     tirerHaut();
     eveilAt = performance.now(); dort = false;
     overlay.classList.add('open');
@@ -12666,12 +13283,13 @@ const dressup = (() => {
     ouvert = false;
     cancelAnimationFrame(raf); raf = 0; dort = false;
     overlay.classList.remove('open');
-    oterVisage();          // la photo ne survit pas à la fermeture, même en mémoire
+    // la photo du visage RESTE (fp.tenue) : c'est celle du personnage du profil
     sfx.sansFond(false);   // le menu retrouve sa nappe
-    // on revient sur la tuile du jeu, comme en quittant une application
-    const ci = DATA.findIndex(c => c.kind === 'game');
-    const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'dressup') : -1;
-    if (ci >= 0 && ii >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = ii; render(); }
+    /* Le salon n'est plus un mini-jeu mais l'atelier du personnage (22 sept.
+       2026) : en sortant on retombe sur le profil, qui montre la tenue. */
+    const ci = DATA.findIndex(c => c.kind === 'profil');
+    if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
+    else profil.rafraichir();   // déjà sur le profil : la tenue vient de changer
   }
   /* ---- navigation au clavier ----
      Le salon se joue à la souris, mais il doit aussi se parcourir aux flèches
@@ -13072,7 +13690,28 @@ const dressup = (() => {
              visage: !!visageURL, dessins,     // contrôle : images réellement peintes depuis l'ouverture
              ourlet: dernierOurlet };          // contrôle : l'élargissement d'ourlet du dernier dessin
   };
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug };
+  /* ---- le personnage du profil ----
+     Le mannequin tel qu'il est habillé, dessiné dans la scène du PANNEAU
+     PROFIL (à part de celle du salon) : même `habiller` que le salon et que
+     l'image enregistrée, donc exactement le même personnage, avec son
+     souffle. Le portant est garni une première fois hors du salon pour que
+     la tenue retenue trouve ses pièces ; la scène du profil ne charge que ce
+     qui est porté, pas toute la penderie. */
+  let garniPourProfil = false;
+  function preparerPersonnage(sc){
+    // la première fois : le portant, la tenue retenue, et un haut au hasard s'il n'y en a pas — comme à l'ouverture du salon
+    if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
+    sc.load(mannequin); sc.load(SOUS.it);
+    portees.forEach(p => { sc.load(p.it); if (p.porte) sc.load(p.porte); });
+  }
+  function dessinerPersonnage(sc, MX, MY, S, t){
+    if (!garniPourProfil) preparerPersonnage(sc);
+    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t));
+    habiller(sc, MX - (S2 - S) / 2, MY - (S2 - S), S2);
+  }
+  const tenueVide = () => !portees.size;
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu, debug,
+           preparerPersonnage, dessinerPersonnage, tenueVide };
 })();
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
@@ -13082,6 +13721,8 @@ window.addEventListener('keydown', (e)=>{
   // Dress Up rend les touches dont il ne fait rien : le salon d'essayage se
   // joue à la souris, seules Échap et les flèches l'intéressent.
   if (dressup.isOpen() && dressup.key(e)) return;
+  // Profil ouvert (le gamertag se tape au clavier) : Entrée enregistre, Échap ferme, le reste va au champ.
+  if (profil.ouvert()){ profil.touche(e); return; }
   // Réglages ouverts : flèches, Entrée, Échap — voir reglagesKey.
   if (reglagesOverlay.classList.contains('open')){ reglagesKey(e); return; }
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
@@ -13127,6 +13768,7 @@ window.addEventListener('keydown', (e)=>{
     // fait la même chose qu'un clic sur la miniature : elle tourne et la fiche
     // se déplie, puis la navigation du panneau reprend son cours.
     if (k === 'contact' || k === 'game') addBtn.click();
+    else if (k === 'profil') profil.editer();          // créer son gamertag, ou le modifier
     else { ouvrirFiche(true); enterPanel(); }
   }
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
@@ -13152,7 +13794,7 @@ const WHEEL_FAST = 200; // ms sous lesquelles deux crans comptent comme un défi
 let wheelAcc = 0, wheelLast = 0, wheelStepAt = 0;
 window.addEventListener('wheel', (e) => {
   if (startupActive || panelMode || arena.isOpen()) return;
-  if (infoOverlay.classList.contains('open') || reglagesOverlay.classList.contains('open') || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
+  if (infoOverlay.classList.contains('open') || reglagesOverlay.classList.contains('open') || profil.ouvert() || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
   const scrollable = e.target.closest && e.target.closest('.preview-desc, .legal-body, .info-body, .cart-items');
   if (scrollable && scrollable.scrollHeight > scrollable.clientHeight) return;
   const count = DATA[activeCat].items.length;
@@ -13645,6 +14287,8 @@ if (DIAG){
   const off = { halo: false, etincelles: false, verre: false, ruban: false };
   const vraiPaint = paintWaves;
   window.addEventListener('keydown', e => {
+    // 6 : 25 € de dépense de plus sur le profil — pour voir l'XP et le niveau bouger sans boutique
+    if (e.key === '6'){ profil.ajouterDepense(25, 1); return; }
     const k = { '1':'halo', '2':'etincelles', '3':'verre', '4':'ruban' }[e.key];
     if (!k) return;
     off[k] = !off[k];
@@ -13672,7 +14316,7 @@ if (DIAG){
       'horloge ' + (sfx.clock || 0).toFixed(1) + ' s   avance ' + Math.round(((sfx.lastAt || 0) - (sfx.clock || 0)) * 1000) + ' ms\n' +
       'joues   clic ' + sfx.plays.tick + '  souffle ' + sfx.plays.move + '  panier ' + sfx.plays.add + '\n' +
       'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1) + '\n' +
-      'touches 1 halo  2 etincelles  3 verre  4 ruban\n' +
+      'touches 1 halo  2 etincelles  3 verre  4 ruban  6 +25 EUR\n' +
       'eteints ' + (eteints.length ? eteints.join(', ') : 'aucun');
   }, 400);
 }
@@ -13680,7 +14324,7 @@ if (DIAG){
 applyMood();          // avant la première image : palette, voiles et halo
 setInterval(applyMood, MOOD.refreshMs);
 buildLegal();
-withCatalogue(() => applyLanguage('en')); // produits enregistrés, puis menu (build) et libellés
+withCatalogue(() => applyLanguage(LANGS[REGLAGES.lang] ? REGLAGES.lang : 'en')); // produits enregistrés, puis menu (build) et libellés — dans la langue retenue
 drawFrame();
 
 /* ---------------- écran de démarrage ----------------

@@ -23,10 +23,13 @@ contiennent encore des champs à compléter.
   Aucun fichier 3D, aucune bibliothèque externe.
 - **Sons synthétisés** en Web Audio, sans fichier audio.
 - **Ni cookie ni traceur**, et rien qui parte vers un serveur. Le stockage local
-  du navigateur tient deux clés, et deux seulement : `fp.debloque` (les épreuves
-  passées, sans quoi un rechargement reprendrait une pièce gagnée) et
-  `fp.jumper` (le record du mini-jeu). Aucune donnée personnelle, aucun suivi.
-  Les deux sont déclarées dans la rubrique Cookies des textes légaux.
+  du navigateur tient cinq clés, toutes déclarées dans la rubrique Cookies des
+  textes légaux : `fp.debloque` (les épreuves passées, sans quoi un rechargement
+  reprendrait une pièce gagnée), `fp.jumper` (le record du mini-jeu),
+  `fp.reglages` (langue, devise, musique, bruitages), `fp.profil` (le compte
+  local : gamertag, photo, dépense et statistiques de visite) et `fp.tenue` (la
+  tenue et le visage du personnage). Rien ne quitte l'appareil ; le profil est
+  un compte LOCAL, en attendant un vrai compte client avec la boutique.
 - **Aucune dépendance externe** : tout est servi depuis ce dépôt.
 
 Le site doit être servi en `http://` ou `https://`. Ouvert par double-clic
