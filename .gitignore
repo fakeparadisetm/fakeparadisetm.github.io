@@ -20,6 +20,9 @@ catalogue.backup.json
 icons/startup icon.png
 icons/startup icon2.png
 icons/fakeparadise.ico
+# Sequences d'images rendues (coffre, sac de courses ; 19 Mo) : des sources,
+# rien sur le site ne les sert
+icons/Rotating/
 
 # Windows
 Thumbs.db
