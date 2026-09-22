@@ -752,33 +752,7 @@
     "en": "Unique Items",
     "fr": "Pièces uniques"
    },
-   "items": [
-    {
-     "n": "FAKE™ POLO",
-     "p": 25,
-     "d": {
-      "en": "110GSM (45.4% cotton, 43.4% regenerated cellulose, 5.7% polyester fiber, 4.2% acrylic, 1.3% other fibers)\nBoxy fit\nGreen\nCustom label\nsizeguidetemp",
-      "fr": "270 GSM (48,8 % polyester, 47,6 % coton, 3,6 % élasthanne)\nCoupe boxy\nRouge\nÉtiquette personnalisée\nguide des taillestemp"
-     },
-     "sz": "tee",
-     "verrou": "vertige",
-     "img": "products/fake-polo.jpg",
-     "img2": "products/fake-polo-2.jpg",
-     "v": 1789923499501
-    },
-    {
-     "n": "JUMPER TEE",
-     "p": 40,
-     "d": {
-      "en": "Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
-      "fr": "Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"
-     },
-     "sz": "tee",
-     "verrou": "jumper",
-     "max": 1,
-     "provisoire": true
-    }
-   ]
+   "items": []
   }
  ]
 }

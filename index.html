@@ -2826,33 +2826,6 @@
     background:rgba(224,85,108,0.14);
     box-shadow:0 0 16px rgba(224,85,108,0.25);
   }
-  /* Le bouton de teinte porte la couleur choisie : la pastille EST le champ,
-     si bien qu'on voit ce qu'on va changer. */
-  .dress-bt--3 input[type=color]{
-    width:20px;height:20px;padding:0;
-    border:1px solid rgba(255,255,255,0.35);border-radius:4px;
-    background:none;cursor:pointer;
-  }
-  .dress-bt--3 input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
-  .dress-bt--3 input[type=color]::-webkit-color-swatch{border:none;border-radius:3px;}
-  .dress-bt--3 input[type=color]::-moz-color-swatch{border:none;border-radius:3px;}
-  /* Les curseurs du visage prennent TOUTE LA LARGEUR, intitulé à gauche et
-     course à droite : c'est la ligne de réglage des créateurs de personnage,
-     et elle se manie bien mieux qu'une course de 88 px coincée entre deux
-     boutons. Ils ne paraissent QUE si une photo est posée — un réglage qui ne
-     règle rien n'a rien à faire à l'écran (voir `refletVisage`). */
-  .dress-bt--5{flex:1 1 100%;justify-content:space-between;gap:14px;}
-  .dress-bt--5[hidden]{display:none;}
-  .dress-bt--5 input[type=range]{
-    flex:0 1 220px;height:16px;margin:0;cursor:pointer;accent-color:var(--blue);
-  }
-  /* La mention sur la photo : elle doit être LISIBLE, pas discrète. Quelqu'un
-     à qui on demande son visage a le droit de savoir en deux lignes ce qu'il
-     en advient, sans aller chercher une page de mentions légales. */
-  .dress-note{
-    flex:1 1 100%;margin:2px 0 0;
-    font-size:10.5px;line-height:1.5;color:var(--white-35);
-  }
   /* Écran étroit : la colonne passe sous le personnage, sur toute la largeur.
      Elle garde sa structure — penderie puis réglages — donc rien ne se
      chevauche là non plus, et le socle suit le personnage tout seul. */
@@ -3442,22 +3415,7 @@
         </div>
         <div class="dress-outils">
           <div class="dress-tete" id="dressLookTitre" aria-hidden="true"></div>
-          <label class="dress-bt" id="dressFaceBt" tabindex="0">
-            <span id="dressFaceTxt"></span>
-            <input type="file" id="dressFace" accept="image/*" hidden>
-          </label>
-          <!-- La taille du visage, à la main. Caché tant qu'aucune photo n'est
-               posée : voir `refletVisage`. -->
-          <label class="dress-bt dress-bt--5" id="dressZoomBt" hidden>
-            <span id="dressZoomTxt"></span>
-            <input type="range" id="dressZoom" min="0.6" max="1.6" step="0.02" value="1" aria-labelledby="dressZoomTxt">
-          </label>
-          <label class="dress-bt dress-bt--5" id="dressHautBt" hidden>
-            <span id="dressHautTxt"></span>
-            <input type="range" id="dressHaut" min="-1" max="1" step="0.04" value="0" aria-labelledby="dressHautTxt">
-          </label>
           <button class="dress-bt dress-bt--2" id="dressNu"></button>
-          <p class="dress-note" id="dressNote"></p>
         </div>
       </div>
     </div>
@@ -3763,7 +3721,7 @@ Date : ______<br>
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont servies par le site lui-même : aucune ressource n'est chargée depuis un serveur tiers.</p>
-<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>La tenue de votre personnage</strong> (clé <code>fp.tenue</code>) : les pièces choisies au salon d'essayage, la couleur de peau, et la photo de visage que vous y déposez, avec ses réglages. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil et le visage depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>La tenue de votre personnage</strong> (clé <code>fp.tenue</code>) : les pièces choisies au salon d'essayage et la couleur de peau. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>Évolutions</h3>
 <p>Si des services tiers sont ajoutés à l'avenir (module de paiement, mesure d'audience, contenus embarqués), cette page sera mise à jour et, lorsque la loi l'exige, votre consentement préalable sera recueilli au moyen d'un bandeau permettant d'accepter ou de refuser chaque finalité aussi simplement l'un que l'autre.</p>
 <h3>Paramétrage de votre navigateur</h3>
@@ -3952,7 +3910,7 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are served by the site itself: no resource is loaded from a third-party server.</p>
-<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character's outfit</strong> (key <code>fp.tenue</code>): the pieces chosen in the dressing room, the skin tone, and the face photo you add there, with its settings. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture and the face from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
+<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character's outfit</strong> (key <code>fp.tenue</code>): the pieces chosen in the dressing room and the skin tone. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
 <h3>Future changes</h3>
 <p>If third-party services are added in the future (payment module, audience measurement, embedded content), this page will be updated and, where the law requires it, your prior consent will be collected through a banner allowing you to accept or refuse each purpose, one as easily as the other.</p>
 <h3>Browser settings</h3>
@@ -4009,20 +3967,19 @@ const STRINGS = {
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up!", dressPick:"pick a piece", dressDrop:"click it again to take it off",
-    dressFace:"Use my face", dressFaceOff:"Remove my face", dressStrip:"Clear all",
+    dressStrip:"Clear all",
     dressCatSkin:"skin", dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
     dressRack:"Wardrobe", dressLook:"Appearance",
-    dressSkin:"Skin tone", dressFaceSize:"Face size", dressFaceY:"Face height",
+    dressSkin:"Skin tone",
     /* La mention sur la photo. Elle dit trois choses, dans cet ordre : où va
        l'image (nulle part), ce qu'on en garde (rien), et à quoi elle ne sert
        pas (entraîner quoi que ce soit). L'ordre compte — la première question
        que se pose quelqu'un à qui on demande son visage est « ça part où ? ». */
-    dressPrivacy:"Your photo stays on your device: it is never uploaded. Your browser keeps it so your character keeps its face between visits; “Remove my face” erases it. It is not used to train any AI.",
     jumpBest:"Best time", jumpBestTime:"Time", jumpNoBest:"No run finished yet.",
     jumpNewBest:"New best time!", jumpBack:"Back",
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
-    jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked tee is yours.",
-    jumpSee:"See the item", jumpAgain:"Play again", jumpFall:"fall", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
+    jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked accessory is yours.",
+    jumpSee:"Try it on", jumpAgain:"Play again", jumpFall:"fall", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
     locked:"???",
     /* Une pièce verrouillée ne dit plus COMMENT s'ouvrir (demande du 16 sept.
        2026 : « enlève les indices sur les pages des item bloqués »). Il reste
@@ -4040,7 +3997,7 @@ const STRINGS = {
        sert aujourd'hui. */
     lockedHow:"Locked.",
     lockedPlay:"Play Jumper", onlyOne:"One per person",
-    eggUnlocked:"A unique piece has been unlocked", eggWhere:"Unique Items",
+    eggUnlocked:"An accessory has been unlocked",
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
@@ -4079,19 +4036,18 @@ const STRINGS = {
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
     dressTitle:"Dress Up !", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
-    dressFace:"Mettre mon visage", dressFaceOff:"Retirer mon visage", dressStrip:"Tout effacer",
+    dressStrip:"Tout effacer",
     dressCatSkin:"peau", dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
     dressRack:"Penderie", dressLook:"Apparence",
-    dressSkin:"Couleur de peau", dressFaceSize:"Taille du visage", dressFaceY:"Hauteur du visage",
-    dressPrivacy:"Votre photo reste sur votre appareil : elle n'est jamais envoyée. Votre navigateur la garde pour que votre personnage retrouve son visage d'une visite à l'autre ; « Retirer mon visage » l'efface. Elle ne sert à entraîner aucune IA.",
+    dressSkin:"Couleur de peau",
     jumpBest:"Meilleur temps", jumpBestTime:"Temps", jumpNoBest:"Aucun parcours terminé pour l'instant.",
     jumpNewBest:"Nouveau meilleur temps !", jumpBack:"Retour",
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
-    jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"Le t-shirt verrouillé est à vous.",
-    jumpSee:"Voir l'article", jumpAgain:"Rejouer", jumpFall:"chute", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
+    jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"L'accessoire verrouillé est à vous.",
+    jumpSee:"L'essayer", jumpAgain:"Rejouer", jumpFall:"chute", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
     locked:"???", lockedHow:"Verrouillé.",   // voir le commentaire côté anglais
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
-    eggUnlocked:"Une pièce unique s'est déverrouillée", eggWhere:"Pièces uniques",
+    eggUnlocked:"Un accessoire s'est déverrouillé",
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
@@ -4262,15 +4218,12 @@ const DATA = [
      même épreuve (voir `applyCatalogue`). UNE SEULE PIÈCE PAR ÉPREUVE : sans
      cela le visiteur verrait deux cadenas pour une seule récompense, et le
      jeu en ouvrirait deux. */
-  { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[
-    // PROVISOIRE : nom, prix et photos à remplacer par la vraie pièce.
-    { n:"VERTIGO TEE", p:40, sz:"tee", verrou:"vertige", max:1, provisoire:true,
-      d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nFound, not won",
-         fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nTrouvée, pas gagnée"} },
-    { n:"JUMPER TEE", p:40, sz:"tee", verrou:"jumper", max:1, provisoire:true,
-      d:{en:"Placeholder — the real piece is not drawn yet.\n100% cotton\nOne per person\nUnlocked by finishing Jumper",
-         fr:"Provisoire — la pièce définitive n'est pas encore dessinée.\n100 % coton\nUn exemplaire par personne\nDébloqué en terminant Jumper"} },
-  ]},
+  /* Le rayon est VIDE depuis le 22 sept. 2026 : les deux vêtements à
+     débloquer ont été retirés, les récompenses sont passées aux accessoires
+     du salon. Il reste déclaré pour que le gestionnaire puisse y ranger une
+     vraie pièce unique le jour venu ; tant qu'il n'y a rien dedans, il ne
+     s'affiche pas (voir `masquerRayonsVides`). */
+  { id:"unique", name:{en:"Unique Items", fr:"Pièces uniques"}, icon:"unique icon.png", kind:"shop", items:[] },
   /* Mini-jeux (provisoire, comme le bouton Mobile) : la catégorie tient la
      liste et chaque ligne est un jeu — Versus départage deux articles,
      Jumper est un parcours de plateforme dont la récompense est la pièce
@@ -4387,9 +4340,27 @@ function applyCatalogue(j){
 // (ceux des produits intégrés, puis ceux du catalogue). S'il tarde ou manque,
 // on n'attend pas plus d'une seconde et demie et on repart des produits
 // intégrés, quitte à reconstruire quand il arrive.
+/* UN RAYON DE BOUTIQUE VIDE NE S'AFFICHE PAS. Une icône qui n'ouvre sur rien
+   est une porte murée : le visiteur la choisit, la colonne reste vide, et il
+   croit que le site est cassé. On retire donc ces rayons de DATA une fois le
+   catalogue appliqué — et de DATA seulement, pas du fichier : le jour où le
+   gestionnaire y range un article, le rayon revient tout seul au chargement
+   suivant. Les rubriques qui n'ont PAS d'articles par nature (profil, contact,
+   livraison, mentions) ne sont pas concernées : seules les boutiques.
+   La catégorie ouverte est retrouvée par son objet et non par son rang, sans
+   quoi un rayon retiré avant elle la décalerait. */
+function masquerRayonsVides(){
+  const actif = DATA[activeCat];
+  for (let i = DATA.length - 1; i >= 0; i--){
+    const c = DATA[i];
+    if (c.kind === 'shop' && Array.isArray(c.items) && !c.items.length) DATA.splice(i, 1);
+  }
+  const i = DATA.indexOf(actif);
+  activeCat = i >= 0 ? i : Math.max(0, Math.min(activeCat, DATA.length - 1));
+}
 function withCatalogue(done){
   let fired = false;
-  const once = () => { if (!fired){ fired = true; done(); } };
+  const once = () => { if (!fired){ fired = true; masquerRayonsVides(); done(); } };
   if (location.protocol === 'file:') return once(); // fetch interdit hors http
   const late = setTimeout(once, 1500);
   fetch('catalogue.json', { cache:'no-store' })
@@ -4399,6 +4370,7 @@ function withCatalogue(done){
     .then(() => {
       clearTimeout(late);
       if (!fired) return once();
+      masquerRayonsVides();
       const items = DATA[activeCat] ? DATA[activeCat].items : [];
       activeItem = Math.max(0, Math.min(activeItem, items.length - 1)); // la liste a pu raccourcir
       build();
@@ -4423,7 +4395,7 @@ let currentCurrency = "EUR";
    mini-jeu), et depuis le 22 sept. 2026 fp.reglages (langue, devise, musique,
    bruitages — l'utilisateur a demandé que les réglages soient retenus),
    fp.profil (le compte local : gamertag, photo, dépense, statistiques) et
-   fp.tenue (la tenue et le visage du personnage). Rien ne quitte l'appareil. */
+   fp.tenue (la tenue et la peau du personnage). Rien ne quitte l'appareil. */
 const STOCK = {
   lire: (cle, defaut) => { try { const v = JSON.parse(localStorage.getItem(cle)); return v == null ? defaut : v; } catch (e) { return defaut; } },
   ecrire: (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); return true; } catch (e) { return false; } },
@@ -9050,7 +9022,7 @@ model3d.surRotation((total) => {
   if (total < TOURNE_DEBLOQUE || DEBLOQUE.a('vertige')) return;
   DEBLOQUE.ajouter('vertige');        // la liste se refait, le nom masqué tombe
   sfx.win();
-  annoncer(T('eggUnlocked'), T('eggWhere'));
+  annoncer(T('eggUnlocked'), T('dressCatAcc'));   // la récompense est au salon, rayon accessoires
 });
 
 /* ---------------- diaporama du visuel produit ----------------
@@ -12611,22 +12583,13 @@ const jumper = (() => {
     const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'jumper') : -1;
     if (ci >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = Math.max(0, ii); render(); }
   }
-  function versArticle(){          // « Voir l'article » : la pièce unique, débloquée
+  /* « L'essayer » : la récompense n'est plus un vêtement en boutique mais un
+     ACCESSOIRE du salon (22 sept. 2026). On ferme donc le jeu et on ouvre le
+     salon, où la case vient de s'ouvrir — le portant est regarni à chaque
+     ouverture, il voit le cadenas tomber tout seul. */
+  function versArticle(){
     fermer();
-    /* ON CHERCHE LA PIÈCE PAR SON ÉPREUVE, on ne la compte plus. Elle était
-       prise à sa place — première ligne des pièces uniques —, ce qui ne tient
-       plus dès qu'une vraie pièce arrive : elle est rangée dans la catégorie
-       que son auteur a choisie, et le marque-place qui occupait cette première
-       ligne s'est justement effacé devant elle. Sans quoi « Voir l'article »
-       menait à la pièce d'à côté. */
-    let ci = -1, ii = -1;
-    DATA.forEach((c, i) => Array.isArray(c.items) && c.items.forEach((it, j) => {
-      if (ci < 0 && it.verrou === 'jumper'){ ci = i; ii = j; }
-    }));
-    if (ci < 0) return;
-    activeCat = ci; activeItem = ii;
-    render();
-    setTimeout(() => ouvrirFiche(false), 220);   // même délai que l'arène : le panneau se remplit d'abord
+    setTimeout(() => dressup.open(), 220);   // même délai que l'arène : la fenêtre s'en va d'abord
   }
   /* Clavier : le jeu prend TOUTES les touches tant qu'il est ouvert. L'appui
      et le relâchement comptent autant l'un que l'autre — c'est le relâchement
@@ -12819,16 +12782,7 @@ const dressup = (() => {
   const rack = document.getElementById('dressRack');
   const cote = document.querySelector('.dress-cote');
   const titre = document.getElementById('dressTitre');
-  const champFace = document.getElementById('dressFace');
-  const champZoom = document.getElementById('dressZoom');
-  const btZoom = document.getElementById('dressZoomBt');
-  const txtZoom = document.getElementById('dressZoomTxt');
-  const champHaut = document.getElementById('dressHaut');
-  const btHaut = document.getElementById('dressHautBt');
-  const txtHaut = document.getElementById('dressHautTxt');
-  const btFaceTxt = document.getElementById('dressFaceTxt');
   const btNu = document.getElementById('dressNu');
-  const note = document.getElementById('dressNote');
   const stage = document.getElementById('dressStage');
   const tetePenderie = document.getElementById('dressRackTitre');
   const teteLook = document.getElementById('dressLookTitre');
@@ -12974,8 +12928,16 @@ const dressup = (() => {
        moteur 3D (voir ACCESSOIRES). Le portant les dessine donc comme tout le
        reste — les cases du portant montrent déjà des maillages, pas des
        images. */
-    { accessoire: 'lunettes',  nom: { en: 'Sunglasses', fr: 'Lunettes de soleil' }, cat: 'lunettes', coupe: 'lunettes' },
-    { accessoire: 'cigarette', nom: { en: 'Cigarette',  fr: 'Cigarette' },          cat: 'bouche',   coupe: 'cigarette' },
+    /* LES ACCESSOIRES SE GAGNENT (22 sept. 2026, à la demande). Ils étaient
+       posés là, gratuits, à côté des vêtements ; ce sont maintenant les
+       récompenses des épreuves du site, et les seules. Chacun va avec la
+       sienne : les lunettes à l'œuf de la tête — on a fait tourner un visage
+       vingt fois, on gagne de quoi lui couvrir les yeux — et la cigarette au
+       parcours de Jumper, qu'on allume en arrivant. Le nom de l'épreuve est
+       celui de `fp.debloque` ; tant qu'elle n'est pas passée, la case montre
+       le cadenas et refuse. */
+    { accessoire: 'lunettes',  verrou: 'vertige', nom: { en: 'Sunglasses', fr: 'Lunettes de soleil' }, cat: 'lunettes', coupe: 'lunettes' },
+    { accessoire: 'cigarette', verrou: 'jumper',  nom: { en: 'Cigarette',  fr: 'Cigarette' },          cat: 'bouche',   coupe: 'cigarette' },
   ];
 
   /* Le sous-vêtement : toujours là, jamais dans le portant. Un mannequin de
@@ -13038,15 +13000,17 @@ const dressup = (() => {
   let ouvert = false, scene = null, raf = 0;
   let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
   const portees = new Map();  // catégorie -> pièce
-  let visageURL = null;       // URL d'objet de la photo déposée, ou rien
   let peau = null;            // teinte choisie au nuancier, ou rien (voir PEAU_DEFAUT)
-  let zoomVisage = 1;         // taille du visage réglée à la main (voir atlasMannequin)
-  let hautVisage = 0;         // et sa hauteur, de -1 (bas) à 1 (haut)
-  let mannequin = { mannequin: true, visage: null, peau: null, zoomVisage: 1, hautVisage: 0 };
+  /* LE VISAGE PHOTO A ÉTÉ RETIRÉ (22 sept. 2026, à la demande) : on ne pose
+     plus la photo de personne sur le mannequin, et plus rien de tel n'est
+     gardé sur l'appareil. Le champ reste à `null` dans l'objet passé au
+     moteur — c'est sa forme attendue — et l'atlas se rabat sur le visage du
+     modèle. */
+  let mannequin = { mannequin: true, visage: null, peau: null };
   // Le mannequin est décrit en UN endroit : trois champs qui bougent, et
   // autant d'occasions d'en oublier un si chacun le réécrit de son côté.
   const majMannequin = () => {
-    mannequin = { mannequin: true, visage: visageURL, peau, zoomVisage, hautVisage };
+    mannequin = { mannequin: true, visage: null, peau };
     if (scene) scene.load(mannequin);
   };
   /* ---- LES TEINTES DE PEAU ----
@@ -13135,7 +13099,13 @@ const dressup = (() => {
        l'affichage ils se retrouvent de toute façon rangés par catégorie. */
     // L() choisit la langue ; le portant est regarni à chaque ouverture du salon.
     const tout = PEAUX.map((hex, i) => ({ peau: hex, cat: 'peau', nom: T('dressSkin') + ' ' + (i + 1), verrou: false }))
-      .concat(VESTIAIRE.map(v => ({ it: v, porte: null, nom: L(v.nom), cat: v.cat, coupe: v.coupe, verrou: false })));
+      .concat(VESTIAIRE.map(v => {
+        // une pièce du vestiaire peut être une récompense : même cadenas et même
+        // nom masqué que pour un article de la boutique (voir `visuelDe`)
+        const ferme = !!(v.verrou && !DEBLOQUE.a(v.verrou));
+        return { it: ferme ? ITEM_VERROU : v, porte: null, nom: ferme ? T('locked') : L(v.nom),
+                 cat: v.cat, coupe: v.coupe, verrou: ferme };
+      }));
     DATA.forEach(cat => {
       if (cat.kind !== 'shop') return;
       cat.items.forEach(it => {
@@ -13268,37 +13238,6 @@ const dressup = (() => {
     habiller(sceneShot, N * 0.06, N * 0.03, N * 0.88);
     return cvShot;
   }
-  /* ---- la photo du visage ----
-     Lue sur place, jamais transmise. Depuis le 22 sept. 2026 elle est RETENUE
-     sur l'appareil (fp.tenue) : le personnage du profil doit retrouver son
-     visage d'une visite à l'autre. Elle est donc réduite à 512 px et gardée
-     en data URL (une URL d'objet ne survit pas à la page) ; « Retirer mon
-     visage » l'efface. Le moteur 3D la lit comme n'importe quelle adresse. */
-  function poserVisage(fichier){
-    if (!fichier) return;
-    reduireImage(fichier, 512, 0.86).then(url => {
-      if (!url) return;
-      visageURL = url;
-      /* Une nouvelle photo repart à la taille automatique. Garder le réglage de
-         la précédente n'aurait aucun sens : il avait été fait pour un cadrage
-         qui n'est plus là. */
-      zoomVisage = 1; champZoom.value = '1';
-      hautVisage = 0; champHaut.value = '0';
-      majMannequin();
-      refletVisage();
-      sauverTenue();
-      sfx.add();
-    });
-  }
-  function oterVisage(){
-    visageURL = null;
-    zoomVisage = 1; champZoom.value = '1';
-    hautVisage = 0; champHaut.value = '0';
-    majMannequin();
-    refletVisage();
-    champFace.value = '';
-    sauverTenue();
-  }
   /* ---- la tenue retenue (fp.tenue) ----
      Ce qui est porté, la peau, le visage et ses réglages : écrit à chaque
      changement, relu quand le portant est regarni (les pièces sont de
@@ -13312,7 +13251,7 @@ const dressup = (() => {
   function sauverTenue(){
     const p = {};
     portees.forEach((piece, cat) => { p[cat] = cleDe(piece); });
-    STOCK.ecrire('fp.tenue', { portees: p, peau, zoomVisage, hautVisage, visage: visageURL });
+    STOCK.ecrire('fp.tenue', { portees: p, peau });
   }
   function restaurerTenue(){
     const t = STOCK.lire('fp.tenue', null);
@@ -13326,39 +13265,9 @@ const dressup = (() => {
     if (!portees.has('haut')) portees.delete('bas');
     if (!portees.has('bas')) portees.delete('pieds');
     peau = typeof t.peau === 'string' ? t.peau : null;
-    zoomVisage = Math.min(1.6, Math.max(0.6, Number(t.zoomVisage) || 1));
-    hautVisage = Math.min(1, Math.max(-1, Number(t.hautVisage) || 0));
-    visageURL = (typeof t.visage === 'string' && t.visage.startsWith('data:image/')) ? t.visage : null;
-    champZoom.value = String(zoomVisage); champHaut.value = String(hautVisage);
     majMannequin();
-    refletVisage();
     refletEtat();
   }
-  /* Le libellé du bouton photo et la présence du curseur disent la même chose :
-     y a-t-il un visage posé ? Autant que ce soit écrit une seule fois. */
-  function refletVisage(){
-    btFaceTxt.textContent = visageURL ? T('dressFaceOff') : T('dressFace');
-    btZoom.hidden = !visageURL;
-    btHaut.hidden = !visageURL;
-  }
-  /* Le curseur redessine à chaque cran. C'est tenable parce que seul l'ATLAS
-     du mannequin est refait — le maillage ne bouge pas, c'est la clé de
-     texture qui change (voir keyOf) — et qu'un atlas fait 256 × 128 pixels. */
-  function poserZoomVisage(v){
-    const z = Math.min(1.6, Math.max(0.6, Number(v) || 1));
-    if (Math.abs(z - zoomVisage) < 0.001) return;
-    zoomVisage = z;
-    majMannequin();
-    sauverTenue();
-  }
-  function poserHautVisage(v){
-    const h = Math.min(1, Math.max(-1, Number(v) || 0));
-    if (Math.abs(h - hautVisage) < 0.001) return;
-    hautVisage = h;
-    majMannequin();
-    sauverTenue();
-  }
-
   /* ---- le dessin ----
      Un seul passage : le mannequin dans sa boîte, les pièces portées dans la
      leur, puis chaque case du portant. Les boîtes des cases sont LUES dans le
@@ -13749,11 +13658,7 @@ const dressup = (() => {
     titre.textContent = (moi && moi.nom) || T('dressTitle');
     tetePenderie.textContent = T('dressRack');
     teteLook.textContent = T('dressLook');
-    txtZoom.textContent = T('dressFaceSize');
-    txtHaut.textContent = T('dressFaceY');
-    refletVisage();
     btNu.textContent = T('dressStrip');
-    note.textContent = T('dressPrivacy');
     const fil = document.getElementById('dressEtape');
     fil.hidden = !etapeDe;
     if (etapeDe) fil.textContent = T('profilEtape').replace('%1', String(etapeDe)).replace('%2', '2');
@@ -13849,24 +13754,6 @@ const dressup = (() => {
     }
     return true;   // le salon garde la main : aucune touche ne file au XMB derrière
   }
-  /* L'outil photo est une ÉTIQUETTE et non un bouton : sans ceci il ne
-     prendrait pas le focus et Entrée ne l'ouvrirait pas. Le clic simulé fait
-     exactement ce que ferait la souris — y compris passer par l'écouteur qui
-     RETIRE la photo au second appui. */
-  ['dressFaceBt'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); el.click(); }
-    });
-  });
-  champFace.addEventListener('change', (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (f) poserVisage(f); else oterVisage();
-  });
-  document.getElementById('dressFaceBt').addEventListener('click', (e) => {
-    // le bouton sert aussi à RETIRER la photo : deuxième clic, on l'enlève
-    if (visageURL){ e.preventDefault(); oterVisage(); }
-  });
   /* Tout geste dans la fenêtre du salon réveille le souffle : bouger la
      souris, cliquer, taper, faire défiler le portant. On écoute à la CAPTURE
      pour être sûr d'être prévenu même quand l'événement est arrêté plus bas,
@@ -13875,8 +13762,6 @@ const dressup = (() => {
     overlay.addEventListener(e, reveiller, { capture: true, passive: true }));
   rack.addEventListener('scroll', reveiller, { passive: true });
   btNu.addEventListener('click', deshabiller);
-  champZoom.addEventListener('input', (e) => poserZoomVisage(e.target.value));
-  champHaut.addEventListener('input', (e) => poserHautVisage(e.target.value));
   document.getElementById('dressClose').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
@@ -13884,7 +13769,7 @@ const dressup = (() => {
   const debug = (i) => {
     if (i != null && pieces[i]) basculer(pieces[i]);
     return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
-             visage: !!visageURL, dessins,     // contrôle : images réellement peintes depuis l'ouverture
+             dessins,     // contrôle : images réellement peintes depuis l'ouverture
              ourlet: dernierOurlet };          // contrôle : l'élargissement d'ourlet du dernier dessin
   };
   /* ---- le personnage du profil ----
