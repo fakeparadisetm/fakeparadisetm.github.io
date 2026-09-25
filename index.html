@@ -1011,6 +1011,13 @@
      juste dessous. */
   .slide{position:absolute;inset:0;display:none;z-index:1;pointer-events:none;
     transform:scale(var(--zoom,1));transition:transform 0.14s ease-out;}
+  /* la vue 3D d'un article part d'un cran de molette plus près (--repos, voir `loupe`) */
+  .slide.slide-3d{transform:scale(calc(var(--zoom,1) * var(--repos,1)));}
+  /* … et elle peut alors déborder de son carré : un cran plus près, les manches
+     d'un hoodie en sortaient de quelques pixels et s'y trouvaient coupées net.
+     La vue 3D n'a ni fond ni coins à rogner ; c'est la galerie, à l'arrondi du
+     panneau, qui la borne. Les photos, elles, restent rognées à leur carré. */
+  .preview-swatch.cran:has(> .slide-3d.active){overflow:visible;}
   .slide.active{display:block;}
   /* ---- LA MOLETTE ZOOME LE PRODUIT (demande du 25 sept. 2026) ----
      Le curseur sur la fiche d'un produit, la molette ne parcourt plus la
@@ -2918,354 +2925,153 @@
      d'aide) : c'est le SITE, il ne change pas d'un jeu à l'autre. Ce qui
      change est à l'intérieur — un seul canvas, dessiné net en pleine
      résolution, là où Versus peint dans un tampon de 320 px. */
-  /* ---------- l'atelier du personnage (« Dress Up ») ----------
-     IL A CHANGÉ D'ÉPOQUE (22 sept. 2026). Il citait jusqu'ici les jeux
-     d'habillage en Flash — fond pastel, Comic Sans, cadres en pointillés
-     roses, boutons bonbon. C'était juste tant qu'il était un mini-jeu parmi
-     d'autres ; il est devenu l'endroit où l'on fabrique le personnage de son
-     profil, et la citation jurait avec la console qui l'entoure.
-     On lui donne donc la grammaire des CRÉATEURS DE PERSONNAGE : un studio
-     sombre, le personnage seul dans la lumière sur un socle, et à droite une
-     grille d'emplacements puis des réglages, en capitales espacées.
-     Rien n'est inventé pour l'occasion : la lumière d'accent de l'heure, le
-     fond teinté et l'ombre au sol viennent du cadre du personnage dans le
-     profil (`.profil-droite`), les liserés et les lueurs du reste du site. */
-  .dress-stage{
-    position:relative;flex:1 1 auto;min-height:0;overflow:hidden;
-    /* ON ATTRAPE LE PERSONNAGE POUR LE TOURNER : le curseur le dit avant
-       qu'on essaie. `touch-action:none` empêche le doigt de faire défiler la
-       page au lieu de tourner — et la colonne de droite le reprend aussitôt,
-       sans quoi la penderie ne défilerait plus au doigt. */
-    cursor:grab;touch-action:none;
-    /* LA BOÎTE DU PERSONNAGE, écrite par le script à chaque changement de
-       disposition (voir `poserSocle`). Le canvas est en WebGL et ne sait
-       peindre que des maillages : la lumière, l'ombre et le socle sont donc
-       en CSS, et ces trois nombres leur disent où se placer. */
-    --perso-x:0px; --perso-y:0px; --perso-s:0px;
-    background:
-      radial-gradient(120% 80% at 50% -12%, rgba(var(--accent-rgb),0.15), transparent 58%),
-      linear-gradient(180deg, #081420 0%, #050d15 52%, #02060a 100%);
+  /* ---------- l'atelier du personnage (refait le 25 sept. 2026) ----------
+     Un créateur de personnage de jeu vidéo : la plage au couchant en plein
+     cadre (atelier.js la dessine), le personnage au premier tiers, et à
+     droite une colonne de verre — les onglets, les réglages, le bouton qui
+     termine. La barre des touches du bas est partie (même demande) : tout se
+     fait à la souris ou au doigt, et le clavier parcourt la colonne.
+     Les couleurs de l'atelier sont celles de la plage, pas celles de l'heure :
+     le rose et le bleu des néons de Miami. */
+  .atelier .arena-panel{
+    position:relative;display:block;
+    width:min(97vw,1500px);height:min(94vh,900px);
+    border-radius:16px;background:#2a1233;
+    box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08);
   }
-  /* la lumière du studio : une nappe derrière le personnage, qui le suit
-     partout où la disposition le met */
-  .dress-stage::before{
-    content:"";position:absolute;z-index:0;pointer-events:none;
-    left:calc(var(--perso-x) + var(--perso-s) * 0.5);
-    top:calc(var(--perso-y) + var(--perso-s) * 0.42);
-    width:calc(var(--perso-s) * 1.55);
-    height:calc(var(--perso-s) * 1.20);
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    background:radial-gradient(50% 50% at 50% 50%, rgba(var(--accent-rgb),0.22), rgba(var(--accent-rgb),0.05) 52%, transparent 74%);
+  .atelier-scene{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;}
+  .atelier-scene.tourne{cursor:grabbing;}
+  .atelier-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  .atelier-hud{position:absolute;left:28px;top:22px;pointer-events:none;max-width:44%;}
+  .atelier-etape{font-size:11px;letter-spacing:2.4px;text-transform:uppercase;color:rgba(255,255,255,0.78);margin-bottom:6px;text-shadow:0 1px 6px rgba(60,0,40,0.6);}
+  .atelier-etape[hidden]{display:none;}
+  .atelier-titre{
+    font-size:clamp(20px,2.3vw,30px);font-weight:750;letter-spacing:0.5px;color:#fff;line-height:1.1;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    text-shadow:0 2px 0 rgba(60,0,40,0.45), 0 0 26px rgba(255,79,163,0.55);
   }
-  /* et le noir aux quatre coins : il creuse la pièce et ramène l'œil au
-     milieu. Il passe sous les panneaux, qui ont leur propre fond, donc il ne
-     les assombrit pas. */
-  .dress-stage::after{
-    content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
-    background:radial-gradient(125% 95% at 42% 45%, transparent 52%, rgba(0,0,0,0.62) 100%);
+  .atelier-titre::after{content:"";display:block;width:62px;height:3px;margin-top:9px;border-radius:2px;background:linear-gradient(90deg,#ff4fa3,#39d4ff);box-shadow:0 0 12px rgba(255,79,163,0.7);}
+  .atelier-fermer{position:absolute;right:18px;top:14px;z-index:6;background:rgba(20,8,32,0.35);}
+  /* la caméra : le personnage entier, ou le visage de près */
+  .atelier-vues{position:absolute;left:24px;bottom:22px;display:flex;gap:8px;z-index:4;}
+  .atelier-vue{
+    appearance:none;border:1px solid rgba(255,255,255,0.28);background:rgba(20,8,32,0.45);color:rgba(255,255,255,0.8);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    font:inherit;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;padding:9px 14px;border-radius:999px;cursor:pointer;
   }
-  /* LE SOCLE. Trois couches dans un seul élément, et l'ordre de peinture les
-     empile dans le bon sens : la tache de lumière (le fond), l'ombre de
-     contact sous les pieds (::before), le rebord du disque (::after). Son
-     centre est à 0,978 de la boîte — la plante des pieds du mannequin. */
-  .dress-stage.tourne{cursor:grabbing;}
-  .dress-socle{
-    position:absolute;z-index:1;pointer-events:none;
-    left:calc(var(--perso-x) + var(--perso-s) * 0.5);
-    top:calc(var(--perso-y) + var(--perso-s) * 0.978);
-    width:calc(var(--perso-s) * 0.80);
-    height:calc(var(--perso-s) * 0.175);
-    transform:translate(-50%,-50%);
-    border-radius:50%;
-    background:radial-gradient(50% 50% at 50% 50%, rgba(var(--accent-rgb),0.26), rgba(var(--accent-rgb),0.06) 58%, transparent 76%);
+  .atelier-vue:hover{color:#fff;border-color:rgba(255,255,255,0.6);}
+  .atelier-vue.on{color:#fff;background:rgba(255,79,163,0.35);border-color:rgba(255,255,255,0.75);}
+  .atelier-vue:focus-visible,.atelier-onglet:focus-visible,.at-case:focus-visible,.at-teinte:focus-visible,.at-puce:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+  /* la colonne de verre */
+  .atelier-cote{
+    position:absolute;right:16px;top:62px;bottom:16px;width:min(410px,40%);z-index:5;
+    display:flex;flex-direction:column;overflow:hidden;border-radius:16px;
+    background:rgba(18,8,34,0.62);
+    backdrop-filter:blur(18px) saturate(1.25);-webkit-backdrop-filter:blur(18px) saturate(1.25);
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow:0 20px 56px rgba(20,0,30,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
   }
-  .dress-socle::before{
-    content:"";position:absolute;left:30%;right:30%;top:30%;bottom:30%;
-    border-radius:50%;
-    background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.62), transparent 70%);
+  .atelier-onglets{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;padding:8px 6px 6px;flex:0 0 auto;border-bottom:1px solid rgba(255,255,255,0.08);}
+  .atelier-onglet{
+    appearance:none;border:0;background:none;color:rgba(255,255,255,0.55);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0 7px;border-radius:10px;
+    font:inherit;font-size:9.5px;letter-spacing:-0.1px;white-space:nowrap;overflow:hidden;min-width:0;
   }
-  .dress-socle::after{
-    content:"";position:absolute;inset:14% 8%;
-    border-radius:50%;
-    border:1px solid rgba(var(--accent-rgb),0.42);
-    box-shadow:0 0 24px rgba(var(--accent-rgb),0.22), inset 0 0 26px rgba(var(--accent-rgb),0.10);
+  .atelier-onglet svg{width:22px;height:22px;flex:0 0 auto;}
+  .atelier-onglet:hover{color:#fff;background:rgba(255,255,255,0.06);}
+  .atelier-onglet.on{color:#fff;background:linear-gradient(180deg,rgba(255,79,163,0.34),rgba(57,212,255,0.12));box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2);}
+  .atelier-contenu{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 18px 18px;scrollbar-width:thin;scrollbar-color:rgba(255,79,163,0.7) transparent;}
+  .atelier-contenu::-webkit-scrollbar{width:8px;}
+  .atelier-contenu::-webkit-scrollbar-thumb{background:rgba(255,79,163,0.6);border-radius:999px;}
+  .at-titre{
+    display:flex;align-items:center;gap:10px;margin:16px 0 10px;
+    font-size:11px;font-weight:650;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.9);
   }
-  /* LE CANVAS PASSE AU-DESSUS DE TOUT, et ne prend aucun clic. Il était sous
-     les emplacements, si bien que chaque aperçu se voyait à travers le voile
-     du panneau et arrivait délavé. Au-dessus, le vêtement sort à pleine
-     teinte ; partout où il n'y a pas d'étoffe le canvas reste transparent,
-     donc l'emplacement, son cadre et sa pastille continuent de se voir
-     dessous. `pointer-events:none` laisse les clics traverser. */
-  #dressCv{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:5;pointer-events:none;}
-  /* LA PLAQUE, en haut à gauche : l'étape du parcours quand on est en train
-     de créer son profil, puis le nom du personnage souligné d'un filet
-     d'accent. C'est l'en-tête des écrans de personnage, et elle remplace le
-     titre autocollant posé de travers de l'ancien salon. */
-  .dress-hud{
-    position:absolute;left:26px;top:20px;z-index:6;
-    max-width:44%;pointer-events:none;
+  .at-titre::before{content:"";width:3px;height:13px;border-radius:2px;background:#ff4fa3;box-shadow:0 0 10px rgba(255,79,163,0.9);}
+  .at-titre::after{content:"";flex:1 1 auto;height:1px;background:linear-gradient(90deg,rgba(255,255,255,0.18),rgba(255,255,255,0));}
+  .at-note{font-size:12px;line-height:1.45;color:rgba(255,255,255,0.6);margin:-2px 0 10px;}
+  /* un curseur : son nom, sa valeur, et la glissière aux couleurs de la plage */
+  .at-curseur{display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 10px;margin:9px 0 11px;}
+  .at-curseur span{font-size:12.5px;color:rgba(255,255,255,0.86);}
+  .at-curseur output{font-size:11px;color:rgba(255,255,255,0.45);font-variant-numeric:tabular-nums;}
+  .at-curseur input{grid-column:1/-1;width:100%;margin:0;height:22px;background:transparent;appearance:none;-webkit-appearance:none;cursor:pointer;}
+  .at-curseur input::-webkit-slider-runnable-track{height:4px;border-radius:999px;background:linear-gradient(90deg,#ff4fa3 var(--v,50%),rgba(255,255,255,0.18) var(--v,50%));}
+  .at-curseur input::-moz-range-track{height:4px;border-radius:999px;background:linear-gradient(90deg,#ff4fa3 var(--v,50%),rgba(255,255,255,0.18) var(--v,50%));}
+  .at-curseur input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,79,163,0.55),0 2px 6px rgba(0,0,0,0.4);}
+  .at-curseur input::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,79,163,0.55),0 2px 6px rgba(0,0,0,0.4);}
+  .at-curseur input:focus-visible{outline:none;}
+  .at-curseur input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px #fff;}
+  /* les pastilles de couleur */
+  .at-teintes{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px;}
+  .at-teinte{appearance:none;width:30px;height:30px;border-radius:50%;padding:0;cursor:pointer;border:2px solid rgba(255,255,255,0.22);box-shadow:inset 0 -3px 6px rgba(0,0,0,0.25);transition:transform 0.12s ease;}
+  .at-teinte:hover{transform:scale(1.1);}
+  .at-teinte.on{border-color:#fff;box-shadow:0 0 0 3px rgba(255,79,163,0.6), inset 0 -3px 6px rgba(0,0,0,0.25);}
+  .at-teinte--aucun{background:repeating-linear-gradient(45deg,rgba(255,255,255,0.12) 0 4px,transparent 4px 8px);}
+  /* les cases : une vignette et un nom */
+  .at-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .at-grille--4{grid-template-columns:repeat(4,1fr);}
+  .at-case{
+    appearance:none;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 5px 8px;
+    border-radius:11px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.8);
+    font:inherit;font-size:10.5px;line-height:1.2;text-align:center;cursor:pointer;transition:transform 0.12s ease, background 0.12s ease;
   }
-  .dress-etape{
-    font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
-    color:var(--blue);
-    text-shadow:0 0 10px rgba(var(--accent-rgb),0.55);
-    margin-bottom:7px;
-  }
-  .dress-etape[hidden]{display:none;}
-  .dress-titre{
-    font-size:clamp(19px,2.4vw,26px);font-weight:600;letter-spacing:0.4px;
-    color:var(--white);
-    text-shadow:0 0 18px rgba(var(--accent-rgb),0.28), 0 2px 6px rgba(0,0,0,0.75);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .dress-titre::after{
-    content:"";display:block;margin-top:8px;width:62px;height:2px;
-    background:linear-gradient(90deg, var(--blue), rgba(var(--accent-rgb),0));
-    box-shadow:0 0 10px rgba(var(--accent-rgb),0.55);
-  }
-  /* La colonne de droite : la penderie, puis les réglages. UNE COLONNE FLEX,
-     et non deux blocs posés chacun dans son coin — le pavé du bas grandit
-     avec la longueur de la mention sur la photo, qui change avec la langue et
-     la largeur de la fenêtre, et il finissait par mordre sur la penderie. Ici
-     c'est la penderie qui cède la place, et les deux cadres ne se touchent
-     jamais. Elle reste SOUS le canvas : c'est lui qui peint les aperçus. */
-  .dress-cote{
-    position:absolute;right:16px;top:16px;bottom:16px;width:min(50%,412px);z-index:3;
-    cursor:auto;touch-action:auto;
-    display:flex;flex-direction:column;gap:10px;min-height:0;
-  }
-  /* Les deux panneaux ont le même cadre : verre sombre, liseré clair d'un
-     pixel, et deux équerres d'accent aux coins opposés — le cadre des menus
-     de jeu, pour le prix de deux pseudo-éléments. */
-  .dress-rack,.dress-outils{
-    position:relative;
-    background:linear-gradient(180deg, rgba(10,20,30,0.74), rgba(3,8,13,0.88));
-    border:1px solid rgba(255,255,255,0.10);
-    border-radius:8px;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.07), 0 16px 38px rgba(0,0,0,0.45);
-  }
-  .dress-rack::before,.dress-rack::after,
-  .dress-outils::before,.dress-outils::after{
-    content:"";position:absolute;width:13px;height:13px;pointer-events:none;
-    border:1px solid rgba(var(--accent-rgb),0.55);
-  }
-  .dress-rack::before,.dress-outils::before{left:-1px;top:-1px;border-right:0;border-bottom:0;border-top-left-radius:8px;}
-  .dress-rack::after,.dress-outils::after{right:-1px;bottom:-1px;border-left:0;border-top:0;border-bottom-right-radius:8px;}
-  /* LES DEUX ONGLETS, au-dessus de la penderie : ce qu'on met sur le
-     personnage d'un côté, ce qu'il EST de l'autre. Ils remplacent l'intitulé
-     du panneau — deux mots valent mieux qu'un titre quand il y a deux
-     contenus. L'onglet actif porte la barre d'accent que portait le titre. */
-  .dress-onglets{
-    flex:0 0 auto;display:flex;gap:6px;margin:0 0 10px;
-  }
-  .dress-onglet{
-    flex:1 1 0;
-    padding:8px 10px 7px;
-    border:1px solid rgba(255,255,255,0.10);border-radius:5px;
-    background:rgba(255,255,255,0.03);
-    color:var(--white-35);
-    font:inherit;font-size:10.5px;font-weight:600;letter-spacing:2.2px;text-transform:uppercase;
-    cursor:pointer;
-    transition:color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
-  }
-  .dress-onglet:hover{color:var(--white-60);border-color:rgba(255,255,255,0.18);}
-  .dress-onglet.on{
-    color:var(--white);
-    border-color:rgba(var(--accent-rgb),0.55);
-    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.16), rgba(var(--accent-rgb),0.04));
-    box-shadow:inset 0 -2px 0 var(--blue), 0 0 14px rgba(var(--accent-rgb),0.20);
-  }
-  .dress-onglet:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;}
-  /* « Aucun » : une case vide, qui retire ce qu'on porte. Pas d'aperçu 3D —
-     il n'y a rien à montrer, et un visage tout seul se confondrait avec le
-     rayon d'à côté. */
-  .dress-case--rien{
-    display:flex;align-items:center;justify-content:center;
-    font-size:18px;color:var(--white-35);
-  }
-  .dress-case--rien::before{content:"\2014";}
-  /* L'intitulé d'un panneau : une barre d'accent, le mot en capitales
-     espacées, et un filet qui finit la ligne. */
-  .dress-tete{
-    flex:0 0 auto;display:flex;align-items:center;gap:9px;
-    margin:0 2px 10px;
-    font-size:10.5px;font-weight:600;letter-spacing:2.4px;text-transform:uppercase;
-    color:var(--white-60);
-  }
-  .dress-tete::before{content:"";width:3px;height:12px;background:var(--blue);box-shadow:0 0 9px rgba(var(--accent-rgb),0.9);}
-  .dress-tete::after{content:"";flex:1 1 auto;height:1px;background:linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0));}
-  /* La penderie. Une case par pièce — l'aperçu 3D y est dessiné par le canvas
-     du dessus, à la position de la case : aucune image n'est recopiée par
-     vignette. Les pièces sont rangées par catégorie, chaque groupe sous son
-     intertitre.
-     DEUX BOÎTES, ET IL EN FAUT DEUX. Le cadre est sur l'extérieur, le
-     défilement sur l'intérieur. Quand les deux étaient sur le même élément,
-     le navigateur peignait l'ascenseur contre l'arête intérieure de la
-     bordure. */
-  .dress-rack{
-    flex:1 1 auto;min-height:0;
-    display:flex;flex-direction:column;
-    padding:12px 12px 10px;overflow:hidden;
-  }
-  .dress-piste{
-    flex:1 1 auto;min-width:0;
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
-    grid-auto-rows:min-content;gap:8px;
-    overflow-y:auto;padding-right:7px;
-    /* L'ascenseur : le navigateur en pose un gris d'interface, et ça se voit
-       sur un fond de nuit. On lui donne la couleur de l'heure.
-       DEUX ÉCRITURES POUR LA MÊME CHOSE, et ce n'est pas du zèle : Chrome
-       ignore désormais les `::-webkit-scrollbar` dès que `scrollbar-width`
-       est posé, tandis que les navigateurs plus anciens ne connaissent que
-       celles-là. Chacun prend ce qu'il sait lire. */
-    scrollbar-width:thin;scrollbar-color:rgba(var(--accent-rgb),0.75) rgba(255,255,255,0.06);
-  }
-  .dress-piste::-webkit-scrollbar{width:10px;}
-  /* Chrome pose DEUX BOUTONS aux bouts de la piste dès qu'on lui dessine un
-     ascenseur, et ils héritaient du fond de la piste : deux pastilles claires
-     en haut et en bas du cadre, que personne n'avait demandées. */
-  .dress-piste::-webkit-scrollbar-button{display:none;height:0;width:0;}
-  .dress-piste::-webkit-scrollbar-track{background:rgba(255,255,255,0.05);border-radius:999px;margin:2px 0;}
-  .dress-piste::-webkit-scrollbar-thumb{
-    background:rgba(var(--accent-rgb),0.6);border-radius:999px;
-    border:2px solid transparent;background-clip:padding-box;
-  }
-  .dress-piste::-webkit-scrollbar-thumb:hover{background:rgba(var(--accent-rgb),0.95);background-clip:padding-box;}
-  /* L'intertitre d'une catégorie : toute la largeur de la penderie, un filet
-     pour finir la ligne. */
-  .dress-groupe{
-    grid-column:1/-1;display:flex;align-items:center;gap:8px;
-    margin:10px 0 1px;padding:0 1px;
-    font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;
-    color:var(--white-35);
-  }
-  .dress-groupe:first-child{margin-top:0;}
-  .dress-groupe::after{content:"";flex:1 1 auto;height:1px;background:linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0));}
-  /* UN EMPLACEMENT. Carré, liseré d'un pixel, angles à peine cassés : la case
-     d'inventaire, qui ne ressemble à rien d'autre sur le site. */
-  .dress-case{
-    position:relative;height:72px;
-    border:1px solid rgba(255,255,255,0.13);border-radius:4px;
-    background:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015));
-    cursor:pointer;
-    transition:transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, border-color 0.14s ease;
-  }
-  /* Le survol s'allume franchement : la penderie ne tourne plus ses aperçus,
-     il lui faut un autre signe de vie. */
-  .dress-case:hover{
-    transform:translateY(-3px) scale(1.06);z-index:2;
-    border-color:rgba(var(--accent-rgb),0.9);
-    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.20), rgba(var(--accent-rgb),0.05));
-    box-shadow:0 0 18px rgba(var(--accent-rgb),0.35), 0 8px 18px rgba(0,0,0,0.5);
-  }
-  .dress-case.porte{
-    border-color:var(--blue);
-    background:linear-gradient(180deg, rgba(var(--accent-rgb),0.26), rgba(var(--accent-rgb),0.07));
-    box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),0.30), 0 0 16px rgba(var(--accent-rgb),0.30);
-  }
-  /* la pastille de la pièce portée, au coin : le carré d'accent et sa coche
-     sombre, le marquage des grilles d'inventaire */
-  .dress-case.porte::after{
-    content:"\2713";
-    position:absolute;right:-1px;top:-1px;
-    width:17px;height:17px;
-    display:flex;align-items:center;justify-content:center;
-    background:var(--blue);color:#03080d;
-    font-size:10px;font-weight:700;line-height:1;
-    border-radius:0 4px 0 5px;
-    box-shadow:0 0 10px rgba(var(--accent-rgb),0.7);
-  }
-  .dress-case:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;}
-  /* LES TEINTES DE PEAU SONT DES PASTILLES, pas des vignettes 3D : le canvas
-     ne peint rien dessus (voir `dessiner`), c'est la case elle-même qui porte
-     la couleur, posée en style direct — donc ni le survol ni l'état « porté »
-     ne peuvent la recouvrir. Plus basses que les vêtements : une couleur se
-     lit d'un coup d'œil, elle n'a pas besoin d'un carré. Le liseré sombre
-     intérieur les détache les unes des autres, y compris les plus claires,
-     qui se confondraient sinon avec le fond du panneau. */
-  .dress-case--teinte{
-    height:44px;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.40);
-  }
-  .dress-case--teinte:hover{transform:translateY(-2px) scale(1.05);}
-  .dress-case--teinte.porte{
-    box-shadow:inset 0 0 0 2px rgba(0,0,0,0.45), 0 0 0 1px var(--blue), 0 0 16px rgba(var(--accent-rgb),0.45);
-  }
-  .dress-bt:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:3px;}
-  /* EN SOMMEIL : un groupe dont rien n'est posable. Les chaussures attendent
-     un bas — le refus le dit au clic, mais il vaut mieux le dire AVANT :
-     éteints et cernés de tirets, ces emplacements se lisent comme « pas
-     encore », et la case tremble quand même si on insiste. */
-  .dress-groupe--dort{color:rgba(255,255,255,0.22);}
-  .dress-groupe--dort::after{background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0));}
-  .dress-case--dort{
-    opacity:0.55;
-    border-style:dashed;border-color:rgba(255,255,255,0.18);
-    background:rgba(255,255,255,0.02);
-  }
-  .dress-case--dort:hover{
-    transform:none;box-shadow:none;
-    background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.18);
-  }
-  /* Refus : la case tremble, elle ne s'équipe pas. Un article verrouillé
-     reste dans la penderie — le cadenas dit qu'il existe et qu'il se gagne —
-     mais il ne se pose pas sur le mannequin. Le tremblement est court et sec,
-     et la case rougit le temps de la secousse : deux signaux pour la même
-     chose, parce qu'un mouvement seul se rate si l'œil est ailleurs. */
-  @keyframes dressRefus{
-    0%,100%{transform:translateX(0);}
-    15%{transform:translateX(-5px) rotate(-2deg);}
-    30%{transform:translateX(5px) rotate(2deg);}
-    45%{transform:translateX(-4px) rotate(-1.5deg);}
-    60%{transform:translateX(4px) rotate(1.5deg);}
-    80%{transform:translateX(-2px);}
-  }
-  .dress-case.refus{
-    animation:dressRefus 0.36s ease;
-    border-color:#e0556c;
-    background:linear-gradient(180deg, rgba(224,85,108,0.28), rgba(224,85,108,0.08));
-    box-shadow:0 0 18px rgba(224,85,108,0.40);
-  }
-  .dress-case.refus:hover{transform:none;}
-  /* Les réglages d'apparence : des pastilles techniques, capitales espacées
-     et liseré fin, qui s'allument à l'accent de l'heure. */
-  .dress-outils{
-    flex:0 0 auto;
-    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
-    padding:12px;
-  }
-  .dress-outils .dress-tete{flex:1 1 100%;margin-bottom:2px;}
-  .dress-bt{
-    display:inline-flex;align-items:center;gap:8px;
-    padding:9px 14px;
-    border:1px solid rgba(255,255,255,0.16);border-radius:6px;
-    background:rgba(255,255,255,0.045);
-    color:var(--white-60);
-    font:inherit;font-size:10.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
-    cursor:pointer;
-    transition:border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
-  }
-  .dress-bt:hover{
-    border-color:rgba(var(--accent-rgb),0.85);
-    background:rgba(var(--accent-rgb),0.14);
-    color:var(--white);
-    box-shadow:0 0 16px rgba(var(--accent-rgb),0.28);
-  }
-  .dress-bt:active{background:rgba(var(--accent-rgb),0.22);}
-  /* « Tout effacer » déshabille : il vire au rouge au survol, seul geste du
-     salon qui défait tout d'un coup. */
-  .dress-bt--2:hover{
-    border-color:rgba(224,85,108,0.85);
-    background:rgba(224,85,108,0.14);
-    box-shadow:0 0 16px rgba(224,85,108,0.25);
-  }
-  /* Écran étroit : la colonne passe sous le personnage, sur toute la largeur.
-     Elle garde sa structure — penderie puis réglages — donc rien ne se
-     chevauche là non plus, et le socle suit le personnage tout seul. */
+  .at-case:hover{background:rgba(255,255,255,0.1);transform:translateY(-1px);}
+  .at-case.on{border-color:rgba(255,255,255,0.85);background:rgba(255,79,163,0.2);box-shadow:0 0 18px rgba(255,79,163,0.35);color:#fff;}
+  .at-vignette{display:block;width:100%;aspect-ratio:1/1;border-radius:8px;background:radial-gradient(circle at 50% 35%,rgba(255,170,120,0.35),rgba(60,20,70,0.5));object-fit:cover;}
+  .at-case.verrou .at-vignette{filter:grayscale(1) brightness(0.45);}
+  .at-case.verrou::after{content:"";position:absolute;left:50%;top:34%;width:26px;height:30px;transform:translate(-50%,-50%);
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 28'%3E%3Cpath d='M6 12V8a6 6 0 0 1 12 0v4' fill='none' stroke='white' stroke-width='2.6'/%3E%3Crect x='3' y='12' width='18' height='14' rx='3' fill='white'/%3E%3C/svg%3E") center/contain no-repeat;}
+  @keyframes atRefus{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}50%{transform:translateX(4px);}75%{transform:translateX(-2px);}}
+  .at-case.refus{animation:atRefus 0.34s ease;}
+  /* les puces : des choix courts, en ligne */
+  .at-puces{display:flex;flex-wrap:wrap;gap:6px;}
+  .at-puce{appearance:none;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.8);font:inherit;font-size:11.5px;padding:7px 12px;border-radius:999px;cursor:pointer;}
+  .at-puce:hover{border-color:rgba(255,255,255,0.5);color:#fff;}
+  .at-puce.on{background:#fff;color:#2a0f33;border-color:#fff;}
+  /* l'identité : le nom, la photo, homme ou femme */
+  .at-champ{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.22);background:rgba(0,0,0,0.25);color:#fff;font:inherit;font-size:15px;}
+  .at-champ:focus{outline:none;border-color:#ff4fa3;box-shadow:0 0 0 3px rgba(255,79,163,0.3);}
+  .at-champ.refus{animation:atRefus 0.34s ease;border-color:#ff5d6c;}
+  .at-aide{font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:6px;}
+  .at-photo{display:flex;align-items:center;gap:14px;}
+  .at-photo-cadre{flex:0 0 auto;width:74px;height:74px;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:2px solid rgba(255,79,163,0.8);font-size:30px;font-weight:650;color:rgba(255,255,255,0.8);}
+  .at-photo-cadre img{width:100%;height:100%;object-fit:cover;}
+  .at-sexes{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .at-sexe{appearance:none;padding:14px 10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.85);font:inherit;font-size:13px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+  .at-sexe.on{background:linear-gradient(135deg,rgba(255,79,163,0.45),rgba(57,212,255,0.3));border-color:#fff;color:#fff;}
+  /* le bas de la colonne : le hasard, et le bouton qui termine */
+  .atelier-actions{display:flex;gap:10px;padding:12px 14px;flex:0 0 auto;border-top:1px solid rgba(255,255,255,0.1);background:rgba(10,4,20,0.35);}
+  .atelier-actions .preview-cta{flex:1 1 auto;margin:0;border:0;color:#fff;font-weight:650;
+    background:linear-gradient(135deg,#ff4fa3,#b44cff 55%,#39d4ff);box-shadow:0 8px 24px rgba(255,79,163,0.35), inset 0 1px 0 rgba(255,255,255,0.35);}
+  .atelier-actions .preview-cta:hover{filter:brightness(1.08);box-shadow:0 10px 30px rgba(255,79,163,0.5), inset 0 1px 0 rgba(255,255,255,0.35);}
+  .at-hasard{appearance:none;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.06);color:#fff;font:inherit;font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+  .at-hasard:hover{background:rgba(255,255,255,0.14);}
+  .at-hasard svg{width:18px;height:18px;}
+  /* en attendant le moteur (un fichier à part, chargé à la première ouverture) */
+  .atelier-charge{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:3;color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:2px;text-transform:uppercase;background:linear-gradient(180deg,#3a1552,#ff7a6b 58%,#f6b38a);}
+  .atelier-charge[hidden]{display:none;}
+  /* sans WebGL 2 : l'onglet Identité seul, et un mot à la place du personnage */
+  .atelier.sans-3d .atelier-onglet:not([data-id="identite"]),.atelier.sans-3d .at-hasard,.atelier.sans-3d .atelier-vues{display:none;}
+  .atelier.sans-3d .atelier-scene{display:flex;align-items:center;justify-content:center;padding:0 44% 0 6%;box-sizing:border-box;color:rgba(255,255,255,0.8);font-size:14px;text-align:center;cursor:default;background:linear-gradient(180deg,#3a1552,#ff7a6b 58%,#f6b38a);}
+  /* écran étroit : la colonne prend la moitié droite, le personnage l'autre */
   @media (max-width:820px){
-    .dress-cote{left:12px;right:12px;width:auto;top:auto;bottom:12px;max-height:58%;}
-    .dress-hud{max-width:none;left:20px;right:26px;top:16px;}
+    .atelier .arena-panel{width:100vw;height:100dvh;border-radius:0;}
+    .atelier-cote{width:52%;right:8px;top:54px;bottom:8px;}
+    .atelier-hud{left:16px;top:14px;}
+    .atelier-vues{left:12px;bottom:12px;}
+  }
+  @media (orientation:landscape) and (max-height:500px){
+    .atelier .arena-panel{width:100vw;height:100dvh;border-radius:0;}
+    .atelier-cote{width:50%;right:6px;top:6px;bottom:6px;border-radius:12px;}
+    .atelier-fermer{right:auto;left:10px;top:10px;}
+    .atelier-hud{left:56px;top:12px;}
+    .atelier-titre{font-size:18px;}
+    .atelier-titre::after{margin-top:5px;}
+    .atelier-onglet{font-size:0;gap:0;padding:6px 1px;}
+    .atelier-onglet svg{width:19px;height:19px;}
+    .atelier-contenu{padding:2px 12px 12px;}
+    .atelier-actions{padding:8px 10px;}
+    .at-grille{grid-template-columns:repeat(4,1fr);}
   }
   .jump-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#5c94fc;}
   /* Le tampon fait la moitié de la boîte et le navigateur l'agrandit au PLUS
@@ -4019,48 +3825,6 @@
   <div class="preview-desc preview-desc-probe" id="descProbe" aria-hidden="true"></div>
 </div>
 
-<!-- La fenêtre du profil : créer son gamertag, ou le modifier — le nom et la
-     photo. Même modèle que les Réglages. -->
-<div class="info-overlay" id="profilOverlay" role="dialog" aria-modal="true" aria-labelledby="profilTitre">
-  <div class="size-panel reglages-panel profil-panel glass">
-    <div class="info-header">
-      <div>
-        <!-- « Étape 1 sur 2 » : n'apparaît qu'à la création, quand la fenêtre
-             est le premier pas d'un parcours et non un réglage isolé. -->
-        <div class="profil-etape" id="profilEtape" hidden></div>
-        <h2 id="profilTitre"></h2>
-        <div class="info-sub" id="profilSousTitre" data-i18n="profilSub">Kept on this device only</div>
-      </div>
-      <button class="legal-close" id="profilFermer" data-i18n-aria="close" aria-label="Close">✕</button>
-    </div>
-    <div class="info-body">
-      <div class="profil-photo-choix">
-        <button type="button" class="gt-cadre gt-cadre--grand" id="profilPhotoBt" data-i18n-aria="profilPhotoAria" aria-label="Choose a profile picture">
-          <img id="profilPhotoApercu" alt="" draggable="false" hidden>
-          <span class="gt-initiale" id="profilPhotoInitiale">+</span>
-        </button>
-        <input type="file" id="profilPhotoFichier" accept="image/*" hidden>
-        <div class="profil-photo-boutons">
-          <button type="button" class="pill" id="profilPhotoChoisir" data-i18n="profilPhotoChoisir">Choose a photo</button>
-          <button type="button" class="pill" id="profilPhotoRetirer" data-i18n="profilPhotoRetirer">Remove</button>
-        </div>
-      </div>
-      <div class="settings-group">
-        <label class="settings-label" for="profilNom" data-i18n="profilNomLabel">Gamertag</label>
-        <input type="text" class="champ" id="profilNom" maxlength="16" autocomplete="nickname" spellcheck="false">
-        <div class="profil-aide" data-i18n="profilNomAide">2 to 16 characters — letters, digits, dots, dashes.</div>
-      </div>
-      <div class="profil-actions profil-actions--fenetre">
-        <button type="button" class="preview-cta" id="profilSauver" data-i18n="profilSauver">Save</button>
-      </div>
-    </div>
-    <div class="legal-hint">
-      <span><span class="key">⏎</span> <span data-i18n="profilSauver">Save</span></span>
-      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
-    </div>
-  </div>
-</div>
-
 <!-- L'annonce d'un déverrouillage. Elle vit hors du panneau : la pièce qui
      s'ouvre n'est pas celle qu'on regarde, et le message doit tenir quel que
      soit l'endroit du site où la chose arrive. `aria-live` la fait lire par un
@@ -4296,65 +4060,30 @@
   </div>
 </div>
 
-<!-- ===== Mini-jeu « Dress Up » =====
-     Un salon d'essayage : un mannequin à gauche, un portant à droite, on prend
-     une pièce et on la pose. Le cadre est celui des deux autres jeux (même
-     verre, même en-tête, même barre d'aide) ; l'intérieur, lui, imite les jeux
-     d'habillage en Flash de la fin des années 2000 — fond sucré, cadres en
-     pointillés, titre cerné et de travers.
-     Le mannequin comme les vêtements sont les MÊMES modèles 3D que partout
-     ailleurs sur le site ; ils se superposent, ils ne s'enfilent pas. Voir le
-     module `dressup`. -->
-<div class="arena-overlay" id="dressOverlay" role="dialog" aria-modal="true" aria-labelledby="dressTitle">
-  <div class="arena-panel glass">
-    <div class="arena-head">
-      <h2 id="dressTitle">DRESS UP</h2>
-      <button class="legal-close" id="dressClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+<!-- ===== L'ATELIER DU PERSONNAGE (refait le 25 sept. 2026) =====
+     Le créateur de personnage du profil : la plage au couchant en plein
+     cadre, le personnage, et à droite la colonne des réglages. Tout est
+     construit, animé et dessiné par atelier.js, chargé à la première
+     ouverture (voir `dressup`) ; il n'y a ici que la charpente. Plus de barre
+     des touches en bas : c'était la demande. -->
+<div class="arena-overlay atelier" id="dressOverlay" role="dialog" aria-modal="true" aria-labelledby="atelierTitre">
+  <div class="arena-panel">
+    <div class="atelier-scene" id="atelierScene"></div>
+    <div class="atelier-charge" id="atelierCharge" data-i18n="atelierCharge">Loading…</div>
+    <div class="atelier-hud">
+      <div class="atelier-etape" id="atelierEtape" hidden></div>
+      <h2 class="atelier-titre" id="atelierTitre"></h2>
     </div>
-    <div class="dress-stage" id="dressStage">
-      <!-- Le socle : la tache de lumière, l'ombre de contact et le rebord du
-           disque, posés sous les pieds du personnage. Le canvas est en WebGL
-           et ne peint que des maillages ; c'est donc le CSS qui tient le
-           décor, à la place que `poserSocle` lui indique. -->
-      <div class="dress-socle" aria-hidden="true"></div>
-      <canvas id="dressCv"></canvas>
-      <!-- la plaque : l'étape du parcours, puis le nom du personnage -->
-      <div class="dress-hud">
-        <div class="dress-etape" id="dressEtape" hidden></div>
-        <div class="dress-titre" id="dressTitre"></div>
+    <button class="legal-close atelier-fermer" id="dressClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+    <div class="atelier-vues" id="atelierVues"></div>
+    <aside class="atelier-cote" id="atelierCote">
+      <nav class="atelier-onglets" id="atelierOnglets" role="tablist"></nav>
+      <div class="atelier-contenu" id="atelierContenu" role="tabpanel"></div>
+      <div class="atelier-actions">
+        <button type="button" class="at-hasard" id="atelierHasard"></button>
+        <button type="button" class="preview-cta" id="atelierFini"></button>
       </div>
-      <!-- L'enregistrement est dans la SCÈNE, sous le personnage : c'est de lui
-           qu'on emporte l'image, pas du portant. -->
-      <!-- Le portant et les outils : UNE colonne, pour que le cadre bleu ne
-           vienne jamais mordre le cadre rose quand la mention s'allonge. -->
-      <div class="dress-cote">
-        <!-- le portant : rempli par le script, une case par pièce, groupées
-             par catégorie -->
-        <!-- le cadre pointillé dehors, la piste qui défile dedans : l'ascenseur
-             ne vient plus se poser sur le pointillé (voir .dress-rack) -->
-        <div class="dress-rack">
-          <!-- deux onglets : ce qu'on lui met dessus, et ce qu'il est -->
-          <div class="dress-onglets" role="tablist">
-            <button class="dress-onglet on" id="dressOngletP" role="tab" aria-selected="true"></button>
-            <button class="dress-onglet" id="dressOngletC" role="tab" aria-selected="false"></button>
-          </div>
-          <div class="dress-piste" id="dressRack" role="listbox" aria-label="Wardrobe"></div>
-        </div>
-        <div class="dress-outils">
-          <div class="dress-tete" id="dressLookTitre" aria-hidden="true"></div>
-          <button class="dress-bt dress-bt--2" id="dressNu"></button>
-        </div>
-      </div>
-    </div>
-    <div class="legal-hint">
-      <span><span class="key">&#8592;</span><span class="key">&#8594;</span><span class="key">&#8593;</span><span class="key">&#8595;</span> <span data-i18n="hintBrowse">browse</span></span>
-      <!-- un seul indice : les deux gestes font la même chose, deux lignes
-           laissaient croire le contraire -->
-      <span><span class="key wide">glisser</span> <span data-i18n="dressTurn">turn the character</span></span>
-      <span><span class="key wide">clic / enter</span> <span data-i18n="dressPick">pick a piece</span></span>
-      <span><span class="key wide">clic / enter</span> <span data-i18n="dressDrop">click it again to take it off</span></span>
-      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
-    </div>
+    </aside>
   </div>
 </div>
 
@@ -4660,7 +4389,7 @@ Date : ______<br>
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont servies par le site lui-même : aucune ressource n'est chargée depuis un serveur tiers, à la seule exception de la page Instagram du panneau Contact, et uniquement si vous la demandez (voir ci-dessous).</p>
-<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>La tenue de votre personnage</strong> (clé <code>fp.tenue</code>) : les pièces choisies au salon d'essayage et la couleur de peau. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>Votre personnage</strong> (clé <code>fp.tenue</code>) : celui que vous composez à l'atelier — sexe, silhouette, visage, coiffure, tenue, accessoires et attitude. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>La page Instagram du panneau Contact</h3>
 <p>Le panneau Contact peut afficher, dans le site, la page Instagram du compte @fakeparadisetm. Elle n'est <strong>chargée qu'à votre demande</strong>, quand vous cliquez sur « Voir la page en direct » : tant que vous ne l'avez pas fait, rien n'est demandé à Instagram. Ce clic charge la page depuis les serveurs d'Instagram (Meta Platforms Ireland Ltd.), qui reçoit alors votre adresse IP et les informations techniques de votre navigateur, et peut déposer ses propres cookies, soumis à sa propre politique de confidentialité. Ce choix ne vaut que pour la visite en cours : il n'est conservé nulle part, et la page ne sera de nouveau chargée qu'après un nouveau clic.</p>
 <h3>Évolutions</h3>
@@ -4851,7 +4580,7 @@ cookies: { label:"Cookies", title:"Cookies and trackers", html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are served by the site itself: no resource is loaded from a third-party server, with the sole exception of the Instagram page in the Contact panel, and only if you ask for it (see below).</p>
-<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character's outfit</strong> (key <code>fp.tenue</code>): the pieces chosen in the dressing room and the skin tone. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
+<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character</strong> (key <code>fp.tenue</code>): the one you build in the character creator — sex, build, face, hairstyle, outfit, accessories and pose. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
 <h3>The Instagram page in the Contact panel</h3>
 <p>The Contact panel can display the Instagram page of the @fakeparadisetm account within the site. It is <strong>only loaded at your request</strong>, when you click "See the live page": until you do, nothing is requested from Instagram. That click loads the page from the servers of Instagram (Meta Platforms Ireland Ltd.), which then receives your IP address and your browser's technical information, and may set its own cookies, governed by its own privacy policy. This choice only applies to the current visit: it is not stored anywhere, and the page will only be loaded again after a new click.</p>
 <h3>Future changes</h3>
@@ -4912,6 +4641,7 @@ const STRINGS = {
        usuelle de « jumper ». */
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
+    atelierCharge:"Loading your character…",
     dressTitle:"Dress Up!", dressTurn:"turn the character", dressPick:"pick a piece", dressDrop:"click it again to take it off",
     dressStrip:"Clear all",
     dressCatSkin:"skin", dressCatTop:"tops", dressCatBottom:"bottoms", dressCatShoes:"shoes", dressCatHat:"hats", dressCatAcc:"accessories",
@@ -5001,6 +4731,7 @@ const STRINGS = {
     jumpReady:"PRÊT ?", jumpStart:"Commencer",
     jumpTitleJp:"ジャンパー",
     // Mini-jeu « Dress Up »
+    atelierCharge:"Chargement du personnage…",
     dressTitle:"Dress Up !", dressTurn:"tourner le personnage", dressPick:"choisir une pièce", dressDrop:"recliquer pour l'enlever",
     dressStrip:"Tout effacer",
     dressCatSkin:"peau", dressCatTop:"hauts", dressCatBottom:"bas", dressCatShoes:"chaussures", dressCatHat:"chapeaux", dressCatAcc:"accessoires",
@@ -5390,7 +5121,7 @@ let currentCurrency = "EUR";
    mini-jeu), et depuis le 22 sept. 2026 fp.reglages (langue, devise, musique,
    bruitages — l'utilisateur a demandé que les réglages soient retenus),
    fp.profil (le compte local : gamertag, photo, dépense, statistiques) et
-   fp.tenue (la tenue et la peau du personnage). Rien ne quitte l'appareil. */
+   fp.tenue (le personnage de l'atelier, voir atelier.js). Rien ne quitte l'appareil. */
 const STOCK = {
   lire: (cle, defaut) => { try { const v = JSON.parse(localStorage.getItem(cle)); return v == null ? defaut : v; } catch (e) { return defaut; } },
   ecrire: (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); return true; } catch (e) { return false; } },
@@ -6531,6 +6262,54 @@ const sfx = (() => {
     burst(t, { freq: 4300, q: 2.6, peak: 0.055, attack: 0.0005, decay: 0.012, lp: 10000 });
     burst(t + 0.012, { freq: 2500, q: 1.3, peak: 0.028, attack: 0.001, decay: 0.03, lp: 8000 });
     burst(t + 0.05, { freq: 650, q: 0.6, peak: 0.03, attack: 0.03, decay: 0.34, lp: 1700, bell: 0.3 });
+  };
+  /* ---- le camion de la Livraison (demande du 25 sept. 2026) ----
+     Il arrive en trombe et pile devant nous (voir `camion`) : les freins qui
+     crissent pendant qu'il ralentit, le roulement qui s'éteint, la caisse qui
+     plonge sur ses ressorts, puis le « pschht » de l'air comprimé qu'un camion
+     lâche une fois arrêté. Le crissement et le klaxon ont leurs propres
+     oscillateurs : ils regardent eux-mêmes l'interrupteur Bruitages. */
+  api.freinage = () => {
+    if (!bruitages) return;
+    const c = audio(); if (!c) return; const t = at();
+    // le crissement : deux sifflements qui descendent un peu, tremblés, serrés dans un passe-bande
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 3.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.022, t + 0.06);
+    g.gain.setValueAtTime(0.02, t + 0.36); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.58);
+    bp.connect(g); g.connect(master);
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = 23; lg.gain.value = 38; lfo.connect(lg);
+    [[2480, 2120], [3190, 2760]].forEach(([f0, f1]) => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + 0.56);
+      lg.connect(o.frequency); o.connect(bp); o.start(t); o.stop(t + 0.62);
+    });
+    lfo.start(t); lfo.stop(t + 0.62);
+    // le pneu qui frotte, et le roulement qui s'éteint avec la vitesse
+    burst(t, { freq: 2400, q: 2.5, peak: 0.016, attack: 0.05, decay: 0.46, lp: 5200, bell: 0.2 });
+    burst(t, { freq: 180, q: 0.7, peak: 0.05, attack: 0.02, decay: 0.56, type: 'lowpass' });
+    // l'arrêt : la caisse retombe sur ses ressorts, puis l'air des freins s'échappe
+    note(t + 0.56, 96, 58, 0.045, 0.1, 'sine', 0.003);
+    burst(t + 0.74, { freq: 3800, q: 0.5, peak: 0.042, attack: 0.006, decay: 0.42, type: 'highpass', lp: 9500 });
+  };
+  // le klaxon, une fois garé : « pouet-pouet », deux notes à la tierce, bouchées comme une trompe de camionnette
+  api.klaxon = () => {
+    if (!bruitages) return;
+    const c = audio(); if (!c) return; const t = at();
+    [[0, 0.11], [0.19, 0.27]].forEach(([d, dur]) => {
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2300; lp.Q.value = 0.9;
+      const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 950; pk.Q.value = 1.2; pk.gain.value = 7;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.linearRampToValueAtTime(0.034, t + d + 0.012);
+      g.gain.setValueAtTime(0.03, t + d + dur - 0.035); g.gain.linearRampToValueAtTime(0.0001, t + d + dur);
+      lp.connect(pk); pk.connect(g); g.connect(master);
+      [[415.3, 0], [523.25, 6]].forEach(([f, det]) => {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = det;
+        o.frequency.setValueAtTime(f * 0.96, t + d); o.frequency.linearRampToValueAtTime(f, t + d + 0.03);
+        o.connect(lp); o.start(t + d); o.stop(t + d + dur + 0.02);
+      });
+    });
   };
   /* ---- Age of Seum : les bruits d'une guerre de mèmes ----
      Tous courts, et tous plafonnés par le jeu lui-même (voir `son` dans le
@@ -11493,16 +11272,24 @@ const slider = (() => {
    vêtement entier avec de l'air autour, pas au point qu'il se perde — à 220 %,
    où il couvre toute la fiche, sous le texte (voir .preview.zoome). Il vaut
    pour l'article : un autre article repart à 100 % (voir fillPreview).
-   Le descriptif déplié, lui, garde son défilement. */
+   Le descriptif déplié, lui, garde son défilement.
+   LA VUE 3D D'UN ARTICLE PART D'UN CRAN PLUS PRÈS (demande du 25 sept. 2026) :
+   à 100 %, le vêtement laissait trop d'air dans son cadre, et c'est après un
+   cran de molette qu'il avait la bonne taille. `repos` porte ce cran, sous la
+   loupe, qui zoome toujours autour. Les photos n'en ont pas : elles remplissent
+   déjà leur carré, et grossies d'un cran elles couvraient toute la fiche — le
+   nom du produit, blanc, s'y perdait sur leur fond blanc. La tête de la page
+   Info n'est pas un article et garde sa taille. */
 const loupe = (() => {
   const MIN = 0.7, MAX = 2.2;
+  const CRAN = Math.exp(100 * 0.0022);   // un cran de molette (≈100, voir plus bas) : ×1,25
   const swatch = document.getElementById('previewSwatch');
-  let z = 1;
+  let z = 1, repos = 1;
   function poser(v){
     z = Math.max(MIN, Math.min(MAX, v));
     swatch.style.setProperty('--zoom', z.toFixed(3));
     previewEl.classList.toggle('zoome', z > 1.001);
-    model3d.loupe(z);
+    model3d.loupe(z * repos);            // le tampon 3D suit le grossissement réel de la vue
   }
   previewEl.addEventListener('wheel', (e) => {
     if (DATA[activeCat].kind !== 'shop' || !previewEl.classList.contains('show')) return;
@@ -11513,7 +11300,13 @@ const loupe = (() => {
     const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
     poser(z * Math.exp(-d * 0.0022));    // un cran de molette (≈100) : ×1,25 ou ÷1,25
   }, { passive: false });
-  return { remettre: () => { if (z !== 1) poser(1); }, valeur: () => z };
+  // `article` : la fiche montre un produit de la boutique, dont la vue 3D part d'un cran plus près
+  function remettre(article){
+    const r = article ? CRAN : 1;
+    if (r !== repos){ repos = r; swatch.style.setProperty('--repos', r.toFixed(3)); swatch.classList.toggle('cran', r > 1); z = NaN; }
+    if (z !== 1) poser(1);
+  }
+  return { remettre, valeur: () => z };
 })();
 
 const ROW_H = 96; // pas vertical d'une ligne à l'échelle 1 : aperçu 3D de 88 px (ITEM_CSS) + 8 px (voir .xmb-item.has-3d)
@@ -11839,7 +11632,9 @@ const camion = (() => {
     route.style.transform = `translateX(${horsDroite()}px)`;   // il attend son tour hors champ
     if (moins.matches){
       route.style.transform = ''; texte.style.opacity = '';
-      document.body.classList.add('camion-parti'); enScene = true; etat = 'la'; return;
+      document.body.classList.add('camion-parti'); enScene = true; etat = 'la';
+      sfx.klaxon();                // pas de trajet, donc pas de freins : il est là, et il le dit
+      return;
     }
     await pause(420);            // la barre finit de glisser (0,4 s) : l'icône est à sa place
     if (j !== jeton) return;
@@ -11899,8 +11694,14 @@ const camion = (() => {
       { transform: 'translateY(0) rotate(-0.4deg)', offset: 0.94 },
       { transform: 'translateY(0) rotate(0deg)' }
     ], { duration: 1300, easing: 'linear' });
+    /* Les freins (voir sfx.freinage) : le crissement part vers 450 ms, quand la
+       course ralentit franchement, pour finir sur le plongeon du nez (74 %) ;
+       l'air s'échappe ensuite, pendant que la caisse se repose. Un jeton passé
+       — on a déjà quitté la rubrique — et rien ne sonne. */
+    setTimeout(() => { if (j === jeton) sfx.freinage(); }, 450);
     if (!await fin(roule) || j !== jeton) return;
-    // 3. le texte se pose sur la caisse
+    // 3. le texte se pose sur la caisse, et le camion garé klaxonne
+    setTimeout(() => { if (j === jeton) sfx.klaxon(); }, 160);
     texte.style.opacity = '';
     joue(texte, [
       { opacity: 0, transform: 'translateY(10px)' },
@@ -12903,8 +12704,8 @@ function fillPreview(){
      réclamé, et sauter la hauteur de la fiche d'un article à l'autre. */
   if (cat !== derniereCat){ derniereCat = cat; ficheOuverte = false; }
   // la taille choisie retombe elle aussi : elle valait pour l'article d'avant (voir tailleChoisie)
-  // … et la loupe : un autre article repart à 100 % (voir loupe)
-  if (item !== dernierItem){ dernierItem = item; descOuvert = false; appliquerDesc(); tailleChoisie = null; finManque(); loupe.remettre(); }
+  // … et la loupe : un autre article repart à 100 % — la vue 3D d'un produit, un cran plus près (voir loupe)
+  if (item !== dernierItem){ dernierItem = item; descOuvert = false; appliquerDesc(); tailleChoisie = null; finManque(); loupe.remettre(cat.kind === 'shop'); }
   /* Les tailles, au-dessus des boutons, pour une pièce qu'on peut acheter ; le
      bouton d'achat bleu avec elles (voir .cta-duo.achat). Construites ici,
      avant la mesure du bloc (mesurerInfo, à l'image suivante) : leur hauteur
@@ -13256,10 +13057,6 @@ const profil = (() => {
   const btEditer = document.getElementById('profilEditer'), btPerso = document.getElementById('profilPerso');
   const btPartager = document.getElementById('profilPartager');
   const topGt = document.getElementById('topbarGt');
-  const overlay = document.getElementById('profilOverlay');
-  const champNom = document.getElementById('profilNom');
-  const apercuPhoto = document.getElementById('profilPhotoApercu'), apercuInitiale = document.getElementById('profilPhotoInitiale');
-  const fichier = document.getElementById('profilPhotoFichier');
 
   let p = STOCK.lire(CLE, null);
   if (!p || typeof p !== 'object' || typeof p.nom !== 'string') p = null;
@@ -13340,9 +13137,13 @@ const profil = (() => {
       ligne('profilDepense', p ? esc(formatPrice(p.depense || 0)) : '—') +
       ligne('profilCommandes', p ? (p.commandes || 0) : '—') +
       ligne('profilJumper', record && record.ms ? esc(mmss(record.ms)) : '—');
-    btEditer.textContent = p ? T('profilEditer') : T('profilCreer');
-    btPerso.textContent = T('profilPerso');
-    btPartager.textContent = T('profilPartager');
+    /* UN SEUL BOUTON TANT QU'IL N'Y A PAS DE PROFIL (demande du 25 sept.
+       2026) : « Créer mon profil ». Créé, il laisse la place à « Personnaliser
+       le personnage » et « Partager ». Le nom et la photo se règlent dans
+       l'atelier, au premier onglet : il n'y a plus de bouton pour eux. */
+    btEditer.hidden = !!p; btEditer.textContent = T('profilCreer');
+    btPerso.hidden = !p; btPerso.textContent = T('profilPerso');
+    btPartager.hidden = !p; btPartager.textContent = T('profilPartager');
     // la barre du haut
     topGt.hidden = !p;
     if (p){
@@ -13352,37 +13153,29 @@ const profil = (() => {
       document.getElementById('topbarGtNom').textContent = p.nom;
       document.getElementById('topbarGtNiveau').textContent = 'LV ' + n;
     }
-    /* La tenue a pu changer pendant que le profil était à l'écran — le salon
-       est une fenêtre par-dessus, il ne le cache pas. On redemande donc les
-       pièces portées à chaque rafraîchissement : `load` est mis en cache par
-       article, redemander ce qui est déjà là ne coûte rien. */
-    if (visible && scene) dressup.preparerPersonnage(scene);
   }
 
   // ---- le personnage ----
-  /* Une scène à part sur le canvas du panneau : le module du salon y dessine
-     le mannequin habillé, avec son souffle, tant que le profil est à l'écran
-     et la page visible. Même plafond que le reste du site. */
+  /* Le personnage de l'atelier, dessiné par atelier.js (chargé au premier
+     passage ici) : il prend l'attitude qu'on lui a choisie, il respire, il
+     cligne des yeux. Le moteur dessine dans sa propre toile, qu'on recopie
+     dans celle du panneau — une toile 2D, pour ne pas ouvrir un contexte WebGL
+     de plus. */
   const cvScene = document.getElementById('profilScene');
-  let scene = null, raf = 0, ipsPerso = 0, visible = false;
+  const g2d = cvScene.getContext('2d');
+  let raf = 0, ipsPerso = 0, visible = false;
+  // quarante images par seconde suffisent à un personnage qui respire : c'est un rendu 3D complet à chaque fois
+  const PAS_PERSO = 1000 / 40;
   function boucle(t){
     raf = requestAnimationFrame(boucle);
-    if (t - ipsPerso < IPS_PAS - 0.5 || document.hidden) return;
+    if (t - ipsPerso < PAS_PERSO - 0.5 || document.hidden) return;
     ipsPerso = t;
     const r = cvScene.getBoundingClientRect();
     if (!r.width || !r.height) return;
     const k = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.round(r.width * k), h = Math.round(r.height * k);
-    if (cvScene.width !== w || cvScene.height !== h){ cvScene.width = w; cvScene.height = h; }
-    scene.clear();
-    /* La boîte du mannequin est carrée et le corps n'en occupe que les deux
-       tiers en largeur (bras compris) : sur une colonne haute et étroite, on
-       laisse la boîte déborder des côtés pour que le personnage prenne toute
-       la hauteur — ce qui dépasse est vide, et rogné par le canvas. */
-    // les pieds se posent sur l'ombre du cadre (::after, à 8 % du bas)
-    const dispo = h * 0.90;
-    const S = Math.min(dispo, w / 0.66);
-    dressup.dessinerPersonnage(scene, (w - S) / 2, (dispo - S) / 2, S, t);
+    const w = Math.round(r.width * k), h = Math.round(r.height * k * 0.92);   // les pieds sur l'ombre du cadre (::after, à 8 % du bas)
+    if (cvScene.width !== w || cvScene.height !== Math.round(r.height * k)){ cvScene.width = w; cvScene.height = Math.round(r.height * k); }
+    dressup.dessiner(g2d, w, h, t);
   }
   function montrer(oui){
     if (oui === visible) { if (oui) rafraichir(); return; }
@@ -13390,111 +13183,25 @@ const profil = (() => {
     bloc.hidden = !oui;
     if (oui){
       rafraichir();
-      if (!p) setTimeout(inviter, 260);    // le panneau se montre d'abord, la fenêtre vient dessus
-      if (!scene) scene = model3d.makeScene(cvScene);
-      if (!scene) return;                       // sans WebGL : pas de personnage, le reste du profil vit
-      dressup.preparerPersonnage(scene);
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(boucle);
     } else {
       cancelAnimationFrame(raf); raf = 0;
     }
   }
-
-  // ---- la fenêtre : créer, modifier ----
-  let photoEnCours = null;   // la photo choisie dans la fenêtre, pas encore enregistrée
-  function refletApercu(){
-    apercuPhoto.hidden = !photoEnCours; if (photoEnCours) apercuPhoto.src = photoEnCours;
-    apercuInitiale.hidden = !!photoEnCours;
-    apercuInitiale.textContent = champNom.value.trim() ? initialeDe(champNom.value) : '+';
-    document.getElementById('profilPhotoRetirer').hidden = !photoEnCours;
-  }
-  /* ---- LE PARCOURS DE CRÉATION (22 sept. 2026) ----
-     Un visiteur qui arrive sans profil est mené par la main, en deux temps :
-     d'abord son nom et sa photo, puis son personnage au salon d'essayage. Le
-     reste du site ne bouge pas — ce sont les deux mêmes fenêtres qu'un habitué
-     rouvre pour se modifier ; seules changent les mentions d'étape et le
-     libellé du bouton, qui dit « Continuer » quand quelque chose suit et
-     « Enregistrer » quand on ne fait que corriger.
-     ON NE PIÈGE PERSONNE : Échap et la croix ferment, comme partout ailleurs
-     sur ce site. Quelqu'un qui vient voir des vêtements et ne veut pas de
-     compte doit pouvoir passer — le bouton « Créer mon profil » l'attend sur
-     la première icône, et la fenêtre ne se rouvrira pas d'elle-même. */
-  let parcours = false;
-  function editer(creation){
-    if (overlay.classList.contains('open')) return;
-    parcours = !!creation && !p;
+  /* ---- créer, personnaliser ----
+     Le nom et la photo sont dans l'atelier (onglet Identité) : « Créer mon
+     profil » l'ouvre en mode création, et c'est son bouton final qui crée le
+     profil. ON NE PIÈGE PERSONNE : l'atelier ne s'ouvre jamais de lui-même —
+     un visiteur venu voir des vêtements passe sur le profil sans qu'on lui
+     demande rien ; le bouton l'attend. */
+  function editer(){
     exitPanel();
     quitterTailles();
-    const etape = document.getElementById('profilEtape');
-    etape.hidden = !parcours;
-    if (parcours) etape.textContent = T('profilEtape').replace('%1', '1').replace('%2', '2');
-    document.getElementById('profilTitre').textContent = T(p ? 'profilTitreEditer' : 'profilTitreCreer');
-    document.getElementById('profilSauver').textContent = T(parcours ? 'profilContinuer' : 'profilSauver');
-    champNom.value = p ? p.nom : '';
-    champNom.classList.remove('refus');
-    photoEnCours = p ? p.photo : null;
-    fichier.value = '';
-    refletApercu();
-    overlay.classList.add('open');
-    champNom.focus();
+    dressup.open({ creation: !p });
   }
-  /* LE PARCOURS PART DE L'ICÔNE PROFIL, ET DE NULLE PART AILLEURS. On entre
-     dans la boutique sans rien demander à personne : un visiteur venu voir des
-     vêtements n'a pas à se présenter d'abord. C'est en allant sur le profil
-     qu'on est mené à s'en créer un — et une seule fois par visite : la
-     première icône de la barre est celle qu'on frôle en revenant vers la
-     gauche, et une fenêtre qui se rouvrirait à chaque passage serait un
-     piège. Refermée, elle laisse le panneau vide et son bouton. */
-  let invite = false;
-  function demarrer(){
-    if (p) return;
-    const ci = DATA.findIndex(c => c.kind === 'profil');
-    if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
-    editer(true);
-  }
-  function inviter(){        // appelé en arrivant sur le profil (voir montrer)
-    if (p || invite || overlay.classList.contains('open')) return;
-    invite = true;
-    editer(true);
-  }
-  // le second pas : le salon, qui sait qu'il termine un parcours (voir dressup.open)
-  function etape2(){
-    parcours = false;
-    dressup.open({ etape: 2 });
-  }
-  function fermer(){
-    overlay.classList.remove('open');
-    if (overlay.contains(document.activeElement)) document.activeElement.blur();
-  }
-  function enregistrer(){
-    const nom = champNom.value.trim();
-    if (!NOM_OK.test(nom)){
-      champNom.classList.remove('refus'); void champNom.offsetWidth; champNom.classList.add('refus');
-      sfx.refus();
-      return;
-    }
-    const premier = !p;
-    modifier(nom, photoEnCours);
-    sfx.add();
-    fermer();
-    if (parcours && premier) setTimeout(etape2, 260);   // le temps que la fenêtre s'en aille
-  }
-  fichier.addEventListener('change', () => {
-    const f = fichier.files && fichier.files[0];
-    if (!f) return;
-    // carrée, 256 px : la photo d'un cadre de 96 px, nette sur un écran dense, et légère à retenir
-    reduireImage(f, 256, 0.85, true).then(url => { if (url){ photoEnCours = url; refletApercu(); sfx.tick(); } });
-  });
-  document.getElementById('profilPhotoBt').addEventListener('click', () => fichier.click());
-  document.getElementById('profilPhotoChoisir').addEventListener('click', () => fichier.click());
-  document.getElementById('profilPhotoRetirer').addEventListener('click', () => { photoEnCours = null; fichier.value = ''; refletApercu(); });
-  champNom.addEventListener('input', () => { champNom.classList.remove('refus'); if (!photoEnCours) refletApercu(); });
-  document.getElementById('profilSauver').addEventListener('click', enregistrer);
-  document.getElementById('profilFermer').addEventListener('click', fermer);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) fermer(); });
-  btEditer.addEventListener('click', () => editer(!p));   // sans profil, le bouton ouvre le PARCOURS, pas un simple réglage
-  btPerso.addEventListener('click', () => dressup.open());
+  btEditer.addEventListener('click', editer);
+  btPerso.addEventListener('click', editer);
 
   /* ---- partager ----
      Une IMAGE du profil, téléchargée. Le profil n'a pas d'adresse à lui — il
@@ -13560,7 +13267,7 @@ const profil = (() => {
     lueur.addColorStop(0, A(0.30)); lueur.addColorStop(0.55, A(0.06)); lueur.addColorStop(1, A(0));
     g.fillStyle = lueur; g.fillRect(bx, by, colD, bh);
     g.fillStyle = A(0.06); g.fillRect(bx, by, colD, bh);
-    const perso = dressup.imagePersonnage(Math.round(bh * 1.1));
+    const perso = dressup.image(Math.round(bh * 1.1));
     if (perso){
       const dispo = bh * 0.90, S = Math.min(dispo, colD / 0.66);
       g.drawImage(perso, bx + (colD - S)/2, by + (dispo - S)/2, S, S);
@@ -13690,15 +13397,9 @@ const profil = (() => {
     const ci = DATA.findIndex(c => c.kind === 'profil');
     if (ci >= 0) selectCategory(ci);
   });
-  /* Les touches de la fenêtre : Entrée enregistre, Échap ferme, le reste va
-     au champ — c'est le seul endroit du site où l'on tape du texte. */
-  function touche(e){
-    if (e.key === 'Escape'){ e.preventDefault(); fermer(); return; }
-    if (e.key === 'Enter'){ e.preventDefault(); enregistrer(); }
-  }
-  return { editer, fermer, touche, montrer, rafraichir, ajouterDepense, partager, carte, preparerPhoto, demarrer,
+  // `creer` et `modifier` : l'atelier les appelle, depuis son onglet Identité
+  return { editer, creer, modifier, montrer, rafraichir, ajouterDepense, partager, carte, preparerPhoto,
            fini: () => { const c = DATA.find(c => c.kind === 'profil'); rafraichir(); annoncer(T('profilPret'), c ? L(c.name) : ''); },
-           ouvert: () => overlay.classList.contains('open'),
            existe: () => !!p, lire: () => p, niveau, xp };
 })();
 
@@ -15449,7 +15150,7 @@ const jumper = (() => {
      ouverture, il voit le cadenas tomber tout seul. */
   function versArticle(){
     fermer();
-    setTimeout(() => dressup.open(), 220);   // même délai que l'arène : la fenêtre s'en va d'abord
+    setTimeout(() => dressup.open({ onglet: 'accessoires' }), 220);   // même délai que l'arène : la fenêtre s'en va d'abord ; on arrive sur la cigarette
   }
   /* Clavier : le jeu prend TOUTES les touches tant qu'il est ouvert. L'appui
      et le relâchement comptent autant l'un que l'autre — c'est le relâchement
@@ -17322,1030 +17023,45 @@ const seum = (() => {
       visite à l'autre, et l'URL est révoquée à la fermeture. La mention le
       dit en toutes lettres à l'écran, pas dans une page de mentions légales.
 */
+/* ---------------- l'atelier du personnage ----------------
+   (refait le 25 sept. 2026) Le créateur de personnage vit dans atelier.js :
+   son moteur 3D, le personnage, sa garde-robe, la plage et l'écran des
+   réglages — quelque 4 500 lignes que tout le monde aurait téléchargées pour
+   rien. Le fichier n'est chargé qu'au premier passage sur le profil ou à la
+   première ouverture de l'atelier ; `dressup` n'est plus que la porte : il le
+   charge, et transmet. Son nom est resté celui du salon d'essayage.
+   Le numéro de version force le navigateur à reprendre le fichier quand il
+   change (GitHub Pages le garde dix minutes en cache). */
 const dressup = (() => {
-  const overlay = document.getElementById('dressOverlay');
-  const cv = document.getElementById('dressCv');
-  const rack = document.getElementById('dressRack');
-  const cote = document.querySelector('.dress-cote');
-  const titre = document.getElementById('dressTitre');
-  const btNu = document.getElementById('dressNu');
-  const stage = document.getElementById('dressStage');
-  const ongletP = document.getElementById('dressOngletP');
-  const ongletC = document.getElementById('dressOngletC');
-  const teteLook = document.getElementById('dressLookTitre');
-
-  /* ---- catégories et coupes ----
-     Deux choses qu'on confondait sous un seul nom.
-
-     La CATÉGORIE dit où va la pièce sur le corps, donc ce qu'elle REMPLACE :
-     un seul haut, un seul bas, un seul chapeau. En choisir un autre dans la
-     même catégorie retire le précédent. C'est la règle de tous les jeux
-     d'habillage, et elle dispense de se demander ce qui passe par-dessus
-     quoi. Le rang donne l'ordre de dessin. Seuls les hauts existent
-     aujourd'hui dans la boutique ; les deux autres attendent leurs articles,
-     et il n'y aura rien à rebrancher le jour où ils arriveront.
-
-     La COUPE dit comment la pièce TOMBE. Un sweat et un t-shirt vont au même
-     endroit mais n'ont pas la même silhouette à plat, donc pas le même
-     ancrage : `y0`/`y1` la tranche de corps à couvrir, `ourlet` la largeur
-     que doit avoir le bas du vêtement une fois posé. Le reste est calculé —
-     le module 3D mesure ce que l'article couvre dans sa propre boîte (voir
-     `empreinte`) et on résout la boîte qui l'amène là.
-
-     Relevés sur le mannequin, en fractions de sa boîte, le haut du cadre à 0 :
-     sommet du crâne 0,047, menton 0,130, épaules 0,185, buste large de 0,41 à
-     0,59, hanches 0,40 à 0,60, entrejambe 0,540, chevilles 0,95, envergure des
-     bras 0,181 à 0,818.
-
-     LARGEUR ET HAUTEUR SE RÈGLENT SÉPARÉMENT, et c'est tout l'intérêt : un
-     t-shirt photographié à plat est bien plus large que haut (0,88 × 0,56),
-     alors que le buste qu'il doit couvrir est plus haut que large. À
-     proportions gardées il laissait voir les épaules ou le ventre — jamais les
-     deux à la fois. Étiré, il habille : personne ne remarque qu'un t-shirt de
-     jeu de papier est un peu long, tout le monde voit un ventre nu. Un rendu
-     PORTÉ, lui, a déjà la bonne forme et ne s'étire pas (`fidele`).
-
-     Pourquoi l'ourlet plutôt que la largeur totale : un débardeur est étroit
-     parce qu'il n'a pas de manches, un t-shirt est large parce que les
-     siennes sont écartées. Seul le bas du vêtement dit la largeur du corps. */
-  /* ---- les catégories ----
-     Où va la pièce sur le corps, donc ce qu'elle REMPLACE : un seul bas, un
-     seul haut, une seule paire. En choisir une autre dans la même catégorie
-     retire la précédente ; c'est la règle de tous les jeux d'habillage, et
-     elle dispense de se demander ce qui passe par-dessus quoi.
-     Le rang donne l'ordre de dessin. Les chaussures passent EN DESSOUS de
-     tout : l'ourlet d'un pantalon retombe sur la basket, et non l'inverse. */
-  const CATEGORIES = {
-    pieds:    { rang: 0 },
-    bas:      { rang: 1 },
-    haut:     { rang: 2 },
-    chapeau:  { rang: 3 },
-    /* Les accessoires se posent sur la TÊTE, et ils y ont chacun leur place :
-       les lunettes sur les yeux, la cigarette à la bouche. Deux emplacements
-       et non un seul, pour qu'on puisse porter les deux — ils ne se gênent
-       pas, et c'est manifestement l'intérêt. Ils partagent en revanche UN
-       rayon dans le portant (voir GROUPES) : côté visiteur, c'est bien une
-       seule famille. */
-    lunettes: { rang: 4 },
-    bouche:   { rang: 5 },
-  };
-  /* Un ancrage ne dit plus QUE l'endroit : `y0`/`y1` la tranche de corps à
-     couvrir, `ourlet` la largeur que doit avoir le bas du vêtement une fois
-     posé, et `bras`/`jambes` de combien le mannequin vient s'y loger. Plus
-     rien n'est déformé : le vêtement est intouchable, seul le corps bouge. */
-  const ANCRAGES = {
-    /* 0,162 et 0,32 : le plus bas et le plus étroit qui ne laisse RIEN dépasser
-       à l'épaule, mesuré sur les treize hauts à manches. Un cran plus bas
-       (0,170) et le trapèze du polo ressortait au-dessus du col ; un cran plus
-       haut, le col remontait sur le cou. */
-    tee:      { ourlet: 0.32, serre: 0.74, effile: 0.80, y0: 0.162, y1: 0.512 },  // t-shirts, polos, débardeurs
-    /* 0,128 et pas plus haut : les oreilles du mannequin s'arrêtent à 0,121
-       (relevé — la tête garde sa largeur maximale de 0,092 à 0,118 puis se
-       rétrécit), et la capuche leur montait dessus. Un capuchon posé sur les
-       oreilles, ça ne se voit sur personne. */
-    sweat:    { ourlet: 0.26, serre: 0.82, effile: 0.84, y0: 0.128, fidele: true },  // rendu porté : à l'échelle, le col passe devant le cou
-    pantalon: { ceinture: 0.19, chevilles: 0.95, y0: 0.465, y1: 0.935 },  // ceinture sur les hanches, ourlet sur les chevilles
-    chaussure:{ pieds: 1.18, y0: 0.888, y1: 0.982 },    // la paire suit l'écart des deux pieds, quoi que fassent les jambes
-    /* Le sous-vêtement se cale sur sa CEINTURE ET RIEN D'AUTRE, d'où
-       `ceintureSeule`. Un pantalon s'étire de la taille aux chevilles, et sa
-       largeur suit cette longueur — c'est juste, il a des jambes. Un boxer n'a
-       pas de longueur à respecter : large et court, il gagnait la mise sur la
-       hauteur et sortait des hanches de chaque côté, en jupette. Sa taille est
-       maintenant donnée par la ceinture, et ses proportions sont celles de sa
-       photo — il ne s'étire plus dans un sens sans l'autre. */
-    culotte:  { ceinture: 0.175, ceintureSeule: true, y0: 0.468 },
-    chapeau:  { ourlet: 0.11, y0: 0.005, y1: 0.085 },   // le bord se cale sur la largeur du crâne
-  };
-  /* ---- les accessoires : un point, pas un ancrage ----
-     Un vêtement est une photo qu'on étire sur une tranche de corps ; un
-     accessoire est un objet, et il se pose. Ces trois nombres suffisent donc :
-     la taille en fractions de la hauteur du mannequin, et le point où l'objet
-     tombe — `y` compté comme sur le mannequin, 0 aux pieds et 1 au sommet du
-     crâne.
-     Les hauteurs sont relevées sur le maillage du mannequin, pas choisies : le
-     nez ressort à y 0,911 (le point le plus avancé du visage), le front est à
-     0,943, le menton à 0,889, et le crâne fait 0,102 de large au niveau des
-     tempes. Les lunettes sont donc un rien plus larges que la tête, posées
-     entre le front et le nez ; la cigarette part de la lèvre, sous le nez. */
-  /* `x` et `y` donnent où tombe le MILIEU de l'accessoire, pas son origine :
-     les modèles sont recentrés sur leur boîte pour tenir dans la fenêtre de
-     dessin (voir meshAccessoire). Pour les lunettes cela revient au même, elles
-     sont symétriques ; pour la cigarette, le point à viser est le milieu du
-     bâton, donc en l'air à côté de la bouche et non sur la lèvre. */
-  const ACC_POSE = {
-    lunettes:  { l: 0.092, x: 0,     y: 0.910, ang: 0 },
-    /* La cigarette est TOURNÉE, sinon on ne la voit pas : le modèle part du
-       filtre vers l'avant, et de face elle pointerait droit sur nous — un
-       disque blanc de trois pixels au bout des lèvres. Un peu plus d'un
-       radian la met de trois quarts, au coin de la bouche : elle se lit comme
-       une cigarette, et c'est de toute façon comme ça qu'on la porte. */
-    cigarette: { l: 0.066, x: 0.029, y: 0.867, ang: 1.05 },
-  };
-  /* ---- le vestiaire du salon ----
-     Des HABILLAGES, pas des produits. Ils n'existent que dans le jeu : ils ne
-     sont pas au catalogue, ne se vendent pas, ne se verrouillent pas et ne
-     paraissent nulle part ailleurs sur le site. Ils vivent donc ici, à côté du
-     sous-vêtement, et non dans DATA — la boutique ne les voit jamais, et il n'y
-     a rien à filtrer pour qu'elle les ignore.
-
-     UNE PIÈCE NOUVELLE SE MET EN TÊTE DE SON GROUPE, comme un produit neuf en
-     tête de sa rangée dans la boutique : on vient voir ce qui vient d'arriver,
-     pas ce qui était déjà là. L'ordre écrit ici est l'ordre affiché.
-
-     Pour en ajouter une : une image dans `dressup/`, une ligne en haut de son
-     groupe. La coupe dit où elle se pose, le reste se mesure. */
-  /* Les noms sont donnés dans les DEUX langues. Ce ne sont pas des marques mais
-     des descriptions : contrairement aux noms de produits, ils se traduisent.
-     Les laisser en anglais était la seule chose du salon qui ne suivait pas la
-     langue choisie. */
-  /* TOUT EST OUVERT (22 sept. 2026, provisoire, à la demande) : les
-     récompenses des épreuves restent déclarées — chaque pièce garde son
-     `verrou` —, mais le cadenas ne tombe plus sur personne. Remettre ce
-     drapeau à `false` referme tout, sans rien avoir à retrouver. */
-  const TOUT_OUVERT = true;
-  const VESTIAIRE = [
-    { img: 'dressup/galaxylegging2.png', nom: { en: 'Galaxy leggings', fr: 'Legging galaxie' },  cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/pyjamapants1.webp',  nom: { en: 'Pyjama pants',    fr: 'Bas de pyjama' },    cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/pants1.webp',        nom: { en: 'Cargo pants',     fr: 'Pantalon cargo' },   cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jogger2.webp',       nom: { en: 'Grey jogger',     fr: 'Jogging gris' },     cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jogger1.png',        nom: { en: 'Jogger',          fr: 'Jogging' },          cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans5.webp',        nom: { en: 'Loose jeans',     fr: 'Jean loose' },       cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans4.png',         nom: { en: 'Dark jeans',      fr: 'Jean foncé' },       cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans3.webp',        nom: { en: 'Washed jeans',    fr: 'Jean délavé' },      cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans2.png',         nom: { en: 'Baggy jeans',     fr: 'Jean baggy' },       cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/jeans1.jpg',         nom: { en: 'Straight jeans',  fr: 'Jean droit' },       cat: 'bas',   coupe: 'pantalon' },
-    { img: 'dressup/shoes2.png',         nom: { en: 'Sneakers',        fr: 'Baskets' },          cat: 'pieds', coupe: 'chaussure' },
-    { img: 'dressup/shoes1.png',         nom: { en: 'White sneakers',  fr: 'Baskets blanches' }, cat: 'pieds', coupe: 'chaussure' },
-    /* Les accessoires n'ont pas de photo : ils ont un MODÈLE, chargé par le
-       moteur 3D (voir ACCESSOIRES). Le portant les dessine donc comme tout le
-       reste — les cases du portant montrent déjà des maillages, pas des
-       images. */
-    /* LES ACCESSOIRES SE GAGNENT (22 sept. 2026, à la demande). Ils étaient
-       posés là, gratuits, à côté des vêtements ; ce sont maintenant les
-       récompenses des épreuves du site, et les seules. Chacun va avec la
-       sienne : les lunettes à l'œuf de la tête — on a fumé une cigarette
-       entière d'un trait (vingt tours de tête avant le 25 sept. 2026), la
-       tête tourne, on gagne de quoi lui couvrir les yeux — et la cigarette au
-       parcours de Jumper, qu'on allume en arrivant. Le nom de l'épreuve est
-       celui de `fp.debloque` ; tant qu'elle n'est pas passée, la case montre
-       le cadenas et refuse. */
-    { accessoire: 'lunettes',  verrou: 'vertige', nom: { en: 'Sunglasses', fr: 'Lunettes de soleil' }, cat: 'lunettes', coupe: 'lunettes' },
-    { accessoire: 'cigarette', verrou: 'jumper',  nom: { en: 'Cigarette',  fr: 'Cigarette' },          cat: 'bouche',   coupe: 'cigarette' },
-  ];
-
-  /* LE SOUS-VÊTEMENT A DISPARU avec le mannequin PSX : le personnage du pack
-     porte une tenue de base (voir BASE3D), il n'est jamais nu. */
-  /* ---- le guide des tailles décide de tout ----
-     Une ligne par taille, et tout ce qui concerne cette taille y est. `sz`
-     dit déjà les DIMENSIONS du vêtement — c'est sa définition même — donc
-     deux sweats de coupes différentes portent forcément deux `sz`
-     différents, et c'est la bonne clé pour ranger le reste :
-
-       cat   — où va la pièce sur le corps, donc ce qu'elle remplace ;
-       coupe — quel ancrage la pose (voir ANCRAGES) ;
-       porte — le rendu du vêtement PORTÉ, s'il en existe un.
-
-     LE RENDU PORTÉ, et pourquoi il change tout. Une photo de boutique est
-     prise à plat : manches écartées en croix, capuche étalée. C'est la bonne
-     image pour REGARDER un article et la mauvaise pour l'habiller — elle ne
-     se trompe pas un peu sur la taille, elle se trompe sur la FORME. Le
-     salon d'essayage emploie donc, quand il existe, un rendu du vêtement tel
-     qu'il tombe : capuche baissée, manches le long du corps. Ici seulement :
-     la boutique, la fiche et l'arène continuent de montrer la photo à plat,
-     et la case du portant aussi — c'est la seule qui distingue un sweat d'un
-     autre, puisque le rendu porté est PARTAGÉ par tous les articles d'une
-     même taille.
-
-     Pour un nouveau type de sweat : deux images dans `dressup/`, une ligne
-     ici, et un ancrage de plus si ses proportions diffèrent vraiment. Rien
-     d'autre à toucher. */
-  /* ---- un rendu porté par article ----
-     La taille donne un rendu porté par COUPE : les trois sweats partagent
-     `hoodie-front.png`, qui tombe parfaitement sur le mannequin — capuche
-     derrière la nuque, manches le long des bras, ourlet aux hanches — mais ne
-     connaît qu'un imprimé. Un article peut donc porter le sien, dans son champ
-     `porte`, et le panneau d'administration sait le déposer ; il n'est JAMAIS
-     exigé — sans lui, le rendu de la coupe s'applique, et sans rendu de coupe
-     c'est la photo à plat qui sert, comme pour un t-shirt.
-
-     ESSAYÉ ET ÉCARTÉ, pour ne pas y revenir : garder la géométrie du rendu
-     commun et lui repeindre l'étoffe de chaque photo de boutique. Peindre la
-     photo à plat À TRAVERS le masque porté met du blanc plein la capuche — à
-     cet endroit-là, la photo à plat n'a que son fond. La poser PAR-DESSUS
-     marche mieux mais laisse la capuche et les épaules à la couleur du sweat
-     d'origine. Une vraie photo portée par article règle tout. */
-  const TAILLES = {
-    hoodie: { cat: 'haut', coupe: 'sweat', porte: { img: 'dressup/hoodie-front.png' } },
-    pants:  { cat: 'bas', coupe: 'pantalon' },
-    jeans:  { cat: 'bas', coupe: 'pantalon' },
-    cap:    { cat: 'chapeau', coupe: 'chapeau' },
-    beanie: { cat: 'chapeau', coupe: 'chapeau' },
-  };
-  // tout le reste est un haut de coupe t-shirt : `tee`, `polo`, `tank`,
-  // `raglan`, et les tailles propres à un seul article
-  const DEFAUT = { cat: 'haut', coupe: 'tee' };
-  const rangerDe = (it) => TAILLES[it.sz] || DEFAUT;
-
-  let ouvert = false, scene = null, raf = 0;
-  let pieces = [];            // le portant : { it, nom, cat, coupe, verrou, el }
-  const portees = new Map();  // catégorie -> pièce
-  let peau = null;            // teinte choisie au nuancier, ou rien (voir PEAU_DEFAUT)
-  // Le mannequin est décrit en UN endroit : trois champs qui bougent, et
-  // autant d'occasions d'en oublier un si chacun le réécrit de son côté.
-  // la teinte a changé : les pièces sont recousues sous une autre clé (voir keyOf)
-  const majMannequin = () => chargerPerso(scene);
-  /* ---- LES TEINTES DE PEAU ----
-     Elles étaient laissées au nuancier du navigateur : une pipette, un cercle
-     chromatique, et à l'arrivée un vert pomme aussi facile à choisir qu'une
-     peau. Ce n'est pas un réglage de couleur, c'est le visiteur qui se
-     représente — il lui faut un éventail où il puisse SE trouver, du plus
-     clair au plus sombre, sans chercher.
-
-     D'où l'ÉCHELLE DE MONK (Monk Skin Tone Scale, Ellis Monk, publiée en
-     2022), dix teintes, faite exactement pour cela : les six types de
-     Fitzpatrick venaient de la dermatologie et écrasaient les peaux foncées
-     en deux cases pour cinq claires. Ces dix-là sont prises telles quelles,
-     sans en inventer une seule, et elles couvrent l'éventail humain.
-
-     PAS DE DÉFAUT EN DUR ICI : tant que personne n'a choisi, le corps garde
-     la teinte du moteur (PEAU_DEFAUT) et c'est la pastille la plus PROCHE qui
-     s'allume — voir `refletEtat`. Le nuancier ne repeint donc personne en
-     arrivant ; il dit seulement où l'on se trouve. */
-  const PEAUX = ['#f6ede4', '#f3e7db', '#f7ead0', '#eadaba', '#d7bd96',
-                 '#a07e56', '#825c43', '#604134', '#3a312a', '#292420'];
-  const PEAU_MOTEUR = '#c89878';   // = PEAU_DEFAUT (model3d), la teinte du corps tant qu'on n'a rien choisi
-  const rvb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-  const peauProche = (hex) => { const c = rvb(hex);
-    return PEAUX.reduce((a, b) => { const d = (h) => { const q = rvb(h);
-      return (q[0]-c[0])**2 + (q[1]-c[1])**2 + (q[2]-c[2])**2; };
-      return d(b) < d(a) ? b : a; }); };
-
-  /* L'ORDRE DU PORTANT EST CELUI DU CORPS : les hauts, puis les bas, puis les
-     chaussures, chaque groupe sous son intertitre. Une liste où un jean voisine
-     un t-shirt ne dit rien de ce qu'on est en train de faire ; rangée, elle se
-     lit comme une penderie, et l'on voit d'un coup d'œil ce qui manque. */
-  /* ---- LE PANNEAU DU PERSONNAGE ----
-     La penderie dit ce qu'on lui MET ; celui-ci dit ce qu'il EST. Trois
-     rayons et rien de plus : le visage, les cheveux, le couvre-chef. Les
-     coiffures ne tiennent qu'à l'os de la tête, elles se montent donc sur les
-     trois visages indifféremment — barbes et moustache comprises, qui sont du
-     poil et se rangent avec les cheveux.
-     `''` est le choix « aucun » : il retire, il ne pose rien. Le visage, lui,
-     n'a pas d'« aucun » — on a toujours une tête. */
-  let panneau = 'penderie';
-  const GROUPES_PERSO = [
-    { cat: 'visage',   cle: 'dressCatFace' },
-    { cat: 'coiffure', cle: 'dressCatHair' },
-    { cat: 'couvre',   cle: 'dressCatHead' },
-  ];
-  const PERSO_CHOIX = {
-    visage:   ['visage1', 'visage2', 'visage3'],
-    coiffure: ['', 'cheveux1', 'cheveux2', 'cheveux3', 'cheveux4', 'cheveux5', 'cheveux6', 'crete', 'barbiche', 'moustache'],
-    couvre:   ['', 'couronne', 'chapeau', 'chantier', 'swat', 'spatial'],
-  };
-  const PORTE_PERSO = { visage: () => visage, coiffure: () => cheveux, couvre: () => couvre };
-  const POSER_PERSO = {
-    visage:   (v) => { if (v) visage = v; },     // on a toujours un visage
-    coiffure: (v) => { cheveux = v; },
-    couvre:   (v) => { couvre = v; },
-  };
-  const GROUPES = [
-    /* LA PEAU AVANT TOUT LE RESTE : c'est le corps, pas un vêtement. On
-       commence par qui l'on est, on habille ensuite. */
-    { cat: 'peau', cle: 'dressCatSkin' },
-    /* Les chapeaux ENSUITE : l'ordre du portant est celui du corps, et on
-       commence par la tête. Ils ne dorment jamais — un bonnet se met sur un
-       crâne nu, il n'attend rien, là où des chaussures attendent un bas.
-       Ce rayon manquait alors que tout le reste était prêt (`CATEGORIES`,
-       `ANCRAGES`, `TAILLES`) : une casquette existait pour le mannequin mais
-       n'apparaissait nulle part dans la penderie, donc personne ne pouvait la
-       lui mettre. */
-    { cat: 'chapeau', cle: 'dressCatHat' },
-    { cat: 'haut',  cle: 'dressCatTop' },
-    { cat: 'bas',   cle: 'dressCatBottom', dort: () => !portees.has('haut') },
-    { cat: 'pieds', cle: 'dressCatShoes', dort: () => !portees.has('bas') },
-    // UN rayon, DEUX emplacements : voir CATEGORIES
-    { cats: ['lunettes', 'bouche'], cle: 'dressCatAcc' },
-  ];
-  /* Un groupe EN SOMMEIL se voit avant qu'on clique : les chaussures attendent
-     un bas, autant que ça se lise. Le refus au clic reste, il est juste devenu
-     la seconde ligne de défense. */
-  function refletEtat(){
-    GROUPES.forEach(g => {
-      const dort = !!(g.dort && g.dort());
-      if (g.el) g.el.classList.toggle('dress-groupe--dort', dort);
-      const cats = g.cats || [g.cat];
-      pieces.forEach(p => { if (cats.includes(p.cat)) p.el.classList.toggle('dress-case--dort', dort); });
+  const VERSION = '20260925';
+  let charge = null, A = null;
+  function charger(){
+    if (charge) return charge;
+    charge = new Promise((ok, ko) => {
+      const s = document.createElement('script');
+      s.src = 'atelier.js?v=' + VERSION;
+      s.onload = () => { A = window.Atelier || null; A ? ok(A) : ko(new Error('atelier')); };
+      s.onerror = () => { charge = null; ko(new Error('atelier')); };
+      document.head.appendChild(s);
     });
-    pieces.forEach(q => q.el.classList.toggle('porte', portees.get(q.cat) === q));
-    // la teinte du moment : celle qu'on a choisie, ou la plus proche de celle du moteur
-    const teinte = peauProche(peau || PEAU_MOTEUR);
-    pieces.forEach(q => { if (q.peau) q.el.classList.toggle('porte', q.peau === teinte); });
-    // et le visage, la coiffure, le couvre-chef du moment
-    pieces.forEach(q => { if (q.cat && PORTE_PERSO[q.cat]) q.el.classList.toggle('porte', PORTE_PERSO[q.cat]() === q.perso); });
+    return charge;
   }
-  /* Une case, quel que soit le panneau : un vêtement, une teinte, un visage,
-     une coiffure, ou le « aucun » qui retire. */
-  function caser(p){
-    const el = p.el = document.createElement('div');
-    el.className = 'dress-case';
-    el.tabIndex = 0;
-    el.setAttribute('role', 'option');
-    el.title = p.nom;
-    el.addEventListener('click', () => basculer(p));
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); basculer(p); } });
-    el.addEventListener('animationend', () => el.classList.remove('refus'));
-    rack.appendChild(el);
-    pieces.push(p);
-    if (p.peau){                      // une pastille de teinte : pas de maillage, la case EST la couleur
-      el.classList.add('dress-case--teinte');
-      el.style.background = p.peau;
-    } else if (!p.it){                // « aucun » : une case vide, qui retire
-      el.classList.add('dress-case--rien');
-    } else if (scene){ scene.load(p.it); if (p.porte) scene.load(p.porte); }
-  }
-  /* Le panneau du personnage : trois rayons, une case par choix, et l'aperçu
-     est la TÊTE — le visage seul pour le rayon des visages, le visage coiffé
-     pour les deux autres (voir `dessiner`), sans quoi une perruque flotterait
-     toute seule dans sa case. */
-  function garnirPerso(){
-    GROUPES_PERSO.forEach(g => {
-      const t = g.el = document.createElement('div');
-      t.className = 'dress-groupe';
-      t.setAttribute('aria-hidden', 'true');
-      t.textContent = T(g.cle);
-      rack.appendChild(t);
-      PERSO_CHOIX[g.cat].forEach((id, i) => caser({
-        perso: id, cat: g.cat, verrou: false,
-        it: id ? { perso: id, peau } : null,
-        tete: g.cat !== 'visage',                   // la case montre le visage sous la pièce
-        nom: T(g.cle) + (id ? ' ' + (i + (PERSO_CHOIX[g.cat][0] ? 1 : 0)) : ' — ' + T('dressAucun')),
-      }));
-    });
-    refletEtat();
-  }
-  function garnir(){
-    pieces = [];
-    rack.innerHTML = '';
-    if (panneau === 'perso') return garnirPerso();
-    /* Le vestiaire d'abord dans la liste de travail, la boutique ensuite : à
-       l'affichage ils se retrouvent de toute façon rangés par catégorie. */
-    // L() choisit la langue ; le portant est regarni à chaque ouverture du salon.
-    const tout = PEAUX.map((hex, i) => ({ peau: hex, cat: 'peau', nom: T('dressSkin') + ' ' + (i + 1), verrou: false }))
-      .concat(VESTIAIRE.map(v => {
-        // une pièce du vestiaire peut être une récompense : même cadenas et même
-        // nom masqué que pour un article de la boutique (voir `visuelDe`)
-        const ferme = !TOUT_OUVERT && !!(v.verrou && !DEBLOQUE.a(v.verrou));
-        return { it: ferme ? ITEM_VERROU : v, porte: null, nom: ferme ? T('locked') : L(v.nom),
-                 cat: v.cat, coupe: v.coupe, verrou: ferme };
-      }));
-    DATA.forEach(cat => {
-      if (cat.kind !== 'shop') return;
-      cat.items.forEach(it => {
-        const vu = visuelDe(it);
-        if (!vu.img) return;
-        const r = rangerDe(it);
-        /* Deux visuels pour une même pièce : la CASE du portant montre la
-           photo de boutique, seule à distinguer un sweat d'un autre, et le
-           MANNEQUIN porte le rendu porté quand la taille en déclare un. */
-        /* Deux visuels pour une même pièce : la CASE du portant montre la
-           photo de boutique, seule à distinguer un sweat d'un autre, et le
-           MANNEQUIN porte le rendu porté que la taille déclare — ou celui, plus
-           précis, que l'article déclare dans son champ `porte`. */
-        const rendu = it.porte || (r.porte && r.porte.img);
-        tout.push({ it: vu, porte: (vu === it && rendu) ? { img: rendu } : null,
-                    nom: vu === it ? L(it.n) : T('locked'), cat: r.cat, coupe: r.coupe, verrou: vu !== it });
-      });
-    });
-    GROUPES.forEach(g => {
-      const cats = g.cats || [g.cat];
-      const lot = tout.filter(p => cats.includes(p.cat));
-      if (!lot.length) return;
-      const t = g.el = document.createElement('div');
-      t.className = 'dress-groupe';
-      t.setAttribute('aria-hidden', 'true');       // le nom de chaque case le dit déjà
-      t.textContent = T(g.cle);
-      rack.appendChild(t);
-      lot.forEach(caser);
-    });
-    refletEtat();
-  }
-  /* Une pièce par catégorie : la choisir retire celle qu'elle remplace, la
-     rechoisir la retire tout court. Une pièce VERROUILLÉE, elle, ne se pose
-     pas — sa case tremble et refuse. Poser un cadenas sur le mannequin
-     n'apprenait rien à personne ; le refus, lui, dit qu'il y a là quelque
-     chose à débloquer. */
-  /* ON S'HABILLE DANS L'ORDRE : un haut, puis un bas, puis des chaussures. Une
-     paire de baskets sur un corps sans pantalon ne ressemble à rien, un
-     pantalon sans haut non plus, et le refus le dit mieux qu'une case grisée :
-     la pièce existe, elle attend celle d'avant. Retirer une pièce emporte ce
-     qui reposait dessus — on ne garde pas des chaussures sur un corps qu'on
-     vient de déshabiller. */
-  const DEPEND = { bas: 'haut', pieds: 'bas' };
-  function basculer(p){
-    /* Une teinte se POSE, elle ne se retire pas : un corps a toujours une
-       peau. Recliquer celle qu'on porte ne fait donc rien de visible, et
-       surtout ne renvoie personne à la teinte du moteur. */
-    if (p.peau){ poserPeau(p.peau); refletEtat(); sfx.select(); return; }
-    /* Un choix de personnage : il REMPLACE celui de son rayon, il ne s'ajoute
-       pas. Recliquer celui qu'on porte ne le retire pas — pour cela il y a la
-       case « aucun », qui est un choix comme un autre. */
-    if (p.cat && POSER_PERSO[p.cat]){
-      POSER_PERSO[p.cat](p.perso);
-      chargerPerso(scene);
-      sauverTenue();
-      refletEtat();
-      sfx.select();
-      return;
-    }
-    /* Même tremblement que pour un article verrouillé : un seul geste de refus
-       dans tout le salon, il se reconnaît tout de suite. */
-    /* ET ON NE SE RHABILLE PAS EN SE DÉSHABILLANT : une fois un haut posé, le
-       reclic ne le retire pas, il faut en choisir un autre. Le corps reste
-       habillé tant qu'on joue ; « Clear all » est la seule sortie, et elle est
-       à portée de main juste en dessous. */
-    const attend = DEPEND[p.cat];
-    const refus = p.verrou
-      || (attend && !portees.has(attend) && !portees.has(p.cat))
-      || (p.cat === 'haut' && portees.get(p.cat) === p);
-    if (refus){
-      p.el.classList.remove('refus');
-      void p.el.offsetWidth;          // relance l'animation même sur un clic répété
-      p.el.classList.add('refus');
-      sfx.refus();
-      return;
-    }
-    const dedans = portees.get(p.cat);
-    if (dedans === p) portees.delete(p.cat);
-    else portees.set(p.cat, p);
-    if (!portees.has('haut')) portees.delete('bas');
-    if (!portees.has('bas')) portees.delete('pieds');
-    refletEtat();
-    sauverTenue();
-    if (dedans === p) sfx.retirer(); else sfx.select();
-  }
-  /* UN HAUT AU HASARD À L'OUVERTURE. Le mannequin en sous-vêtement est le seul
-     moment où le salon montre ce qu'il fait de moins bien ; il n'y a aucune
-     raison de commencer par là. Un haut tiré au sort met tout de suite le jeu
-     en marche, et il montre en une image ce qu'on est venu faire.
-     Seulement les pièces DÉBLOQUÉES, et seulement si le corps est nu — on
-     rouvre souvent le salon pour continuer, et retrouver sa tenue vaut mieux
-     qu'une surprise. */
-  function tirerHaut(){
-    if (portees.has('haut')) return;
-    const libres = pieces.filter(p => p.cat === 'haut' && !p.verrou);
-    if (!libres.length) return;
-    portees.set('haut', libres[Math.floor(Math.random() * libres.length)]);
-    refletEtat();
-    sauverTenue();
-  }
-  function deshabiller(){
-    portees.clear();
-    refletEtat();
-    sauverTenue();
-    sfx.vider();
-  }
-
-  /* ---- la couleur de peau ----
-     Elle ne touche que l'atlas du mannequin : le maillage ne change pas, seule
-     la clé de texture bouge, si bien qu'il n'y a rien à reconstruire. On
-     redessine à l'image suivante, sans rien recalculer d'autre. */
-  function poserPeau(hex){
-    peau = hex;
-    majMannequin();
-    sauverTenue();
-  }
-  /* ---- le personnage, hors écran ----
-     Le salon n'enregistre plus le look : le bouton vert est parti le 22 sept.
-     2026, et ce qu'on emporte est désormais la CARTE DU PROFIL, partagée
-     depuis le profil (voir `profil.carte`) — le personnage y est, avec le
-     gamertag et le reste, ce qui fait une image qui se lit toute seule.
-     Ce qui reste ici, c'est la fabrication du personnage seul, sur fond
-     transparent, dans un carré de N pixels : le canvas du salon a la taille
-     de la fenêtre et porte le portant, l'image, elle, doit être carrée, nette
-     et sans décor d'interface. `habiller` étant le même pour les deux, ce
-     qu'on partage est exactement ce qu'on voyait — à la résolution près, qui
-     est meilleure. Une seule scène hors écran, gardée d'une fois sur l'autre :
-     en créer une par appel épuiserait les contextes WebGL de la page. */
-  let sceneShot = null, cvShot = null;
-  function imagePersonnage(N){
-    if (!cvShot || cvShot.width !== N){
-      cvShot = document.createElement('canvas'); cvShot.width = cvShot.height = N;
-      if (sceneShot) sceneShot = null;
-      sceneShot = model3d.makeScene(cvShot);
-    }
-    if (!sceneShot) return null;
-    if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
-    chargerPerso(sceneShot);
-    portees.forEach(p => { sceneShot.load(p.it); if (p.porte) sceneShot.load(p.porte); });
-    sceneShot.clear();
-    habiller(sceneShot, N * 0.06, N * 0.03, N * 0.88);
-    return cvShot;
-  }
-  /* ---- la tenue retenue (fp.tenue) ----
-     Ce qui est porté, la peau, le visage et ses réglages : écrit à chaque
-     changement, relu quand le portant est regarni (les pièces sont de
-     nouveaux objets à chaque fois, on les retrouve par leur clé). Une pièce
-     de boutique se retrouve par le chemin de sa photo, sans le cachet de
-     version ; un accessoire par son nom. Une pièce disparue du catalogue, ou
-     verrouillée, est simplement laissée de côté. */
-  const cleDe = (p) => p.peau ? 'peau:' + p.peau
-                     : p.it.accessoire ? 'acc:' + p.it.accessoire
-                     : String(p.it.img || '').split('?')[0];
-  function sauverTenue(){
-    const p = {};
-    portees.forEach((piece, cat) => { p[cat] = cleDe(piece); });
-    STOCK.ecrire('fp.tenue', { portees: p, peau, visage, cheveux, couvre });
-  }
-  function restaurerTenue(){
-    const t = STOCK.lire('fp.tenue', null);
-    if (!t) return;
-    portees.clear();
-    Object.entries(t.portees || {}).forEach(([cat, cle]) => {
-      const piece = pieces.find(q => q.cat === cat && !q.verrou && cleDe(q) === cle);
-      if (piece) portees.set(cat, piece);
-    });
-    // la même règle d'ordre qu'au clic : pas de bas sans haut, pas de chaussures sans bas
-    if (!portees.has('haut')) portees.delete('bas');
-    if (!portees.has('bas')) portees.delete('pieds');
-    peau = typeof t.peau === 'string' ? t.peau : null;
-    if (PERSO_CHOIX.visage.indexOf(t.visage) > 0) visage = t.visage;
-    if (PERSO_CHOIX.coiffure.indexOf(t.cheveux) >= 0) cheveux = t.cheveux;
-    if (PERSO_CHOIX.couvre.indexOf(t.couvre) >= 0) couvre = t.couvre;
-    majMannequin();
-    refletEtat();
-  }
-  /* ---- le dessin ----
-     Un seul passage : le mannequin dans sa boîte, les pièces portées dans la
-     leur, puis chaque case du portant. Les boîtes des cases sont LUES dans le
-     document — une mesure par image et par case, et seulement quand le jeu est
-     ouvert : c'est le prix d'une grille dont la mise en page reste au
-     navigateur, et il est très inférieur à celui d'un canvas par case. */
-  /* ---- habiller : le mannequin et ses couches, dans une boîte donnée ----
-     Le même dessin sert à deux endroits : la scène du salon, et l'image que le
-     visiteur enregistre. Il ne prend donc ni le canvas ni la fenêtre, mais une
-     scène et un cadre — tout le reste (la pose, les découpes, les échelles)
-     est identique de l'un à l'autre, ce qui est la seule façon d'être sûr que
-     l'image enregistrée est bien ce qu'on voyait. */
-  /* ---- pourquoi il n'y a PAS de halo posé sur la scène ----
-     Il y en a eu un : un rond de dégradé en CSS, par-dessus le canvas,
-     déplacé à chaque image sur le bout de la cigarette. Il est parti, et le
-     souvenir vaut d'être gardé — c'était deux fois faux.
-     Un halo n'est pas une braise, c'est ce qu'une braise fait autour d'elle :
-     à la taille où la cigarette est dessinée, le rond mangeait le bâton et on
-     voyait une ampoule, pas un mégot. Et une lueur en CSS ne sait rien de la
-     scène : il fallait lui recalculer sa place à chaque image, de l'extérieur,
-     à partir d'un angle et d'une boîte — elle tombait juste pour une pose et
-     glissait pour toutes les autres.
-     Le bout qui brûle est donc DANS le modèle, une tranche du cylindre qui
-     porte sa propre couleur et sa propre lumière (voir meshAccessoire). Il
-     tourne avec la cigarette, il rapetisse avec elle, et il n'y a plus rien à
-     tenir en face. */
-  /* ---- HABILLER : le personnage et ce qu'il porte, dans une boîte donnée ----
-     Le même dessin sert à trois endroits : la scène du salon, le personnage du
-     panneau profil, et l'image qu'on emporte. Il ne prend donc ni canvas ni
-     fenêtre, mais une scène et un cadre — tout le reste est identique de l'un
-     à l'autre, seule façon d'être sûr que l'image enregistrée est bien ce
-     qu'on voyait.
-
-     CE QU'IL FAISAIT AVANT, ET QU'IL NE FAIT PLUS. Il cadrait des PHOTOS : il
-     mesurait l'empreinte de chaque vêtement à plat, la calait sur l'ourlet ou
-     sur la ceinture, la resserrait aux épaules, l'élargissait sur le pantalon,
-     découpait l'encolure, pliait les bras du mannequin pour les faire entrer
-     dans les manches, et remettait la profondeur à zéro entre chaque couche
-     pour que la suivante recouvre la précédente. Deux cent vingt lignes pour
-     poser des images de papier sur un bloc, et qui ne tenaient que de face.
-     Les vêtements sont maintenant des MAILLAGES taillés sur ce corps-là et
-     montés sur le même squelette : il n'y a plus rien à cadrer, rien à
-     étirer, rien à plier. On les dessine, et ils tombent juste.
-
-     UNE SEULE PROFONDEUR POUR TOUT LE PERSONNAGE : un seul `plan()` avant, et
-     plus jamais entre deux pièces. C'est ce qui fait qu'un bras passe DEVANT
-     le t-shirt quand il est devant et DERRIÈRE quand il est derrière — donc
-     ce qui permet de tourner. */
-  const PIECE3D = { tee: 'tshirt', sweat: 'sweat', pantalon: 'jean', chaussure: 'baskets' };
-  /* LA TENUE DE BASE (demandée le 22 sept. 2026) : t-shirt blanc, pantalon
-     bleu, et les baskets avec. Ce n'est pas une coquetterie — LE PACK NE
-     MODÉLISE RIEN SOUS LES VÊTEMENTS : pas de torse nu, pas de cuisses, pas de
-     pieds. Sans cette tenue-là, « tout effacer » laisserait une tête et deux
-     bras flottants. Le personnage est donc toujours habillé, comme un
-     mannequin de vitrine l'est toujours. */
-  const BASE3D = { haut: 'tshirt', bas: 'jean', pieds: 'baskets' };
-  /* Le visage et la coiffure : deux choix du personnage, pas deux vêtements.
-     Les coiffures ne tiennent qu'à l'os de la tête, elles se montent donc
-     indifféremment sur les trois visages. */
-  let visage = 'visage1', cheveux = 'cheveux2', couvre = '';
-  /* DEUX CASQUES SONT FERMÉS : ils ne se posent pas sur la tête, ils la
-     remplacent. Les porter cache donc le visage et la coiffure — sans quoi un
-     nez et une mèche sortiraient du plexiglas. */
-  const CASQUES_FERMES = ['swat', 'spatial'];
-  /* L'aperçu des pièces de tête : de combien on agrandit la boîte, et de
-     combien on la descend pour amener la tête au milieu de la case. Relevé à
-     l'œil sur la grille — le personnage occupe un peu moins de la moitié de sa
-     boîte, et sa tête est au dernier cinquième. */
-  const TETE_ZOOM = 4.2, TETE_HAUT = 0.395;
-  /* ---- LE PERSONNAGE TOURNE ----
-     C'est le geste qui manquait, et il n'a été possible qu'une fois les
-     vêtements devenus des maillages : avec les coussins photo d'avant, un
-     quart de tour montrait des plaques de carton et des bras qui traversaient
-     les manches.
-     On le pousse et il CONTINUE, comme la tête de la page Info : un élan qui
-     retombe en une seconde. La rotation ne se retient pas d'une visite à
-     l'autre — c'est une façon de regarder, pas une propriété du personnage —
-     et chaque ouverture du salon le remet de face. */
-  const TOUR_PX = 2 * Math.PI / 420;    // un tour complet en 420 px de glissement
-  const FREIN = 0.90;                   // ce qu'il reste de l'élan après 16 ms
-  let angle = 0, elan = 0, saisie = null, derniereImage = 0;
-  /* Ce que le personnage porte, en objets prêts à dessiner. LE VÊTEMENT
-     CHOISI DONNE SA PHOTO : c'est elle qui sera projetée sur le maillage (voir
-     `atlasVetement`), si bien que le t-shirt du personnage est bien celui de
-     la penderie, avec son imprimé, et non un t-shirt générique. La tenue de
-     base, elle, n'a pas de photo : elle garde sa couleur. */
-  const persoListe = () => {
-    const ferme = CASQUES_FERMES.indexOf(couvre) >= 0;
-    const l = [{ perso: 'corps', peau }];
-    if (!ferme){
-      l.push({ perso: visage, peau });
-      if (cheveux) l.push({ perso: cheveux, peau });
-    }
-    if (couvre) l.push({ perso: couvre, peau });
-    ['bas', 'haut', 'pieds'].forEach(cat => {
-      const p = portees.get(cat);
-      const id = (p && PIECE3D[p.coupe]) || BASE3D[cat];
-      if (!id) return;
-      const it = { perso: id, peau };
-      // LA PHOTO À PLAT, jamais le rendu porté : c'est un contour de vêtement
-      // étalé qu'on projette sur le maillage, pas une vue en situation.
-      const vu = p && p.it;
-      if (p && PIECE3D[p.coupe] && vu && vu.img){ it.img = vu.img; it.img2 = vu.img2 || vu.img; }
-      l.push(it);
-    });
-    return l;
+  return {
+    charger,
+    // opts : { creation: la première fois, sans profil ; onglet: celui à montrer d'abord }
+    open(opts){
+      const ov = document.getElementById('dressOverlay');
+      if (!A && ov){ ov.classList.add('open'); document.getElementById('atelierCharge').hidden = false; }
+      charger().then(a => { if (ov) ov.classList.remove('open'); a.ouvrir(opts); })
+        .catch(() => { if (ov) ov.classList.remove('open'); });
+    },
+    close: () => { if (A) A.fermer(); },
+    isOpen: () => !!(A && A.ouvert()),
+    key: (e) => !!(A && A.touche(e)),
+    // le personnage dans une toile 2D (le profil) ; faux tant que le moteur n'est pas là
+    dessiner: (g, w, h, t) => A ? A.dessinerProfil(g, w, h, t) : (charger().catch(() => {}), false),
+    image: (N) => A ? A.image(N) : null,
   };
-  const chargerPerso = (sc) => { if (sc) persoListe().forEach(it => sc.load(it)); };
-  function habiller(sc, MX, MY, S, ang){
-    const boite = { x: MX, y: MY, s: S }, a = ang || 0;
-    sc.plan();
-    persoListe().forEach(it => {
-      if (!sc.ready(it)) sc.load(it);          // pas encore cousu : il paraîtra à l'image suivante
-      sc.draw(it, a, boite, 1, null, 'front');
-    });
-    /* Les accessoires gardent leur modèle et leur point d'accrochage : ce sont
-       des objets qu'on POSE, pas des vêtements qu'on enfile. Ils passent après
-       une remise à zéro de la profondeur parce qu'ils sont dessinés dans leur
-       propre petite fenêtre, avec leur propre projection — leurs profondeurs
-       ne se comparent pas à celles du personnage. Sur un visage, passer
-       par-dessus est de toute façon ce qu'il faut. */
-    sc.plan();
-    [...portees.values()].forEach(p => {
-      const P = p.it.accessoire && ACC_POSE[p.it.accessoire];
-      if (!P) return;
-      const s = S * P.l;
-      sc.draw(p.it, (P.ang || 0) + a, { x: MX + S * (0.5 + P.x) - s / 2, y: MY + S * (1 - P.y) - s / 2, s }, 1, null, 'front');
-    });
-    sc.plan();
-  }
-  /* ---- LE SOUFFLE ----
-     Le mannequin respire, et c'est sa BOÎTE qui respire, pas son maillage. Il
-     grandit d'un centième autour de ses pieds : la tête monte, les pieds
-     restent au sol, et le buste s'élargit d'autant — le mouvement d'un torse
-     qui se remplit d'air.
-
-     LA BOÎTE, ET RIEN QUE LA BOÎTE, pour deux raisons qui comptent autant
-     l'une que l'autre. D'abord le prix : plier le squelette changerait la clé
-     du maillage à chaque image, et le mannequin serait reconstruit soixante
-     fois par seconde au lieu d'une fois pour toutes. Ensuite la cohérence :
-     les vêtements sont des coussins plats, sans articulations ni poids de
-     peau, et c'est en refusant de les tordre qu'on a fait disparaître les
-     aiguilles à l'emmanchure. Une boîte, elle, est partagée : le corps et
-     toutes ses couches en descendent, donc tout respire ensemble, au même
-     rythme et sans se décoller.
-
-     La courbe n'est pas une sinusoïde : on inspire plus vite qu'on n'expire.
-     L'exposant 1,4 allonge le bas de la courbe, et quatre secondes et demie
-     font quatorze respirations par minute — un corps au repos. */
-  const SOUFFLE = { duree: 4500, ampleur: 0.0115 };
-  const souffle = (t) => Math.pow((Math.sin(t / SOUFFLE.duree * Math.PI * 2) + 1) / 2, 1.4);
-  /* ---- et le salon s'endort ----
-     Un onglet laissé ouvert et oublié ne doit pas continuer de peindre quatre-
-     vingts images par seconde pour un mannequin que personne ne regarde. Le
-     navigateur endort déjà les onglets qu'on quitte ; celui qu'on laisse SOUS
-     LES YEUX en travaillant ailleurs, lui, continue.
-     Au bout de trois quarts de minute sans un geste, le souffle redescend en
-     fondu — s'arrêter net sur une inspiration laisserait un corps gonflé — puis
-     la boucle se coupe pour de bon. L'image reste à l'écran telle quelle : le
-     navigateur garde la dernière peinte, il n'y a rien à redessiner pour qu'elle
-     tienne. Le moindre geste réveille tout, et le fondu repart à l'endroit où
-     il s'était arrêté. */
-  const VEILLE = 45000, VEILLE_FONDU = 1500;
-  let eveilAt = 0, dort = false;
-  function reveiller(){
-    eveilAt = performance.now();
-    if (dort && ouvert){ dort = false; cancelAnimationFrame(raf); raf = requestAnimationFrame(boucle); }
-  }
-  /* ---- le socle ----
-     La lumière du studio, l'ombre de contact et le rebord du disque sont
-     dessinés par le CSS et non par le canvas : celui-ci est en WebGL, il ne
-     sait peindre que des maillages. On lui donne donc la boîte du personnage
-     en trois variables et le décor se place tout seul.
-     ON N'ÉCRIT QUE QUAND ÇA BOUGE : cette boîte ne change qu'au
-     redimensionnement de la fenêtre, il serait absurde de toucher au style
-     soixante fois par seconde pour y réécrire les mêmes nombres. */
-  let socleCle = '';
-  function poserSocle(x, y, s){
-    const cle = Math.round(x) + '|' + Math.round(y) + '|' + Math.round(s);
-    if (cle === socleCle) return;
-    socleCle = cle;
-    stage.style.setProperty('--perso-x', x.toFixed(1) + 'px');
-    stage.style.setProperty('--perso-y', y.toFixed(1) + 'px');
-    stage.style.setProperty('--perso-s', s.toFixed(1) + 'px');
-  }
-  function dessiner(t, eveil){
-    if (!scene) return;
-    const r = cv.getBoundingClientRect();
-    if (!r.width) return;
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const w = Math.max(1, Math.round(r.width * k)), h = Math.max(1, Math.round(r.height * k));
-    if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
-    scene.clear();
-    /* Le mannequin occupe ce que la colonne de droite lui laisse. Sur un écran
-       large elle est À CÔTÉ, il reste toute la hauteur ; sur un écran étroit
-       elle passe EN DESSOUS, et le mannequin doit alors tenir au-dessus d'elle
-       — sans quoi il se dessinait derrière le portant, jambes cachées par les
-       cases. Le canvas couvre toute la scène et ne sait rien des blocs posés
-       dessus : c'est ici qu'on le lui dit. */
-    const co = cote.getBoundingClientRect();
-    const sous = co.top - r.top > r.height * 0.25;
-    const hDispo = sous ? co.top - r.top - 6 : r.height;
-    const libre = Math.min(r.width * 0.46, hDispo * 0.92);
-    const S = libre * k;
-    const px = sous ? (r.width - libre) / 2 : r.width * 0.045, py = (hDispo - libre) / 2;
-    const MX = px * k, MY = py * k;
-    poserSocle(px, py, libre);   // le décor du studio, en CSS, sous le canvas
-    /* L'élan retombe au fil des images. Il est en radians par milliseconde,
-       donc il ne dépend pas de la cadence : sauter une image ne le ralentit
-       pas, elle est simplement plus longue. */
-    const dt = Math.min(64, derniereImage ? t - derniereImage : 16);
-    derniereImage = t;
-    if (!saisie && elan){
-      angle += elan * dt;
-      elan *= Math.pow(FREIN, dt / 16);
-      if (Math.abs(elan) < 2e-5) elan = 0;
-    }
-    // le souffle : la boîte grandit autour des PIEDS, donc la tête monte et
-    // les pieds ne quittent pas le sol
-    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t) * eveil);
-    habiller(scene, MX - (S2 - S) / 2, MY - (S2 - S), S2, angle);
-    /* Le portant : chaque aperçu à la place de sa case, ROGNÉ au cadre du
-       portant. Sans ce rognage, une case à moitié sortie par le défilement
-       peignait quand même son vêtement en entier, par-dessus les outils et le
-       décor — le canvas est unique et ne connaît pas le débordement du bloc
-       qui le surplombe. */
-    const rr = rack.getBoundingClientRect();
-    const fenetre = { x: (rr.left - r.left) * k, y: (rr.top - r.top) * k, l: rr.width * k, h: rr.height * k };
-    pieces.forEach((p, i) => {
-      if (p.peau || !p.it) return;        // une teinte ou un « aucun » n'a pas de maillage
-      const b = p.el.getBoundingClientRect();
-      if (b.bottom < rr.top || b.top > rr.bottom) return;   // sorti du cadre par le défilement
-      /* LES PIÈCES DE TÊTE SE MONTRENT EN GROS PLAN. Dessinées comme un
-         vêtement, elles feraient trois pixels au sommet d'un corps entier :
-         on agrandit donc la boîte et on la descend pour que la tête vienne au
-         milieu de la case, le rognage se chargeant du reste. */
-      if (p.cat && PORTE_PERSO[p.cat]){
-        const s0 = Math.min(b.width, b.height) * 0.92;
-        const s2 = s0 * TETE_ZOOM;
-        const bo = { x: (b.left - r.left + (b.width - s0) / 2 - (s2 - s0) / 2) * k,
-                     y: (b.top - r.top + (b.height - s0) / 2 - (s2 - s0) / 2 + s2 * TETE_HAUT) * k,
-                     s: s2 * k, clip: fenetre };
-        if (p.tete && CASQUES_FERMES.indexOf(p.perso) < 0) scene.draw({ perso: visage, peau }, 0, bo, 1);
-        scene.draw(p.it, 0, bo, 1);
-        return;
-      }
-      const s = Math.min(b.width, b.height) * 0.92;
-      // une piece en sommeil s'efface avec sa case : le refus se lit avant le clic
-      // les vignettes ne tournent plus : le vestiaire n'a plus de dos a montrer
-      // un accessoire se montre sous l'angle ou on le porte : la cigarette de
-      // trois quarts dans le portant comme sur le mannequin, sans quoi sa case
-      // ne montre qu'un disque blanc
-      scene.draw(p.it, (p.it.accessoire && ACC_POSE[p.it.accessoire] && ACC_POSE[p.it.accessoire].ang) || 0, {
-        x: (b.left - r.left + (b.width - s) / 2) * k,
-        y: (b.top - r.top + (b.height - s) / 2) * k, s: s * k, clip: fenetre },
-        // 0,55 et non 0,4 : sur le fond de nuit du studio, un vêtement à 0,4
-        // d'opacité disparaît pour de bon — la case en sommeil devenait un trou
-        p.el.classList.contains('dress-case--dort') ? 0.55 : 1);
-    });
-  }
-  let ipsSalon = 0, dessins = 0;
-  function boucle(t){
-    raf = requestAnimationFrame(boucle);
-    // même plafond que le reste du site : le souffle suit l'horloge, pas les
-    // images, donc sauter une image ne le ralentit pas (voir IPS_MAX)
-    if (t - ipsSalon < IPS_PAS - 0.5) return;
-    ipsSalon = t;
-    // l'éveil : 1 tant qu'on s'occupe du salon, puis un fondu vers 0
-    const eveil = Math.max(0, Math.min(1, (VEILLE + VEILLE_FONDU - (t - eveilAt)) / VEILLE_FONDU));
-    dessins++;
-    dessiner(t, eveil);
-    // le souffle est retombé : on peint une dernière fois au repos, puis on coupe
-    if (eveil <= 0){ cancelAnimationFrame(raf); raf = 0; dort = true; }
-  }
-
-  /* `opts.etape` : le salon est ici le second pas du parcours de création
-     (voir profil.demarrer). Il ne change rien à son fonctionnement — on écrit
-     juste d'où l'on vient au-dessus du titre, et sa fermeture prévient le
-     profil que le parcours est fini. */
-  let etapeDe = 0;
-  function ouvrir(opts){
-    if (ouvert) return;
-    ouvert = true;
-    etapeDe = (opts && opts.etape) || 0;
-    angle = 0; elan = 0; saisie = null;   // on revient toujours de face
-    /* LA PLAQUE PORTE LE NOM DU PERSONNAGE quand il y en a un : c'est de lui
-       qu'on s'occupe ici, et un créateur de personnage affiche celui qu'on
-       est en train d'habiller. Sans profil — on peut venir ici sans en avoir
-       créé — elle dit ce qu'est la fenêtre. */
-    const moi = profil.existe() && profil.lire();
-    titre.textContent = (moi && moi.nom) || T('dressTitle');
-    ongletP.textContent = T('dressRack');
-    ongletC.textContent = T('dressPerso');
-    teteLook.textContent = T('dressLook');
-    btNu.textContent = T('dressStrip');
-    const fil = document.getElementById('dressEtape');
-    fil.hidden = !etapeDe;
-    if (etapeDe) fil.textContent = T('profilEtape').replace('%1', String(etapeDe)).replace('%2', '2');
-    if (!scene) scene = model3d.makeScene(cv);
-    chargerPerso(scene);
-    garnir();
-    restaurerTenue();
-    tirerHaut();
-    eveilAt = performance.now(); dort = false;
-    overlay.classList.add('open');
-    sfx.sansFond(true);             // le salon se joue sans nappe : ses bruitages suffisent
-    sfx.salon();                    // le carillon du salon, pas celui du site
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(boucle);
-  }
-  function fermer(){
-    if (!ouvert) return;
-    ouvert = false;
-    cancelAnimationFrame(raf); raf = 0; dort = false;
-    overlay.classList.remove('open');
-    // la photo du visage RESTE (fp.tenue) : c'est celle du personnage du profil
-    sfx.sansFond(false);   // le menu retrouve sa nappe
-    /* Le salon n'est plus un mini-jeu mais l'atelier du personnage (22 sept.
-       2026) : en sortant on retombe sur le profil, qui montre la tenue. */
-    const ci = DATA.findIndex(c => c.kind === 'profil');
-    if (ci >= 0 && activeCat !== ci){ activeCat = ci; activeItem = 0; render(); }
-    else profil.rafraichir();   // déjà sur le profil : la tenue vient de changer
-    if (etapeDe){ etapeDe = 0; profil.fini(); }   // fin du parcours de création : le profil l'annonce
-  }
-  /* ---- navigation au clavier ----
-     Le salon se joue à la souris, mais il doit aussi se parcourir aux flèches
-     et à Entrée, comme le reste du site et comme les deux autres mini-jeux.
-     ON NE COMPTE PAS LES COLONNES. Le portant est une grille dont la largeur
-     change avec la fenêtre, un groupe peut être vide, un intertitre s'intercale
-     entre deux rangées : tout cela se lit dans la MISE EN PAGE, jamais dans le
-     code. On choisit donc par la GÉOMÉTRIE — parmi les commandes qui sont du
-     bon côté, la plus proche, l'écart de travers comptant double pour qu'une
-     flèche vers le bas ne parte pas en biais. Le jour où la grille change, il
-     n'y a rien à retoucher ici.
-     Les commandes sont rangées DE HAUT EN BAS ET DE GAUCHE À DROITE, et non
-     dans l'ordre du document : le bouton vert y est écrit avant le portant,
-     si bien que la première flèche tombait sur lui au lieu du premier
-     vêtement. L'ordre de lecture est celui de l'œil, pas celui du fichier. */
-  const commandes = () => [...overlay.querySelectorAll('.dress-case, .dress-outils .dress-bt')]
-    .filter(el => el.offsetParent !== null)
-    .map(el => ({ el, r: el.getBoundingClientRect() }))
-    .sort((a, b) => (Math.round(a.r.top / 8) - Math.round(b.r.top / 8)) || (a.r.left - b.r.left))
-    .map(o => o.el);
-  function navigerFocus(dx, dy){
-    const tout = commandes();
-    if (!tout.length) return;
-    const ici = tout.indexOf(document.activeElement);
-    if (ici < 0){ tout[0].focus(); return; }
-    const a = tout[ici].getBoundingClientRect();
-    const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
-    let choix = null, best = Infinity;
-    tout.forEach((el, i) => {
-      if (i === ici) return;
-      const b = el.getBoundingClientRect();
-      const bx = b.left + b.width / 2, by = b.top + b.height / 2;
-      const avance = (bx - ax) * dx + (by - ay) * dy;
-      if (avance <= 1) return;                                  // derrière soi : ce n'est pas par là
-      const travers = Math.abs((bx - ax) * dy - (by - ay) * dx);
-      const cout = avance + travers * 2;
-      if (cout < best){ best = cout; choix = el; }
-    });
-    if (choix) choix.focus();
-  }
-  const FLECHES = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-  function touche(e){
-    if (e.key === 'Escape'){ fermer(); return true; }
-    /* UN CURSEUR SE RÈGLE AUX FLÈCHES : c'est ce que tout le monde attend, et
-       le navigateur le fait déjà très bien. On lui laisse donc ←/→ quand il a
-       le focus, et on garde ↑/↓ pour en sortir — sans quoi on y resterait
-       enfermé, ce qui est le défaut habituel de ce genre de réglage. */
-    const surCurseur = document.activeElement && document.activeElement.type === 'range';
-    if (surCurseur && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return true;
-    if (FLECHES[e.key]){ e.preventDefault(); navigerFocus(FLECHES[e.key][0], FLECHES[e.key][1]); return true; }
-    /* Entrée et Espace. Les cases du portant et les deux étiquettes ont leur
-       PROPRE écouteur, qui s'est déclenché avant celui-ci — la fenêtre écoute
-       en dernier — et qui a retenu la touche en le faisant. `defaultPrevented`
-       le dit : quand il est vrai, le geste a eu lieu, refaire un clic ici le
-       ferait deux fois. Sinon la commande est un vrai bouton, et on l'appuie
-       nous-même plutôt que de compter sur le clic que le navigateur ferait de
-       lui-même : un défaut de moteur ne se vérifie pas, un appel si.
-       Dans tous les cas la touche s'arrête là — sans quoi elle descendrait
-       jusqu'au XMB et ajouterait un article au panier derrière la fenêtre. */
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){
-      const tout = commandes(), i = tout.indexOf(document.activeElement);
-      if (i < 0){ if (tout[0]){ e.preventDefault(); tout[0].focus(); } }
-      else if (!e.defaultPrevented){ e.preventDefault(); tout[i].click(); }
-      return true;
-    }
-    return true;   // le salon garde la main : aucune touche ne file au XMB derrière
-  }
-  /* LE GLISSEMENT NE PREND QUE LA SCÈNE : la colonne de droite garde ses
-     clics et son défilement. On mesure la vitesse sur le dernier déplacement,
-     c'est elle qui devient l'élan au relâchement. */
-  stage.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.dress-cote')) return;
-    saisie = { id: e.pointerId, x: e.clientX, a: angle, t: e.timeStamp, v: 0 };
-    elan = 0;
-    stage.classList.add('tourne');
-    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
-  });
-  stage.addEventListener('pointermove', (e) => {
-    if (!saisie || e.pointerId !== saisie.id) return;
-    const avant = angle;
-    angle = saisie.a + (e.clientX - saisie.x) * TOUR_PX;
-    const dt = e.timeStamp - saisie.t;
-    if (dt > 0){ saisie.v = (angle - avant) / dt; saisie.t = e.timeStamp; }
-  });
-  const lacher = (e) => {
-    if (!saisie || e.pointerId !== saisie.id) return;
-    elan = saisie.v;
-    saisie = null;
-    stage.classList.remove('tourne');
-  };
-  stage.addEventListener('pointerup', lacher);
-  stage.addEventListener('pointercancel', lacher);
-  /* Tout geste dans la fenêtre du salon réveille le souffle : bouger la
-     souris, cliquer, taper, faire défiler le portant. On écoute à la CAPTURE
-     pour être sûr d'être prévenu même quand l'événement est arrêté plus bas,
-     et en `passive` pour ne jamais retarder un défilement. */
-  ['pointermove', 'pointerdown', 'wheel', 'keydown'].forEach(e =>
-    overlay.addEventListener(e, reveiller, { capture: true, passive: true }));
-  rack.addEventListener('scroll', reveiller, { passive: true });
-  btNu.addEventListener('click', deshabiller);
-  /* Passer d'un panneau à l'autre regarnit la grille : les deux ne partagent
-     ni leurs cases ni leurs rayons, et `pieces` ne contient jamais que ce qui
-     est à l'écran — c'est lui que le canvas parcourt pour peindre les aperçus. */
-  const onglet = (quel) => {
-    if (panneau === quel) return;
-    panneau = quel;
-    ongletP.classList.toggle('on', quel === 'penderie');
-    ongletC.classList.toggle('on', quel === 'perso');
-    ongletP.setAttribute('aria-selected', String(quel === 'penderie'));
-    ongletC.setAttribute('aria-selected', String(quel === 'perso'));
-    rack.scrollTop = 0;
-    garnir();
-    sfx.select();
-  };
-  ongletP.addEventListener('click', () => onglet('penderie'));
-  ongletC.addEventListener('click', () => onglet('perso'));
-  document.getElementById('dressClose').addEventListener('click', fermer);
-  overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
-
-  // contrôle : l'état du salon, et de quoi poser une pièce sans la cliquer
-  const debug = (i) => {
-    if (i != null && pieces[i]) basculer(pieces[i]);
-    return { ouvert, pieces: pieces.length, portees: [...portees.entries()].map(([k, p]) => k + ':' + p.nom),
-             dessins,     // contrôle : images réellement peintes depuis l'ouverture
-             perso: persoListe().map(it => it.perso + (it.img ? '*' : '')) };   // contrôle : les pièces 3D dessinées, * = imprimée
-  };
-  /* ---- le personnage du profil ----
-     Le mannequin tel qu'il est habillé, dessiné dans la scène du PANNEAU
-     PROFIL (à part de celle du salon) : même `habiller` que le salon et que
-     l'image enregistrée, donc exactement le même personnage, avec son
-     souffle. Le portant est garni une première fois hors du salon pour que
-     la tenue retenue trouve ses pièces ; la scène du profil ne charge que ce
-     qui est porté, pas toute la penderie. */
-  let garniPourProfil = false;
-  function preparerPersonnage(sc){
-    // la première fois : le portant, la tenue retenue, et un haut au hasard s'il n'y en a pas — comme à l'ouverture du salon
-    if (!garniPourProfil){ garniPourProfil = true; garnir(); restaurerTenue(); tirerHaut(); }
-    chargerPerso(sc);
-    portees.forEach(p => { if (p.it.accessoire) sc.load(p.it); });   // seuls les accessoires gardent leur modèle
-  }
-  function dessinerPersonnage(sc, MX, MY, S, t){
-    if (!garniPourProfil) preparerPersonnage(sc);
-    const S2 = S * (1 + SOUFFLE.ampleur * souffle(t));
-    habiller(sc, MX - (S2 - S) / 2, MY - (S2 - S), S2);
-  }
-  const tenueVide = () => !portees.size;
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, debug,
-           preparerPersonnage, dessinerPersonnage, imagePersonnage, tenueVide };
 })();
 window.addEventListener('keydown', (e)=>{
   if (startupActive) return; // écran de démarrage : on laisse la console « s'allumer »
@@ -18353,11 +17069,9 @@ window.addEventListener('keydown', (e)=>{
   if (arena.isOpen()){ arena.key(e); return; }
   if (jumper.isOpen()){ jumper.key(e); return; }
   if (seum.isOpen()){ seum.key(e); return; }
-  // Dress Up rend les touches dont il ne fait rien : le salon d'essayage se
-  // joue à la souris, seules Échap et les flèches l'intéressent.
+  // L'atelier du personnage prend toutes les touches tant qu'il est ouvert :
+  // on y tape son nom, on y parcourt la colonne aux flèches (voir atelier.js).
   if (dressup.isOpen() && dressup.key(e)) return;
-  // Profil ouvert (le gamertag se tape au clavier) : Entrée enregistre, Échap ferme, le reste va au champ.
-  if (profil.ouvert()){ profil.touche(e); return; }
   // Réglages ouverts : flèches, Entrée, Échap — voir reglagesKey.
   if (reglagesOverlay.classList.contains('open')){ reglagesKey(e); return; }
   // Fiche « More info » ouverte : Échap ferme, le reste est ignoré.
@@ -18403,7 +17117,7 @@ window.addEventListener('keydown', (e)=>{
     // fait la même chose qu'un clic sur la miniature : elle tourne et la fiche
     // se déplie, puis la navigation du panneau reprend son cours.
     if (k === 'contact' || k === 'game') addBtn.click();
-    else if (k === 'profil') profil.editer();          // créer son gamertag, ou le modifier
+    else if (k === 'profil') profil.editer();          // créer son profil, ou personnaliser son personnage (l'atelier)
     else { ouvrirFiche(true); enterPanel(); }
   }
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
@@ -18430,7 +17144,7 @@ const WHEEL_FAST = 200; // ms sous lesquelles deux crans comptent comme un défi
 let wheelAcc = 0, wheelLast = 0, wheelStepAt = 0;
 window.addEventListener('wheel', (e) => {
   if (startupActive || panelMode || arena.isOpen()) return;
-  if (infoOverlay.classList.contains('open') || reglagesOverlay.classList.contains('open') || profil.ouvert() || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
+  if (infoOverlay.classList.contains('open') || reglagesOverlay.classList.contains('open') || dressup.isOpen() || legalOverlay.classList.contains('open') || cartOverlay.classList.contains('open')) return;
   const scrollable = e.target.closest && e.target.closest('.preview-desc, .legal-body, .info-body, .cart-items, .camion-texte');
   if (scrollable && scrollable.scrollHeight > scrollable.clientHeight) return;
   const count = DATA[activeCat].items.length;
