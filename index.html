@@ -17033,7 +17033,7 @@ const seum = (() => {
    Le numéro de version force le navigateur à reprendre le fichier quand il
    change (GitHub Pages le garde dix minutes en cache). */
 const dressup = (() => {
-  const VERSION = '20260925';
+  const VERSION = '20260925b';
   let charge = null, A = null;
   function charger(){
     if (charge) return charge;
@@ -17051,9 +17051,11 @@ const dressup = (() => {
     // opts : { creation: la première fois, sans profil ; onglet: celui à montrer d'abord }
     open(opts){
       const ov = document.getElementById('dressOverlay');
-      if (!A && ov){ ov.classList.add('open'); document.getElementById('atelierCharge').hidden = false; }
-      charger().then(a => { if (ov) ov.classList.remove('open'); a.ouvrir(opts); })
-        .catch(() => { if (ov) ov.classList.remove('open'); });
+      // le rideau « Chargement… » : seulement la première fois, le temps que le fichier arrive
+      const rideau = !A && ov;
+      if (rideau){ ov.classList.add('open'); document.getElementById('atelierCharge').hidden = false; }
+      charger().then(a => { if (rideau) ov.classList.remove('open'); a.ouvrir(opts); })
+        .catch(() => { if (rideau) ov.classList.remove('open'); });
     },
     close: () => { if (A) A.fermer(); },
     isOpen: () => !!(A && A.ouvert()),

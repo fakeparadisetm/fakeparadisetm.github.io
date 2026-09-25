@@ -1657,9 +1657,11 @@ function contexteCheveux(cfg, surf, T, m, R){
   };
   const local = (th, y, ep) => v3.madd(surf(th, y), normale(th, y), ep);
   // l'épaisseur de ce qu'on porte en haut : ce qui tombe doit passer par-dessus
-  const h = HAUTS[cfg.tenue && cfg.tenue.haut];
-  const habit = h && h.corps ? h.corps.plus + (h.manche ? h.manche.plus * 0.5 : 0) + (h.capuche ? 0.03 : 0) : 0.004;
-  return { cfg, surf, T, m, R, normale, local, monde: (p) => T.monde(p), rnd: graine(0xC0FFEE), habit, chapeau: sousChapeau(cfg) };
+  const h = HAUTS[coupeDe(cfg.tenue)];
+  const habit = h && h.corps ? h.corps.plus + (h.manche ? h.manche.plus * 0.5 : 0) : 0.004;
+  // la capuche rabattue : les longueurs passent par-dessus, dans le dos seulement
+  const dos = h && h.capuche ? 0.034 : 0;
+  return { cfg, surf, T, m, R, normale, local, monde: (p) => T.monde(p), rnd: graine(0xC0FFEE), habit, dos, chapeau: sousChapeau(cfg) };
 }
 /* LA COQUE. `presence(th, y)` de 0 à 1, `ep(th, y)` l'épaisseur (en hauteur
    de tête), `leve(th, y, pr)` un décalage libre (une banane qui avance, une
@@ -1747,7 +1749,8 @@ function contourner(H, P, marge){
   const zc = a.zc * s;
   const x = P[0], z = P[2] - zc;
   const ang = Math.atan2(x, z);
-  const [ex, ez] = superE({ rs: rs + marge, rf: a.rf * s + marge, rb: a.rb * s + marge, n: a.n }, ang);
+  const mg = marge + (H.dos || 0) * Math.pow(Math.max(0, -Math.cos(ang)), 1.5) * lisse(1.26, 1.34, yr);
+  const [ex, ez] = superE({ rs: rs + mg, rf: a.rf * s + mg, rb: a.rb * s + mg, n: a.n }, ang);
   return Math.hypot(x, z) < Math.hypot(ex, ez) ? [ex, P[1], ez + zc] : P;
 }
 /* Un volume : une sphère aplatie (chignon, macaron), un tube effilé (queue de
@@ -2038,21 +2041,8 @@ function tranchesHabit(m, cfg, spec){
       const u = (yr - spec.yb) / (spec.yt - spec.yb);
       const plus = (typeof spec.plus === 'function' ? spec.plus(th, yr, u) : spec.plus) + (spec.ampleBas || 0) * Math.pow(Math.max(0, 1 - u), 2);
       // l'épaule d'un haut passe PAR-DESSUS le deltoïde : sans cela l'arrondi du bras sortait du tissu
-      const epaule = spec.epaule ? (0.058 + m.km * 0.014 + m.kCarrure * 0.012) * cloche(yr - 1.432, 0.038) * Math.pow(Math.abs(x / l), 3.5) : 0;
+      const epaule = spec.epaule ? (0.044 + m.km * 0.014 + m.kCarrure * 0.012) * cloche(yr - 1.432, 0.038) * Math.pow(Math.abs(x / l), 3.5) : 0;
       r.push({ th, dir: [x / l, z / l], rad: l * s + plus + epaule * s });
-    }
-    /* LE COL DANS LA GÉOMÉTRIE (pièces dont la texture est une photo, qu'on
-       ne peut pas découper) : près du cou, un point trop près de l'axe est
-       repoussé sur le cercle du col, à sa hauteur. Les anneaux du haut se
-       rangent ainsi en une bande droite autour du cou — une bord-côte. */
-    if (spec.colGeo && yr > 1.40){
-      const cou = anneauTronc(m, 1.49), zCou = anneauTronc(m, 1.5).zc * s;
-      r.forEach(q => {
-        const X = q.dir[0] * q.rad, Z = cz + q.dir[1] * q.rad - zCou, d = Math.hypot(X, Z), phi = Math.atan2(X, Z);
-        const [ex, ez] = superE({ rs: cou.rs, rf: cou.rf, rb: cou.rb, n: cou.n }, phi);
-        const rc = Math.hypot(ex, ez) * s + spec.colGeo * s + 0.024 * s * Math.pow(Math.max(0, Math.cos(phi)), 2);
-        if (d < rc){ const k = rc / (d || 1), X2 = X * k, Z2 = Z * k + zCou - cz, l = Math.hypot(X2, Z2) || 1; q.rad = l; q.dir = [X2 / l, Z2 / l]; }
-      });
     }
     if (prec && spec.drape != null){
       const dy = precY - cy;
@@ -2160,11 +2150,6 @@ function peindreMotif(g, W, H, motif, C, rnd){
       for (let y = pas * 0.5; y < H; y += pas){ g.fillStyle = c1; g.fillRect(0, y, W, pas * 0.42); }
       break;
     }
-    case 'marin': {
-      const pas = H / 16;
-      for (let y = 0; y < H; y += pas){ g.fillStyle = c1; g.fillRect(0, y, W, pas * 0.45); }
-      break;
-    }
     case 'hawai': {
       // des feuilles d'abord, des hibiscus par-dessus
       for (let i = 0; i < 70 * W / 1024 * H / 512 + 20; i++){
@@ -2178,17 +2163,6 @@ function peindreMotif(g, W, H, motif, C, rnd){
         rep(dx => { g.save(); g.translate(x + dx, y); g.rotate(a); g.fillStyle = c1;
           for (let p = 0; p < 5; p++){ g.rotate(TAU / 5); g.beginPath(); g.ellipse(r * 0.55, 0, r * 0.62, r * 0.42, 0, 0, TAU); g.fill(); }
           g.fillStyle = 'rgba(255,240,200,0.9)'; g.beginPath(); g.arc(0, 0, r * 0.2, 0, TAU); g.fill(); g.restore(); });
-      }
-      break;
-    }
-    case 'palmiers': {
-      for (let i = 0; i < 26 * W / 1024 * H / 512 + 6; i++){
-        const x = rnd() * W, y = rnd() * H, h = 40 + rnd() * 30;
-        rep(dx => { g.save(); g.translate(x + dx, y);
-          g.strokeStyle = c2; g.lineWidth = 5; g.beginPath(); g.moveTo(0, h * 0.5); g.quadraticCurveTo(8, 0, 2, -h * 0.5); g.stroke();
-          g.fillStyle = c1;
-          for (let f = 0; f < 6; f++){ g.save(); g.translate(2, -h * 0.5); g.rotate(-PI / 2 + (f - 2.5) * 0.55); g.beginPath(); g.ellipse(h * 0.32, 0, h * 0.34, 6, 0, 0, TAU); g.fill(); g.restore(); }
-          g.restore(); });
       }
       break;
     }
@@ -2241,11 +2215,6 @@ function peindreMotif(g, W, H, motif, C, rnd){
       for (let i = 0; i < 3000; i++){ g.fillStyle = `rgba(255,255,255,${rnd() * 0.07})`; g.fillRect(rnd() * W, rnd() * H, 2, 1); }
       break;
     }
-    case 'survet': {                                          // le blouson de 1985 : trois bandes de couleur en biais
-      g.fillStyle = c1; g.beginPath(); g.moveTo(0, H * 0.35); g.lineTo(W, H * 0.2); g.lineTo(W, H * 0.45); g.lineTo(0, H * 0.6); g.fill();
-      g.fillStyle = c2; g.beginPath(); g.moveTo(0, H * 0.6); g.lineTo(W, H * 0.45); g.lineTo(W, H * 0.55); g.lineTo(0, H * 0.7); g.fill();
-      break;
-    }
   }
   // le grain de l'étoffe, sur tout : quelques milliers de points presque invisibles
   for (let i = 0; i < W * H / 90; i++){ g.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.05)'; g.fillRect(rnd() * W, rnd() * H, 1.5, 1.5); }
@@ -2264,25 +2233,59 @@ const decouper = (g, fn) => { g.save(); g.globalCompositeOperation = 'destinatio
    comme on choisit une variante dans un magasin de jeu. Les hauteurs sont
    celles du repère (voir TRONC). */
 const T_UNIS = [['#f4f1ea'], ['#1c1c22'], ['#ff7eb6'], ['#8fe3cf'], ['#7ec8ff'], ['#ffd166'], ['#b8b3c4'], ['#e4572e']];
+/* LES HAUTS SONT CEUX DE LA BOUTIQUE (demande du 25 sept. 2026) : les
+   t-shirts, le polo, le débardeur et les sweats en vente, portés tels qu'on
+   les achète (voir lirePhoto). Il ne reste à côté que trois basiques unis,
+   et « aucun ». Les coupes marquées `cache` ne se choisissent pas : ce sont
+   celles des articles, selon leur nature (voir coupeArticle). */
 const HAUTS = {
   aucun:     { nom: { fr: 'Aucun', en: 'None' } },
   tshirt:    { nom: { fr: 'T-shirt', en: 'T-shirt' }, corps: { yb: 0.95, plus: 0.010, drape: 0.45 }, manche: { fin: 0.30, plus: 0.012, evase: 0.18 }, col: 'rond', teintes: T_UNIS },
   oversize:  { nom: { fr: 'T-shirt large', en: 'Oversized tee' }, corps: { yb: 0.88, plus: 0.022, drape: 0.25, ampleBas: 0.012 }, manche: { fin: 0.42, plus: 0.022, evase: 0.32 }, col: 'rond', teintes: T_UNIS },
-  marin:     { nom: { fr: 'Marinière', en: 'Breton top' }, corps: { yb: 0.95, plus: 0.010, drape: 0.45 }, manche: { fin: 0.72, plus: 0.010, evase: 0.1 }, col: 'rond', motif: 'marin', teintes: [['#f4f1ea', '#1f2a5a'], ['#f4f1ea', '#d62246'], ['#1c1c22', '#f4f1ea']] },
-  debardeur: { nom: { fr: 'Débardeur', en: 'Tank top' }, corps: { yb: 0.95, plus: 0.007, drape: 0.6 }, col: 'debardeur', teintes: T_UNIS },
-  polo:      { nom: { fr: 'Polo', en: 'Polo' }, corps: { yb: 0.94, plus: 0.012, drape: 0.45 }, manche: { fin: 0.30, plus: 0.013, evase: 0.16 }, col: 'polo', teintes: [['#ff9ec7'], ['#9be7d8'], ['#f4f1ea'], ['#1f2a5a'], ['#ffe08a'], ['#c3a6ff']] },
-  hawai:     { nom: { fr: 'Chemise hawaïenne', en: 'Hawaiian shirt' }, corps: { yb: 0.91, plus: 0.016, drape: 0.3, ampleBas: 0.01 }, manche: { fin: 0.38, plus: 0.02, evase: 0.3 }, col: 'ouvert', motif: 'hawai',
-               teintes: [['#1d6fa3', '#ff5d8f', '#2bb673', '#0d8f6f'], ['#ff7eb6', '#fff1a8', '#3fb68b', '#1e8a6a'], ['#141418', '#ff4fa3', '#1ed6c2', '#0b8f86'], ['#ffd166', '#e4572e', '#2a9d8f', '#1d6f63']] },
-  palmier:   { nom: { fr: 'Chemise palmiers', en: 'Palm shirt' }, corps: { yb: 0.91, plus: 0.016, drape: 0.3, ampleBas: 0.01 }, manche: { fin: 0.38, plus: 0.02, evase: 0.3 }, col: 'ouvert', motif: 'palmiers',
-               teintes: [['#ffb3a7', '#1e7b5b', '#6b3e26'], ['#9ad8ff', '#16624a', '#5a3824'], ['#f4f1ea', '#e4572e', '#3a2a22']] },
-  survet:    { nom: { fr: 'Veste de survêtement', en: 'Track jacket' }, corps: { yb: 0.92, plus: 0.02, drape: 0.3 }, manche: { fin: 1.0, plus: 0.018, evase: 0.12, ourlet: true }, col: 'zip', motif: 'survet',
-               teintes: [['#2a2d6e', '#ff4fa3', '#39d4ff'], ['#f4f1ea', '#1ec7a0', '#ff7a3d'], ['#1c1c22', '#b18cff', '#ffd166'], ['#d62246', '#f4f1ea', '#1f2a5a']] },
-  hoodie:    { nom: { fr: 'Sweat à capuche', en: 'Hoodie' }, corps: { yb: 0.90, plus: 0.022, drape: 0.28 }, manche: { fin: 1.0, plus: 0.02, evase: 0.12, ourlet: true }, col: 'capuche', capuche: true, poche: true, teintes: [['#1c1c22'], ['#b8b3c4'], ['#ff7eb6'], ['#2a2d6e'], ['#8fe3cf'], ['#e4572e']] },
-  costume:   { nom: { fr: 'Veste de costume', en: 'Pastel blazer' }, dessous: 'tshirt', corps: { yb: 0.855, plus: 0.026, drape: 0.22, ampleBas: 0.006 }, manche: { fin: 0.62, plus: 0.024, evase: 0.12, ourlet: true, revers: true }, col: 'veste', ouvert: true,
-               teintes: [['#ffc6d9', '#f4f1ea'], ['#b9f0e0', '#1c1c22'], ['#f4f1ea', '#7ec8ff'], ['#d9c9ff', '#f4f1ea'], ['#ffe9b0', '#e4572e']] },
-  crop:      { nom: { fr: 'Crop top', en: 'Crop top' }, corps: { yb: 1.19, plus: 0.008, drape: 0.5 }, manche: { fin: 0.26, plus: 0.01, evase: 0.12 }, col: 'rond', teintes: T_UNIS },
   brassiere: { nom: { fr: 'Brassière', en: 'Sports bra' }, corps: { yb: 1.2, plus: 0.004, drape: 1.2 }, col: 'brassiere', teintes: [['#1c1c22'], ['#ff7eb6'], ['#8fe3cf'], ['#f4f1ea'], ['#b18cff']] },
+  // le t-shirt de la boutique : carré, court, les manches larges au milieu du bras
+  boxy:      { cache: true, corps: { yb: 0.955, plus: 0.018, drape: 0.32, ampleBas: 0.006 }, manche: { fin: 0.36, plus: 0.02, evase: 0.26 }, col: 'rond', serre: 1.06 },
+  polo:      { cache: true, corps: { yb: 0.94, plus: 0.014, drape: 0.4 }, manche: { fin: 0.32, plus: 0.016, evase: 0.18 }, col: 'polo', serre: 1.04 },
+  // le débardeur de la boutique : large d'épaules, le col rond
+  tank:      { cache: true, corps: { yb: 0.95, plus: 0.014, drape: 0.4 }, col: 'tank' },
+  // les sweats zippés : coupe ballon, la capuche rabattue dans le dos
+  hoodie:    { cache: true, corps: { yb: 0.90, plus: 0.024, drape: 0.28 }, manche: { fin: 1.0, plus: 0.02, evase: 0.12, ourlet: true }, col: 'capuche', capuche: true, serre: 1.13 },
 };
+/* Les articles de la boutique qui se portent : ceux qui ont une photo, et
+   que le visiteur a le droit de voir (une pièce unique pas encore gagnée
+   reste sous cadenas). L'adresse d'une photo peut porter un numéro de
+   révision (`?v=`, voir applyCatalogue) : deux adresses qui ne diffèrent que
+   par lui désignent le même article. */
+const sansVersion = (u) => String(u || '').split('?')[0];
+function articlesBoutique(tous){
+  const l = [];
+  if (typeof DATA !== 'undefined') DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => {
+    if (!it.img) return;
+    const ferme = typeof visuelDe === 'function' && visuelDe(it) !== it;
+    if (tous || !ferme) l.push(it);
+  }); });
+  return l;
+}
+const portee = (it) => ({ img: it.img, img2: it.img2 || it.img, sz: it.sz });
+// un article porté par défaut : le premier t-shirt de la boutique
+function articleParDefaut(){
+  const l = articlesBoutique();
+  const it = l.find(a => a.sz !== 'hoodie' && /tee/i.test(a.n || '') && !/polo/i.test(a.n || '')) || l[0];
+  return it ? portee(it) : null;
+}
+// la coupe d'un article, d'après son guide des tailles et son nom
+function coupeArticle(b){
+  const it = article(b.img), n = ((it && it.n) || b.n || '') + ' ' + sansVersion(b.img), sz = (it && it.sz) || b.sz || '';
+  if (sz === 'hoodie' || /hoodie|sweat|capuche/i.test(n)) return 'hoodie';
+  if (sz === 'tank' || /tank|d[ée]bardeur/i.test(n)) return 'tank';
+  if (/polo/i.test(n)) return 'polo';
+  return 'boxy';
+}
+// la coupe réellement portée
+function coupeDe(T){
+  if (T && T.haut === 'boutique' && T.boutique && T.boutique.img) return coupeArticle(T.boutique);
+  return T && HAUTS[T.haut] && !HAUTS[T.haut].cache ? T.haut : 'tshirt';
+}
 const BAS = {
   aucun:    { nom: { fr: 'Aucun', en: 'None' } },
   jean:     { nom: { fr: 'Jean droit', en: 'Straight jeans' }, bassin: { yt: 1.0, plus: 0.008 }, jambe: { fin: 1.02, plus: 0.01, droit: 0.82, ourlet: true }, motif: 'denim', jean: true,
@@ -2337,155 +2340,287 @@ function nappeTronc(pers, rangs, yb, yt, o){
 }
 function mancheOuJambe(M, pers, seg, opt, spec){
   const { an, L, tot } = habitMembre(pers.m, seg, opt, Object.assign({}, spec, { d1: spec.f1 * (v3.len(v3.sub(seg[0].b, seg[0].a)) + v3.len(v3.sub(seg[1].b, seg[1].a))) }));
-  const K = spec.K || 14, r0 = an[0];
+  const K = spec.K || 14, r0 = an[0], u0 = spec.u0 || 0, uK = spec.uK || 1;
   tuyau(M, an, { K, debut: spec.debut, fin: null,
-    pointe: [v3.madd(r0.c, r0.t, -(r0.rs * 0.55)), null],
+    pointe: [v3.madd(r0.c, r0.t, -(r0.rs * (spec.pointe == null ? 0.55 : spec.pointe))), null],
     os: (r) => poidsChaine(seg, opt, L, r.d),
-    uv: (r, j) => [j / K, clamp(r.u, 0, 1)] });
+    uv: (r, j) => [u0 + j / K * uK, clamp(r.u, 0, 1)] });
 }
 function construireHaut(pers, id, v, calque, force){
   const def = HAUTS[id];
   if (!def || !def.corps) return [];
-  const { m, R, cfg } = pers, C = force || (def.teintes || T_UNIS)[v % (def.teintes || T_UNIS).length];
+  const { m, R, cfg } = pers;
+  // un article de la boutique : ses photos lues (voir lirePhoto) ; tant qu'elles ne le sont pas, la coupe unie, couleur de tissu
+  const A = pers.article && !calque ? pers.article : null, P = A && A.F ? A : null;
+  const C = A ? [A.hex || '#55555c'] : force || (def.teintes || T_UNIS)[v % (def.teintes || T_UNIS).length];
   const yb = def.corps.yb, yt = 1.493;
   const plus = def.corps.plus + (calque || 0);
-  const photo = pers.photo && !calque ? pers.photo : null;
-  const rangs = tranchesHabit(m, cfg, { yb, yt, plus, drape: def.corps.drape, ampleBas: def.corps.ampleBas, epaule: !!def.manche, colGeo: photo ? 0.012 : 0 });
-  let M = nappeTronc(pers, rangs, yb, yt);
-  const out = [];
-  if (photo){ M.normales(); M = imprimer(M, rangs, yb, yt); out.push({ M, photo, double: true, spec: 0.04 }); }
-  else out.push({ M, toile: peindreHaut(def, C, yb, yt, 1024, 512, rangs, m), double: true, spec: 0.04 });
+  const rangs = tranchesHabit(m, cfg, { yb, yt, plus, drape: def.corps.drape, ampleBas: def.corps.ampleBas, epaule: !!def.manche });
+  const M = nappeTronc(pers, rangs, yb, yt);
+  const out = [{ M, toile: P ? peindrePhotoTronc(P, def, yb, yt, 768, 384, rangs, m) : peindreHaut(def, C, yb, yt, 1024, 512, rangs, m), double: true, spec: 0.04 }];
   if (def.manche){
     const Ms = new Maille();
-    ['G', 'D'].forEach(c => mancheOuJambe(Ms, pers, segBras(m, R, c), OPT_BRAS(c), { d0: 0.004, f1: def.manche.fin, plus: def.manche.plus + (calque || 0) * 0.8, plusHaut: 0.005 + (calque || 0) * 0.6,
-      evase: (u) => (def.manche.evase || 0) * Math.pow(u, 1.5), ourlet: def.manche.ourlet || def.manche.fin < 0.5, debut: 'ferme', K: 14 }));
-    if (photo){ for (let k = 0; k < Ms.nb; k++){ Ms.uv[k * 2] = 0.25; Ms.uv[k * 2 + 1] = 0.75; } out.push({ M: Ms, photo, double: true, spec: 0.04 }); }
-    else out.push({ M: Ms, toile: peindreManche(def, C), double: true, spec: 0.04 });
+    // les manches d'un article ont chacune leur moitié de toile : chacune son imprimé
+    ['G', 'D'].forEach(c => mancheOuJambe(Ms, pers, segBras(m, R, c), OPT_BRAS(c), { d0: -0.014, pointe: 0.15, f1: def.manche.fin, plus: def.manche.plus + (calque || 0) * 0.8, plusHaut: 0.005 + (calque || 0) * 0.6,
+      evase: (u) => (def.manche.evase || 0) * Math.pow(u, 1.5), ourlet: def.manche.ourlet || def.manche.fin < 0.5, debut: 'ferme', K: 14,
+      u0: P ? (c === 'G' ? 0 : 0.5) : 0, uK: P ? 0.5 : 1 }));
+    out.push({ M: Ms, toile: P ? peindrePhotoManches(P, 512, 256) : peindreManche(def, C), double: true, spec: 0.04 });
   }
-  // le col montant d'un polo ou d'une veste de survêtement : un petit anneau qui entoure le cou
-  if (def.col === 'polo' || def.col === 'zip'){
+  // le col d'un polo : un petit anneau qui entoure le cou, rabattu
+  if (def.col === 'polo'){
     const Mc = new Maille(), s = m.s;
     const bas = anneauTronc(m, 1.485), haut = anneauTronc(m, 1.51);
     const r = (a, y, k) => ({ yr: y, c: [0, m.Y(y) * s, a.zc * s], pts: Array.from({ length: Kt + 1 }, (_, j) => {
       const th = -PI + TAU * j / Kt; const [x, z] = superE({ rs: a.rs * k, rf: a.rf * k, rb: a.rb * k, n: 2.2 }, th);
-      const ouvre = def.col === 'polo' ? 1 : 1;
-      return [x * s * ouvre, m.Y(y) * s, (a.zc + z) * s]; }) });
-    const rangsC = def.col === 'polo' ? [r(bas, 1.458, 1.62 + plus * 6), r(haut, 1.492, 1.3 + plus * 6)] : [r(bas, 1.47, 1.28 + plus * 6), r(haut, 1.515, 1.22 + plus * 6)];
-    nappe(Mc, rangsC, { uv: (i, j) => [j / Kt, i ? 0.02 : 0.98], os: (i) => [[O.cou, i ? 0.8 : 0.4], [O.poitrine, i ? 0.2 : 0.6]] });
-    const tc = toile(256, 64), g = tc.getContext('2d'); g.fillStyle = def.col === 'zip' ? C[0] : C[0]; g.fillRect(0, 0, 256, 64);
+      return [x * s, m.Y(y) * s, (a.zc + z) * s]; }) });
+    nappe(Mc, [r(bas, 1.458, 1.62 + plus * 6), r(haut, 1.492, 1.3 + plus * 6)], { uv: (i, j) => [j / Kt, i ? 0.02 : 0.98], os: (i) => [[O.cou, i ? 0.8 : 0.4], [O.poitrine, i ? 0.2 : 0.6]] });
+    const tc = toile(256, 64), g = tc.getContext('2d'); g.fillStyle = C[0]; g.fillRect(0, 0, 256, 64);
     g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 0, 256, 8);
-    if (def.col === 'zip'){ g.fillStyle = '#c9ccd4'; g.fillRect(126, 0, 4, 64); }
     out.push({ M: Mc, toile: tc, double: true });
   }
-  if (def.capuche){
-    const cap = capuche(pers, C, plus);
-    if (photo){ const Mh = cap[0].M; for (let k = 0; k < Mh.nb; k++){ Mh.uv[k * 2] = 0.25; Mh.uv[k * 2 + 1] = 0.75; } cap[0] = { M: Mh, photo, double: true }; }
-    out.push(...cap);
-  }
+  if (def.capuche) out.push(...capuche(pers, C, plus));
   return out;
 }
-/* ---- L'IMPRIMÉ D'UN ARTICLE DE LA BOUTIQUE ----
-   Le t-shirt de la boutique est une PHOTO à plat ; celui du personnage, une
-   coque. On projette l'une sur l'autre, de face : c'est ainsi qu'un imprimé
-   est posé sur une poitrine. La boîte de la coque vue de face va sur le
-   BUSTE de la photo — le milieu de la silhouette, sans les manches étalées
-   (62 % de sa largeur, relevé sur les hauts de la boutique). Trois régions
-   dans un atlas : la face en haut à gauche, le dos (la seconde photo, en
-   miroir) en haut à droite, l'étoffe moyenne en bas — pour les flancs, les
-   manches, la capuche. Chaque triangle choisit la sienne selon sa normale,
-   et a ses propres sommets : un triangle à cheval sur deux régions irait
-   chercher sa couleur en travers de l'atlas. */
-function imprimer(M, rangs, yb, yt){
-  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-  for (let k = 0; k < M.nb; k++){ const x = M.p[k * 3], y = M.p[k * 3 + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-  const N = new Maille(), I = M.i, P = M.p;
-  for (let t = 0; t < I.length; t += 3){
-    const a = I[t], b = I[t + 1], c = I[t + 2];
-    const u = v3.sub([P[b * 3], P[b * 3 + 1], P[b * 3 + 2]], [P[a * 3], P[a * 3 + 1], P[a * 3 + 2]]);
-    const w = v3.sub([P[c * 3], P[c * 3 + 1], P[c * 3 + 2]], [P[a * 3], P[a * 3 + 1], P[a * 3 + 2]]);
-    const n = v3.norm(v3.cross(u, w)), nz = Math.abs(n[2]) < 1e-6 ? 0 : n[2];
-    // la normale d'un triangle peut regarder dedans (la coque est cousue dans un sens ou dans l'autre) : on la juge par celle des sommets
-    const moyZ = M.n[a * 3 + 2] + M.n[b * 3 + 2] + M.n[c * 3 + 2];
-    const reg = moyZ > 0.84 ? 1 : moyZ < -0.84 ? -1 : 0;
-    const ids = [a, b, c].map(v => {
-      const x = P[v * 3], y = P[v * 3 + 1], fx = clamp((x - x0) / (x1 - x0), 0.005, 0.995), fy = clamp((y1 - y) / (y1 - y0), 0.005, 0.995);
-      const uv = reg > 0 ? [fx * 0.5, fy * 0.5] : reg < 0 ? [0.5 + (1 - fx) * 0.5, fy * 0.5] : [0.25, 0.75];
-      const os = []; for (let j = 0; j < 4; j++) if (M.po[v * 4 + j] > 0) os.push([M.os[v * 4 + j], M.po[v * 4 + j]]);
-      const q = N.sommet([x, y, P[v * 3 + 2]], uv, null, os);
-      N.n[q * 3] = M.n[v * 3]; N.n[q * 3 + 1] = M.n[v * 3 + 1]; N.n[q * 3 + 2] = M.n[v * 3 + 2];
-      return q;
-    });
-    N.tri(ids[0], ids[1], ids[2]);
-  }
-  N.lisse = true;                         // les normales sont déjà là, lissées sur la coque d'origine
-  return N;
-}
-/* Les photos d'un article, chargées une fois : la silhouette (tout ce qui
-   n'est pas le fond blanc), son buste, sa couleur moyenne. */
+/* ---- L'ARTICLE DE LA BOUTIQUE, PORTÉ ----
+   (refait le 25 sept. 2026 : la projection de face d'avant posait la capuche
+   de la photo sur la poitrine, grisait les manches et rognait les lettres.)
+   Le vêtement de la boutique est une PHOTO à plat, de face et de dos ; celui
+   du personnage, une coque. On lit la photo comme un patron : la silhouette
+   du vêtement (tout ce qui n'est pas le fond, gagné depuis les bords) ; le
+   TRONC, entre les coutures des flancs — relevées en bas, là où les manches
+   ne le touchent plus —, de la ligne des épaules (sous la capuche d'un
+   sweat) à l'ourlet ; les deux MANCHES, chacune de sa racine contre le tronc
+   à son poignet, avec sa largeur ; la couleur du TISSU, la plus fréquente
+   sur le tronc. Puis on peint la toile de la coque comme celle de n'importe
+   quelle pièce : le devant de la photo sur la moitié avant, le dos sur la
+   moitié arrière, chaque rangée prise en proportion de la longueur d'étoffe
+   du tour à cette hauteur — un imprimé garde ses proportions sur la poitrine
+   au lieu de s'étirer sur les flancs. Les manches de même, déroulées : le
+   dessus du bras vient du pli du dessus de la manche posée à plat. La
+   capuche et le col prennent la couleur du tissu ; le col et les
+   emmanchures se découpent comme ceux des autres pièces (voir masquer). */
 const photos = new Map();
 function chargerImage(url){
   return new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = adresse(encodeURI(url)); });
 }
-function silhouette(img){
-  const N = 128, c = toile(N), g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(img, 0, 0, N, N);
-  const d = g.getImageData(0, 0, N, N).data;
-  // le fond : pris un peu à l'intérieur du coin — certaines photos ont un filet gris tout autour
-  const f0 = (4 * N + 4) * 4, fond = [d[f0], d[f0 + 1], d[f0 + 2]];
-  let x0 = N, x1 = -1, y0 = N, y1 = -1, r = 0, v = 0, b = 0, k = 0;
-  for (let y = 3; y < N - 3; y++) for (let x = 3; x < N - 3; x++){
-    const i = (y * N + x) * 4;
-    if (Math.abs(d[i] - fond[0]) + Math.abs(d[i + 1] - fond[1]) + Math.abs(d[i + 2] - fond[2]) > 40 && d[i + 3] > 20){
-      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-      if (x > N * 0.35 && x < N * 0.65){ r += d[i]; v += d[i + 1]; b += d[i + 2]; k++; }
-    }
+function lirePhoto(img){
+  const k = Math.min(1, 640 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.max(16, Math.round(img.naturalWidth * k)), H = Math.max(16, Math.round(img.naturalHeight * k)), N = W * H;
+  const cv = toile(W, H), g = cv.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, W, H);
+  const px = g.getImageData(0, 0, W, H).data;
+  // 1. le fond : sa couleur, prise un peu à l'intérieur du coin (certaines photos ont un filet tout autour), et tout ce qui la touche depuis les bords
+  const f0 = (4 * W + 4) * 4, F0 = px[f0], F1 = px[f0 + 1], F2 = px[f0 + 2];
+  const fond = new Uint8Array(N), vu = new Uint8Array(N), pile = new Int32Array(N);
+  let n = 0;
+  const pousser = (i) => { if (!vu[i]){ vu[i] = 1; pile[n++] = i; } };
+  for (let x = 0; x < W; x++){ pousser(x); pousser(N - W + x); }
+  for (let y = 0; y < H; y++){ pousser(y * W); pousser(y * W + W - 1); }
+  while (n){
+    const i = pile[--n], q = i * 4;
+    if (Math.abs(px[q] - F0) + Math.abs(px[q + 1] - F1) + Math.abs(px[q + 2] - F2) > 60) continue;
+    fond[i] = 1;
+    const x = i % W;
+    if (x > 0) pousser(i - 1); if (x < W - 1) pousser(i + 1); if (i >= W) pousser(i - W); if (i < N - W) pousser(i + W);
   }
-  if (x1 < 0){ x0 = 0; y0 = 0; x1 = N - 1; y1 = N - 1; }
-  const f = img.naturalWidth / N;
-  return { x0: x0 * f, x1: (x1 + 1) * f, y0: y0 * f, y1: (y1 + 1) * f, moy: k ? 'rgb(' + Math.round(r / k) + ',' + Math.round(v / k) + ',' + Math.round(b / k) + ')' : '#808080' };
+  // le liseré du bord, mêlé au fond (et les échos du JPEG) : rendu au fond, sur quatre pixels
+  for (let p = 0; p < 4; p++){
+    const a = fond.slice();
+    for (let i = 0; i < N; i++) if (!a[i]){ const x = i % W; if ((x > 0 && a[i - 1]) || (x < W - 1 && a[i + 1]) || (i >= W && a[i - W]) || (i < N - W && a[i + W])) fond[i] = 1; }
+  }
+  // 2. la boîte du vêtement
+  let x0 = W, x1 = -1, y0 = H, y1 = -1;
+  for (let i = 0; i < N; i++) if (!fond[i]){ const x = i % W, y = (i - x) / W; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < x0 + 16 || y1 < y0 + 16) return null;
+  const Wb = x1 - x0, Hb = y1 - y0, cx = Math.round((x0 + x1) / 2);
+  const plein = (x, y) => !fond[y * W + x];
+  // la plage de la rangée y qui contient la colonne du milieu
+  const plage = (y) => { if (!plein(cx, y)) return null; let a = cx, b = cx; while (a > x0 && plein(a - 1, y)) a--; while (b < x1 && plein(b + 1, y)) b++; return [a, b]; };
+  // 3. le tronc : ses flancs, relevés sur le bas, là où les plages sont les plus étroites (les manches n'y touchent plus)
+  const bas = [];
+  for (let y = Math.round(y0 + 0.62 * Hb); y <= Math.round(y0 + 0.9 * Hb); y++){ const p = plage(y); if (p) bas.push(p); }
+  if (bas.length < 4) return null;
+  const larg = bas.map(p => p[1] - p[0]).sort((a, b) => a - b), seuil = larg[Math.floor(larg.length * 0.35)];
+  const med = (l) => l.slice().sort((a, b) => a - b)[l.length >> 1];
+  const etroits = bas.filter(p => p[1] - p[0] <= seuil);
+  const xl = med(etroits.map(p => p[0])), xr = med(etroits.map(p => p[1]));
+  // l'ourlet : la dernière rangée où le tronc a encore sa largeur
+  let yh = y1;
+  for (let y = y1; y > y0; y--){ const p = plage(y); if (p && p[1] - p[0] > 0.5 * (xr - xl)){ yh = y; break; } }
+  // le haut : la première rangée où le vêtement s'élargit — les épaules, sous la capuche d'un sweat
+  let yn = y0;
+  for (let y = y0; y < yh; y++){
+    let a = -1, b = -1;
+    for (let x = x0; x <= x1; x++) if (plein(x, y)){ if (a < 0) a = x; b = x; }
+    if (a >= 0 && b - a > 0.42 * Wb){ yn = y; break; }
+  }
+  // les flancs de chaque rangée : la plage du milieu, bornée aux coutures (les manches collées au tronc n'en sont pas)
+  const gauche = new Float32Array(H), droite = new Float32Array(H);
+  for (let y = 0; y < H; y++){
+    const p = y >= yn && y <= yh ? plage(y) : null;
+    gauche[y] = p ? Math.max(xl, p[0]) : xl; droite[y] = p ? Math.min(xr, p[1]) : xr;
+    if (droite[y] - gauche[y] < 0.3 * (xr - xl)){ gauche[y] = xl; droite[y] = xr; }
+  }
+  // 4. le tissu : la couleur la plus fréquente sur le tronc (la moyenne mêlerait l'imprimé : un sweat noir aux lettres blanches deviendrait gris)
+  const hist = new Map();
+  for (let y = yn; y <= yh; y += 2) for (let x = xl; x <= xr; x += 2){
+    const i = y * W + x; if (fond[i]) continue;
+    const q = i * 4, c = ((px[q] >> 4) << 8) | ((px[q + 1] >> 4) << 4) | (px[q + 2] >> 4);
+    const e = hist.get(c); if (e){ e[0]++; e[1] += px[q]; e[2] += px[q + 1]; e[3] += px[q + 2]; } else hist.set(c, [1, px[q], px[q + 1], px[q + 2]]);
+  }
+  let best = null; for (const e of hist.values()) if (!best || e[0] > best[0]) best = e;
+  const tissu = best ? [Math.round(best[1] / best[0]), Math.round(best[2] / best[0]), Math.round(best[3] / best[0])] : [128, 128, 128];
+  // 5. les manches : chacune de sa racine, contre le tronc, à son poignet (le point le plus loin de la racine)
+  const manche = (cote) => {
+    const bord = cote < 0 ? xl - 3 : xr + 3, pts = [];
+    for (let y = y0; y <= y1; y += 2) for (let x = cote < 0 ? x0 : bord; x <= (cote < 0 ? bord : x1); x += 2) if (plein(x, y)) pts.push(x, y);
+    const nb = pts.length / 2;
+    if (nb < 0.003 * Wb * Hb) return null;
+    let ry = 0, rk = 0, ytop = H, ybot = -1;
+    for (let k = 0; k < nb; k++) if (Math.abs(pts[k * 2] - bord) <= 4){ const y = pts[k * 2 + 1]; ry += y; rk++; if (y < ytop) ytop = y; if (y > ybot) ybot = y; }
+    if (!rk) return null;
+    // la racine ne descend pas plus bas que l'aisselle : la manche d'un sweat longe le tronc sans y être cousue
+    const R = [bord, Math.min(ry / rk, ytop + 0.5 * Math.min(ybot - ytop, 0.22 * Hb))];
+    const d = new Float32Array(nb);
+    for (let k = 0; k < nb; k++) d[k] = Math.hypot(pts[k * 2] - R[0], pts[k * 2 + 1] - R[1]);
+    const d94 = Float32Array.from(d).sort()[Math.floor(nb * 0.94)];
+    let sx = 0, sy = 0, sk = 0;
+    for (let k = 0; k < nb; k++) if (d[k] >= d94){ sx += pts[k * 2]; sy += pts[k * 2 + 1]; sk++; }
+    const C = [sx / sk, sy / sk], L = Math.hypot(C[0] - R[0], C[1] - R[1]) || 1, ax = [(C[0] - R[0]) / L, (C[1] - R[1]) / L];
+    // la normale de la manche, vers le dehors et le haut : le pli du dessus
+    let nn = [-ax[1], ax[0]];
+    if (nn[0] * cote - nn[1] < 0) nn = [-nn[0], -nn[1]];
+    const off = [];
+    for (let k = 0; k < nb; k++){
+      const vx = pts[k * 2] - R[0], vy = pts[k * 2 + 1] - R[1], le = vx * ax[0] + vy * ax[1];
+      if (le > 0.25 * L && le < 0.8 * L) off.push(Math.abs(vx * nn[0] + vy * nn[1]));
+    }
+    off.sort((a, b) => a - b);
+    return { R, C, n: nn, hw: Math.max(2, off.length ? off[Math.floor(off.length * 0.97)] : 0.1 * Wb) };
+  };
+  const manches = [manche(-1), manche(1)];
+  /* 6. le fond devient du tissu : ce qu'on irait chercher hors du vêtement en
+     prend la couleur. Et les plis de la photo s'estompent : sur le personnage,
+     c'est la lumière de la scène qui les fait, ceux de la photo à plat y
+     faisaient des taches. L'imprimé, loin de la couleur du tissu, n'y est pas
+     touché. */
+  for (let i = 0; i < N; i++){
+    const q = i * 4;
+    if (fond[i]){ px[q] = tissu[0]; px[q + 1] = tissu[1]; px[q + 2] = tissu[2]; px[q + 3] = 255; continue; }
+    const e = Math.abs(px[q] - tissu[0]) + Math.abs(px[q + 1] - tissu[1]) + Math.abs(px[q + 2] - tissu[2]);
+    if (e < 70){ const k = mix(0.35, 1, e / 70); for (let c = 0; c < 3; c++) px[q + c] = tissu[c] + (px[q + c] - tissu[c]) * k; }
+  }
+  return { W, H, px, xl, xr, yn, yh, gauche, droite, tissu, manches };
 }
-function atlasPhoto(url, url2){
+/* Les deux photos d'un article, lues une fois. Quatre articles en mémoire au
+   plus : une photo lue pèse un ou deux mégaoctets. `p.pret` : déjà lues —
+   le prochain personnage les prend sans attendre. */
+function photosArticle(url, url2){
   const cle = url + '|' + url2;
-  if (photos.has(cle)) return photos.get(cle);
-  const p = Promise.all([chargerImage(url), chargerImage(url2 || url)]).then(([a, b]) => {
-    const T = 256, c = toile(T * 2), g = c.getContext('2d');
-    const buste = (img, qx) => {
-      const S = silhouette(img), w = S.x1 - S.x0, m = w * 0.19;
-      g.drawImage(img, S.x0 + m, S.y0, w - 2 * m, S.y1 - S.y0, qx * T, 0, T, T);
-      return S;
-    };
-    const S = buste(a, 0); buste(b, 1);
-    g.fillStyle = S.moy; g.fillRect(0, T, T * 2, T);
-    /* Le fond de la photo entre dans le cadre du buste (les épaules tombent,
-       le cadre est droit) : on le remplace par l'étoffe, en partant des bords
-       — un remplissage, et non une couleur remplacée partout, qui mangerait un
-       imprimé blanc au milieu d'un t-shirt noir. */
-    const d = g.getImageData(0, 0, T * 2, T), px = d.data;
-    const mo = S.moy.match(/\d+/g).map(Number);
-    [0, 1].forEach(q => {
-      const x0 = q * T, i0 = (3 * T * 2 + x0 + 3) * 4, fond = [px[i0], px[i0 + 1], px[i0 + 2]];
-      const vu = new Uint8Array(T * T), pile = [];
-      for (let i = 0; i < T; i++){ pile.push([i, 0], [i, T - 1], [0, i], [T - 1, i]); }
-      while (pile.length){
-        const [x, y] = pile.pop();
-        if (x < 0 || y < 0 || x >= T || y >= T || vu[y * T + x]) continue;
-        vu[y * T + x] = 1;
-        const k = (y * T * 2 + x0 + x) * 4;
-        if (Math.abs(px[k] - fond[0]) + Math.abs(px[k + 1] - fond[1]) + Math.abs(px[k + 2] - fond[2]) > 60) continue;
-        px[k] = mo[0]; px[k + 1] = mo[1]; px[k + 2] = mo[2];
-        pile.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-      }
-    });
-    g.putImageData(d, 0, 0);
-    p.pret = c;                           // déjà là : le prochain personnage la prend sans attendre
-    return c;
+  if (photos.has(cle)){ const p = photos.get(cle); photos.delete(cle); photos.set(cle, p); return p; }
+  const p = Promise.all([chargerImage(url), chargerImage(url2 || url).catch(() => null)]).then(([a, b]) => {
+    const F = lirePhoto(a);
+    if (!F) throw new Error('photo illisible');
+    const B = (b && lirePhoto(b)) || F;
+    return (p.pret = { F, B, hex: '#' + F.tissu.map(v => v.toString(16).padStart(2, '0')).join('') });
   });
+  p.catch(() => { p.rate = true; });
   photos.set(cle, p);
+  while (photos.size > 4) photos.delete(photos.keys().next().value);
   return p;
 }
+// un point de la photo, en bilinéaire
+function echantillon(P, x, y, d, o){
+  const W = P.W, px = P.px;
+  x = clamp(x, 0, W - 1.001); y = clamp(y, 0, P.H - 1.001);
+  const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, i = (y0 * W + x0) * 4, j = i + W * 4;
+  for (let c = 0; c < 3; c++){
+    const a = px[i + c] + (px[i + 4 + c] - px[i + c]) * fx, b = px[j + c] + (px[j + 4 + c] - px[j + c]) * fx;
+    d[o + c] = a + (b - a) * fy;
+  }
+  d[o + 3] = 255;
+}
+/* La toile du tronc : colonne par colonne, l'angle du tour ; rangée par
+   rangée, la longueur d'étoffe de chaque moitié à cette hauteur. */
+function peindrePhotoTronc(A, def, yb, yt, W, H, rangs, m){
+  const c = toile(W, H), g = c.getContext('2d'), im = g.createImageData(W, H), d = im.data, F = A.F, B = A.B;
+  const NS = 24, NT = 48, serre = def.serre || 1, enTour = (t) => t > PI ? t - TAU : t;
+  /* La part de chaque colonne dans la largeur de la photo, relevée à NT
+     hauteurs (entre deux, on mêle) : un tiers la longueur d'étoffe depuis le
+     flanc, surtout la largeur vue de face. La seule longueur d'étoffe
+     enroulait les bords d'un grand imprimé autour des flancs (« HUNT
+     PEOPL ») : un vêtement ample tombe droit sur les côtés au lieu
+     d'épouser le torse. Et l'imprimé se resserre un peu vers le milieu
+     (`serre`) : les bras, qui pendent le long du corps, cachent les flancs ;
+     ceux-ci prennent l'étoffe du bord de la photo.
+     Le devant va du flanc droit (−π/2) au gauche par la poitrine — sur la
+     photo de face, de gauche à droite — ; le dos, du flanc gauche au droit —
+     sur celle de dos, de gauche à droite aussi. */
+  const L = new Float32Array(NS + 1), X = new Float32Array(NS + 1), x0 = W >> 2, x1 = (3 * W) >> 2;
+  const carte = [];
+  for (let k = 0; k <= NT; k++){
+    const yr = yt - k / NT * (yt - yb), f = new Float32Array(W);
+    for (let moitie = 0; moitie < 2; moitie++){
+      const th0 = moitie ? PI / 2 : -PI / 2, sg = moitie ? -1 : 1;
+      let prec = rangs.pt(th0, yr); L[0] = 0; X[0] = prec[0] * sg;
+      for (let j = 1; j <= NS; j++){ const q = rangs.pt(enTour(th0 + PI * j / NS), yr); L[j] = L[j - 1] + v3.len(v3.sub(q, prec)); X[j] = q[0] * sg; prec = q; }
+      const lt = L[NS] || 1, xt = (X[NS] - X[0]) || 1;
+      for (let x = moitie ? 0 : x0; x < (moitie ? W : x1); x++){
+        if (moitie && x >= x0 && x < x1) continue;
+        let th = -PI + TAU * (x + 0.5) / W;
+        if (moitie && th < 0) th += TAU;
+        const t = clamp((th - th0) / PI, 0, 1) * NS, i = Math.min(NS - 1, t | 0), w = t - i;
+        const a = (L[i] + (L[i + 1] - L[i]) * w) / lt, b = (X[i] + (X[i + 1] - X[i]) * w - X[0]) / xt;
+        f[x] = clamp((0.35 * a + 0.65 * b - 0.5) * serre + 0.5, 0, 1);
+      }
+    }
+    carte.push(f);
+  }
+  for (let y = 0; y < H; y++){
+    const v = (y + 0.5) / H, kk = v * NT, k0 = Math.min(NT - 1, kk | 0), w = kk - k0, f0 = carte[k0], f1 = carte[k0 + 1];
+    const fy = F.yn + v * (F.yh - F.yn), by = B.yn + v * (B.yh - B.yn);
+    const fr = clamp(Math.round(fy), 0, F.H - 1), br = clamp(Math.round(by), 0, B.H - 1);
+    const fg = F.gauche[fr], fl = F.droite[fr] - fg, bg = B.gauche[br], bl = B.droite[br] - bg;
+    for (let x = 0; x < W; x++){
+      const f = f0[x] + (f1[x] - f0[x]) * w, o = (y * W + x) * 4;
+      if (x >= x0 && x < x1) echantillon(F, fg + f * fl, fy, d, o);
+      else echantillon(B, bg + f * bl, by, d, o);
+    }
+  }
+  g.putImageData(im, 0, 0);
+  const [champ, bande] = decoupeHaut(def, m);
+  if (champ) masquer(g, W, H, rangs, yb, yt, champ, bande);
+  return c;
+}
+/* La toile des manches : le bras gauche sur la moitié gauche, le droit sur
+   l'autre. Autour de la manche (u), l'angle du tour — 0 devant, ±π derrière,
+   +π/2 vers la gauche du personnage — ; le long (v), de l'épaule au poignet. */
+function peindrePhotoManches(A, W, H){
+  const c = toile(W, H), g = c.getContext('2d'), im = g.createImageData(W, H), d = im.data, Wm = W / 2;
+  // de face, la manche gauche du personnage est à droite de la photo ; de dos, à gauche
+  const bras = [{ F: A.F.manches[1], B: A.B.manches[0], lat: 1 }, { F: A.F.manches[0], B: A.B.manches[1], lat: -1 }];
+  const tissu = (P, o) => { d[o] = P.tissu[0]; d[o + 1] = P.tissu[1]; d[o + 2] = P.tissu[2]; d[o + 3] = 255; };
+  for (let y = 0; y < H; y++){
+    const le = (y + 0.5) / H;
+    for (let x = 0; x < W; x++){
+      const b = bras[x < Wm ? 0 : 1], th = -PI + TAU * (((x % Wm) + 0.5) / Wm), o = (y * W + x) * 4;
+      const devant = Math.abs(th) <= PI / 2, P = devant ? A.F : A.B, S = devant ? b.F : b.B;
+      if (!S){ tissu(P, o); continue; }
+      // en travers : 0 sous le bras, 1 dessus
+      let a = devant ? (th + PI / 2) / PI : th > 0 ? 1.5 - th / PI : -0.5 - th / PI;
+      if (b.lat < 0) a = 1 - a;
+      const k = (a - 0.5) * 2 * S.hw;
+      const px = S.R[0] + (S.C[0] - S.R[0]) * le + S.n[0] * k, py = S.R[1] + (S.C[1] - S.R[1]) * le + S.n[1] * k;
+      // une manche n'emprunte pas l'imprimé de la poitrine
+      if (px > P.xl + 1 && px < P.xr - 1 && py > P.yn && py < P.yh) tissu(P, o);
+      else echantillon(P, px, py, d, o);
+    }
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
 /* La capuche, rabattue dans le dos : une poche de tissu posée sur les
-   omoplates, bord relevé autour du cou, et les deux cordons qui pendent
-   devant. */
+   omoplates, le bord relevé autour du cou. */
 function capuche(pers, C, plus){
   const { m } = pers, s = m.s, M = new Maille();
   const N = 7, K = 16, idx = [];
@@ -2509,104 +2644,55 @@ function capuche(pers, C, plus){
   g.fillStyle = C[0]; g.fillRect(0, 0, 256, 256);
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, 256, 10);            // la doublure au bord
   g.strokeStyle = 'rgba(0,0,0,0.2)'; g.lineWidth = 2; g.beginPath(); g.moveTo(128, 0); g.lineTo(128, 256); g.stroke();
-  // les cordons
-  const Mk = new Maille();
-  [1, -1].forEach(sg => {
-    const a = anneauTronc(m, 1.47);
-    const x0 = sg * 0.045 * s, z0 = (a.zc + a.rf) * s + plus + 0.006;
-    const pts = [[x0, m.Y(1.47) * s, z0], [x0 * 1.1, m.Y(1.40) * s, z0 + 0.012], [x0 * 1.15, m.Y(1.30) * s, z0 + 0.018]];
-    meche(Mk, pts, 0.0035 * s, 0.003 * s, (u) => poidsTronc(1.4, x0 / s), 4);
-    boule(Mk, null, pts[2], 0.005 * s, 0.009 * s, poidsTronc(1.3, x0 / s));
-  });
-  Mk.normales();
-  const tk = toile(8, 8); tk.getContext('2d').fillStyle = '#eeeae2'; tk.getContext('2d').fillRect(0, 0, 8, 8);
-  return [{ M, toile: t, double: true }, { M: Mk, toile: tk }];
+  return [{ M, toile: t, double: true }];
 }
-/* La toile d'un haut : le motif, puis les coutures, les boutons et les
-   poches, puis la découpe du col (ou du V, des emmanchures) d'après la forme
-   de la pièce (voir masquer), avec sa bordure. */
+/* Le col et les emmanchures d'un haut, d'après sa forme (voir masquer) : le
+   champ — positif on garde, négatif on découpe — et la bordure peinte le
+   long. */
+function decoupeHaut(def, m){
+  const s = m.s;
+  const cou = anneauTronc(m, 1.49), zCou = anneauTronc(m, 1.5).zc * s;
+  const rCou = (phi) => { const [x, z] = superE({ rs: cou.rs, rf: cou.rf, rb: cou.rb, n: cou.n }, phi); return Math.hypot(x, z) * s; };
+  const col = (creux, marge) => (x, y, z) => {
+    const dz = z - zCou, d = Math.hypot(x, dz), phi = Math.atan2(x, dz);
+    return d - (rCou(phi) + marge * s + creux * s * Math.pow(Math.max(0, Math.cos(phi)), 2));
+  };
+  switch (def.col){
+    case 'rond': case 'capuche':
+      return [col(def.col === 'capuche' ? 0.012 : 0.028, 0.012), { l: 0.013, c: 'rgba(0,0,0,1)', a: 0.2 }];
+    case 'polo':                                   // l'encolure se cache sous le col rabattu
+      return [col(0.004, 0.006), null];
+    case 'tank': {
+      // les emmanchures d'un débardeur carré : larges, découpées au-delà du haut de l'épaule
+      const cc = col(0.03, 0.014);
+      return [(x, y, z, th, yr) => Math.min(cc(x, y, z), Math.max((0.152 - Math.abs(x) / s) * s, (1.29 - yr) * s * 0.8)), { l: 0.01, c: 'rgba(0,0,0,1)', a: 0.18 }];
+    }
+    case 'brassiere':
+      return [(x, y, z, th, yr) => Math.max((1.35 - yr) * s, (0.021 - Math.abs(Math.abs(x) / s - 0.078)) * s), { l: 0.008, c: 'rgba(0,0,0,1)', a: 0.2 }];
+  }
+  return [null, null];
+}
+/* La toile d'un haut uni : le motif, l'ourlet et les coutures des flancs,
+   puis la découpe du col (voir decoupeHaut). */
 function peindreHaut(def, C, yb, yt, W, H, rangs, m){
   const c = toile(W, H), g = c.getContext('2d'), rnd = graine(W + H + (C[0] || '').length * 131);
   peindreMotif(g, W, H, def.motif || 'uni', C, rnd);
-  const P = pinceauTronc(W, H, yb, yt), fonce = 'rgba(0,0,0,0.16)', s = m.s;
-  // l'ourlet et les coutures des flancs
-  { const [, y] = P(0, yb + 0.02); g.fillStyle = 'rgba(0,0,0,0.08)'; g.fillRect(0, y, W, H - y); trait(g, [[0, y], [W, y]], fonce, 2); }
+  const P = pinceauTronc(W, H, yb, yt), fonce = 'rgba(0,0,0,0.16)';
+  { const [, y] = P(0, yb + (def.col === 'brassiere' ? 0.03 : 0.02)); g.fillStyle = def.col === 'brassiere' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)'; g.fillRect(0, y, W, H - y); trait(g, [[0, y], [W, y]], fonce, 2); }
   [PI / 2, -PI / 2].forEach(th => { const [x] = P(th, 0); trait(g, [[x, 0], [x, H]], 'rgba(0,0,0,0.12)', 2); });
-  // le cou : son axe et son rayon dans chaque direction
-  const cou = anneauTronc(m, 1.49), zCou = anneauTronc(m, 1.5).zc * s;
-  const rCou = (phi) => { const [x, z] = superE({ rs: cou.rs, rf: cou.rf, rb: cou.rb, n: cou.n }, phi); return Math.hypot(x, z) * s; };
-  const col = (creux, marge, yMin) => (x, y, z, th, yr) => {
-    const dz = z - zCou, d = Math.hypot(x, dz), phi = Math.atan2(x, dz);
-    const f = d - (rCou(phi) + marge * s + creux * s * Math.pow(Math.max(0, Math.cos(phi)), 2));
-    return yMin == null ? f : Math.max(f, (yMin - yr) * s * 2);
-  };
-  const V = (yBas, pente, fente) => (x, y, z, th, yr) => {
-    const w = yr > yBas ? (yr - yBas) * pente + fente : (fente || -1);
-    return Math.max(Math.abs(x) - w * s, Math.cos(th) < 0.1 ? 1 : -1);
-  };
-  switch (def.col){
-    case 'rond': case 'capuche': case 'polo':
-      if (def.col === 'polo'){
-        const [x0, y0] = P(0, 1.455), [, y1] = P(0, 1.36);
-        g.fillStyle = 'rgba(0,0,0,0.07)'; g.fillRect(x0 - 12, y0, 24, y1 - y0);
-        trait(g, [[x0 - 12, y0], [x0 - 12, y1], [x0 + 12, y1]], fonce, 1.5);
-        [0.25, 0.6, 0.92].forEach(k => { g.fillStyle = '#f7f5ef'; g.beginPath(); g.arc(x0, y0 + (y1 - y0) * k, 4.5, 0, TAU); g.fill(); g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1; g.stroke(); });
-      }
-      if (def.poche){
-        const pts = [[-0.55, yb + 0.05], [0.55, yb + 0.05], [0.42, yb + 0.2], [-0.42, yb + 0.2]].map(([th, y]) => P(th, y));
-        poly(g, pts, 'rgba(0,0,0,0.08)'); trait(g, pts.concat([pts[0]]), 'rgba(0,0,0,0.25)', 2);
-      }
-      masquer(g, W, H, rangs, yb, yt, col(def.col === 'capuche' ? 0.012 : 0.028, 0.012), { l: 0.013, c: 'rgba(0,0,0,1)', a: 0.2 });
-      break;
-    case 'debardeur': {
-      const cc = col(0.07, 0.02, 1.37);
-      masquer(g, W, H, rangs, yb, yt, (x, y, z, th, yr) => Math.min(cc(x, y, z, th, yr), Math.max((0.128 - Math.abs(x) / s) * s, (1.31 - yr) * s * 0.8)), { l: 0.01, c: 'rgba(0,0,0,1)', a: 0.18 });
-      break;
-    }
-    case 'brassiere': {
-      const [, y] = P(0, yb + 0.03); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, y, W, H - y);
-      masquer(g, W, H, rangs, yb, yt, (x, y2, z, th, yr) => Math.max((1.35 - yr) * s, (0.021 - Math.abs(Math.abs(x) / s - 0.078)) * s), { l: 0.008, c: 'rgba(0,0,0,1)', a: 0.2 });
-      break;
-    }
-    case 'ouvert': case 'veste': {
-      const veste = def.col === 'veste';
-      if (!veste){
-        const [x, y0] = P(0.03, 1.33), [, y1] = P(0, yb);
-        trait(g, [[x, y0], [x, y1]], 'rgba(0,0,0,0.2)', 2);
-        for (let k = 0; k < 4; k++){ const y = mix(y0 + 16, y1 - 20, k / 3); g.fillStyle = 'rgba(250,246,236,0.95)'; g.beginPath(); g.arc(x - 8, y, 4.2, 0, TAU); g.fill(); }
-      } else {
-        [0.72, -0.72].forEach(th => { const [x, y] = P(th, 0.955); trait(g, [[x - 34, y], [x + 34, y]], 'rgba(0,0,0,0.3)', 3); poly(g, [[x - 34, y], [x + 34, y], [x + 34, y + 12], [x - 34, y + 12]], 'rgba(0,0,0,0.08)'); });
-        const [px, py] = P(0.5, 1.33); poly(g, [[px - 22, py], [px + 22, py], [px + 22, py + 5], [px - 22, py + 5]], 'rgba(0,0,0,0.25)');
-        poly(g, [[px - 16, py], [px - 6, py - 14], [px + 2, py - 4], [px + 12, py - 12], [px + 16, py]], C[1] || '#ff7eb6');   // la pochette
-        const [bx, by] = P(-0.1, 1.08); [0, 1].forEach(k => { g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(bx, by + k * 38, 5, 0, TAU); g.fill(); });
-      }
-      const cc = col(0.0, 0.014), vv = veste ? V(1.16, 0.46, 0.016) : V(1.33, 0.62, 0);
-      masquer(g, W, H, rangs, yb, yt, (x, y, z, th, yr) => Math.min(cc(x, y, z, th, yr), vv(x, y, z, th, yr)),
-        { l: veste ? 0.04 : 0.03, c: veste ? 'rgba(255,255,255,1)' : 'rgba(0,0,0,1)', a: veste ? 0.16 : 0.12 });
-      break;
-    }
-    case 'zip': {
-      const [x] = P(0, 0);
-      g.fillStyle = '#c9ccd4'; g.fillRect(x - 3, 0, 6, H);
-      for (let y = 0; y < H; y += 5){ g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x - 3, y, 6, 1.5); }
-      masquer(g, W, H, rangs, yb, yt, col(0.0, 0.02), null);
-      break;
-    }
-  }
+  const [champ, bande] = decoupeHaut(def, m);
+  if (champ) masquer(g, W, H, rangs, yb, yt, champ, bande);
   return c;
 }
 function peindreManche(def, C){
   const W = 512, H = 256, c = toile(W, H), g = c.getContext('2d'), rnd = graine(C[0].length * 77 + W);
-  peindreMotif(g, W, H, def.motif === 'survet' ? 'uni' : (def.motif || 'uni'), C, rnd);
-  if (def.motif === 'survet'){ g.fillStyle = C[1]; g.fillRect(W * 0.22, 0, W * 0.07, H); g.fillStyle = C[2]; g.fillRect(W * 0.3, 0, W * 0.04, H); }
-  // l'ourlet (ou le poignet, ou le revers d'une manche retroussée)
+  peindreMotif(g, W, H, def.motif || 'uni', C, rnd);
+  // l'ourlet, ou le poignet
   const y = H * 0.93;
-  g.fillStyle = def.manche && def.manche.revers ? (C[1] || '#f4f1ea') : 'rgba(0,0,0,0.14)';
-  g.fillRect(0, def.manche && def.manche.revers ? H * 0.84 : y, W, H);
+  g.fillStyle = 'rgba(0,0,0,0.14)'; g.fillRect(0, y, W, H);
   trait(g, [[0, y], [W, y]], 'rgba(0,0,0,0.2)', 2);
   return c;
 }
-
 /* ---- le bas ---- */
 function construireBas(pers, id, v){
   const def = BAS[id];
@@ -3028,7 +3114,7 @@ function construireBijoux(cfg, pers, H){
     for (let k = 0; k <= 28; k++){
       const th = -PI + TAU * k / 28, yr = 1.455 - 0.07 * Math.pow(Math.max(0, Math.cos(th)), 3);
       const a = anneauTronc(m, yr), [x, z] = superE({ rs: a.rs, rf: a.rf, rb: a.rb, n: a.n }, th);
-      const l = Math.hypot(x, z) || 1, e = 0.012 + (HAUTS[cfg.tenue.haut] && HAUTS[cfg.tenue.haut].corps && HAUTS[cfg.tenue.haut].col !== 'ouvert' ? 0.012 : 0);
+      const hh = HAUTS[coupeDe(cfg.tenue)], l = Math.hypot(x, z) || 1, e = 0.012 + (hh && hh.corps ? 0.012 : 0);
       pts.push([x / l * (l * s + e), m.Y(yr) * s, a.zc * s + z / l * (l * s + e)]);
     }
     meche(M, pts, 0.0032 * s, 0.0032 * s, (u) => poidsTronc(1.42, 0), 5);
@@ -3063,6 +3149,99 @@ function construireBrique(pers){
   M.normales();
   return [{ M, toile: toileUnie('#3a3b40'), spec: 0.6 }];
 }
+/* ---- L'ARGENT ----
+   Des billets de cent, maison : le papier vert, le cadre, les guillochis, un
+   palmier dans le médaillon et « FAKE PARADISE ». Une seule toile : le billet
+   en haut à gauche, la tranche d'une liasse (le papier empilé) dessous, la
+   bande de papier qui la serre en haut à droite. */
+const BILLET = [0, 0, 0.5, 112 / 256], TRANCHE = [0, 128 / 256, 0.5, 192 / 256], BANDE = [0.5, 0, 1, 64 / 256];
+let toileArgentC = null;
+function toileArgent(){
+  if (toileArgentC) return toileArgentC;
+  const c = toile(512, 256), g = c.getContext('2d'), vert = '#2f5a3e';
+  // le billet
+  const gr = g.createLinearGradient(0, 0, 256, 112); gr.addColorStop(0, '#dde9d0'); gr.addColorStop(1, '#b7d0a6');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 112);
+  g.strokeStyle = 'rgba(47,90,62,0.35)'; g.lineWidth = 1;
+  for (let k = 0; k < 8; k++){ g.beginPath(); for (let x = 12; x <= 244; x += 3) g.lineTo(x, 56 + Math.sin(x * 0.085 + k * 0.8) * (34 - k * 3.5)); g.stroke(); }
+  g.strokeStyle = vert; g.lineWidth = 3; g.strokeRect(5, 5, 246, 102);
+  g.lineWidth = 1; g.strokeRect(10, 10, 236, 92);
+  g.fillStyle = '#e8f0dd'; g.beginPath(); g.ellipse(128, 56, 30, 38, 0, 0, TAU); g.fill();
+  g.lineWidth = 2; g.stroke();
+  // le palmier du médaillon
+  g.strokeStyle = vert; g.lineWidth = 4; g.beginPath(); g.moveTo(134, 90); g.quadraticCurveTo(136, 62, 126, 42); g.stroke();
+  g.fillStyle = vert;
+  for (let f = 0; f < 6; f++){ g.save(); g.translate(126, 41); g.rotate(-PI / 2 + (f - 2.5) * 0.62); g.beginPath(); g.ellipse(13, 0, 14, 3.6, 0, 0, TAU); g.fill(); g.restore(); }
+  g.textBaseline = 'middle'; g.font = 'bold 22px Arial, sans-serif';
+  g.textAlign = 'left'; g.fillText('100', 16, 27); g.fillText('100', 16, 86);
+  g.textAlign = 'right'; g.fillText('100', 240, 27); g.fillText('100', 240, 86);
+  g.textAlign = 'center'; g.font = 'bold 10px Arial, sans-serif'; g.fillText('FAKE PARADISE', 128, 20); g.fillText('ONE HUNDRED', 128, 95);
+  // la tranche d'une liasse : le papier empilé
+  g.fillStyle = '#e4eddb'; g.fillRect(0, 128, 256, 64);
+  for (let y = 128; y < 192; y += 2){ g.fillStyle = (y >> 1) % 3 ? 'rgba(90,120,80,0.22)' : 'rgba(255,255,255,0.35)'; g.fillRect(0, y, 256, 1); }
+  // la bande
+  g.fillStyle = '#d4ab3a'; g.fillRect(256, 0, 256, 64);
+  g.fillStyle = 'rgba(90,60,10,0.35)'; g.fillRect(256, 0, 256, 4); g.fillRect(256, 60, 256, 4);
+  g.fillStyle = '#5a3d0c'; g.font = 'bold 22px Arial, sans-serif'; g.fillText('$10,000', 384, 33);
+  toileArgentC = c;
+  return c;
+}
+/* Un pavé : six faces à arêtes vives (chacune ses sommets), autour du centre
+   `c`, selon trois axes et trois demi-côtés ; `uv` : la région de la toile
+   des deux grandes faces (`dessus`) et des quatre autres (`cote`). */
+function pave(M, c, X, Y, Z, hx, hy, hz, uv, os){
+  const neg = (v) => v3.mul(v, -1);
+  [[Z, hz, X, hx, Y, hy, uv.dessus], [neg(Z), hz, X, hx, Y, hy, uv.dessus], [X, hx, Y, hy, Z, hz, uv.cote], [neg(X), hx, Y, hy, Z, hz, uv.cote],
+   [Y, hy, X, hx, Z, hz, uv.cote], [neg(Y), hy, X, hx, Z, hz, uv.cote]].forEach(([n, hn, u, hu, , hv, r]) => {
+    const v = v3.cross(n, u);                 // u × v = n : les faces tournées vers le dehors
+    const o = v3.madd(c, n, hn);
+    const q = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) =>
+      M.sommet(v3.madd(v3.madd(o, u, a * hu), v, b * hv), [a < 0 ? r[0] : r[2], b < 0 ? r[1] : r[3]], null, os));
+    M.quad(q[0], q[1], q[2], q[3]);
+  });
+}
+/* Le MONEY SPREAD : dans chaque main, neuf billets ouverts en éventail
+   autour de la prise. Tout est posé dans le repère de la main au repos (elle
+   pend, les doigts vers le bas) ; l'éventail s'ouvre donc dans le plan de la
+   main, entre la paume et les doigts repliés, et la suit où qu'elle aille. */
+function construireEventails(pers){
+  const { R, m } = pers, s = m.s, M = new Maille();
+  [['G', 1], ['D', -1]].forEach(([c, sg]) => {
+    const w = R[O['main' + c]], dir = v3.norm(v3.sub(w, R[O['avantbras' + c]]));
+    const { lar, pau } = reperesMain(sg, dir);
+    const P0 = v3.madd(v3.madd(w, dir, 0.052 * s), pau, 0.017 * s), os = [[O['main' + c], 1]];
+    const N = 9, L = 0.156 * s, l = 0.066 * s;
+    for (let k = 0; k < N; k++){
+      const a = (k / (N - 1) - 0.5) * 74 * DEG;
+      const ax = v3.add(v3.mul(dir, Math.cos(a)), v3.mul(lar, Math.sin(a))), lv = v3.sub(v3.mul(lar, Math.cos(a)), v3.mul(dir, Math.sin(a)));
+      // un rien d'épaisseur entre deux billets : pas de scintillement
+      const b0 = v3.madd(v3.madd(P0, pau, (k - (N - 1) / 2) * 0.0011 * s), ax, -0.03 * s);
+      const q = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([u, v]) => M.sommet(v3.madd(v3.madd(b0, ax, u * L), lv, (v - 0.5) * l),
+        [mix(BILLET[0], BILLET[2], u), mix(BILLET[1], BILLET[3], v)], null, os));
+      M.quad(q[0], q[1], q[2], q[3]);
+    }
+  });
+  M.normales();
+  return [{ M, toile: toileArgent(), double: true, spec: 0.08 }];
+}
+/* La LIASSE du money phone : une brique de billets serrés dans leur bande,
+   tenue à l'oreille comme le téléphone de 1986 — la grande face contre la
+   paume, le bout qui dépasse des doigts. */
+function construireLiasse(pers){
+  const { R, m } = pers, s = m.s, M = new Maille(), os = [[O.mainD, 1]];
+  const w = R[O.mainD], dir = v3.norm(v3.sub(w, R[O.avantbrasD]));
+  const { lar, pau } = reperesMain(-1, dir);
+  const L = 0.156 * s, l = 0.066 * s, ep = 0.038 * s;
+  // tournée d'un demi-quart vers l'extérieur : de face, on voit le billet du dessus, pas seulement la tranche
+  const ep1 = v3.norm(v3.sub(pau, lar)), la1 = v3.norm(v3.add(pau, lar));
+  const c = v3.madd(v3.madd(w, dir, 0.125 * s), pau, 0.012 * s + ep / 2);
+  pave(M, c, dir, la1, ep1, L / 2, l / 2, ep / 2, { dessus: BILLET, cote: TRANCHE }, os);
+  pave(M, c, la1, dir, ep1, l / 2 + 0.0015 * s, 0.019 * s, ep / 2 + 0.0015 * s, { dessus: BANDE, cote: BANDE }, os);
+  M.normales();
+  return [{ M, toile: toileArgent(), spec: 0.1 }];
+}
+// ce qu'une attitude met dans les mains (voir ATTITUDES, `accessoire`)
+const ACCESSOIRES_ATTITUDE = { brique: construireBrique, eventails: construireEventails, liasse: construireLiasse };
 
 /* ---------------------------------------------------------------------------
    10. LA POSE : des rotations d'os aux matrices de peau
@@ -3140,6 +3319,8 @@ const souffle = (t) => Math.pow(0.5 + 0.5 * Math.sin(TAU * t / 4.4), 1.4);    //
    le coude, et où regarde la paume (dans le repère de la poitrine). */
 const viser = (os, dec, coude, paume) => ({ os, dec, coude, paume });
 const pendante = (sg, dx, dz) => viser('poitrine', [sg * (0.235 + (dx || 0)), -0.452, 0.03 + (dz || 0)], [sg * 0.3, 0, -1], [-sg, 0, 0.15]);
+// un vrai poing (les doigts n'ont que deux phalanges : il faut les replier plus que `doigts` ne le fait)
+const POING_D = { indexD1: [0, 0, 92], indexD2: [0, 0, 104], majeurD1: [0, 0, 96], majeurD2: [0, 0, 108], annulaireD1: [0, 0, 100], annulaireD2: [0, 0, 110] };
 /* Les attitudes. Chacune : son nom, et sa pose à l'instant t (secondes). */
 const ATTITUDES = {
   cool: { nom: { fr: 'Décontracté', en: 'Chill' }, pose: (t) => {
@@ -3260,6 +3441,64 @@ const ATTITUDES = {
       regard: [0.3 * w, -0.1],
     };
   } },
+  /* Les trois de la demande du 25 sept. 2026 : le money spread (un éventail
+     de billets dans chaque main, montré à l'objectif), le money phone (la
+     liasse à l'oreille, comme un téléphone) et le pouce en bas, bras tendu. */
+  billets: { nom: { fr: 'Money spread', en: 'Money spread' }, accessoire: 'eventails', pose: (t) => {
+    // on fait claquer les éventails, une main puis l'autre, le menton levé
+    const b = souffle(t), w = onde(t, 2.4), h = onde(t, 1.2);
+    return {
+      bassin: [0.012 * w, -0.014, 0],
+      os: Object.assign({
+        bassin: [0, 4 * w, 1.5 * w], lombaires: [-4, -1.5 * w, 0], dos: [-3 + b, 0, 0], poitrine: [-3 - b, 2.5 * w, 0],
+        cou: [-2, 0, 0], tete: [-7 + 1.5 * h, 7 * onde(t, 5.3), 3 * w],
+        claviculeG: [0, 0, 3], claviculeD: [0, 0, -3],
+        mainG: [0, 0, -8 + 5 * h], mainD: [0, 0, 8 + 5 * h],
+      }, doigts('G', 0.74, 0.55), doigts('D', 0.74, 0.55)),
+      mains: {
+        G: viser('poitrine', [0.23, 0.02 + 0.018 * w, 0.17], [1, -1.2, -0.3], [0.1, 0, 1]),
+        D: viser('poitrine', [-0.23, 0.02 - 0.018 * w, 0.17], [-1, -1.2, -0.3], [-0.1, 0, 1]),
+      },
+      pieds: { G: [0.08, 0.0, -10], D: [-0.08, 0.0, 10] },
+      regard: [0, 0.12],
+    };
+  } },
+  liasse: { nom: { fr: 'Money phone', en: 'Money phone' }, accessoire: 'liasse', pose: (t) => {
+    // au bout du fil, les affaires marchent : on hoche la tête, la main libre fait les gros titres
+    const w = onde(t, 8), g = Math.pow(Math.max(0, onde(t, 2.7)), 2), b = souffle(t), n = onde(t, 0.9);
+    return {
+      bassin: [0.03 * w, -0.012, 0],
+      os: Object.assign({
+        bassin: [0, 4 * w, 4 * w], lombaires: [-1, -2, -2], dos: [b, 0, 0], poitrine: [-2 - b, 5 * w, 0],
+        cou: [4, 0, -5], tete: [3 + 2.5 * n * g, 12 * w, -11], mainD: [0, 0, 0], mainG: [0, 0, 12 * g],
+      }, doigts('D', 0.82, 0.55), doigts('G', 0.25 + 0.4 * g, 0.3)),
+      mains: {
+        // la main tient le bas de la liasse, sous la mâchoire : la liasse monte le long de la joue jusqu'à l'oreille
+        D: viser('tete', [-0.1, -0.15, 0.1], [-0.4, -1, 0.3], [1, 0, 0.2]),
+        G: g > 0.02 ? interpMain(pendante(1), viser('poitrine', [0.22, -0.12, 0.28], [1, -0.5, -0.3], [0, 1, 0]), g) : pendante(1),
+      },
+      pieds: { G: [0.03, 0.0, -4], D: [-0.04, 0.06, 16] },
+      regard: [0.3 * w, -0.05],
+    };
+  } },
+  pouce: { nom: { fr: 'Pouce en bas', en: 'Thumbs down' }, pose: (t) => {
+    // le bras tendu vers l'objectif, le poing fermé, le pouce vers le sol ; toutes les deux secondes, il appuie son verdict
+    const b = souffle(t), c = (t % 2.2) / 2.2, k = c < 0.3 ? Math.sin(c / 0.3 * PI) : 0, sh = onde(t, 3.4);
+    return {
+      bassin: [0.02, -0.01, 0],
+      os: Object.assign({
+        bassin: [0, -2, 2], lombaires: [0, -1, 0], dos: [b, 0, 0], poitrine: [-b, 1, 0],
+        cou: [2, 0, 0], tete: [5 + 2 * k, 5 * sh + 4, -7],
+        claviculeD: [0, 0, 2], mainG: [0, 0, -25], mainD: [0, 0, 0],
+      }, doigts('G', 0.12, 0.25), POING_D, { pouceD1: [-52, -31, 0], pouceD2: [0, 0, 0] }),
+      mains: {
+        D: viser('poitrine', [-0.3, 0.14 - 0.06 * k, 0.55], [-0.3, -1, 0], [-1, -0.4, 0.3]),
+        G: viser('bassin', [0.17, 0.06, 0.035], [1, 0, -0.9], [-1, 0, 0]),
+      },
+      pieds: { G: [0.05, 0.0, -6], D: [-0.05, 0.03, 10] },
+      regard: [0, 0.06],
+    };
+  } },
 };
 function interpMain(a, b, k){
   if (a.os !== b.os){ return k < 0.5 ? a : b; }
@@ -3342,6 +3581,7 @@ function appliquerPose(P, pose){
     const cible = pointOs(P, W, M.os, M.dec);
     const qP = W.q[O.poitrine];
     let { Q1, Q2, d2 } = ikMembre(R, iB, iA, iM, epaule, cible, q4.tourne(qP, M.coude));
+    let vrilleMain = 0;
     if (M.paume){
       // tourner l'avant-bras sur lui-même pour que la paume regarde où l'on veut
       const { pau } = reperesMain(sg, v3.norm(v3.sub(R[iM], R[iA])));
@@ -3349,10 +3589,20 @@ function appliquerPose(P, pose){
       const proj = (v) => v3.norm(v3.sub(v, v3.mul(d2, v3.dot(v, d2))));
       const a = proj(actuelle), bb = proj(voulue);
       const ang = Math.atan2(v3.dot(v3.cross(a, bb), d2), v3.dot(a, bb));
-      Q2 = q4.mul(q4.axe(d2, ang), Q2);
+      /* LA TORSION SE PARTAGE : un peu à l'épaule (le bras tourne sur lui-
+         même), le plus gros au coude, le reste au poignet. Toute au coude,
+         l'avant-bras vrillait et la peau s'y pinçait comme un papillote —
+         un pouce en bas, bras tendu, c'est presque un demi-tour. Le bras et
+         l'avant-bras tournent autour de leur propre axe : rien ne bouge
+         de place, seule la peau se répartit la torsion. */
+      const d1 = v3.norm(q4.tourne(Q1, v3.sub(R[iA], R[iB])));
+      Q1 = q4.mul(q4.axe(d1, ang * 0.3), Q1);
+      Q2 = q4.mul(q4.axe(d2, ang * 0.72), Q2);
+      vrilleMain = ang * 0.28;
     }
     rot[iB] = q4.mul(inv(W.q[iCl]), Q1);
     rot[iA] = q4.mul(inv(Q1), Q2);
+    if (vrilleMain) rot[iM] = q4.mul(q4.axe(v3.norm(v3.sub(R[iM], R[iA])), vrilleMain), rot[iM]);
   });
   poser(R, rot, P.depl, P.pose);
 }
@@ -3428,10 +3678,27 @@ function normaliser(cfg){
     barbe: Object.assign({ style: 'aucune' }, c.barbe || {}),
     sourcils: Object.assign({ style: f ? 'fins' : 'naturels' }, c.sourcils || {}),
     maquillage: Object.assign({ liner: f ? 0.35 : 0, linerC: '#1a1210' }, c.maquillage || {}),
-    tenue: Object.assign({}, c.tenue || {}),
+    tenue: tenueNormale(c.tenue),
     acc: Object.assign({}, c.acc || {}),
-    attitude: c.attitude || 'cool',
+    attitude: ATTITUDES[c.attitude] ? c.attitude : 'cool',
   };
+}
+/* Le haut porté est un article de la boutique ou l'un des basiques. Une pièce
+   qui n'existe plus — les chemises de l'atelier d'avant — ou pas de haut
+   choisi du tout : le premier t-shirt de la boutique. Un article porté prend
+   les photos du jour (le catalogue a pu les changer, voir applyCatalogue) ;
+   un article qu'on ne retrouve pas dans le catalogue reste tel quel — le
+   catalogue n'est peut-être pas encore arrivé. */
+function tenueNormale(t){
+  const T = Object.assign({}, t || {});
+  if (T.haut === 'boutique' && T.boutique && T.boutique.img){
+    const it = article(T.boutique.img);
+    if (it) T.boutique = portee(it);
+  } else if (!(HAUTS[T.haut] && !HAUTS[T.haut].cache)){
+    const a = articleParDefaut();
+    if (a){ T.haut = 'boutique'; T.boutique = a; } else T.haut = 'tshirt';
+  }
+  return T;
 }
 /* Les pièces sont rangées par GROUPE — le corps, la tête, les cheveux, la
    tenue, les accessoires — et chaque groupe a sa clé : les réglages dont il
@@ -3464,7 +3731,7 @@ class Personnage {
   liberer(){
     GROUPES.forEach(g => this.vider(g));
     for (const e of this.tex.values()) gl.deleteTexture(e.t);
-    this.tex.clear(); this.cles = null; this.liste = [];
+    this.tex.clear(); this.cles = null; this.liste = []; this.attente = null;
   }
   maj(cfg){
     const C = this.cfg = normaliser(cfg);
@@ -3477,9 +3744,9 @@ class Personnage {
       corps: J([C.sexe, C.corps, piedsNus]),
       tete: J([C.sexe, C.corps, C.visage, coupe.oreilles !== false]),
       visage: J([C.sexe, C.visage, C.peau, C.cheveux, C.barbe, C.sourcils, C.maquillage]),
-      cheveux: J([C.sexe, C.corps, C.visage, C.cheveux.style, C.acc.tete, T.haut]),
+      cheveux: J([C.sexe, C.corps, C.visage, C.cheveux.style, C.acc.tete, coupeDe(T)]),
       tenue: J([C.sexe, C.corps, T]),
-      acc: J([C.sexe, C.corps, C.visage, C.cheveux.style, C.acc, T.haut, C.attitude]),
+      acc: J([C.sexe, C.corps, C.visage, C.cheveux.style, C.acc, coupeDe(T), C.attitude]),
     };
     const change = (k) => !this.cles || this.cles[k] !== cles[k];
     const refaits = new Set(GROUPES.filter(g => g !== 'yeux' && change(g)));
@@ -3512,30 +3779,40 @@ class Personnage {
       if (ch) this.groupes.cheveux.push({ nom: 'cheveux', g: versGPU(ch), tex: texGrainGL(coupe.grain || 'lisse'), spec: 0.14, rim: 0.7, double: true });
     }
     (this.groupes.cheveux || []).forEach(p => { p.teinte = v3.mul(hexRvb(C.cheveux.couleur), 1.3); });
-    const pers = { m, R, cfg: C, photo: T.haut === 'boutique' && T.boutique && T.boutique.img ? T.boutique : null };
+    const pers = { m, R, cfg: C, article: null };
     const monter = (groupe, lot, prefixe) => lot.forEach((p, i) => {
       if (!p.M.lisse) p.M.normales();
-      let tx;
-      if (p.photo){
-        const a = atlasPhoto(p.photo.img, p.photo.img2);
-        tx = this.texte('photo|' + p.photo.img + (a.pret ? '' : '|' + jeton), groupe, () => a.pret || toileUnie('#8a8a8a'));
-        if (!a.pret) a.then(c => { if (this.jeton === jeton && gl){ texture(c, false, tx); if (this.surPret) this.surPret(); } }).catch(() => {});
-      } else tx = this.texte(prefixe + '|' + i, groupe, () => p.toile);
+      const tx = this.texte(prefixe + '|' + i, groupe, () => p.toile);
       this.groupes[groupe].push({ nom: groupe, g: versGPU(p.M), tex: tx, teinte: [1, 1, 1], spec: p.spec || 0.05, rim: 0.55, double: !!p.double });
     });
     if (refaits.has('tenue')){
       this.vider('tenue');
-      // un article de la boutique se taille comme un sweat ou comme un t-shirt, selon son guide des tailles
-      const idH = T.haut === 'boutique' && pers.photo ? (pers.photo.sz === 'hoodie' ? 'hoodie' : 'tshirt') : HAUTS[T.haut] ? T.haut : (f ? 'crop' : 'hawai');
+      const idH = coupeDe(T);
+      /* Un article de la boutique : ses photos, lues une fois (voir
+         lirePhoto). La première fois, le temps qu'elles arrivent, la coupe
+         nue ; on refait la tenue à leur arrivée. Une photo introuvable
+         (l'article a quitté le catalogue) laisse la coupe, en gris. */
+      let photo = '';
+      this.attente = null;
+      if (T.haut === 'boutique' && T.boutique && T.boutique.img){
+        const pa = photosArticle(T.boutique.img, T.boutique.img2 || T.boutique.img);
+        pers.article = pa.pret || { hex: '#55555c' };
+        photo = pa.pret ? '|photo' : '';
+        if (!pa.pret && !pa.rate){
+          // refaire à l'arrivée — si le personnage porte encore cet article, quoi qu'on ait changé d'autre entre-temps
+          const attente = this.attente = {};
+          const refaire = () => { if (this.attente === attente && gl){ this.attente = null; this.cles.tenue = ''; this.maj(this.cfg); if (this.surPret) this.surPret(); } };
+          pa.then(refaire, refaire);
+        }
+      }
       const idB = BAS[T.bas] ? T.bas : 'jean';
       const vH = T.hautV | 0, vB = T.basV | 0, vP = T.piedsV | 0;
       const dH = HAUTS[idH], lot = [];
       lot.push(...construireDessous(pers, idH !== 'aucun' && dH.col !== 'brassiere' ? true : dH.col === 'brassiere', idB !== 'aucun'));
       lot.push(...construireBas(pers, idB, vB));
-      if (dH.dessous){ const cH = dH.teintes[vH % dH.teintes.length]; lot.push(...construireHaut(pers, dH.dessous, 0, 0, [cH[1] || '#f4f1ea'])); }
       lot.push(...construireHaut(pers, idH, vH));
       lot.push(...construireChaussures(pers, idP, vP));
-      monter('tenue', lot, 'tenue|' + cles.tenue);
+      monter('tenue', lot, 'tenue|' + cles.tenue + photo);
     }
     if (refaits.has('acc')){
       this.vider('acc');
@@ -3544,7 +3821,8 @@ class Personnage {
       const modele = (LUNETTES[C.acc.lunettes] && LUNETTES[C.acc.lunettes].modele) || C.acc.bouche === 'cigarette';
       if (modele && !accJSON) modelesAcc().then(() => { if (this.jeton === jeton && gl){ this.cles.acc = ''; this.maj(this.cfg); if (this.surPret) this.surPret(); } }).catch(() => {});
       if (!ferme) lot.push(...construireLunettes(C, H), ...construireCigarette(C, H));
-      if ((ATTITUDES[C.attitude] || {}).accessoire === 'brique') lot.push(...construireBrique(pers));
+      const tenu = ACCESSOIRES_ATTITUDE[(ATTITUDES[C.attitude] || {}).accessoire];
+      if (tenu) lot.push(...tenu(pers));
       monter('acc', lot, 'acc|' + cles.acc);
     }
     // les textures des groupes refaits qui n'ont pas resservi
@@ -4706,8 +4984,9 @@ const CURSEURS_VISAGE = {
    Cookies la déclare déjà) ; son contenu d'avant — la tenue portée, la peau,
    le visage et la coiffure du pack — est converti une fois (voir migrer). */
 function article(img){
-  if (typeof DATA === 'undefined') return null;
-  for (const cat of DATA) if (cat.kind === 'shop') for (const it of cat.items) if (it.img === img) return it;
+  if (typeof DATA === 'undefined' || !img) return null;
+  const b = sansVersion(img);
+  for (const cat of DATA) if (cat.kind === 'shop') for (const it of cat.items) if (it.img && sansVersion(it.img) === b) return it;
   return null;
 }
 function migrer(t){
@@ -4873,6 +5152,9 @@ function vignettes(){
   let job = fileV.shift();
   while (job && !job.c.isConnected) job = fileV.shift();
   if (!job) return;
+  // un article de la boutique dont les photos ne sont pas encore lues : la vignette repasse plus tard
+  const b = job.v.tenue && job.v.tenue.haut === 'boutique' && job.v.tenue.boutique;
+  if (b && b.img){ const pa = photosArticle(b.img, b.img2 || b.img); if (!pa.pret && !pa.rate){ fileV.push(job); return; } }
   try {
     vignette(job.c, job.v, job.vue);
     const k = toile(job.c.width, job.c.height); k.getContext('2d').drawImage(job.c, 0, 0);
@@ -4905,7 +5187,7 @@ const SILHOUETTES = {
   rien: 'M30 30 L70 70 M70 30 L30 70',
 };
 const SIL_DE = {
-  tshirt: 'tee', oversize: 'large', marin: 'longue', debardeur: 'debardeur', polo: 'tee', hawai: 'chemise', palmier: 'chemise', survet: 'longue', hoodie: 'longue', costume: 'veste', crop: 'crop', brassiere: 'brassiere',
+  tshirt: 'tee', oversize: 'large', brassiere: 'brassiere',
   jean: 'pantalon', baggy: 'large2', shortJean: 'short', bain: 'short', costume_b: 'pantalon', jogging: 'pantalon', cargo: 'large2', pyjama: 'large2', leopard: 'large2', legging: 'pantalon', jupe: 'jupe', jupePlis: 'jupe',
   retro: 'basket', toile: 'montante', basket: 'basket', mocassin: 'mocassin', tongs: 'tong', bottes: 'botte',
 };
@@ -4961,11 +5243,13 @@ function auHasard(){
     c.maquillage = { liner: f ? r() * 0.8 : (r() < 0.1 ? 0.5 : 0), linerC: '#1a1210' };
     c.visage.levresC = f && r() < 0.6 ? pick(LEVRES.slice(1)) : null;
     c.visage.fard = f && r() < 0.4 ? 1 : 0;
-    const hauts = Object.keys(HAUTS).filter(k => k !== 'aucun' && (f || !['crop', 'brassiere'].includes(k)));
+    // le haut : un article de la boutique, presque toujours
+    const arts = articlesBoutique(), basiques = ['tshirt', 'oversize'].concat(f ? ['brassiere'] : []);
     const bas = Object.keys(BAS).filter(k => k !== 'aucun' && (f || !['jupe', 'jupePlis', 'legging'].includes(k) || r() < 0.1));
     const pieds = Object.keys(PIEDS).filter(k => k !== 'pieds');
-    const h = pick(hauts), b = pick(bas), p = pick(pieds);
-    c.tenue = { haut: h, hautV: Math.floor(r() * 8), bas: b, basV: Math.floor(r() * 8), pieds: p, piedsV: Math.floor(r() * 8) };
+    const b = pick(bas), p = pick(pieds);
+    c.tenue = { haut: pick(basiques), hautV: Math.floor(r() * 8), bas: b, basV: Math.floor(r() * 8), pieds: p, piedsV: Math.floor(r() * 8) };
+    if (arts.length && r() < 0.9){ c.tenue.haut = 'boutique'; c.tenue.boutique = portee(pick(arts)); }
     const tetes = Object.keys(COUVRE).filter(k => k !== 'spatial' && k !== 'swat');
     c.acc = { tete: r() < 0.3 ? pick(tetes.slice(1)) : 'aucun', teteV: Math.floor(r() * 5), lunettes: r() < 0.35 ? pick(Object.keys(LUNETTES).slice(1).filter(k => ouvertA(LUNETTES[k].verrou))) || 'aucune' : 'aucune',
       bijou: r() < 0.3 ? pick(Object.keys(BIJOUX).slice(1)) : 'aucun', bouche: 'rien' };
@@ -5027,7 +5311,8 @@ function grille(items, lire, ecrire, geste, quatre, refaire){
     const ferme = it.ferme != null ? it.ferme : !!(it.verrou && !ouvertA(it.verrou));
     if (ferme) b.classList.add('verrou');
     let v;
-    if (it.img){ v = el('img', 'at-vignette'); v.src = it.img; v.alt = ''; v.loading = 'lazy'; }
+    // une photo introuvable (un article retiré du catalogue, le fichier parti) : la case s'efface
+    if (it.img){ v = el('img', 'at-vignette'); v.src = it.img; v.alt = ''; v.loading = 'lazy'; v.onerror = () => { b.hidden = true; }; }
     else { v = el('canvas', 'at-vignette'); v.width = v.height = 8; if (it.dessin) it.dessin(v); }
     const n = el('span'); n.textContent = ferme ? tr('Verrouillé', 'Locked') : nomDe(it.nom) || it.texte || '';
     b.append(v, n);
@@ -5136,7 +5421,7 @@ const PANNEAUX = {
   tenue(){
     const section = (nom, CAT, cle, cleV, suffixe, geste) => {
       titre(nom);
-      grille(Object.keys(CAT).map(k => {
+      grille(Object.keys(CAT).filter(k => !CAT[k].cache).map(k => {
         const d = CAT[k], C0 = d.teintes ? d.teintes[0] : ['#8a8a8a'];
         const sil = k === 'aucun' || k === 'pieds' ? 'rien' : SIL_DE[k + (CAT === BAS && k === 'costume' ? '_b' : '')] || 'tee';
         return { v: k, nom: d.nom, dessin: (cv) => pictogramme(cv, sil, d.motif || (d.jean ? 'denim' : 'uni'), C0) };
@@ -5144,18 +5429,18 @@ const PANNEAUX = {
       const d = CAT[cfg.tenue[cle]];
       if (d && d.teintes && d.teintes.length > 1) teintes(d.teintes, () => d.teintes[(cfg.tenue[cleV] | 0) % d.teintes.length], (c, v) => { c.tenue[cleV] = d.teintes.indexOf(v); }, geste);
     };
-    section(tr('Haut', 'Top'), HAUTS, 'haut', 'hautV', '', 'epaule');
-    // les articles de la boutique : le t-shirt qu'on achète, sur le personnage
-    const articles = [];
-    if (typeof DATA !== 'undefined') DATA.forEach(cat => { if (cat.kind === 'shop') cat.items.forEach(it => { if (it.img) articles.push(it); }); });
+    /* LE HAUT : les articles de la boutique — le t-shirt qu'on achète, sur le
+       personnage —, puis les basiques unis. */
+    const articles = articlesBoutique(true);
     if (articles.length){
-      titre(tr('La boutique FakeParadise', 'The FakeParadise shop'));
+      titre(tr('Haut — la boutique FakeParadise', 'Top — the FakeParadise shop'));
       grille(articles.map(it => {
         const vu = typeof visuelDe === 'function' ? visuelDe(it) : it;
         const ferme = vu !== it;
-        return { v: { img: it.img, img2: it.img2 || it.img, sz: it.sz }, texte: ferme ? tr('Verrouillé', 'Locked') : (typeof L === 'function' ? L(it.n) : it.n), img: ferme ? vu.img : it.img, ferme };
+        return { v: portee(it), texte: ferme ? tr('Verrouillé', 'Locked') : (typeof L === 'function' ? L(it.n) : it.n), img: ferme ? vu.img : it.img, ferme };
       }), () => cfg.tenue.haut === 'boutique' ? cfg.tenue.boutique : null, (c, v) => { c.tenue.haut = 'boutique'; c.tenue.boutique = v; }, 'epaule', false, true);
     }
+    section(articles.length ? tr('Basiques', 'Basics') : tr('Haut', 'Top'), HAUTS, 'haut', 'hautV', '', 'epaule');
     section(tr('Bas', 'Bottoms'), BAS, 'bas', 'basV', '', null);
     section(tr('Chaussures', 'Shoes'), PIEDS, 'pieds', 'piedsV', '', null);
   },
@@ -5189,7 +5474,6 @@ function changerSexe(c, v){
   const a = def(c.sexe), b = def(v);
   if (c.cheveux.style === a.cheveux.style) c.cheveux.style = b.cheveux.style;
   if (c.sourcils.style === a.sourcils.style) c.sourcils.style = b.sourcils.style;
-  if (!c.tenue.haut || c.tenue.haut === (c.sexe === 'f' ? 'crop' : 'hawai')) c.tenue.haut = v === 'f' ? 'crop' : 'hawai';
   if (!c.tenue.pieds || c.tenue.pieds === (c.sexe === 'f' ? 'basket' : 'retro')) c.tenue.pieds = v === 'f' ? 'basket' : 'retro';
   if ((c.maquillage.liner || 0) === (c.sexe === 'f' ? 0.35 : 0)) c.maquillage.liner = v === 'f' ? 0.35 : 0;
   c.sexe = v;
@@ -5353,7 +5637,7 @@ function libelles(){
   ecran.titre.textContent = (moi && moi.nom) || ecran.brouillon.nom || titreParDefaut();
 }
 function ouvrir(opts){
-  if (ecran.ouvert) return;
+  if (ecran.ouvert){ if (opts && opts.onglet) montrerOnglet(opts.onglet); return; }
   const gl2 = initGL();
   construireEcran();
   configuration();
@@ -5493,9 +5777,9 @@ const api = {
     cadre(w, h, true);
     const ang = (vue.angle || 0) * DEG;
     const modele = m4.qt(q4.axe([0, 1, 0], ang), [0, 0, 0]);
-    const yc = vue.visage ? P.yeuxY() - 0.03 : P.m.H * 0.52;
+    const yc = vue.visage ? P.yeuxY() - 0.03 : P.m.H * (vue.y || 0.52);
     const dist = vue.visage ? 0.75 : vue.dist || 4.2;
-    const cam = camera(w, h, [0, yc + (vue.visage ? 0.02 : 0.1), dist], [0, yc, 0], vue.fov || (vue.visage ? 24 : 30));
+    const cam = vue.oeil ? camera(w, h, vue.oeil, vue.cible, vue.fov || 30) : camera(w, h, [0, yc + (vue.visage ? 0.02 : 0.1), dist], [0, yc, 0], vue.fov || (vue.visage ? 24 : 30));
     if (vue.ciel !== false) dessinerCiel(cam, 0);
     dessinerPerso(P, cam, modele, LUMIERE);
     const c = toile(w, h); c.getContext('2d').drawImage(cvGL, 0, 0);
@@ -5526,7 +5810,7 @@ const api = {
     const c = toile(w, h); c.getContext('2d').drawImage(cvGL, 0, 0);
     return c;
   },
-  _: { mesures, squelette, construireCorps, construireTete, Personnage, OS_NOMS, O, q4, v3, m4, peindreVisage, surfaceTete, normaliser, atlasPhoto,
+  _: { mesures, squelette, construireCorps, construireTete, Personnage, OS_NOMS, O, q4, v3, m4, peindreVisage, surfaceTete, normaliser, photosArticle, lirePhoto, coupeDe,
     construireCheveux, contexteCheveux, construireHaut, construireBas, construireChaussures, construireDessous, construireCouvre, peindreHaut, peindreMotif, tranchesHabit, versGPU, texture },
 };
 window.Atelier = api;

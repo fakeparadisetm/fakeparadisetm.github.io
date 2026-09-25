@@ -26,8 +26,10 @@ contiennent encore des champs à compléter.
   Aucun fichier 3D, aucune bibliothèque externe.
 - **Le personnage du profil est taillé par le script** : homme ou femme, sa
   silhouette, son visage, sa coupe et ses vêtements sont des fonctions de ses
-  réglages, et il s'anime (attitudes, respiration, regard). Les t-shirts et
-  hoodies de la boutique s'y portent, leur photo projetée sur le vêtement.
+  réglages, et il s'anime (attitudes, respiration, regard). Ses hauts sont
+  ceux de la boutique : la photo de chaque article est lue comme un patron
+  (tronc, manches, couleur du tissu) et peinte sur le vêtement, selon sa
+  coupe (t-shirt, polo, débardeur, sweat zippé à capuche).
 - **Sons synthétisés** en Web Audio, sans fichier audio.
 - **Ni cookie ni traceur**, et rien qui parte vers un serveur. Le stockage local
   du navigateur tient cinq clés, toutes déclarées dans la rubrique Cookies des
