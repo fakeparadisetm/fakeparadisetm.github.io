@@ -3284,6 +3284,170 @@
     .jump-card.titre{padding-top:3%;}
     .jump-card.titre .arena-end-actions{margin-bottom:8%;gap:6px;}
   }
+  /* ---------- mini-jeu « Age of Seum » ----------
+     La fenêtre des autres jeux ; dedans, le gros pixel de Jumper pour la rue
+     et les plaques embouties de Versus pour le tableau de bord. Les grands
+     titres, eux, sont en IMPACT blanc cerné de noir : la légende des mèmes,
+     la seule police qu'un mème reconnaisse — et le sous-titre en Comic Sans
+     jaune, de travers, celle du Doge. Aucune des deux n'est servie par le
+     site : ce sont des polices du système, et leurs remplaçantes font
+     l'affaire là où elles manquent. */
+  .seum-stage{
+    position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#b2c8da;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+  }
+  #seumCv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;cursor:grab;}
+  #seumCv:active{cursor:grabbing;}
+  .seum-stage.vente #seumCv{cursor:crosshair;}
+  .seum-plaque{
+    background:#10131b;border:2px solid #05070c;border-radius:0;
+    box-shadow:inset 2px 2px 0 rgba(255,255,255,0.08), inset -2px -2px 0 rgba(0,0,0,0.55);
+  }
+  /* le tableau de bord, posé sur le ciel : l'argent à gauche, les menus à droite */
+  .seum-hud{
+    position:absolute;left:10px;right:10px;top:10px;z-index:2;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+    pointer-events:none;
+  }
+  .seum-gauche,.seum-droite{display:flex;flex-direction:column;gap:6px;min-width:0;pointer-events:auto;}
+  .seum-gauche{align-items:flex-start;}
+  .seum-droite{align-items:flex-end;}
+  .seum-bourse{display:flex;gap:6px;}
+  .seum-bourse span{
+    padding:6px 9px 5px;font-size:13px;font-weight:650;letter-spacing:0.8px;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .seum-or{color:#ffd24a;}
+  .seum-xp{color:#9fe8ff;}
+  .seum-age{padding:5px 9px;font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--white);max-width:340px;}
+  /* la file de formation : cinq cases, et l'unité en cours qui se remplit */
+  .seum-file{display:flex;align-items:center;gap:4px;padding:5px 8px;}
+  .seum-file i{width:11px;height:11px;background:#05070c;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.14);}
+  .seum-file i.plein{background:#ffd24a;box-shadow:none;}
+  .seum-file b{position:relative;width:74px;height:7px;margin-left:6px;background:#05070c;overflow:hidden;}
+  .seum-file b::after{
+    content:"";position:absolute;inset:0;background:rgb(var(--accent-rgb));
+    transform-origin:left center;transform:scaleX(var(--p,0));
+  }
+  .seum-menu,.seum-sous{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;}
+  .seum-m{
+    position:relative;overflow:hidden;padding:7px 9px 8px;
+    font:inherit;font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;
+    color:var(--white-60);cursor:pointer;white-space:nowrap;
+  }
+  .seum-m kbd{font:inherit;font-size:9px;margin-left:6px;opacity:0.5;}
+  .seum-m:hover{background:#1a2030;color:var(--white);}
+  .seum-m.on{border-color:rgba(var(--accent-rgb),0.95);background:rgba(var(--accent-rgb),0.16);color:var(--white);}
+  .seum-m.cher{opacity:0.5;}
+  /* Évoluer et le spécial CLIGNOTENT quand ils sont prêts, par paliers comme
+     le curseur de Versus : c'est l'invitation, pas une décoration. */
+  .seum-m.pret{color:#1a1204;background:#ffd24a;animation:seumPret 0.9s steps(1,end) infinite;}
+  @keyframes seumPret{50%{background:#ffe98a;}}
+  .seum-jauge{
+    position:absolute;left:0;right:0;bottom:0;height:2px;background:rgb(var(--accent-rgb));
+    transform-origin:left center;transform:scaleX(var(--p,0));
+  }
+  .seum-m.pret .seum-jauge{display:none;}
+  /* le sous-menu : une vignette dessinée par le jeu, le nom, le prix */
+  .seum-bt{
+    display:flex;align-items:center;gap:7px;max-width:230px;padding:3px 10px 3px 3px;
+    font:inherit;text-align:left;color:var(--white);cursor:pointer;
+  }
+  .seum-bt:hover{background:#1a2030;border-color:rgba(var(--accent-rgb),0.7);}
+  .seum-bt canvas{width:36px;height:36px;flex:0 0 auto;image-rendering:pixelated;}
+  .seum-bt span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .seum-bt b{
+    max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:10px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;line-height:1.25;
+  }
+  .seum-bt small{font-size:11px;font-weight:600;color:#ffd24a;font-variant-numeric:tabular-nums;}
+  .seum-bt.cher{opacity:0.55;}
+  .seum-bt.cher small{color:#ff8a7a;}
+  .seum-bt.vide{opacity:0.45;}
+  .seum-info{max-width:min(560px,62vw);padding:5px 9px;font-size:11px;line-height:1.45;color:var(--white-60);text-align:right;}
+  .seum-info:empty{display:none;}
+  .seum-info.non{color:#ff8a7a;}
+  /* les points de vie des deux bases, en bas, sur la chaussée */
+  .seum-pv{
+    position:absolute;left:12px;right:12px;bottom:10px;z-index:2;
+    display:flex;justify-content:space-between;gap:24px;pointer-events:none;
+  }
+  .seum-pv > div{width:min(36%,300px);}
+  .seum-pv span{
+    display:block;margin-bottom:4px;white-space:nowrap;
+    font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--white);
+    text-shadow:2px 2px 0 rgba(0,0,0,0.85);
+  }
+  .seum-pv-e{text-align:right;}
+  .seum-pv-e .arena-bar i{transform-origin:right center;}
+  .seum-pv-e .arena-bar .fill{background:#ff5a4a;}
+  /* le fil des morts, à la Counter-Strike : le sweat CS:CO en porte un sur la manche */
+  .seum-kills{
+    position:absolute;right:12px;top:132px;z-index:1;
+    display:flex;flex-direction:column;align-items:flex-end;gap:3px;pointer-events:none;
+  }
+  .seum-kills div{
+    padding:3px 8px;background:rgba(0,0,0,0.6);white-space:nowrap;
+    font-size:10px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--white-60);
+    animation:seumKill 3.2s linear forwards;
+  }
+  .seum-kills .j{color:#7cc8ff;}
+  .seum-kills .e{color:#ff8a7a;}
+  @keyframes seumKill{0%,82%{opacity:1;}100%{opacity:0;}}
+  /* l'annonce d'un nouvel âge, et les grands titres des cartes */
+  .seum-annonce{position:absolute;left:0;right:0;top:36%;z-index:3;text-align:center;pointer-events:none;opacity:0;}
+  .seum-annonce.go{animation:seumAnnonce 2.6s ease both;}
+  @keyframes seumAnnonce{
+    0%{opacity:0;transform:scale(0.6);}
+    12%{opacity:1;transform:scale(1.08);}
+    20%{transform:scale(1);}
+    80%{opacity:1;}
+    100%{opacity:0;}
+  }
+  .seum-annonce b,.seum-carte-titre{
+    display:block;
+    font-family:Impact,Haettenschweiler,"Arial Narrow Bold","Arial Black",sans-serif;font-weight:400;
+    color:#ffffff;text-transform:uppercase;line-height:1;letter-spacing:1px;
+    text-shadow:3px 3px 0 #000,-3px 3px 0 #000,3px -3px 0 #000,-3px -3px 0 #000,0 3px 0 #000,0 -3px 0 #000,3px 0 0 #000,-3px 0 0 #000;
+  }
+  .seum-annonce b{font-size:clamp(30px,5.4vw,58px);}
+  .seum-annonce.discret b{font-size:clamp(20px,3vw,30px);}
+  .seum-annonce span,.seum-carte-sous{
+    display:inline-block;margin-top:8px;
+    font-family:"Comic Sans MS","Comic Sans","Chalkboard SE","Comic Neue",cursive;font-weight:700;
+    color:#ffe600;transform:rotate(-3deg);
+    text-shadow:2px 2px 0 #000,-2px 2px 0 #000,2px -2px 0 #000,-2px -2px 0 #000;
+  }
+  .seum-annonce span{font-size:clamp(14px,2vw,20px);}
+  .seum-annonce span:empty{display:none;}
+  .seum-carte-titre{font-size:clamp(44px,9vw,96px);}
+  .seum-carte-sous{font-size:clamp(16px,2.4vw,24px);margin-bottom:6px;}
+  /* l'écran-titre se pose sur la rue, comme celui de Jumper ; la fin, elle, assombrit */
+  .jump-card.seum-carte.titre{background:none;backdrop-filter:none;justify-content:flex-start;padding-top:5%;}
+  .seum-carte.titre .arena-end-actions{flex-direction:column;align-items:center;gap:7px;margin-top:3%;}
+  .seum-carte.titre .arena-end-actions .preview-cta{min-width:224px;justify-content:center;padding:9px 18px;}
+  /* Le ciel de banlieue est CLAIR, pas le bleu franc de Jumper : les boutons
+     translucides du site s'y délavaient jusqu'à disparaître. Sur l'écran-titre
+     ils prennent donc la plaque sombre du tableau de bord. */
+  .seum-carte.titre .preview-cta,.seum-carte.titre .preview-cta--secondary{
+    background:#10131b;border:2px solid #05070c;color:var(--white);
+    box-shadow:inset 2px 2px 0 rgba(255,255,255,0.10), inset -2px -2px 0 rgba(0,0,0,0.55), 0 4px 0 rgba(0,0,0,0.35);
+  }
+  .seum-carte.titre .preview-cta--secondary{color:var(--white-60);}
+  .seum-carte.titre .preview-cta:hover{background:#1a2030;color:var(--white);}
+  .seum-carte-aide{
+    position:absolute;left:0;right:0;bottom:14px;padding:0 16px;
+    font-size:12px;line-height:1.6;color:#ffffff;text-shadow:2px 2px 0 rgba(0,0,0,0.8);
+  }
+  .seum-hint{flex-wrap:wrap;row-gap:6px;}
+  @media (max-width:820px){
+    .seum-hud{flex-direction:column;align-items:stretch;}
+    .seum-gauche{flex-direction:row;flex-wrap:wrap;align-items:center;}
+    .seum-droite{align-items:stretch;}
+    .seum-menu,.seum-sous{justify-content:flex-start;}
+    .seum-info{text-align:left;}
+    .seum-kills{display:none;}
+  }
   /* (le sous-titre de la carte de fin a été retiré le 15 sept. 2026 : le
      titre nomme le vainqueur, les trois boutons disent le reste) */
   .arena-end-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
@@ -3875,6 +4039,62 @@
     <div class="legal-hint">
       <span><span class="key">←</span><span class="key">→</span> <span data-i18n="jumpMove">move</span></span>
       <span><span class="key wide">space</span> <span data-i18n="jumpJump">charge jump</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Mini-jeu « Age of Seum » (25 sept. 2026) =====
+     Un Age of War de contrebande : la même guerre, aux mêmes chiffres, entre
+     deux bases d'une rue d'Aubervilliers, avec des mèmes pour soldats. Un seul
+     canvas au gros pixel pour la rue, et par-dessus un tableau de bord en
+     HTML. Voir le module `seum` dans le script. -->
+<div class="arena-overlay" id="seumOverlay" role="dialog" aria-modal="true" aria-labelledby="seumTitle">
+  <div class="arena-panel glass">
+    <div class="arena-head">
+      <h2 id="seumTitle">AGE OF SEUM</h2>
+      <button class="legal-close" id="seumClose" data-i18n-aria="close" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="seum-stage" id="seumScene">
+      <canvas id="seumCv"></canvas>
+      <div class="seum-hud" id="seumHud" hidden>
+        <div class="seum-gauche">
+          <div class="seum-bourse">
+            <span class="seum-or seum-plaque" id="seumOr"></span>
+            <span class="seum-xp seum-plaque" id="seumXp"></span>
+          </div>
+          <div class="seum-age seum-plaque" id="seumAge"></div>
+          <div class="seum-file seum-plaque" id="seumFile"><i></i><i></i><i></i><i></i><i></i><b id="seumForme"></b></div>
+        </div>
+        <div class="seum-droite">
+          <div class="seum-menu" id="seumMenu"></div>
+          <div class="seum-sous" id="seumSous"></div>
+          <div class="seum-info seum-plaque" id="seumInfo"></div>
+        </div>
+      </div>
+      <div class="seum-kills" id="seumKills"></div>
+      <div class="seum-pv" id="seumPv" hidden>
+        <div class="seum-pv-j"><span id="seumPvJT"></span><div class="arena-bar"><i class="fill" id="seumPvJ"></i></div></div>
+        <div class="seum-pv-e"><span id="seumPvET"></span><div class="arena-bar"><i class="fill" id="seumPvE"></i></div></div>
+      </div>
+      <div class="seum-annonce" id="seumAnnonce"></div>
+      <div class="jump-card seum-carte" id="seumCarte" hidden>
+        <div class="seum-carte-titre" id="seumCarteTitre"></div>
+        <div class="seum-carte-sous" id="seumCarteSous"></div>
+        <div class="arena-end-actions">
+          <button class="preview-cta" id="seumGo"></button>
+          <button class="preview-cta preview-cta--secondary" id="seumQuit"></button>
+        </div>
+        <div class="seum-carte-aide" id="seumCarteAide"></div>
+      </div>
+    </div>
+    <div class="legal-hint seum-hint">
+      <span><span class="key wide">1–4</span> <span data-i18n="seumKeyAct">recruit · buy · sell</span></span>
+      <span><span class="key">R</span><span class="key">T</span><span class="key">V</span> <span data-i18n="seumKeyMenus">menus</span></span>
+      <span><span class="key">P</span> <span data-i18n="seumKeySlot">turret slot</span></span>
+      <span><span class="key">E</span> <span data-i18n="seumKeyEvo">evolve</span></span>
+      <span><span class="key">S</span> <span data-i18n="seumKeySpe">special</span></span>
+      <span><span class="key">&#8592;</span><span class="key">&#8594;</span> <span data-i18n="seumKeyCam">scroll the street</span></span>
       <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
   </div>
@@ -4500,6 +4720,22 @@ const STRINGS = {
     jumpHow:"← → move · hold SPACE to charge, release to jump\nReach the flag. A fall only costs you the last checkpoint.",
     jumpWin:"LEVEL CLEAR", jumpWinSub:"The locked accessory is yours.",
     jumpSee:"Try it on", jumpAgain:"Play again", jumpFall:"fall", jumpFalls:"falls", jumpMove:"move", jumpJump:"charge jump",
+    // Mini-jeu « Age of Seum ». Le titre ne se traduit pas ; la défaite non plus, elle change de mème.
+    seumSub:"Aubervilliers edition", seumStart:"Play",
+    seumHow:"Recruit memes, build turrets, go through the ages of the internet. Bring down the base across the street.",
+    seumWin:"GG EZ", seumWinSub:"The base across the street fell after %1.",
+    seumLose:"SKILL ISSUE", seumLoseSub:"Your base fell after %1. Aubervilliers will remember.",
+    seumRecruter:"Recruit", seumTourelles:"Turrets", seumVendre:"Sell", seumPlace:"+ Slot", seumEvoluer:"Evolve", seumSpecial:"Special",
+    seumAge:"Age %1", seumEnnemiAge:"Across the street: age %1", seumBaseJ:"Your base", seumBaseE:"Across the street",
+    seumPv:"HP", seumCac:"melee dmg", seumDist:"ranged dmg", seumDegats:"dmg", seumPortee:"reach", seumVide:"empty",
+    seumVenteAide:"Click a turret, or press its number: half its price comes back.",
+    seumPlaceAide:"One more turret slot on your base, for %1 €.",
+    seumEvoAide:"%1 XP to reach the next age: %2.",
+    seumPauvre:"Not enough money.", seumPlein:"Training queue full (5 max).",
+    seumPasPlace:"No free slot: buy one with + Slot.", seumMaxPlaces:"4 slots, not one more.",
+    seumPasXp:"Not enough XP: %1 needed.", seumDernierAge:"Last age. There is nothing after post-irony.",
+    seumRecharge:"Special recharging: %1 s.",
+    seumKeyAct:"recruit · buy · sell", seumKeyMenus:"menus", seumKeySlot:"turret slot", seumKeyEvo:"evolve", seumKeySpe:"special", seumKeyCam:"scroll the street",
     locked:"???",
     /* Une pièce verrouillée ne dit plus COMMENT s'ouvrir (demande du 16 sept.
        2026 : « enlève les indices sur les pages des item bloqués »). Il reste
@@ -4568,6 +4804,22 @@ const STRINGS = {
     jumpHow:"← → se déplacer · maintenir ESPACE pour charger, relâcher pour sauter\nAtteignez le drapeau. Une chute ne coûte que le dernier point de passage.",
     jumpWin:"NIVEAU TERMINÉ", jumpWinSub:"L'accessoire verrouillé est à vous.",
     jumpSee:"L'essayer", jumpAgain:"Rejouer", jumpFall:"chute", jumpFalls:"chutes", jumpMove:"se déplacer", jumpJump:"saut chargé",
+    // Mini-jeu « Age of Seum »
+    seumSub:"Édition Aubervilliers", seumStart:"Jouer",
+    seumHow:"Recrute des mèmes, pose des tourelles, traverse les âges d'internet. Fais tomber la base d'en face.",
+    seumWin:"GG EZ", seumWinSub:"La base d'en face est tombée au bout de %1.",
+    seumLose:"T'AS LE SEUM", seumLoseSub:"Ta base est tombée au bout de %1. Aubervilliers s'en souviendra.",
+    seumRecruter:"Recruter", seumTourelles:"Tourelles", seumVendre:"Vendre", seumPlace:"+ Emplacement", seumEvoluer:"Évoluer", seumSpecial:"Spécial",
+    seumAge:"Âge %1", seumEnnemiAge:"En face : âge %1", seumBaseJ:"Ta base", seumBaseE:"En face",
+    seumPv:"PV", seumCac:"dégâts en mêlée", seumDist:"dégâts à distance", seumDegats:"dégâts", seumPortee:"portée", seumVide:"vide",
+    seumVenteAide:"Clique une tourelle, ou tape son numéro : la moitié de son prix revient.",
+    seumPlaceAide:"Un emplacement de tourelle de plus sur ta base, pour %1 €.",
+    seumEvoAide:"%1 XP pour passer à l'âge suivant : %2.",
+    seumPauvre:"Pas assez d'argent.", seumPlein:"File de formation pleine (5 au maximum).",
+    seumPasPlace:"Aucun emplacement libre : achètes-en un avec + Emplacement.", seumMaxPlaces:"4 emplacements, pas un de plus.",
+    seumPasXp:"Pas assez d'XP : il en faut %1.", seumDernierAge:"Dernier âge. Il n'y a rien après la post-ironie.",
+    seumRecharge:"Spécial en recharge : %1 s.",
+    seumKeyAct:"recruter · acheter · vendre", seumKeyMenus:"menus", seumKeySlot:"emplacement", seumKeyEvo:"évoluer", seumKeySpe:"spécial", seumKeyCam:"faire défiler la rue",
     locked:"???", lockedHow:"Verrouillé.",   // voir le commentaire côté anglais
     lockedPlay:"Jouer à Jumper", onlyOne:"Un par personne",
     eggUnlocked:"Un accessoire s'est déverrouillé",
@@ -4750,7 +5002,8 @@ const DATA = [
   /* Mini-jeux (provisoire) : la catégorie tient la
      liste et chaque ligne est un jeu — Versus départage deux articles,
      Jumper est un parcours de plateforme dont la récompense est la pièce
-     unique ci-dessus. Le panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
+     unique ci-dessus, Age of Seum est un Age of War de contrebande. Le
+     panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
   { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"gamepad icon.svg", kind:"game", items:[
     /* Sans descriptif : le nom et l'aperçu disent déjà de quoi il s'agit, et
        un jeu s'essaie, il ne se lit pas. Le panneau s'adapte tout seul — le
@@ -4765,6 +5018,10 @@ const DATA = [
     /* Ordre demandé le 18 sept. 2026 : Item Versus EN DERNIER. Rien dans le
        code ne compte sur la position — l'aperçu du panneau et le raccourci du
        salon cherchent le jeu par son nom (`jeu`), pas par son rang. */
+    /* Age of Seum (25 sept. 2026) en tête : c'est la nouveauté, et les
+       nouveautés vont en haut de la liste, comme en boutique. Son icône est
+       le sanglier endormi sur son matelas, dessiné pour l'occasion. */
+    { n:"Age of Seum", jeu:"seum", img:"icons/seum icon.png" },
     { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
     { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
   ]},
@@ -5620,19 +5877,215 @@ const sfx = (() => {
   ];
   PISTES.saut = { pas: 0.1014, base: 130.81,           // 148 à la noire, do grave
     basse: BASSE_S, chant: CHANT_S, arpege: ARP_S, perc: true };
+  /* ---- le dubstep d'Age of Seum ----
+     (demande du 25 sept. 2026 : la musique du jeu « refaite, mais en mode
+     dubstep » — la boutique vend un débardeur I <3 DUBSTEP, c'était écrit.)
+     Le même moteur que les deux motifs 8 bits — des pas de double-croche
+     programmés d'avance sur l'horloge audio —, mais plus une seule voix carrée :
+     une grosse caisse qui plonge, une caisse claire en DEMI-TEMPS (sur le
+     troisième temps, c'est ce qui fait la lourdeur du genre), et surtout la
+     BASSE QUI WOBBLE — deux dents de scie saturées derrière un passe-bas très
+     résonant, dont la coupure s'ouvre et se referme en rythme. Ce filtre fait
+     tout le « wob wob » ; la basse, elle, ne joue que les fondamentales.
+     La mélodie est originale : un motif héroïque en fa mineur, pas celui du
+     jeu d'origine. 28 mesures à 140 à la noire, 48 secondes, puis la boucle :
+       0–3   intro   la nappe, le charley, un coup de grosse caisse par mesure
+       4–7   montée  roulement de caisse claire qui se resserre, souffle qui monte
+       8–15  DROP    la basse qui wobble, batterie en demi-temps
+       16–19 pont    la mélodie sur la nappe, on respire
+       20–27 DROP 2  un wobble plus nerveux, et la mélodie par-dessus
+     Le spécial du dernier âge, « LE DROP », saute directement au second drop
+     (voir api.seumDrop). */
+  const F1 = 43.65;                                     // fa grave, la tonique
+  const dz = n => F1 * Math.pow(2, n / 12);
+  /* `vol` : tout le morceau d'un seul gain. Mesuré en sortie (api.level), le
+     drop culminait à 0,26 quand le motif de Jumper plafonne à 0,08 : trois
+     fois plus fort, et quatre fois en moyenne. On ramène donc la piste
+     entière à 0,45 — un peu au-dessus de Jumper, parce qu'un dubstep vit
+     dans le grave, que l'oreille entend moins — sans toucher aux proportions
+     entre les voix. */
+  PISTES.seum = { pas: 60 / 140 / 4, dub: true, mesures: 28, vol: 0.45 };
+  const DUB_SECTION = m => m < 4 ? 'intro' : m < 8 ? 'montee' : m < 16 ? 'drop' : m < 20 ? 'pont' : 'drop2';
+  // fa m, ré♭, la♭, mi♭ : une mesure par accord à l'intro et au pont, deux dans les drops
+  const DUB_RACINE = [0, 8, 3, 10];
+  const DUB_NAPPE = [[24, 27, 31], [20, 24, 27], [27, 31, 34], [22, 26, 29]];
+  const dubAccord = m => {
+    const s = DUB_SECTION(m);
+    return s === 'drop' ? ((m - 8) >> 1) & 3 : s === 'drop2' ? ((m - 20) >> 1) & 3 : s === 'montee' ? 0 : m & 3;
+  };
+  /* Les figures de la basse, une par mesure : « x » ouvre un cycle du filtre,
+     « - » le prolonge, « . » se tait. Un cycle long gronde, un cycle court
+     crépite — c'est leur alternance qui fait parler la basse. */
+  const DUB_WOB = ['x-x-x-x-x-x-x-x-', 'x---x---x-x-xxxx', 'x--x--x--x--x-x-', 'xxxx..x-x-x-x---', 'x-------x---x-x-', 'xx-xx-x-x-xxx-x-'];
+  const DUB_OUVRE = [1500, 2400, 900, 2800, 1200, 3200];   // ouverture maximale du filtre, par figure
+  const DUB_GRILLE = { drop: [0, 1, 0, 2, 0, 1, 4, 3], drop2: [2, 5, 1, 3, 2, 5, 1, 3] };
+  // la mélodie, quatre mesures : jouée au pont, puis au second drop (chaque mesure deux fois)
+  const DUB_CHANT = [
+    31,null,36,null, null,38,39,null, null,null,38,null, 36,null,null,null,
+    39,null,null,null, 38,null,36,null, 34,null,null,null, 32,null,null,null,
+    31,null,34,null, 39,null,null,null, 41,null,43,null, 41,null,null,null,
+    38,null,null,null, null,null,36,null, 34,null,38,null, 41,null,null,null,
+  ];
+  function dubFile(){
+    const p = cbt.p, fin = ctx.currentTime + 0.4, total = p.mesures * 16;
+    if (cbt.saut){ cbt.saut = false; cbt.pas = 20 * 16; dubImpact(cbt.quand); }
+    while (cbt.quand < fin){
+      if (document.hidden) dubCoupe(cbt.quand);
+      else dubPas(cbt.pas % total, cbt.quand, p.pas);
+      cbt.pas++; cbt.quand += p.pas;
+    }
+  }
+  function dubPas(i, t, d){
+    const m = i >> 4, s = i & 15, sec = DUB_SECTION(m), acc = dubAccord(m);
+    const drop = sec === 'drop' || sec === 'drop2';
+    if (sec === 'intro'){
+      if (s === 0) dubKick(t, 0.07);
+      if (s % 2 === 0) dubCharley(t, s % 4 === 2 ? 0.007 : 0.004);
+      if (m === 3 && s >= 12 && s % 2 === 0) dubCaisse(t, 0.02);
+    } else if (sec === 'montee'){
+      const k = m - 4;                                 // le roulement se resserre, mesure après mesure
+      if (s % 4 === 0) dubKick(t, 0.06 + k * 0.01);
+      if (s % [4, 2, 1, 1][k] === 0 && !(k === 3 && s >= 14)) dubCaisse(t, 0.012 + (k * 16 + s) / 64 * 0.04);
+      if (m === 4 && s === 0) dubMontee(t, d * 62);
+    } else if (drop){
+      if (s === 0 || s === 10 || (m % 2 === 1 && s === 3)) dubKick(t, 0.11);
+      if (s === 8) dubCaisse(t, 0.055);
+      if (s === 15 && m % 2 === 1) dubCaisse(t, 0.015);
+      dubCharley(t, s % 2 === 0 ? 0.007 : 0.003, s === 6 || s === 14);
+      if (s === 0 && (m === 8 || m === 20)) dubCrash(t);
+    } else {
+      if (s === 0 || s === 8) dubKick(t, 0.07);
+      if (s === 4 || s === 12) dubCaisse(t, 0.03);
+      if (s % 2 === 0) dubCharley(t, 0.005);
+    }
+    if ((sec === 'intro' || sec === 'pont') && s === 0) dubNappe(t, d * 16, DUB_NAPPE[acc], sec === 'intro' ? 0.010 : 0.008);
+    if (drop) dubWob(m, s, t, d, sec, acc); else dubCoupe(t);
+    if (sec === 'pont' || sec === 'drop2'){
+      const b = (sec === 'pont' ? m - 16 : (m - 20) >> 1) & 3, n = DUB_CHANT[b * 16 + s];
+      if (n != null){
+        let k = 1;
+        while (s + k < 16 && DUB_CHANT[b * 16 + s + k] == null) k++;
+        dubChant(t, n, d * k * 0.92, sec === 'pont' ? 0.018 : 0.013);
+      }
+    }
+  }
+  // la basse : trois oscillateurs qui tournent tout le long, qu'on ouvre et ferme
+  function dubVoix(){
+    if (cbt.dub) return cbt.dub;
+    const t = ctx.currentTime;
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), sub = ctx.createOscillator();
+    o1.type = o2.type = 'sawtooth'; sub.type = 'sine';
+    o1.detune.value = -10; o2.detune.value = 10;
+    const pre = ctx.createGain(); pre.gain.value = 0.6;
+    const grain = ctx.createWaveShaper(), courbe = new Float32Array(1024);
+    for (let i = 0; i < courbe.length; i++) courbe[i] = Math.tanh((i / (courbe.length - 1) * 2 - 1) * 3);
+    grain.curve = courbe;                               // la saturation : c'est elle qui fait grogner
+    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.Q.value = 6; filt.frequency.value = 110;
+    const vca = ctx.createGain(); vca.gain.value = 0;
+    const sg = ctx.createGain(); sg.gain.value = 0;
+    o1.connect(pre); o2.connect(pre); pre.connect(grain); grain.connect(filt); filt.connect(vca); vca.connect(cbt.g);
+    sub.connect(sg); sg.connect(cbt.g);
+    [o1, o2, sub].forEach(o => { o.frequency.value = F1; o.start(t); });
+    cbt.dub = { o1, o2, sub, filt, vca, sg, on: false,
+      stop: (q) => [o1, o2, sub].forEach(o => { try { o.stop(q); } catch (e){} }) };
+    return cbt.dub;
+  }
+  function dubWob(m, s, t, d, sec, acc){
+    const v = dubVoix(), fig = DUB_GRILLE[sec][(m - (sec === 'drop' ? 8 : 20)) & 7];
+    const motif = DUB_WOB[fig], c = motif[s];
+    if (s === 0 || !v.on) [v.o1, v.o2, v.sub].forEach(o => o.frequency.setValueAtTime(dz(DUB_RACINE[acc]), t));
+    if (c === '.'){ dubCoupe(t); return; }
+    if (c !== 'x') return;
+    if (!v.on){ v.vca.gain.setTargetAtTime(0.035, t, 0.004); v.sg.gain.setTargetAtTime(0.06, t, 0.006); v.on = true; }
+    let n = 1;
+    while (s + n < 16 && motif[s + n] === '-') n++;
+    const L = n * d;
+    v.filt.frequency.setValueAtTime(110, t);
+    v.filt.frequency.linearRampToValueAtTime(DUB_OUVRE[fig], t + L * 0.42);
+    v.filt.frequency.linearRampToValueAtTime(110, t + L * 0.96);
+  }
+  function dubCoupe(t){
+    const v = cbt.dub;
+    if (!v || !v.on) return;
+    v.vca.gain.setTargetAtTime(0, t, 0.01); v.sg.gain.setTargetAtTime(0, t, 0.01);
+    v.on = false;
+  }
+  function dubKick(t, v){
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.11);
+    const g = ctx.createGain(); env(g, t, v, 0.002, 0.34);
+    o.connect(g); g.connect(cbt.g); o.start(t); o.stop(t + 0.4);
+    burst(t, { freq: 3000, q: 0.9, peak: v * 0.22, attack: 0.001, decay: 0.012, bus: cbt.g });
+  }
+  function dubCaisse(t, v){
+    burst(t, { freq: 1900, q: 0.8, peak: v, attack: 0.001, decay: 0.15, lp: 8000, bus: cbt.g });
+    burst(t, { freq: 5500, q: 1.2, peak: v * 0.45, attack: 0.001, decay: 0.07, bus: cbt.g });
+    const o = ctx.createOscillator(); o.type = 'triangle';
+    o.frequency.setValueAtTime(230, t); o.frequency.exponentialRampToValueAtTime(150, t + 0.07);
+    const g = ctx.createGain(); env(g, t, v * 0.8, 0.001, 0.08);
+    o.connect(g); g.connect(cbt.g); o.start(t); o.stop(t + 0.12);
+  }
+  function dubCharley(t, v, ouvert){
+    burst(t, { freq: 8200, q: 0.9, peak: v, attack: 0.001, decay: ouvert ? 0.13 : 0.022, type: 'highpass', bus: cbt.g });
+  }
+  function dubCrash(t){ burst(t, { freq: 5200, q: 0.6, peak: 0.028, attack: 0.002, decay: 0.34, type: 'highpass', bus: cbt.g }); }
+  // la montée : un souffle qui s'ouvre et une dent de scie qui grimpe, sur quatre mesures
+  function dubMontee(t, dur){
+    const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+    f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(7500, t + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + dur);
+    src.connect(f); f.connect(g); g.connect(cbt.g); src.start(t); src.stop(t + dur);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(98, t); o.frequency.exponentialRampToValueAtTime(784, t + dur);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+    const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(0.009, t + dur);
+    o.connect(lp); lp.connect(g2); g2.connect(cbt.g); o.start(t); o.stop(t + dur);
+  }
+  function dubNappe(t, dur, notes, v){
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1000; lp.Q.value = 0.4;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.3);
+    g.gain.setValueAtTime(v, t + dur - 0.25); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g); g.connect(cbt.g);
+    notes.forEach(n => [-7, 7].forEach(det => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = dz(n); o.detune.value = det;
+      o.connect(lp); o.start(t); o.stop(t + dur + 0.05);
+    }));
+  }
+  function dubChant(t, n, dur, v){
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2800; lp.Q.value = 1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.012);
+    g.gain.setValueAtTime(v * 0.8, t + Math.max(0.02, dur - 0.06)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g); g.connect(cbt.g);
+    [['square', 0], ['sawtooth', 8]].forEach(([type, det]) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = dz(n); o.detune.value = det;
+      o.connect(lp); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  // l'arrivée du DROP demandé par le spécial : grosse caisse, cymbale, et une basse qui plonge
+  function dubImpact(t){
+    dubKick(t, 0.16); dubCrash(t);
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(30, t + 1.3);
+    const g = ctx.createGain(); env(g, t, 0.16, 0.01, 1.3);
+    o.connect(g); g.connect(cbt.g); o.start(t); o.stop(t + 1.4);
+  }
   let cbt = null, arene = false, piste = 'duel';
   function combatStart(nom){
     if (nom) piste = nom;
     if (cbt || !ctx || !musique) return;
-    const g = ctx.createGain();
+    const g = ctx.createGain(), p = PISTES[piste] || PISTES.duel;
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.6);
+    g.gain.linearRampToValueAtTime(p.vol || 1, ctx.currentTime + 0.6);   // `vol` : le niveau propre d'une piste (le dubstep)
     g.connect(master);
-    cbt = { g: g, pas: 0, quand: ctx.currentTime + 0.12, timer: 0, p: PISTES[piste] || PISTES.duel };
+    cbt = { g: g, pas: 0, quand: ctx.currentTime + 0.12, timer: 0, p };
     combatFile();
   }
   function combatFile(){
     if (!cbt) return;
+    if (cbt.p.dub){ dubFile(); cbt.timer = setTimeout(combatFile, 120); return; }   // Age of Seum : son propre moteur, plus haut
     const p = cbt.p, demi = n => p.base * Math.pow(2, n / 12);
     const fin = ctx.currentTime + 0.4;                 // on remplit 400 ms d'avance
     while (cbt.quand < fin){
@@ -5669,13 +6122,14 @@ const sfx = (() => {
     mort.g.gain.cancelScheduledValues(t);
     mort.g.gain.setValueAtTime(mort.g.gain.value, t);
     mort.g.gain.linearRampToValueAtTime(0.0001, t + 0.35);
+    if (mort.dub) mort.dub.stop(t + 0.4);              // la basse du dubstep tourne en continu : on l'arrête pour de bon
     setTimeout(() => { try { mort.g.disconnect(); } catch (e){} }, 600);
   }
   /* Le mini-jeu prend la main sur la musique : la nappe du menu s'éteint, le
      motif de combat démarre, et l'inverse à la sortie. */
   api.combat = (v, nom) => {
     arene = !!v;
-    if (nom) piste = nom;          // « duel » (Versus) ou « saut » (Jumper)
+    if (nom) piste = nom;          // « duel » (Versus), « saut » (Jumper) ou « seum » (Age of Seum)
     if (!audio()) return;
     if (arene){ ambientStop(); combatStart(); }
     else { combatStop(); ambientStart(); }
@@ -5802,6 +6256,96 @@ const sfx = (() => {
       note(t + d, f * 2, f * 2, 0.012, 0.10, 'sine', 0.004);
     });
   };
+  /* ---- Age of Seum : les bruits d'une guerre de mèmes ----
+     Tous courts, et tous plafonnés par le jeu lui-même (voir `son` dans le
+     module seum) : une mêlée de dix unités ferait sinon un mur de bruit. Ils
+     passent par `note` et `burst`, donc par l'interrupteur Bruitages — sauf le
+     klaxon et le trombone, qui ont leurs propres oscillateurs et le regardent
+     eux-mêmes. */
+  api.seumTir = (k) => {                              // un « pew » ; k, de 0 à 1, change la hauteur
+    const c = audio(); if (!c) return; const t = at();
+    const f = 700 + 900 * (k || 0);
+    note(t, f, f * 0.35, 0.035, 0.07, 'square', 0.001);
+    burst(t, { freq: 2600, q: 1.2, peak: 0.018, attack: 0.001, decay: 0.03, lp: 6000 });
+  };
+  api.seumCoup = (v) => {                             // un coup au corps à corps, plus lourd s'il fait mal
+    const c = audio(); if (!c) return; const t = at();
+    const k = 0.6 + Math.min(1, v || 0.5) * 0.6;
+    note(t, 170, 55, 0.07 * k, 0.09, 'triangle', 0.001);
+    burst(t, { freq: 1300, q: 0.8, peak: 0.045 * k, attack: 0.001, decay: 0.05, lp: 4000 });
+  };
+  api.seumMort = () => {                              // une unité tombe : un « bloop » qui descend
+    const c = audio(); if (!c) return; const t = at();
+    note(t, 560, 150, 0.045, 0.16, 'sine', 0.003);
+    note(t + 0.05, 280, 90, 0.03, 0.14, 'triangle', 0.003);
+  };
+  api.seumBoum = (v) => {                             // une explosion : tacos, lettre chaîne, avis d'imposition
+    const c = audio(); if (!c) return; const t = at();
+    const k = v || 1;
+    burst(t, { freq: 420, q: 0.7, peak: 0.08 * k, attack: 0.002, decay: 0.3, sweep: 70, lp: 1600 });
+    note(t, 110, 38, 0.08 * k, 0.28, 'sine', 0.002);
+  };
+  api.seumCaisse = () => {                            // l'argent qui rentre : « ka-ching »
+    const c = audio(); if (!c) return; const t = at();
+    note(t, 1568, 1568, 0.025, 0.06, 'square', 0.001);
+    note(t + 0.055, 2093, 2093, 0.022, 0.14, 'square', 0.001);
+  };
+  /* Le klaxon de stade des vidéos de 2014 : court, court, loooong. Quatre
+     dents de scie un peu désaccordées qui montent sur leur note à l'attaque,
+     serrées dans un passe-bande — c'est ce goulot qui fait la trompe. */
+  api.seumKlaxon = () => {
+    if (!bruitages) return;
+    const c = audio(); if (!c) return; const t = at();
+    [[0, 0.12], [0.16, 0.12], [0.32, 0.62]].forEach(([d, dur]) => {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1150; bp.Q.value = 0.6;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.linearRampToValueAtTime(0.06, t + d + 0.012);
+      g.gain.setValueAtTime(0.06, t + d + dur - 0.05); g.gain.linearRampToValueAtTime(0.0001, t + d + dur);
+      bp.connect(g); g.connect(master);
+      [[392, 0], [392, 9], [784, -5], [588, 4]].forEach(([f, det]) => {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = det;
+        o.frequency.setValueAtTime(f * 0.94, t + d); o.frequency.linearRampToValueAtTime(f, t + d + 0.05);
+        o.connect(bp); o.start(t + d); o.stop(t + d + dur + 0.02);
+      });
+    });
+  };
+  // La défaite : le trombone triste, quatre notes qui s'affaissent, la dernière qui tremble.
+  api.seumTrombone = () => {
+    if (!bruitages) return;
+    const c = audio(); if (!c) return; const t = at();
+    [[233.08, 0, 0.32], [220, 0.36, 0.32], [207.65, 0.72, 0.32], [196, 1.08, 1.1]].forEach(([f, d, dur], i) => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+      if (i === 3){
+        const lfo = ctx.createOscillator(), lg = ctx.createGain();
+        lfo.frequency.value = 5.5; lg.gain.value = 6;
+        lfo.connect(lg); lg.connect(o.frequency); lfo.start(t + d); lfo.stop(t + d + dur);
+      }
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.linearRampToValueAtTime(0.055, t + d + 0.04);
+      g.gain.setValueAtTime(0.05, t + d + dur - 0.12); g.gain.linearRampToValueAtTime(0.0001, t + d + dur);
+      o.connect(lp); lp.connect(g); g.connect(master); o.start(t + d); o.stop(t + d + dur + 0.02);
+    });
+  };
+  // L'annonce de chaque spécial : un timbre par âge.
+  api.seumSpecial = (age) => {
+    const c = audio(); if (!c) return; const t = at();
+    if (age === 0){                                   // la fenêtre qui s'ouvre
+      note(t, 1318.5, 1318.5, 0.05, 0.12, 'sine', 0.002); note(t + 0.11, 1975.5, 1975.5, 0.045, 0.2, 'sine', 0.002);
+    } else if (age === 1){                            // des rires, en cinq notes piquées qui dégringolent
+      [880, 830, 784, 740, 698].forEach((f, i) => note(t + i * 0.085, f, f * 0.94, 0.04, 0.07, 'square', 0.002));
+    } else if (age === 2){                            // le klaxon du scooter : pouet pouet
+      [0, 0.18].forEach(d => { note(t + d, 330, 330, 0.05, 0.12, 'square', 0.004); note(t + d, 415, 415, 0.03, 0.12, 'square', 0.004); });
+    } else if (age === 3){                            // le papier, puis le tiroir-caisse
+      burst(t, { freq: 3000, q: 0.6, peak: 0.05, attack: 0.02, decay: 0.2, lp: 7000, bell: 0.3 });
+      note(t + 0.2, 1568, 1568, 0.03, 0.08, 'square', 0.001); note(t + 0.27, 2093, 2093, 0.028, 0.2, 'square', 0.001);
+    } else {                                          // LE DROP : la basse qui tombe
+      note(t, 120, 32, 0.12, 1.3, 'sine', 0.005);
+      burst(t, { freq: 900, q: 0.6, peak: 0.08, attack: 0.003, decay: 0.34, sweep: 90, lp: 3000 });
+    }
+  };
+  // Le spécial du dernier âge fait sauter le dubstep à son second drop, dès le prochain pas programmé.
+  api.seumDrop = () => { if (cbt && cbt.p.dub) cbt.saut = true; };
   api.state = () => (ctx ? ctx.state : 'inactif') + (amb ? ' + nappe' : ''); // contrôle : « running + nappe » une fois tout parti
   /* Contrôle : niveau réellement produit en sortie. C'est la seule façon de
      distinguer un son qui ne part pas d'un son qui part mais qu'on n'entend
@@ -11286,9 +11830,9 @@ function fillPreview(){
   const teaserEl = document.getElementById('arenaTeaser');
   teaserEl.hidden = cat.kind !== 'game';
   if (cat.kind === 'game'){
-    /* Les deux jeux se partagent la même boîte d'aperçu. Versus se sert des
+    /* Les jeux se partagent la même boîte d'aperçu. Versus se sert des
        trois calques (décor au gros pixel, vêtements en 3D, effets), Jumper
-       d'un seul : on efface donc le calque 3D pour lui, et on force le
+       et Age of Seum d'un seul : on efface donc le calque 3D pour eux, et on force le
        repeint quand on passe d'un jeu à l'autre — chacun garde par ailleurs
        son cache de taille, sinon on repeindrait à chaque pas de la liste. */
     const jeu = item.jeu || 'versus';
@@ -11297,6 +11841,7 @@ function fillPreview(){
     document.getElementById('teaserGL').style.opacity = jeu === 'versus' ? '1' : '0';
     requestAnimationFrame(() => {
       if (jeu === 'versus') arena.apercu(change);
+      else if (jeu === 'seum') seum.apercu(change);
       else jumper.apercu(change);
     });
   }
@@ -12258,6 +12803,7 @@ addBtn.addEventListener('click', ()=>{
   if (cat.kind === 'game'){
     const jeu = cat.items[activeItem] && cat.items[activeItem].jeu;
     if (jeu === 'jumper') jumper.open();
+    else if (jeu === 'seum') seum.open();
     else arena.open();
     return;
   }
@@ -14158,6 +14704,1801 @@ const jumper = (() => {
   return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu: apercu, debug: debug };
 })();
 
+/* ============================================================================
+   Mini-jeu « Age of Seum » — un Age of War de contrebande.
+   (demande du 25 sept. 2026 : « un ripoff d'Age of War, que des références
+   méta post-ironiques dans l'esprit des t-shirts ; au lieu du fond avec les
+   arbres, Aubervilliers avec le sanglier sur le matelas ; des mèmes de plus en
+   plus niches et absurdes d'un âge à l'autre ; le gameplay et l'équilibrage
+   restent les mêmes ; la musique refaite, en mode dubstep »)
+
+   LE JEU EST CELUI D'AGE OF WAR, CHIFFRES COMPRIS. Deux bases face à face,
+   des unités qui marchent l'une vers l'autre et s'arrêtent au contact, de
+   l'argent et de l'expérience à chaque mort, cinq âges, trois unités par âge
+   (quatre au dernier), trois tourelles par âge, quatre emplacements, une
+   attaque spéciale par âge. Les chiffres ne sont pas imités : ce sont ceux du
+   jeu Flash de 2007 tels qu'un clone les a relevés dans son code
+   (github.com/erupturatis/Age-of-war-unity-clone, Data.cs, Troop.cs,
+   Enemy_AI.cs) — points de vie, dégâts, portées, cadences, temps de
+   formation, prix, récompenses, et jusqu'au script de l'adversaire. On a
+   demandé que l'équilibrage reste le même : il n'a pas été touché. Les
+   durées de là-bas sont comptées en images, à 41 images par seconde ; elles
+   sont converties telles quelles (voir IPS).
+
+   CE QUI CHANGE, C'EST TOUT LE RESTE. La forêt est devenue une rue
+   d'Aubervilliers, avec au milieu le sanglier endormi sur son matelas — la
+   photo virale d'août 2022, démentie depuis par les vérificateurs, ce qui en
+   fait exactement le genre d'image qu'on imprimerait ici. Chaque âge est une
+   époque d'internet, de la plus connue à la plus obscure : les mèmes que tout
+   le monde connaît, le Facebook de tata, TikTok et le rap français, le dark
+   web, et pour finir la post-ironie pure — où l'on retrouve les t-shirts de
+   la boutique eux-mêmes, et le contrôleur URSSAF en guise de super-soldat.
+   L'argent du jeu est en euros : le fisc et l'URSSAF y ont leur place.
+   La musique est un dubstep (voir sfx, PISTES.seum).
+
+   L'IMAGE SUIT JUMPER : un tampon en basse définition agrandi au plus
+   proche, des aplats cernés de noir, aucune image chargée. Un pixel du tampon
+   vaut une unité du jeu d'origine — le champ de bataille fait 900 pixels
+   d'une base à l'autre, comme là-bas — et l'on fait défiler la rue.
+   ============================================================================ */
+const seum = (() => {
+  const $ = (id) => document.getElementById(id);
+  const overlay = $('seumOverlay'), scene = $('seumScene'), cv = $('seumCv');
+  const ctx0 = cv.getContext('2d');
+  const hudEl = $('seumHud'), orEl = $('seumOr'), xpEl = $('seumXp'), ageEl = $('seumAge');
+  const fileEl = $('seumFile'), formeEl = $('seumForme');
+  const menuEl = $('seumMenu'), sousEl = $('seumSous'), infoEl = $('seumInfo');
+  const pvBox = $('seumPv'), pvJ = $('seumPvJ'), pvE = $('seumPvE'), pvJT = $('seumPvJT'), pvET = $('seumPvET');
+  const killsEl = $('seumKills'), annonceEl = $('seumAnnonce');
+  const carte = $('seumCarte'), carteT = $('seumCarteTitre'), carteS = $('seumCarteSous'), carteA = $('seumCarteAide');
+  const btGo = $('seumGo'), btQuit = $('seumQuit');
+
+  /* ---- les chiffres d'Age of War ----
+     Relevés dans le jeu d'origine (voir l'en-tête). Une ligne par unité, dans
+     l'ordre des âges : trois par âge, la quatrième du dernier âge à la fin.
+       coût (€)   · formation (images)   · points de vie
+       dégâts au corps à corps · dégâts à distance
+       portée au corps à corps · portée à distance
+       longueur (le corps s'étend EN ARRIÈRE de la position, qui est le nez)
+       pause après chaque coup (images) · délai du premier coup (s)
+       cadence au corps à corps (s) · cadence de tir à l'arrêt, en marchant (s) */
+  const IPS = 41;              // le jeu Flash tournait à 41 images par seconde
+  const CHAMP = 900;           // de la base du joueur (0) à celle d'en face
+  const VITESSE = 40;          // unités par seconde, la même pour toutes
+  const ECART = 20;            // ce qui sépare deux corps qui se suivent ou se font face
+  const U = [
+    //  coût   form   pv   cac  tir  pCac pTir long pause 1er   cadence tir   tirMarche
+    [    15,   40,   55,  16,   0,  20,   0,  20,  20, 0.43, 1,     0,    0   ],  // Wojak
+    [    25,   40,   42,  10,   8,  20, 100,  20,  20, 0.43, 1,     0.8,  1.07],  // Doge
+    [   100,  100,  160,  40,   0,  20,   0,  80,  45, 0.32, 1.12,  0,    0   ],  // Longcat
+    [    50,   70,  100,  35,   0,  20,   0,  20,  20, 0.62, 1.235, 0,    0   ],  // Tata
+    [    75,   50,   80,  20,  14,  20, 130,  20,  20, 0.62, 1.235, 1,    1   ],  // le teckel
+    [   500,  100,  300,  60,   0,  20,   0,  80,  60, 0.35, 1.30,  0,    0   ],  // Amazing Fish
+    [   200,  100,  200,  79,   0,  25,   0,  20,  25, 0.32, 1.05,  0,    0   ],  // le livreur
+    [   400,  100,  160,  40,  20,  25, 130,  20,  25, 0.15, 1.15,  1.15, 1.20],  // Jeune Rappeur 3000
+    [  1000,  200,  600, 120,   0,  25,   0,  20,  25, 0.65, 1.95,  0,    0   ],  // le Hollandais
+    [  1500,  100,  350, 100,   0,  25,   0,  20,  25, 0.17, 0.75,  0,    0   ],  // l'agent du FBI
+    [  2000,  100,  300,  60,  30,  25, 130,  20,  25, 0.07, 0.52,  0.52, 1.20],  // Silver 1
+    [  7000,  300, 1200, 300,   0,  20,   0, 120, 100, 0.55, 1.57,  0,    0   ],  // le chameau
+    [  5000,  100, 1000, 250,   0,  20,   0,  20,  40, 0.32, 0.92,  0,    0   ],  // le smash burger
+    [  6000,  100,  800, 130,  80,  20, 110,  20,  40, 0.32, 0.7,   0.35, 0.95],  // le dubstep bro
+    [ 20000,  300, 3000, 600,   0,  20,   0, 100, 100, 0.25, 2.25,  0,    0   ],  // le sanglier
+    [150000,  100, 4000, 400, 400,  20, 130,  20,  40, 0.32, 0.7,   0.35, 0.95],  // le contrôleur URSSAF
+  ];
+  // Les tourelles, trois par âge : coût · dégâts · portée · cadence (s) ·
+  // pause (images, comptées double) · dégâts des trois éclats · délai du 1er tir
+  const TR = [
+    [   100,  12, 350, 0.8,  30,  0, 0.1 ],
+    [   200,   5, 300, 0.25, 11,  0, 0   ],
+    [   500,  25, 380, 1.37, 20,  0, 0.17],
+    [   500,  40, 400, 2.47, 70,  0, 0.35],
+    [   750,  50, 300, 2.47, 70, 10, 0.35],
+    [  1000, 125,  50, 1.92, 50,  0, 0.5 ],
+    [  1500,  30, 500, 1.12, 50,  0, 0   ],
+    [  3000,  70, 500, 2,    70,  0, 0   ],
+    [  6000, 100, 500, 2,    70, 30, 0   ],
+    [  7000,  70, 500, 1.12, 70,  0, 0   ],
+    [  9000, 100, 500, 1,    80,  0, 0   ],
+    [ 14000,  60, 500, 0.5,   0,  0, 0   ],
+    [ 24000, 100, 400, 1,    40,  0, 0   ],
+    [ 40000,  40, 500, 0.25, 11,  0, 0   ],
+    [100000,  60, 550, 0.25, 11,  0, 0   ],
+  ];
+  const PV_BASE = [500, 1100, 2000, 3200, 4700];
+  const XP_AGE = [4000, 14000, 45000, 200000];       // expérience CUMULÉE pour passer à l'âge suivant
+  const PRIX_PLACE = [1000, 3000, 7500];             // le 2e, le 3e, le 4e emplacement
+  const HAUT_PLACE = [20, 68, 116, 164];             // hauteur des emplacements sur la base
+  const X_TOURELLE = 50;                             // les tourelles sont montées 50 unités devant la base
+  const OR_DEPART = 175, FILE_MAX = 5, RECHARGE = 60, VOBUS = 250;
+  /* Les attaques spéciales : une pluie au hasard sur toute la rue (âges 1 et
+     2), une régénération (âge 3), un balayage d'un bout à l'autre (âges 4 et
+     5). Elles ne touchent que les unités d'en face, jamais la base. */
+  const SPECIAUX = [
+    { n: 22, pas: 9 / IPS, degats: 200, bruit: 0.2 },
+    { n: 40, pas: 5 / IPS, degats: 200, bruit: 0.1 },
+    { soin: 14.6 },                                  // 1 PV par image, soit 41 par seconde
+    { n: 15, pas: 15 / IPS, degats: 400, balaye: 60 },
+    { n: 18, pas: 5 / IPS, degats: 1000, balaye: 50 },
+  ];
+  /* Le script de l'adversaire, relevé tel quel. Il ne paie rien : il fait
+     apparaître une unité par seconde avec 30 % de chance tant qu'il en a moins
+     de six sur la rue, débloque la deuxième unité de son âge après 1 500
+     images et la troisième après 5 000, change d'âge au bout de 8 000, et
+     achète et vend ses tourelles à heure fixe — [image, 'a', rang, emplacement]
+     pour un achat, [image, 'v', emplacement] pour une vente. Il n'emploie
+     jamais d'attaque spéciale, ni la super-unité. */
+  const IA = [
+    [[1000, 'a', 0, 0], [3950, 'v', 0], [4000, 'a', 1, 0], [5950, 'v', 0], [6000, 'a', 2, 0]],
+    [[950, 'v', 0], [1000, 'a', 0, 0], [3950, 'v', 0], [4000, 'a', 2, 0], [6000, 'a', 1, 1]],
+    [[950, 'v', 0], [1000, 'a', 0, 0], [3950, 'v', 1], [4000, 'a', 0, 1], [5950, 'v', 0], [5950, 'v', 1], [6000, 'a', 2, 2]],
+    [[5000, 'a', 0, 0], [6950, 'v', 2], [6950, 'v', 0], [7000, 'a', 1, 1]],
+    [[5000, 'a', 0, 0], [12000, 'v', 0], [12000, 'v', 1], [12000, 'v', 2], [12050, 'a', 1, 1],
+     [20000, 'v', 0], [20000, 'v', 1], [20000, 'v', 2], [20050, 'a', 2, 3]],
+  ];
+
+  /* ---- le casting ----
+     Du plus connu au plus obscur, âge après âge. Les noms sont ceux des mèmes,
+     les dessins sont des caricatures faites ici, au pixel : aucune image
+     reprise. `cri` : ce qu'ils disent en sortant de la base (police en
+     pixels : capitales sans accent). */
+  const AGES = [
+    { nom: { en: 'Memes your mom knows', fr: 'Les mèmes que ta daronne connaît' },
+      special: { en: 'Winning pop-ups', fr: 'Pop-ups gagnants' },
+      quoi: { en: '22 pop-ups rain down on the other side.', fr: "22 pop-ups s'abattent sur ceux d'en face." } },
+    { nom: { en: "Auntie's Facebook", fr: 'Le Facebook de tata' },
+      special: { en: '😂 downpour', fr: 'Averse de 😂' },
+      quoi: { en: '40 😂 fall from the sky.', fr: '40 😂 tombent du ciel.' } },
+    { nom: { en: 'TikTok and French rap', fr: 'TikTok et rap FR' },
+      special: { en: 'My chicken spicy just arrived', fr: "Mon chicken spicy vient d'arriver" },
+      quoi: { en: 'Your troops eat, and heal for 15 seconds.', fr: 'Tes troupes mangent, et se soignent pendant 15 secondes.' } },
+    { nom: { en: 'Dark web and conspiracies', fr: 'Dark web et complots' },
+      special: { en: 'Tax notice', fr: "Avis d'imposition" },
+      quoi: { en: 'Tax notices, from one end of the street to the other.', fr: "Des avis d'imposition, d'un bout à l'autre de la rue." } },
+    { nom: { en: 'Terminal post-irony', fr: 'Post-ironie terminale' },
+      special: { en: 'THE DROP', fr: 'LE DROP' },
+      quoi: { en: 'The bass drops. So does everything across the street.', fr: "La basse tombe. Tout ce qu'il y a en face aussi." } },
+  ];
+  const CAST = [
+    { nom: 'Wojak', cri: '...',
+      desc: { en: 'Hits you with his keyboard, while feeling things.', fr: 'Tape avec son clavier, en ressentant des choses.' } },
+    { nom: 'Doge', cri: 'WOW',
+      desc: { en: 'Throws wows. Such range.', fr: 'Lance des « wow ». Much portée.' } },
+    { nom: 'Longcat', cri: 'LOOOONG',
+      desc: { en: 'He is looooong.', fr: 'Il est loooooong.' } },
+    { nom: { en: 'Auntie « Bonjour »', fr: 'Tata « Bonjour »' }, cri: 'BONJOUR',
+      desc: { en: 'Hands out happy Wednesdays with her handbag. ☕', fr: 'Distribue des bons mercredis à coups de sac à main. ☕' } },
+    { nom: { en: 'The « hello... » dachshund', fr: 'Le teckel « hello... »' }, cri: 'HELLO...',
+      desc: { en: 'Sends hearts. Seen on a t-shirt.', fr: 'Envoie des cœurs. Vu sur un t-shirt.' } },
+    { nom: 'Amazing Fish !!!', cri: 'AMAZING FISH !!!',
+      desc: { en: '超大号的鱼. An extra-large fish. Nobody knows why.', fr: '超大号的鱼. Un poisson extra-large. Personne ne sait pourquoi.' } },
+    { nom: { en: 'The chicken spicy rider', fr: 'Le livreur du chicken spicy' }, cri: 'CHICKEN SPICY',
+      desc: { en: 'Your chicken spicy just arrived. He hits with the bag.', fr: "Ton chicken spicy vient d'arriver. Il tape avec le sac." } },
+    { nom: 'Jeune Rappeur 3000', cri: 'SKRRT',
+      desc: { en: 'Shoots ad-libs.', fr: 'Tire des ad-libs.' } },
+    { nom: { en: 'The Dutchman', fr: 'Le Hollandais' }, cri: "T'ES HOLLANDAIS",
+      desc: { en: "« Enfoiré, t'es hollandais. » Hits with a whole gouda.", fr: "« Enfoiré, t'es hollandais. » Frappe avec un gouda entier." } },
+    { nom: { en: 'The FBI agent', fr: "L'agent du FBI" }, cri: 'FBI OPEN UP',
+      desc: { en: 'FBI OPEN UP. Rams everything.', fr: 'FBI OPEN UP. Enfonce tout au bélier.' } },
+    { nom: 'Silver 1', cri: 'RUSH B',
+      desc: { en: '« I hunt people for sport. » Still Silver 1.', fr: '« I hunt people for sport. » Toujours Silver 1.' } },
+    { nom: { en: 'The Silk Road camel', fr: 'Le chameau de Silk Road' }, cri: 'WHERE TF AM I',
+      desc: { en: 'Ships in 3 to 5 business days. Discreetly.', fr: 'Livre en 3 à 5 jours ouvrés. Discrètement.' } },
+    { nom: 'Coco&Bingo smash burger', cri: 'SMASH',
+      desc: { en: 'SMASH. Sponsored by the Région and the URSSAF (no).', fr: "SMASH. Sponsorisé par la Région et l'URSSAF (non)." } },
+    { nom: { en: 'The dubstep bro', fr: 'Le dubstep bro' }, cri: 'WUB WUB',
+      desc: { en: 'I <3 DUBSTEP. Shoots WUBs.', fr: 'I <3 DUBSTEP. Tire des WUB.' } },
+    { nom: { en: 'The Aubervilliers boar', fr: "Le sanglier d'Aubervilliers" }, cri: '#AUBERVILLIERS',
+      desc: { en: 'He was asleep on his mattress. Fact or fake?', fr: 'Il dormait sur son matelas. Info ou intox ?' } },
+    { nom: { en: 'The URSSAF inspector', fr: 'Le contrôleur URSSAF' }, cri: 'CONTROLE URSSAF',
+      desc: { en: 'Super unit. Reassesses from afar and up close. Nobody escapes.', fr: "Super unité. Redresse de loin comme de près. Personne n'y échappe." } },
+  ];
+  const TOURS = [
+    { nom: { en: '3310 launcher', fr: 'Lance-3310' }, desc: { en: 'Fires indestructible phones.', fr: 'Tire des téléphones indestructibles.' } },
+    { nom: { en: 'The Wizz', fr: 'Le Wizz' }, desc: { en: 'Spams nudges. Shakes things up.', fr: 'Mitraille des wizz. Ça secoue.' } },
+    { nom: { en: 'Suspicious rock catapult', fr: 'Catapulte à cailloux' }, desc: { en: 'Rocks raising one eyebrow. 🤨', fr: 'Des pierres qui haussent un sourcil. 🤨' } },
+    { nom: { en: 'Glitter GIF launcher', fr: 'Lance-GIFs pailletés' }, desc: { en: 'Glittery « Happy Wednesday ».', fr: '« Bon mercredi » en paillettes.' } },
+    { nom: { en: 'The chain letter', fr: 'La lettre chaîne' }, desc: { en: 'Shares itself to 3 friends on impact.', fr: "Se partage à 3 amis à l'impact." } },
+    { nom: { en: "Uncle's deep fryer", fr: 'La friteuse de tonton' }, desc: { en: 'Boiling oil, right at the door.', fr: 'Huile bouillante, au pied de la porte.' } },
+    { nom: { en: 'The hookah', fr: 'La chicha' }, desc: { en: 'Blows smoke rings.', fr: 'Tire des ronds de fumée.' } },
+    { nom: { en: 'The FEUR cannon', fr: 'Le canon à FEUR' }, desc: { en: 'Answers every « quoi » with « feur ».', fr: 'Répond « feur » à tous les « quoi ».' } },
+    { nom: { en: '3-meat tacos launcher', fr: 'Lance-tacos 3 viandes' }, desc: { en: 'Bursts into 3 meats on impact.', fr: "Explose en 3 viandes à l'impact." } },
+    { nom: { en: 'The switch', fr: 'Le switch' }, desc: { en: "« I'm so woke and I got a switch. »", fr: "« I'm so woke and I got a switch. »" } },
+    { nom: { en: 'N.W.O globe launcher', fr: 'Lance-globes N.W.O' }, desc: { en: 'Christian moms for the N.W.O.', fr: 'Christian moms for the N.W.O.' } },
+    { nom: { en: 'Hate for 15 €', fr: 'La haine à 15 €' }, desc: { en: 'Everyone should be able to express their hate for cheap.', fr: 'Tout le monde doit pouvoir exprimer sa haine pour pas cher.' } },
+    { nom: { en: 'Laser eyes', fr: 'Les yeux laser' }, desc: { en: 'To the moon.', fr: 'To the moon.' } },
+    { nom: { en: '99+ notifications', fr: 'Notifs 99+' }, desc: { en: 'Nonstop red badges.', fr: 'Des pastilles rouges, sans arrêt.' } },
+    { nom: { en: 'The blue check', fr: 'Le certif bleu' }, desc: { en: 'Paid for. Shoots anyway.', fr: 'Payant. Tire quand même.' } },
+  ];
+  // hauteur de chaque unité : sa boîte de collision, sa barre de vie, sa bulle
+  const HAUT = [31, 22, 20, 31, 14, 34, 32, 32, 44, 32, 34, 66, 30, 32, 30, 38];
+  // les unités qui tirent : ce qu'elles lancent
+  const TIRS = {
+    1: { k: 'mot', mots: ['WOW', 'SUCH', 'MUCH', 'VERY'], cols: ['#ff4df0', '#4dfcff', '#ffe94d', '#6dff5a'], dur: 0.35, arc: 10 },
+    4: { k: 'coeur', dur: 0.4, arc: 8 },
+    7: { k: 'mot', mots: ['SKRRT', 'BRRR', 'OUAIS', 'EH', 'YAH'], cols: ['#ffffff', '#ffd23a'], dur: 0.3, arc: 6 },
+    10: { k: 'balle', dur: 0.07, arc: 0 },
+    13: { k: 'mot', mots: ['WUB', 'WUB', 'WOB', 'BWAAA'], cols: ['#b25bff', '#6dff5a', '#4dfcff'], dur: 0.3, arc: 0 },
+    15: { k: 'lettre', dur: 0.35, arc: 10 },
+  };
+  // ce que certains crient en frappant (une fois sur trois)
+  const COUPS = { 8: 'GOUDA', 9: 'OPEN UP', 12: 'SMASH', 14: 'GROUIK' };
+
+  /* ---- la police en pixels ----
+     Trois pixels sur cinq (cinq sur cinq pour les lettres larges) : elle sert
+     aux enseignes, aux bulles et aux mots lancés. Une police du système,
+     réduite à cette taille dans un tampon de 300 pixels, serait une bouillie
+     grise ; celle-ci reste nette à toutes les tailles. `<` dessine un cœur. */
+  const GLYPHES = {
+    A: '.#.|#.#|###|#.#|#.#', B: '##.|#.#|##.|#.#|##.', C: '.##|#..|#..|#..|.##', D: '##.|#.#|#.#|#.#|##.',
+    E: '###|#..|##.|#..|###', F: '###|#..|##.|#..|#..', G: '.##|#..|#.#|#.#|.##', H: '#.#|#.#|###|#.#|#.#',
+    I: '###|.#.|.#.|.#.|###', J: '..#|..#|..#|#.#|.#.', K: '#.#|#.#|##.|#.#|#.#', L: '#..|#..|#..|#..|###',
+    M: '#...#|##.##|#.#.#|#...#|#...#', N: '#..#|##.#|#.##|#..#|#..#', O: '.#.|#.#|#.#|#.#|.#.',
+    P: '##.|#.#|##.|#..|#..', Q: '.#.|#.#|#.#|##.|.##', R: '##.|#.#|##.|#.#|#.#', S: '.##|#..|.#.|..#|##.',
+    T: '###|.#.|.#.|.#.|.#.', U: '#.#|#.#|#.#|#.#|###', V: '#.#|#.#|#.#|#.#|.#.', W: '#...#|#...#|#.#.#|##.##|#...#',
+    X: '#.#|#.#|.#.|#.#|#.#', Y: '#.#|#.#|.#.|.#.|.#.', Z: '###|..#|.#.|#..|###',
+    0: '###|#.#|#.#|#.#|###', 1: '.#.|##.|.#.|.#.|###', 2: '##.|..#|.#.|#..|###', 3: '##.|..#|.#.|..#|##.',
+    4: '#.#|#.#|###|..#|..#', 5: '###|#..|##.|..#|##.', 6: '.##|#..|###|#.#|###', 7: '###|..#|.#.|.#.|.#.',
+    8: '###|#.#|###|#.#|###', 9: '###|#.#|###|..#|##.',
+    '!': '#|#|#|.|#', '?': '##.|..#|.#.|...|.#.', '.': '.|.|.|.|#', ',': '.|.|.|#|#', "'": '#|#|.|.|.',
+    '-': '...|...|###|...|...', '+': '...|.#.|###|.#.|...', ':': '.|#|.|#|.', '/': '..#|..#|.#.|#..|#..',
+    '&': '.#.|#.#|.#.|#.#|.##', '€': '.##|#..|###|#..|.##', '<': '.#.#.|#####|#####|.###.|..#..',
+    '#': '.#.#.|#####|.#.#.|#####|.#.#.', '%': '#.#|..#|.#.|#..|#.#', ' ': '..|..|..|..|..',
+  };
+  const FONTE = {};
+  Object.entries(GLYPHES).forEach(([ch, s]) => {
+    const lignes = s.split('|'), px = [];
+    lignes.forEach((l, y) => { for (let x = 0; x < l.length; x++) if (l[x] === '#') px.push(x, y); });
+    FONTE[ch] = { w: lignes[0].length, px };
+  });
+  const nettoyer = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  function largeur(txt, k = 1){
+    let w = 0;
+    for (const ch of nettoyer(txt)) w += ((FONTE[ch] || FONTE['?']).w + 1) * k;
+    return Math.max(0, w - k);
+  }
+
+  /* ---- le pinceau ----
+     `g` est le contexte où l'on peint : le jeu, une vignette du menu ou
+     l'aperçu du panneau — les mêmes fonctions servent aux trois. Tout est
+     tracé en rectangles entiers : une courbe du navigateur serait lissée, et
+     ses bords flous jureraient avec le gros pixel. `miroir` est vrai pendant
+     qu'on dessine le camp d'en face, retourné : le texte, lui, se remet à
+     l'endroit tout seul (voir ecrire). */
+  let g = ctx0, miroir = false;
+  const NOIR = '#17121d';
+  function R(x, y, w, h, c){ if (c) g.fillStyle = c; g.fillRect(x, y, w, h); }
+  function B(x, y, w, h, c){ g.fillStyle = NOIR; g.fillRect(x - 1, y - 1, w + 2, h + 2); g.fillStyle = c; g.fillRect(x, y, w, h); }
+  function O(cx, cy, rx, ry, c){
+    g.fillStyle = c;
+    const q = (ry + 0.5) * (ry + 0.5);
+    for (let dy = -ry; dy <= ry; dy++){
+      const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / q)));
+      g.fillRect(cx - hw, cy + dy, hw * 2 + 1, 1);
+    }
+  }
+  function BO(cx, cy, rx, ry, c){ O(cx, cy, rx + 1, ry + 1, NOIR); O(cx, cy, rx, ry, c); }
+  // polygone convexe, rempli ligne à ligne
+  function POLY(p, c){
+    let y0 = Infinity, y1 = -Infinity;
+    for (let i = 1; i < p.length; i += 2){ if (p[i] < y0) y0 = p[i]; if (p[i] > y1) y1 = p[i]; }
+    g.fillStyle = c;
+    for (let y = Math.floor(y0); y < Math.ceil(y1); y++){
+      const yc = y + 0.5;
+      let a = Infinity, b = -Infinity;
+      for (let i = 0; i < p.length; i += 2){
+        const xa = p[i], ya = p[i + 1], xb = p[(i + 2) % p.length], yb = p[(i + 3) % p.length];
+        if ((ya <= yc && yb > yc) || (yb <= yc && ya > yc)){
+          const x = xa + (yc - ya) / (yb - ya) * (xb - xa);
+          if (x < a) a = x;
+          if (x > b) b = x;
+        }
+      }
+      if (b > a) g.fillRect(Math.round(a), y, Math.max(1, Math.round(b) - Math.round(a)), 1);
+    }
+  }
+  // un polygone cerné : le même, un pixel plus gros en noir, dessous
+  function BPOLY(p, c){
+    let cx = 0, cy = 0;
+    for (let i = 0; i < p.length; i += 2){ cx += p[i]; cy += p[i + 1]; }
+    cx /= p.length / 2; cy /= p.length / 2;
+    const q = [];
+    for (let i = 0; i < p.length; i += 2){
+      const dx = p[i] - cx, dy = p[i + 1] - cy, n = Math.hypot(dx, dy) || 1;
+      q.push(p[i] + dx / n * 1.4, p[i + 1] + dy / n * 1.4);
+    }
+    POLY(q, NOIR); POLY(p, c);
+  }
+  function ecrire(txt, x, y, col, k = 1, contour){
+    const s = nettoyer(txt), W = largeur(s, k);
+    const plot = (dx, dy, c) => {
+      g.fillStyle = c;
+      let cx = 0;
+      for (const ch of s){
+        const gl = FONTE[ch] || FONTE['?'];
+        for (let i = 0; i < gl.px.length; i += 2){
+          let px = cx + gl.px[i] * k;
+          if (miroir) px = W - k - px;
+          g.fillRect(x + px + dx, y + gl.px[i + 1] * k + dy, k, k);
+        }
+        cx += (gl.w + 1) * k;
+      }
+    };
+    if (contour){ plot(-1, 0, contour); plot(1, 0, contour); plot(0, -1, contour); plot(0, 1, contour); }
+    plot(0, 0, col);
+    return W;
+  }
+  // un mot écrit en colonne (néons verticaux, carotte du tabac)
+  function colonne(txt, x, y, col){ [...nettoyer(txt)].forEach((ch, i) => ecrire(ch, x + ((3 - (FONTE[ch] || FONTE['?']).w) >> 1), y + i * 6, col)); }
+
+  /* ---- les unités, au pixel ----
+     Repère : le NEZ de l'unité en x = 0, les pieds en y = 0, face à droite ;
+     le corps s'étend vers l'arrière (x négatifs), comme dans le jeu d'origine
+     où la position d'une unité est l'avant de son corps. Le camp d'en face est
+     le même dessin, retourné. `ph` alterne à la marche, `f` vaut vrai pendant
+     un coup, `tr` pendant un tir. */
+  function jambes(cx, h, col, ph, ecart = 4, pied = NOIR){
+    const a = ph ? 1 : -1;
+    const x1 = cx - (ecart >> 1) + a, x2 = cx + (ecart >> 1) - 1 - a;
+    R(x1, -h, 2, h - 1, col); R(x2, -h, 2, h - 1, col);
+    R(x1 - 1, -1, 3, 1, pied); R(x2, -1, 3, 1, pied);
+  }
+  function pattes(xs, h, col, ph){
+    xs.forEach((x, i) => { const a = ((i & 1) ^ ph) ? 1 : 0; B(x + a, -h, 2, h - 1, col); });
+  }
+  const DESSINS = [
+    function wojak(u, ph, f){
+      jambes(-10, 8, '#3d5a8c', ph);
+      B(-15, -17, 10, 9, '#8f969f');
+      B(-16, -16, 2, 6, '#e8d0bc');
+      // le clavier, sa massue : porté à deux mains devant lui, puis levé et abattu
+      const ky = f ? -22 : -13, kx = f ? -4 : -9;
+      B(kx, ky, 12, 3, '#dedee6'); for (let i = 0; i < 5; i++) R(kx + 1 + i * 2, ky + 1, 1, 1, '#7a7a86');
+      B(-7, f ? -19 : -15, 2, 4, '#e8d0bc');
+      BO(-10, -24, 5, 6, '#f1ddcc');
+      R(-12, -25, 1, 1, NOIR); R(-8, -25, 1, 1, NOIR);
+      R(-13, -26, 1, 1, '#8a7a70'); R(-12, -27, 1, 1, '#8a7a70');   // les sourcils tristes, relevés au milieu
+      R(-9, -27, 1, 1, '#8a7a70'); R(-8, -26, 1, 1, '#8a7a70');
+      R(-10, -24, 1, 2, '#d6b39c');
+      R(-11, -21, 3, 1, '#7d5b52'); R(-12, -20, 1, 1, '#7d5b52'); R(-8, -20, 1, 1, '#7d5b52');
+    },
+    function doge(u, ph, f, tr){
+      const o = '#d99a4e', c = '#f4e1bf';
+      BO(-18, -15, 2, 2, o); R(-18, -15, 1, 1, c);                    // la queue en boucle
+      B(-18, -13, 13, 7, o); R(-17, -8, 11, 2, c);
+      pattes([-17, -14, -9, -6], 6, o, ph);
+      BO(-3, -15, 5, 5, o);
+      BPOLY([-8, -18, -6, -24, -4, -19], o); BPOLY([-2, -19, 0, -24, 2, -18], o);
+      R(-6, -20, 1, 2, '#8a4f22'); R(0, -20, 1, 2, '#8a4f22');
+      O(-3, -12, 4, 2, c);
+      R(-6, -16, 2, 1, '#ffffff'); R(-6, -16, 1, 1, NOIR);            // le regard en coin
+      R(-1, -16, 2, 1, '#ffffff'); R(-1, -16, 1, 1, NOIR);
+      R(-7, -18, 2, 1, '#8a4f22'); R(-1, -18, 2, 1, '#8a4f22');
+      R(-4, -13, 2, 1, NOIR);
+      if (tr) R(-4, -11, 2, 1, '#8a2a2a');
+    },
+    function longcat(u, ph, f){
+      const b = '#f7f7f7', o = '#d6d6de';
+      B(-80, -22, 2, 11, b);
+      B(-78, -13, 70, 7, b); R(-77, -8, 68, 2, o);
+      pattes([-76, -72, -15, -11], 6, b, ph);
+      BO(-4, -14, 5, 4, b);
+      BPOLY([-8, -16, -7, -21, -5, -17], b); BPOLY([-2, -17, -1, -21, 1, -16], b);
+      R(-6, -15, 1, 1, NOIR); R(-2, -15, 1, 1, NOIR);
+      R(-4, -13, 1, 1, '#f08aa8');
+      R(1, -14, 4, 1, '#b8b8c0'); R(1, -12, 4, 1, '#b8b8c0');
+      if (f) R(2, -11, 3, 1, '#ff9ab0');
+    },
+    function tata(u, ph, f){
+      jambes(-10, 7, '#e8c4a8', ph, 4, '#5a2a3a');
+      BPOLY([-15, -7, -5, -7, -6, -15, -14, -15], '#e27aa8');
+      R(-13, -10, 1, 1, '#ffffff'); R(-9, -12, 1, 1, '#ffffff'); R(-7, -9, 1, 1, '#ffe066'); R(-11, -8, 1, 1, '#ffe066');
+      B(-14, -21, 8, 7, '#a98bd4');
+      if (f){ B(-3, -19, 5, 4, '#6b3b22'); R(-2, -21, 3, 1, NOIR); }   // le sac à main, lancé
+      else { B(-17, -15, 4, 4, '#6b3b22'); R(-16, -17, 2, 1, NOIR); }
+      B(-5, -19, 3, 3, '#ffffff'); R(-2, -18, 1, 1, NOIR); R(-4, -21, 1, 1, '#c8c8c8');   // le café
+      BO(-11, -27, 6, 5, '#b4532e');
+      BO(-9, -25, 4, 4, '#f0c8a6');
+      R(-11, -26, 2, 1, '#555555'); R(-8, -26, 2, 1, '#555555'); R(-9, -26, 1, 1, '#555555');
+      R(-9, -23, 2, 1, '#d23a4a');
+    },
+    function teckel(u, ph, f, tr){
+      const s = '#b98a5e', c = '#e2c9a4', d = '#7a5536';
+      R(-20, -13, 1, 5, s);
+      B(-18, -9, 15, 5, s); R(-17, -5, 13, 1, c);
+      pattes([-17, -14, -8, -5], 4, s, ph);
+      BO(-2, -10, 3, 3, s);
+      B(0, -10, 3, 2, s); R(3, -10, 1, 1, NOIR);
+      B(-5, -11, 2, 5, d);
+      R(-2, -11, 1, 1, NOIR);
+      if (tr) R(1, -8, 2, 1, '#8a2a2a');
+    },
+    function poisson(u, ph, f, tr, t){
+      g.translate(0, Math.round(Math.sin(t * 5 + u.anim * 3) * 2) - 6);   // il nage dans l'air, par à-coups
+      const r = '#d9542c', r2 = '#a93a1c', v = '#f2e4d4', j = '#f6c64a';
+      BPOLY([-80, -28, -66, -17, -80, -6], '#e0703a');
+      BPOLY([-54, -25, -42, -33, -28, -24], r2);
+      BO(-40, -17, 30, 9, r);
+      for (let dy = 2; dy <= 8; dy++){ const hw = Math.round(28 * Math.sqrt(1 - (dy * dy) / 90)); R(-40 - hw, -17 + dy, hw * 2, 1, v); }
+      for (let i = 0; i < 6; i++) R(-60 + i * 7, -20 + (i & 1), 3, 1, '#b8401e');
+      BPOLY([-26, -12, -18, -7, -28, -5], '#e8744a');
+      BO(-14, -19, 3, 3, j); R(-14, -19, 2, 2, NOIR);
+      R(-9, -14, 5, 1, r2);
+      if (f) R(-3, -15, 2, 2, '#ffd0c0');
+    },
+    function livreur(u, ph, f, tr, t){
+      R(-19, -4, 16, 2, '#2b2b33');                                   // la trottinette
+      const roue = (x) => { BO(x, -2, 2, 2, '#34343c'); R(x + (((t * 18) | 0) & 1 ? 0 : -1), -2, 1, 1, '#9a9aa6'); };
+      roue(-17); roue(-4);
+      B(-4, -24, 1, 20, '#8a8a95'); B(-7, -25, 5, 1, '#2b2b33');
+      R(-13, -12, 2, 8, '#2a2a30'); R(-10, -12, 2, 8, '#2a2a30');
+      B(-14, -21, 8, 9, '#23252b');
+      B(-7, -20, 4, 2, '#23252b');
+      // le sac isotherme : le cube sur le dos, frappé en avant au contact
+      const sx = f ? -12 : -24;
+      B(sx, -29, 10, 10, '#f28c28'); O(sx + 4, -24, 2, 2, '#9a5024'); R(sx + 6, -24, 2, 1, '#ffffff');
+      BO(-10, -26, 4, 4, '#b07a52');
+      O(-10, -29, 5, 2, '#e03a3a'); R(-6, -28, 3, 1, '#e03a3a');
+      R(-8, -26, 1, 1, NOIR);
+    },
+    function rappeur(u, ph, f, tr){
+      jambes(-10, 8, '#34466b', ph, 4, '#ffffff');
+      B(-15, -18, 10, 10, '#1d1d22');
+      R(-13, -16, 6, 1, '#f2c230'); R(-11, -15, 2, 2, '#f2c230');
+      if (tr){ B(-5, -21, 6, 2, '#1d1d22'); B(1, -23, 2, 4, '#5c5c66'); }  // le micro, tendu vers eux
+      else { B(-6, -17, 2, 6, '#1d1d22'); B(-6, -20, 2, 3, '#5c5c66'); }
+      BO(-10, -24, 4, 5, '#8d5a3b');
+      R(-13, -25, 7, 2, NOIR);
+      B(-14, -30, 8, 3, '#d8262c'); R(-17, -29, 3, 1, '#d8262c');     // casquette à l'envers
+      if (tr) R(-8, -21, 2, 1, '#f2c230');
+    },
+    function hollandais(u, ph, f){
+      jambes(-10, 13, '#2f4f8f', ph, 5, '#e9c46a');
+      B(-16, -27, 12, 14, '#ff7a00');
+      R(-14, -24, 8, 1, '#ffffff');
+      const gx = f ? 2 : -3, gy = f ? -17 : -31;                        // la meule de gouda, brandie
+      BO(gx, gy, 6, 6, '#c8262c'); O(gx, gy, 5, 5, '#f5c542'); R(gx - 2, gy - 1, 2, 2, '#ffe28a');
+      B(-6, -26, 3, 8, '#ff7a00');
+      BO(-10, -33, 5, 6, '#f2d2b6');
+      O(-10, -38, 5, 2, '#f2d36b');
+      R(-12, -34, 1, 1, NOIR); R(-8, -34, 1, 1, NOIR);
+      R(-11, -30, 3, 1, '#b86a50');
+    },
+    function fbi(u, ph, f){
+      jambes(-10, 8, '#1e1e24', ph);
+      B(-15, -19, 11, 11, '#1f2a47');
+      ecrire('FBI', -15, -18, '#ffd23a');
+      const bx = f ? 3 : -2;                                             // le bélier, porté bas : il ne cache pas le dos
+      B(bx - 11, -11, 14, 4, '#50555f'); R(bx - 9, -12, 2, 1, NOIR); R(bx - 3, -12, 2, 1, NOIR); R(bx + 2, -11, 1, 4, '#2a2d33');
+      BO(-10, -24, 4, 5, '#e6c2a0');
+      R(-13, -25, 7, 2, NOIR);
+      R(-14, -30, 8, 2, '#222222');
+    },
+    function silver(u, ph, f, tr){
+      jambes(-10, 8, '#7b7456', ph);
+      B(-15, -18, 10, 10, '#5d6b45');
+      B(-9, -17, 13, 2, '#222222'); R(-12, -16, 3, 3, '#5a3b22');       // le fusil
+      if (tr) R(5, -18, 3, 3, '#ffe066');
+      BO(-10, -23, 4, 4, '#2a2a2a');
+      R(-12, -24, 5, 2, '#8fd6ff');
+      O(-10, -27, 5, 2, '#5d6b45');
+      // le rang, au-dessus du casque : l'insigne argent
+      R(-14, -35, 8, 4, '#c9d1da'); R(-12, -34, 1, 1, '#6a7482'); R(-11, -33, 2, 1, '#6a7482'); R(-9, -34, 1, 1, '#6a7482');
+    },
+    function chameau(u, ph, f){
+      const v = '#63c43f', vf = '#2f7a24', vc = '#8fe06a';
+      pattes([-98, -90, -42, -34], 18, v, ph);
+      R(-112, -32, 2, 10, vf);
+      BO(-66, -27, 40, 11, v); O(-66, -31, 34, 5, vc);
+      BO(-70, -39, 15, 8, v); O(-72, -42, 9, 3, vc);
+      for (let i = 0; i < 7; i++) B(-30 + i * 3, -31 - i * 3, 5, 8, v);
+      BO(-5, -53, 6, 4, v); B(-2, -53, 7, 3, v); R(-6, -55, 1, 1, NOIR); R(-9, -58, 2, 2, vf);
+      if (f) R(5, -52, 3, 1, '#e8ffe0');
+      B(-92, -35, 8, 9, '#8b6b3b'); R(-90, -33, 4, 1, '#5a4222');
+      B(-75, -58, 10, 12, vf);                                           // le cavalier
+      BO(-70, -62, 4, 4, '#b07a52'); O(-70, -66, 5, 2, vc);
+    },
+    function burger(u, ph, f){
+      jambes(-10, 7, '#1c1c1c', ph, 5, '#e33333');
+      B(-17, -11, 14, 4, '#d9a05b');
+      B(-18, -14, 16, 3, '#5a3321'); R(-19, -13, 1, 1, '#3a1f12'); R(-2, -13, 1, 1, '#3a1f12');
+      R(-16, -15, 12, 1, '#ffc629'); R(-14, -14, 1, 2, '#ffc629'); R(-7, -14, 1, 3, '#ffc629');
+      for (let x = -17; x < -3; x++) R(x, -16 - (x & 1), 1, 1, '#6cc24a');
+      BO(-10, -21, 8, 5, '#e0a85e');
+      R(-13, -24, 1, 1, '#fff6d8'); R(-9, -25, 1, 1, '#fff6d8'); R(-6, -23, 1, 1, '#fff6d8'); R(-15, -22, 1, 1, '#fff6d8');
+      R(-12, -21, 2, 2, '#ffffff'); R(-8, -21, 2, 2, '#ffffff'); R(-11, -20, 1, 1, NOIR); R(-7, -20, 1, 1, NOIR);
+      R(-12, -22, 2, 1, NOIR); R(-8, -22, 2, 1, NOIR);
+      if (f){ B(-2, -10, 7, 2, '#b8bcc6'); R(-4, -13, 2, 4, '#6b3b22'); }   // la spatule, abattue : SMASH
+      else { B(-3, -30, 3, 7, '#b8bcc6'); R(-3, -23, 2, 6, '#6b3b22'); }
+    },
+    function dubstep(u, ph, f, tr){
+      jambes(-10, 8, '#1a1a22', ph, 4, '#f4f4f4');
+      B(-15, -18, 10, 10, '#eadfc6');
+      R(-12, -15, 1, 1, '#e23b3b'); R(-10, -15, 1, 1, '#e23b3b'); R(-12, -14, 3, 1, '#e23b3b'); R(-11, -13, 1, 1, '#e23b3b');
+      B(-17, -17, 2, 7, '#f0c8a6');
+      if (tr) B(-5, -17, 8, 2, '#f0c8a6'); else B(-5, -17, 2, 7, '#f0c8a6');
+      BO(-10, -24, 4, 5, '#f0c8a6');
+      R(-13, -31, 7, 3, '#7dff5a');
+      R(-12, -25, 5, 1, '#ff3df2');
+      O(-14, -24, 1, 3, '#111111'); O(-6, -24, 1, 3, '#111111'); R(-14, -30, 9, 1, '#111111');
+    },
+    function sanglier(u, ph, f, tr, t){
+      B(-99, -7, 98, 3, '#f8cadb'); B(-99, -4, 98, 3, '#e79ab5');      // le matelas, qui glisse
+      for (let x = -94; x < -4; x += 8) R(x, -6, 1, 1, '#d4769c');
+      O(-30, -6, 5, 1, '#e8d38a');
+      g.translate(0, u.marche && ph ? -1 : 0);
+      pattes([-56, -50, -28, -22], 6, '#3f2d24', ph);
+      BO(-39, -17, 22, 8, '#5b4334');
+      for (let x = -56; x < -22; x += 4) R(x, -27 + ((x >> 2) & 1), 2, 3, '#3a2a20');
+      BPOLY([-19, -24, -7, -22, -1, -17, -3, -11, -17, -11], '#5b4334');
+      B(-1, -18, 3, 5, '#e0a0a0'); R(1, -17, 1, 1, '#6a2a2a');
+      R(-4, -15, 1, 3, '#fff8e8'); R(-3, -17, 1, 2, '#fff8e8');
+      R(-9, -21, 2, 1, '#ff3030');                                       // réveillé, et pas content
+      BPOLY([-15, -24, -12, -29, -10, -23], '#3a2a20');
+      R(-63, -21, 2, 1, NOIR); R(-64, -22, 1, 1, NOIR);
+    },
+    function urssaf(u, ph, f, tr){
+      jambes(-10, 10, '#4a505c', ph, 4, '#111111');
+      B(-16, -23, 12, 13, '#5b6272');
+      R(-11, -23, 2, 9, '#ffffff'); R(-10, -22, 1, 7, '#2a3a8a');
+      if (tr){ B(-4, -21, 6, 2, '#5b6272'); B(2, -24, 6, 5, '#ffffff'); R(5, -23, 2, 2, '#d8262c'); }   // le courrier
+      else if (f){ B(-4, -22, 3, 6, '#5b6272'); B(-2, -28, 9, 7, '#6b4428'); R(1, -29, 3, 1, '#caa46a'); }   // la mallette, levée
+      else { B(-4, -17, 2, 7, '#5b6272'); B(-6, -12, 8, 7, '#6b4428'); R(-3, -13, 2, 1, '#caa46a'); }
+      BO(-10, -29, 4, 5, '#e8c6a8');
+      R(-12, -30, 2, 1, '#333333'); R(-9, -30, 2, 1, '#333333'); R(-10, -30, 1, 1, '#333333');
+      O(-10, -34, 4, 1, '#9aa0a8');
+      R(-11, -26, 3, 1, '#9a6a5a');
+      ecrire('URSSAF', -21, -52, '#ffffff', 1, NOIR);                   // au-dessus de sa barre de vie
+    },
+  ];
+  // où poser la vignette de chaque unité dans son carré de 36 : le visage d'abord
+  const CADRE = { 2: [34, 30], 5: [34, 36], 8: [28, 40], 11: [30, 62], 14: [34, 32], 15: [28, 40] };
+
+  /* ---- les tourelles ----
+     Repère : le milieu du plateau de l'emplacement, face à droite. `tt` vaut
+     vrai juste après un tir. */
+  const TOURELLES = [
+    (tt) => { B(-1, -8, 2, 8, '#8a5a2b'); B(-5, -14, 2, 7, '#8a5a2b'); B(3, -14, 2, 7, '#8a5a2b'); R(-4, -9, 8, 2, '#8a5a2b');
+              if (!tt){ B(-1, -16, 3, 6, '#3c4a5f'); R(0, -15, 1, 2, '#a8c96b'); } },
+    (tt) => { const s = tt ? ((Math.random() * 3) | 0) - 1 : 0;
+              B(-7 + s, -13, 14, 10, '#f4f6fb'); R(-7 + s, -13, 14, 2, '#2f6fd6'); R(-5 + s, -9, 3, 3, '#3cc04a');
+              R(0 + s, -9, 5, 1, '#9a9a9a'); R(0 + s, -7, 4, 1, '#9a9a9a'); B(-1, -2, 2, 2, '#666666'); },
+    (tt) => { B(-7, -4, 14, 3, '#7a4a22'); B(-5, -6, 2, 2, '#7a4a22');
+              if (tt) B(2, -10, 2, 7, '#8a5a2b'); else { B(-6, -12, 2, 9, '#8a5a2b'); BO(-4, -14, 3, 3, '#9a9a9a'); R(-6, -17, 3, 1, NOIR); R(-3, -18, 1, 1, NOIR); } },
+    (tt, t) => { B(-7, -11, 12, 9, '#8a4fd6'); B(5, -9, 4, 4, '#d65fb0');
+              for (let i = 0; i < 6; i++) if ((((t * 8) | 0) + i) % 3 === 0) R(-6 + i * 2, -10 + ((i * 3) % 7), 1, 1, '#ffffff'); },
+    (tt) => { B(-7, -4, 14, 3, '#7a4a22'); B(-3, -8, 2, 4, '#7a4a22');
+              if (!tt){ B(-3, -14, 9, 6, '#f5f0e6'); R(0, -12, 2, 2, '#e0304a'); } },
+    (tt) => { B(-6, -9, 12, 9, '#c9ccd4'); R(-5, -10, 10, 2, '#e8c040'); R(-4, -6, 8, 1, '#9ca0a8');
+              R(4, -15, 1, 6, NOIR); R(4, -15, 6, 1, NOIR); if (tt) R(8, -6, 2, 3, '#f0b030'); },
+    (tt) => { BO(0, -4, 4, 4, '#3b8bd6'); B(-1, -14, 2, 10, '#c9a24a'); B(-3, -16, 6, 2, '#6b4a2a'); R(-1, -18, 2, 2, '#ff7a30');
+              R(2, -10, 5, 1, '#333333'); if (tt) R(7, -12, 2, 2, '#e4e4e4'); },
+    (tt) => { B(-6, -9, 5, 4, '#dedede'); BPOLY([-1, -10, 8, -14, 8, -1, -1, -5], '#d8262c'); if (tt) R(9, -9, 2, 2, '#ffffff'); },
+    (tt) => { B(-7, -10, 14, 7, '#5a5f6b'); R(7, -9, 3, 5, '#3a3f4b'); R(-4, -9, 6, 4, '#e8c07a'); R(-3, -8, 4, 1, '#b8803a');
+              if (tt) R(10, -8, 2, 2, '#ffd060'); },
+    (tt) => { B(-6, -10, 10, 4, '#ff5fc2'); B(-5, -6, 3, 5, '#ff5fc2'); R(4, -9, 2, 2, '#3a3a3a');
+              R(-3, -15, 1, 3, '#ffffff'); R(-4, -14, 3, 1, '#ffffff'); if (tt) R(6, -10, 2, 3, '#ffd6f2'); },
+    (tt) => { B(-7, -8, 14, 4, '#555b66'); BO(-1, -14, 4, 4, '#3a7bd5'); R(-4, -15, 3, 2, '#4cc26a'); R(0, -13, 2, 2, '#4cc26a');
+              R(-6, -14, 11, 1, '#d8262c'); },
+    (tt) => { B(-7, -13, 12, 9, '#2a2a30'); O(-1, -9, 3, 3, '#e8302a'); R(-3, -11, 2, 1, NOIR); R(0, -11, 2, 1, NOIR); R(-2, -7, 3, 1, NOIR);
+              B(-7, -3, 12, 2, '#5c5c66'); if (tt) R(6, -10, 2, 2, '#ff9a8a'); },
+    (tt) => { BO(0, -9, 6, 6, '#f0c8a6'); R(-5, -13, 11, 2, NOIR); R(-4, -11, 3, 2, '#ff1010'); R(1, -11, 3, 2, '#ff1010');
+              R(-2, -5, 4, 1, '#9a5a4a'); if (tt){ R(4, -12, 6, 1, '#ff6060'); } },
+    (tt) => { B(-4, -15, 8, 14, '#1c1c24'); R(-3, -13, 6, 10, '#4aa0ff'); BO(4, -15, 3, 3, '#ff2d2d'); R(4, -16, 1, 3, '#ffffff'); },
+    (tt) => { BO(0, -9, 6, 6, '#1d9bf0'); R(-3, -9, 1, 1, '#ffffff'); R(-2, -8, 1, 1, '#ffffff'); R(-1, -9, 1, 1, '#ffffff');
+              R(0, -10, 1, 1, '#ffffff'); R(1, -11, 1, 1, '#ffffff'); R(2, -12, 1, 1, '#ffffff'); },
+  ];
+
+  /* ---- les bases, une par âge ----
+     Repère : l'origine au pied de la façade, côté rue ; le bâtiment s'étend
+     vers l'arrière. Devant lui, l'échafaudage où se montent les tourelles.
+     Cinq adresses d'Aubervilliers, de moins en moins plausibles : le
+     taxiphone, le bar-tabac, le kebab, le grossiste, et pour finir la
+     pyramide — celle des « Christian moms for the N.W.O. », coiffée des deux
+     palmiers de la marque. */
+  function porte(){ B(-30, -38, 24, 38, '#0e1118'); R(-29, -37, 22, 2, '#1c2230'); }
+  function palmier(x, y, s){
+    for (let k = 0; k < 7; k++) R(x + s * ((k * k) >> 3), y - k * 4, 3, 4, k & 1 ? '#8a5a2b' : '#6f4520');
+    const hx = x + s * 6, hy = y - 28;
+    BPOLY([hx, hy, hx - 14, hy + 6, hx - 10, hy + 2], '#2fa84f'); BPOLY([hx, hy, hx + 14, hy + 6, hx + 10, hy + 2], '#2fa84f');
+    BPOLY([hx, hy, hx - 9, hy - 8, hx - 3, hy - 3], '#46c768'); BPOLY([hx, hy, hx + 9, hy - 8, hx + 3, hy - 3], '#46c768');
+  }
+  const BASES = [
+    function taxiphone(t){
+      B(-140, -150, 138, 150, '#a8a298');
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++){
+        const x = -132 + c * 26, y = -142 + r * 24;
+        B(x, y, 14, 15, '#2c3f5a'); R(x + 1, y + 1, 5, 6, '#4f6b8c');
+      }
+      BO(-104, -118, 4, 4, '#e8e8e8'); R(-104, -118, 1, 1, '#999999');
+      R(-70, -168, 1, 18, '#555555'); R(-76, -164, 13, 1, '#555555'); R(-74, -160, 9, 1, '#555555');
+      B(-138, -44, 134, 44, '#232a36');
+      B(-138, -57, 134, 12, '#1d56b3'); ecrire('TAXIPHONE', -106, -54, '#ffffff', 2);
+      B(-128, -36, 16, 13, '#d8d0bc'); R(-125, -33, 10, 7, '#3a7bd5');
+      B(-106, -36, 16, 13, '#d8d0bc'); R(-103, -33, 10, 7, '#3a7bd5');
+      ecrire('INTERNET', -84, -34, '#8fd6ff'); ecrire('FAX', -84, -27, '#8fd6ff');
+      porte();
+      B(-12, -142, 9, 34, '#141a24');
+      colonne('CYBER', -10, -138, ((t * 2) | 0) % 5 ? '#39f3ff' : '#1b5f66');
+    },
+    function tabac(t){
+      B(-140, -152, 138, 152, '#e6dcc2');
+      B(-142, -160, 142, 8, '#5d6a79');
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++){
+        const x = -128 + c * 32, y = -142 + r * 30;
+        B(x, y, 16, 20, '#34465c'); R(x - 5, y, 4, 20, '#6d8599'); R(x + 17, y, 4, 20, '#6d8599');
+        R(x - 2, y + 20, 20, 1, NOIR); for (let k = 0; k < 20; k += 3) R(x - 2 + k, y + 16, 1, 4, NOIR);
+      }
+      B(-138, -46, 134, 46, '#6f1c22');
+      B(-138, -59, 134, 12, '#2a0f12'); ecrire('BAR TABAC', -106, -56, '#e8c35a', 2);
+      for (let x = -138; x < -4; x += 8){ R(x, -46, 4, 6, '#d8262c'); R(x + 4, -46, 4, 6, '#f4f0e6'); }
+      B(-130, -34, 60, 22, '#8fb4c9'); ecrire('LOTO', -117, -27, '#1d56b3');
+      porte();
+      // la carotte : le losange rouge, TABAC écrit en colonne
+      BPOLY([-8, -130, -1, -114, -8, -84, -15, -114], '#d8262c');
+      colonne('TABAC', -9, -122, '#ffffff');
+    },
+    function kebab(t){
+      B(-140, -158, 138, 158, '#cfc2a8');
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++){
+        const x = -132 + c * 32, y = -150 + r * 24;
+        B(x, y, 18, 13, '#34465c');
+        R(x - 3, y + 13, 24, 2, '#8a8070');
+        if ((r + c) % 3 === 0) BO(x + 21, y + 5, 3, 3, '#f0f0f0');
+        else if ((r * 4 + c) % 5 === 2) [0, 1, 2].forEach(k => R(x + 1 + k * 5, y + 15, 3, 4, ['#e84a5f', '#4a9ae8', '#f4f4f4'][k]));
+      }
+      B(-138, -50, 134, 50, '#eeeee8');
+      for (let x = -136; x < -4; x += 6) R(x, -48, 1, 46, '#d6d6ce');
+      R(-138, -14, 134, 3, '#2a6fb0');
+      B(-138, -66, 134, 15, '#ffd23a'); ecrire('KEBAB', -90, -63, '#d8262c', 2);
+      B(-110, -48, 60, 9, '#d8262c'); ecrire('CHICKEN SPICY', -106, -46, '#ffffff');
+      // la broche, qui tourne
+      B(-100, -36, 22, 26, '#8fb4c9');
+      BPOLY([-94, -34, -83, -34, -86, -13, -91, -13], '#8a4b26');
+      for (let k = 0; k < 4; k++) R(-93, -33 + ((k * 5 + ((t * 14) | 0)) % 19), 8, 1, '#5a2a12');
+      R(-89, -36, 1, 26, '#c0c0c0');
+      [['#e05a2a', -128], ['#6cc24a', -121], ['#f2c230', -114]].forEach(([c, x]) => B(x, -36, 5, 5, c));
+      porte();
+    },
+    function grossiste(t){
+      B(-140, -132, 138, 132, '#8e9aa6');
+      for (let x = -139; x < -2; x += 3) R(x, -131, 1, 130, '#7b8793');
+      B(-144, -140, 146, 8, '#5d6671');
+      B(-136, -124, 130, 18, '#c01818'); ecrire('IMPORT EXPORT', -122, -120, '#ffd84a', 2);
+      B(-120, -100, 98, 10, '#1f2a44'); ecrire('VENTE EN GROS', -96, -98, '#ffffff');
+      B(-128, -72, 70, 72, '#6c7580');
+      for (let y = -71; y < -30; y += 3) R(-127, y, 68, 1, '#59616b');
+      R(-128, -30, 70, 30, '#1b1f25');
+      for (let i = 0; i < 5; i++) B(-120 + (i % 3) * 16, -12 - ((i / 3) | 0) * 13, 14, 12, '#b98a55');
+      for (let i = 0; i < 5; i++) R(-114 + (i % 3) * 16, -12 - ((i / 3) | 0) * 13, 2, 12, '#e0c89a');
+      porte();
+    },
+    function paradis(t){
+      BPOLY([-142, 0, -71, -152, 0, 0], '#e0b642');
+      for (let y = -140; y < 0; y += 8){
+        const hw = Math.round((y + 152) / 152 * 70);
+        R(-71 - hw, y, hw * 2, 1, '#b8902c');
+        for (let x = -71 - hw + (((y / 8) & 1) ? 6 : 0); x < -71 + hw; x += 12) R(x, y - 7, 1, 7, '#b8902c');
+      }
+      O(-71, -106, 11, 5, '#fffbe8'); O(-71, -106, 4, 4, '#3a7bd5'); R(-72, -107, 2, 2, NOIR);
+      if (((t * 3) | 0) % 2) [[-90, -106], [-52, -106], [-71, -120], [-83, -118], [-59, -118]].forEach(([x, y]) => R(x, y, 2, 2, '#fff6a0'));
+      B(-126, -62, 110, 11, '#1a0f24');
+      ecrire('FAKE PARADISE', -97, -59, ((t * 3) | 0) % 5 ? '#ff4fb0' : '#7a2556');
+      palmier(-80, -150, -1); palmier(-64, -150, 1);
+      B(-50, -30, 18, 30, '#2a1a08');
+    },
+  ];
+  // l'échafaudage : un mât, et un plateau par emplacement acheté, accroché à la façade
+  function echafaudage(n){
+    const haut = HAUT_PLACE[n - 1] + 14;
+    B(12, -haut, 3, haut, '#5b6170');
+    for (let s = 0; s < n; s++){
+      const y = -HAUT_PLACE[s];
+      B(-2, y, 44, 3, '#6f7686'); R(17, y + 3, 2, 6, '#5b6170'); R(19, y + 5, 2, 4, '#5b6170');
+    }
+  }
+
+  /* ---- le décor : Aubervilliers ----
+     Trois plans. Au loin, les tours ; plus près, une rangée d'immeubles avec
+     leurs boutiques ; puis la rue elle-même, au plan des unités, avec le
+     trottoir, les potelets, et le sanglier endormi sur son matelas au milieu
+     du champ de bataille. Les deux premiers plans sont peints une fois dans
+     des bandes (voir couches) et défilent plus lentement que la rue. Le hasard
+     y est FIXE : la rue ne se redessine pas d'une partie à l'autre. */
+  const alea = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const ENSEIGNES = [
+    { t: 'TAXIPHONE', f: '#1d56b3', c: '#ffffff' }, { t: 'KEBAB', f: '#c42020', c: '#ffd23a' },
+    { t: 'PRESSING', f: '#2e8f5e', c: '#ffffff' }, { t: 'COIFFURE', f: '#222226', c: '#ff5fc2' },
+    { t: 'IMPORT EXPORT', f: '#b01010', c: '#ffdc40' }, { t: 'BOUCHERIE', f: '#7d1c1c', c: '#ffffff' },
+    { t: 'SUPERETTE', f: '#e06a10', c: '#ffffff' }, { t: 'VENTE EN GROS', f: '#1f2a44', c: '#ffd23a' },
+    { t: 'CHICKEN SPICY', f: '#e05a00', c: '#ffffff' }, { t: 'OPTIQUE', f: '#2a6fb0', c: '#ffffff' },
+  ];
+  function peindreLoin(W, H, x0){
+    const bas = H - 40 - 18;
+    for (let i = Math.floor((x0 - 80) / 58); i * 58 < x0 + W + 80; i++){
+      const w = 34 + ((alea(i) * 22) | 0), h = 80 + ((alea(i + 50) * 110) | 0);
+      const x = i * 58 + ((alea(i + 90) * 16) | 0) - x0, y = bas - h;
+      R(x, y, w, h + 30, ['#8ea2b6', '#98acbf', '#8497ab', '#a1b2c3'][(alea(i + 13) * 4) | 0]);
+      R(x, y, w, 2, '#7a8ea2');
+      if (alea(i + 21) > 0.5) R(x + (w >> 1), y - 8, 1, 8, '#6f8296');
+      for (let yy = y + 5; yy < bas - 4; yy += 7) for (let xx = x + 3; xx < x + w - 4; xx += 6){
+        const a = alea(i * 131 + xx * 7 + yy);
+        R(xx, yy, 3, 3, a > 0.93 ? '#ffe9a8' : '#71869b');
+        if (a < 0.03) R(xx - 1, yy - 1, 3, 3, '#e8eef4');
+      }
+    }
+  }
+  function peindreMilieu(W, H, x0){
+    const bas = H - 40 - 22;
+    for (let i = Math.floor((x0 - 100) / 100); i * 100 < x0 + W + 100; i++){
+      const x = i * 100 - x0, h = 64 + ((alea(i + 300) * 56) | 0);
+      R(x, bas - h, 100, h + 22, ['#d9c7a8', '#c9a98a', '#e2d5be', '#b98a6a', '#cbbfae'][(alea(i + 301) * 5) | 0]);
+      R(x, bas - h, 100, 3, '#8a7a66'); R(x + 99, bas - h, 1, h + 22, '#9b8a74');
+      for (let yy = bas - h + 10; yy < bas - 34; yy += 18) for (let c = 0; c < 4; c++){
+        const xx = x + 10 + c * 22, a = alea(i * 17 + c * 5 + yy);
+        R(xx, yy, 10, 12, '#465a70'); R(xx + 1, yy + 1, 4, 5, '#6d88a6');
+        if (a > 0.8) R(xx - 2, yy + 12, 14, 2, '#2a2a2a');
+        else if (a < 0.12){ R(xx - 1, yy + 12, 3, 4, '#e84a5f'); R(xx + 3, yy + 12, 3, 5, '#4a9ae8'); R(xx + 7, yy + 12, 3, 4, '#f4f4f4'); }
+      }
+      const e = ENSEIGNES[((i % ENSEIGNES.length) + ENSEIGNES.length) % ENSEIGNES.length];
+      R(x + 4, bas - 26, 92, 48, '#2b3240');
+      R(x + 4, bas - 32, 92, 9, e.f); ecrire(e.t, x + 4 + ((92 - largeur(e.t)) >> 1), bas - 30, e.c);
+      R(x + 10, bas - 20, 36, 16, '#8fb0c4'); R(x + 11, bas - 19, 12, 5, '#b6d0de');
+      R(x + 56, bas - 20, 14, 20, '#1a1f28');
+      if (alea(i + 77) > 0.72) ecrire('93', x + 74, bas - 48, ['#ff4fb0', '#6dff5a', '#4dfcff'][(alea(i + 78) * 3) | 0], 2);
+      if (alea(i + 88) > 0.8){ R(x + 86, bas - 60, 7, 3, '#22b04a'); R(x + 88, bas - 62, 3, 7, '#22b04a'); }   // la croix de la pharmacie
+    }
+    // la bouche de métro : le M jaune sur son mât
+    const mx = 300 - x0;
+    R(mx, bas - 40, 2, 62, '#2e4a3a'); BO(mx + 1, bas - 46, 6, 6, '#f2c230'); ecrire('M', mx - 1, bas - 48, NOIR);
+    for (let k = 0; k < 24; k += 3) R(mx + 6 + k, bas + 8, 1, 10, '#2e4a3a');
+    R(mx + 6, bas + 8, 24, 1, '#2e4a3a');
+  }
+  const caches = new Map();
+  function couches(W, H){
+    const cle = W + 'x' + H;
+    let c = caches.get(cle);
+    if (c) return c;
+    if (caches.size > 3) caches.clear();
+    const avant = g;
+    c = [[0.25, peindreLoin], [0.55, peindreMilieu]].map(([f, peintre]) => {
+      const x0 = Math.floor(MONDE_G * f) - 8;
+      const larg = Math.ceil((MONDE_D - MONDE_G) * f + W) + 16;
+      const cvs = document.createElement('canvas');
+      cvs.width = larg; cvs.height = H;
+      g = cvs.getContext('2d');
+      peintre(larg, H, x0);
+      return { f, x0, cv: cvs };
+    });
+    g = avant;
+    caches.set(cle, c);
+    return c;
+  }
+  const MONDE_G = -160, MONDE_D = 1060;   // ce que la caméra peut montrer, bases comprises
+  const CIEL = ['#98b3ca', '#a4bdd2', '#b2c8da', '#c1d3e1', '#cfdde8'];
+  function ciel(W, H, SOL, camX){
+    const bande = Math.max(8, Math.round((SOL - 40) / CIEL.length));
+    CIEL.forEach((c, i) => R(0, i * bande, W, i === CIEL.length - 1 ? H : bande, c));
+    for (let i = 0; i < 7; i++){
+      const x = Math.round(60 + i * 220 - camX * 0.08), y = 18 + ((alea(i + 500) * 60) | 0);
+      if (x < -60 || x > W + 10) continue;
+      R(x, y, 44, 5, '#e6eef5'); R(x + 8, y - 4, 22, 4, '#e6eef5'); R(x + 4, y + 5, 36, 2, '#d3dfea');
+    }
+  }
+  function rue(W, H, SOL, camX){
+    R(0, SOL - 24, W, 12, '#b9b5ad');
+    for (let x = ((-camX % 16) + 16) % 16 - 16; x < W; x += 16) R(x, SOL - 24, 1, 12, '#a5a198');
+    R(0, SOL - 13, W, 2, '#8c8880');
+    R(0, SOL - 11, W, H - SOL + 11, '#56575e');
+    for (let x = ((-camX % 40) + 40) % 40 - 40; x < W; x += 40) R(x, SOL + 17, 20, 2, '#d8d8d0');
+    const px = Math.round(630 - camX);
+    if (px > -80 && px < W + 10) for (let k = 0; k < 7; k++) R(px + k * 9, SOL - 10, 5, H - SOL + 10, '#8f9096');
+  }
+  // les objets du trottoir, au plan des unités
+  function sanglierDort(x, y, t){
+    B(x, y - 8, 64, 4, '#f7c8da'); B(x, y - 4, 64, 3, '#e79ab5');
+    for (let k = 4; k < 62; k += 7) R(x + k, y - 6, 1, 1, '#d4769c');
+    O(x + 47, y - 6, 5, 1, '#e8d38a');
+    BO(x + 36, y - 13, 17, 6, '#5b4334');
+    for (let i = 0; i < 8; i++) R(x + 24 + i * 4, y - 20 + (i & 1), 2, 2, '#3a2a20');
+    BO(x + 17, y - 12, 7, 5, '#5b4334');
+    B(x + 7, y - 12, 5, 4, '#5b4334'); R(x + 5, y - 12, 2, 4, '#e0a0a0'); R(x + 5, y - 11, 1, 1, '#6a2a2a');
+    R(x + 9, y - 9, 1, 2, '#fff8e8');
+    R(x + 14, y - 14, 3, 1, NOIR);
+    BPOLY([x + 17, y - 17, x + 20, y - 21, x + 22, y - 16], '#3a2a20');
+    R(x + 27, y - 8, 4, 2, '#3f2d24'); R(x + 44, y - 8, 4, 2, '#3f2d24');
+    R(x + 53, y - 15, 2, 1, NOIR);
+    // Z z z : il dort, et rien de ce qui se passe dans la rue ne le réveille
+    for (let k = 0; k < 3; k++){
+      const p = (t * 0.55 + k / 3) % 1;
+      g.globalAlpha = Math.max(0, 1 - p);
+      ecrire('Z', Math.round(x + 18 + p * 12), Math.round(y - 22 - p * 20), '#ffffff', 1, NOIR);
+    }
+    g.globalAlpha = 1;
+  }
+  function decor(W, SOL, camX, t){
+    const y = SOL - 14;
+    const vu = (x, w) => x > -w && x < W + w;
+    for (let x = 72; x < 900; x += 48){
+      if (x > 410 && x < 540) continue;
+      const sx = Math.round(x - camX);
+      if (vu(sx, 4)){ B(sx, y - 7, 2, 8, '#6b3b22'); R(sx, y - 8, 2, 1, '#c9a34a'); }
+    }
+    [110, 340, 600, 820].forEach(x => {
+      const sx = Math.round(x - camX);
+      if (!vu(sx, 12)) return;
+      R(sx, y - 92, 2, 90, '#2e4a3a'); R(sx - 1, y - 3, 4, 3, '#2e4a3a');
+      B(sx - 6, y - 96, 10, 3, '#2e4a3a'); R(sx - 5, y - 93, 8, 1, '#fff2b0');
+    });
+    // le panneau d'entrée de ville
+    let sx = Math.round(196 - camX);
+    if (vu(sx, 70)){
+      R(sx + 28, y - 34, 2, 34, '#8a8a8a');
+      R(sx - 1, y - 49, 60, 15, '#d8262c'); R(sx + 1, y - 47, 56, 11, '#ffffff');
+      ecrire('AUBERVILLIERS', sx + 4, y - 44, NOIR);
+    }
+    sx = Math.round(282 - camX);
+    if (vu(sx, 12)){ B(sx, y - 12, 9, 12, '#2f7a4a'); B(sx - 1, y - 14, 11, 2, '#255f3a'); }
+    sx = Math.round(372 - camX);
+    if (vu(sx, 30)) [0, 9, 17].forEach((d, k) => {
+      const bec = ((t * 3 + k * 0.7) | 0) & 1;
+      BO(sx + d, y - 4, 3, 2, '#8f96a3'); BO(sx + d + 3, y - 6 - (bec ? -2 : 0), 1, 1, '#6d7480');
+      R(sx + d + 4, y - 6 + (bec ? 2 : 0), 1, 1, '#e0a040');
+    });
+    // LE SANGLIER, sur son matelas, au milieu du champ de bataille
+    sx = Math.round(430 - camX);
+    if (vu(sx, 80)) sanglierDort(sx, y, t);
+    // le frigo des encombrants, à côté du matelas
+    sx = Math.round(500 - camX);
+    if (vu(sx, 16)){ B(sx, y - 24, 12, 24, '#f2f2ee'); R(sx + 1, y - 15, 10, 1, '#c8c8c0'); R(sx + 9, y - 22, 1, 5, '#9a9a9a'); R(sx + 9, y - 12, 1, 5, '#9a9a9a'); }
+    sx = Math.round(700 - camX);
+    if (vu(sx, 24)){
+      for (let k = 0; k < 18; k += 3) R(sx + k, y - 14, 1, 9, '#9aa3ad');
+      R(sx, y - 14, 18, 1, '#9aa3ad'); R(sx, y - 6, 18, 1, '#9aa3ad'); R(sx + 17, y - 18, 1, 5, '#9aa3ad');
+      BO(sx + 2, y - 2, 1, 1, '#333333'); BO(sx + 15, y - 2, 1, 1, '#333333');
+    }
+  }
+
+  /* ---- la partie ---- */
+  let P = null;
+  const dir = (C) => (C.cote ? -1 : 1);
+  function camp(cote){
+    return { cote, age: 0, pv: PV_BASE[0], pvMax: PV_BASE[0], tours: [null, null, null, null], places: 1,
+             unites: [], touche: 0, adv: null };
+  }
+  function nouvellePartie(){
+    P = { t: 0, J: camp(0), E: camp(1), or: OR_DEPART, xp: 0, file: [], forme: 0,
+          recharge: 0, soin: 0, special: null, livraison: null, secousse: 0, finT: 0,
+          tirs: [], obus: [], effets: [], textes: [], morts: [],
+          ia: { t: 0, niveau: 0, ev: 0, spawn: 1 } };
+    P.J.adv = P.E; P.E.adv = P.J;
+  }
+  function creer(C, id){
+    const u = { id, camp: C, x: C.cote ? CHAMP : 0, pv: U[id][2], pvMax: U[id][2], tCac: -1, tTir: -1,
+                marche: false, anim: Math.random(), frappe: 0, tire: 0, touche: 0, soin: false, cri: 1.8, src: null };
+    C.unites.push(u);
+    return u;
+  }
+  const boite = (u) => { const L = Math.max(U[u.id][7], 16); return u.camp.cote ? [u.x, u.x + L] : [u.x - L, u.x]; };
+  const centre = (u) => { const b = boite(u); return (b[0] + b[1]) / 2; };
+
+  // 1. la marche : chacun avance tant que rien ne lui barre la route
+  function avancer(C, dt){
+    const d = dir(C), front = C.adv.unites[0], butee = C.cote ? 0 : CHAMP;
+    C.unites.forEach((u, i) => {
+      let libre = true;
+      if (i === 0){
+        if ((butee - u.x) * d <= 0) libre = false;
+        if (front && (front.x - u.x) * d <= ECART) libre = false;
+      } else {
+        const av = C.unites[i - 1];
+        if ((av.x - u.x) * d - U[av.id][7] <= ECART) libre = false;
+      }
+      u.marche = libre;
+      if (libre){ u.x += d * VITESSE * dt; u.anim += dt; }
+    });
+  }
+  /* 2. le combat. Comme là-bas, on ne vise que le PREMIER d'en face — ou la
+     base s'il n'y a plus personne. Le corps à corps passe avant le tir ; un
+     tir déjà lancé continue de tourner pendant la mêlée, mais ne blesse plus. */
+  function combattre(C, dt){
+    const d = dir(C), front = C.adv.unites[0], butee = C.cote ? 0 : CHAMP;
+    for (const u of C.unites){
+      const D = U[u.id];
+      const ecart = front ? (front.x - u.x) * d : (butee - u.x) * d;
+      const cac = ecart <= D[5];
+      const tir = D[4] > 0 && (front ? ecart - ECART <= D[6] : ecart <= D[6]);
+      if (cac){ if (u.tCac < 0) u.tCac = D[9]; }
+      else if (tir && u.tTir < 0) u.tTir = 0;
+      if (u.tCac >= 0){
+        u.tCac -= dt;
+        if (u.tCac <= 0){
+          if (cac || tir) frapper(u, D[3], false);
+          u.tCac = cac ? D[10] + D[8] / IPS : -1;
+        }
+      }
+      if (u.tTir >= 0){
+        u.tTir -= dt;
+        if (u.tTir <= 0){
+          if (!cac && tir) frapper(u, D[4], true);
+          u.tTir = tir ? (u.marche ? D[12] : D[11]) + D[8] / IPS : -1;
+        }
+      }
+    }
+  }
+  function blesser(v, dmg, src){
+    v.pv -= dmg; v.touche = 0.1; v.src = src;
+    etincelles(centre(v), HAUT[v.id] * 0.55, 3, '#fff3b0');
+  }
+  function toucherBase(C, dmg){
+    C.pv -= dmg; C.touche = 0.12;
+    etincelles(C.cote ? CHAMP - 10 : 10, 20 + Math.random() * 60, 2, '#d8d0c0');
+  }
+  function frapper(u, dmg, loin){
+    const adv = u.camp.adv, cible = adv.unites[0];
+    const src = { camp: u.camp, nom: CAST[u.id].nom };
+    if (cible) blesser(cible, dmg, src); else toucherBase(adv, dmg);
+    if (loin){
+      u.tire = 0.18;
+      const T = TIRS[u.id];
+      if (T) P.tirs.push({ x0: u.x, h0: HAUT[u.id] * 0.62, x1: cible ? centre(cible) : (adv.cote ? CHAMP - 12 : 12),
+                           h1: cible ? HAUT[cible.id] * 0.5 : 40, t: 0, dur: T.dur, T,
+                           mot: T.mots ? T.mots[(Math.random() * T.mots.length) | 0] : '',
+                           col: T.cols ? T.cols[(Math.random() * T.cols.length) | 0] : '#ffffff' });
+      son('seumTir', u.id / 15);
+    } else {
+      u.frappe = 0.16;
+      if (COUPS[u.id] && Math.random() < 0.34) texte(u.x + dir(u.camp) * 4, HAUT[u.id] + 6, COUPS[u.id], '#ffffff');
+      son('seumCoup', Math.min(1, dmg / 300));
+    }
+  }
+  // 3. les tourelles : elles aussi ne visent que le premier d'en face
+  function tourelles(C, dt){
+    const front = C.adv.unites[0], d = dir(C), bx = C.cote ? CHAMP - X_TOURELLE : X_TOURELLE;
+    C.tours.forEach((tr, s) => {
+      if (!tr) return;
+      const D = TR[tr.id];
+      let vise = false;
+      if (front){
+        if (tr.id === 5) vise = (front.x - bx) * d <= D[2];               // l'huile : à la verticale, seulement
+        else vise = Math.hypot(front.x - bx, HAUT_PLACE[s] - 15) <= D[2];
+      }
+      if (vise && tr.t < 0) tr.t = D[6];
+      if (tr.t >= 0){
+        tr.t -= dt;
+        if (tr.t <= 0){
+          if (vise) tirer(C, tr, s, front);
+          tr.t = vise ? D[3] + D[4] / (IPS * 2) : -1;
+        }
+      }
+    });
+  }
+  function tirer(C, tr, s, cible){
+    const x0 = C.cote ? CHAMP - X_TOURELLE : X_TOURELLE, h0 = HAUT_PLACE[s];
+    const dx = centre(cible) - x0, dh = HAUT[cible.id] * 0.5 - h0, n = Math.hypot(dx, dh) || 1;
+    P.obus.push({ x: x0, h: h0, vx: dx / n * VOBUS, vh: dh / n * VOBUS, camp: C, deg: TR[tr.id][1], id: tr.id,
+                  eclats: TR[tr.id][5], vie: 3.5, src: { camp: C, nom: TOURS[tr.id].nom } });
+    tr.tt = 0.15;
+    son('seumTir', 0.2 + (tr.id % 3) * 0.3);
+  }
+  // 4. les projectiles des tourelles et des spéciaux : ils touchent le PREMIER corps qu'ils traversent
+  function obus(dt){
+    for (let i = P.obus.length - 1; i >= 0; i--){
+      const o = P.obus[i];
+      o.vie -= dt;
+      if (o.grav) o.vh -= VOBUS * dt;
+      o.x += o.vx * dt; o.h += o.vh * dt;
+      let fini = o.vie <= 0 || o.h < -2;
+      if (!fini){
+        const cible = o.camp.adv.unites.find(u => { const b = boite(u); return o.x >= b[0] && o.x <= b[1] && o.h >= 0 && o.h <= HAUT[u.id]; });
+        if (cible){
+          blesser(cible, o.deg, o.src);
+          if (o.eclats){
+            for (let k = 0; k < 3; k++){
+              const rx = Math.random() * 2 - 1, n = Math.hypot(rx, 1);
+              P.obus.push({ x: o.x, h: o.h + 50, vx: rx / n * VOBUS, vh: 1 / n * VOBUS, camp: o.camp, deg: o.eclats, id: o.id,
+                            frag: true, grav: true, vie: 3.5, src: o.src });
+            }
+            son('seumBoum', 0.7);
+          }
+          if (o.spe != null) explosion(o.x, o.h, o.spe);
+          fini = true;
+        } else if (o.h < 0 && o.spe === 4) explosion(o.x, 0, 4);
+      }
+      if (fini) P.obus.splice(i, 1);
+    }
+  }
+  // 5. les morts : on les ramasse, et chaque mort d'en face paie
+  function ramasser(){
+    [P.J, P.E].forEach(C => {
+      for (let i = C.unites.length - 1; i >= 0; i--){
+        const u = C.unites[i];
+        if (u.pv > 0) continue;
+        C.unites.splice(i, 1);
+        const prime = Math.round(1.3 * U[u.id][0]);
+        if (C === P.E){ P.or += prime; P.xp += prime * 2; texte(centre(u), HAUT[u.id] + 4, '+' + prime + ' €', '#ffd24a'); son('seumCaisse'); }
+        else { P.xp += Math.floor(prime / 2); texte(centre(u), HAUT[u.id] + 4, 'F', '#ffffff'); }
+        P.morts.push({ id: u.id, cote: C.cote, x: u.x, t: 0 });
+        fumee(centre(u), HAUT[u.id] * 0.5);
+        son('seumMort');
+        tueur(u.src, u);
+      }
+    });
+  }
+  // la formation : une unité à la fois, dans l'ordre de la file
+  function former(dt){
+    if (!P.file.length){ P.forme = 0; return; }
+    P.forme += dt;
+    if (P.forme >= U[P.file[0]][1] / IPS){ P.forme = 0; creer(P.J, P.file.shift()); }
+  }
+  function ia(dt){
+    const E = P.E, a = P.ia;
+    a.t += dt;
+    const f = a.t * IPS;
+    if (a.niveau < 1 && f >= 1500) a.niveau = 1;
+    if (a.niveau < 2 && f >= 5000) a.niveau = 2;
+    const plan = IA[E.age];
+    while (a.ev < plan.length && f >= plan[a.ev][0]){
+      const ev = plan[a.ev++];
+      if (ev[1] === 'v') E.tours[ev[2]] = null;
+      else E.tours[ev[3]] = { id: E.age * 3 + ev[2], t: -1, tt: 0 };
+    }
+    if (E.age < 4 && f >= 8000){
+      E.age++;
+      E.pv += PV_BASE[E.age] - PV_BASE[E.age - 1]; E.pvMax = PV_BASE[E.age];
+      P.ia = { t: 0, niveau: 0, ev: 0, spawn: a.spawn };
+      annoncer(T('seumEnnemiAge').replace('%1', E.age + 1), L(AGES[E.age].nom), true);
+    }
+    P.ia.spawn -= dt;
+    if (P.ia.spawn <= 0){
+      P.ia.spawn += 1;
+      if (Math.random() < 0.3 && E.unites.length < 6) creer(E, E.age * 3 + ((Math.random() * (P.ia.niveau + 1)) | 0));
+    }
+  }
+  function special(dt){
+    if (P.soin > 0){
+      P.soin -= dt;
+      for (const u of P.J.unites) if (u.soin){
+        u.pv = Math.min(u.pvMax, u.pv + IPS * dt);
+        if (Math.random() < dt * 4) texte(centre(u) + (Math.random() * 8 - 4), HAUT[u.id] + 2, '+', '#5ce37a', 0.6);
+      }
+      if (P.soin <= 0) P.J.unites.forEach(u => { u.soin = false; });
+    }
+    const s = P.special;
+    if (!s) return;
+    const S = SPECIAUX[s.age];
+    s.t -= dt;
+    while (s.t <= 0 && s.n < S.n){
+      s.t += S.pas;
+      const x = S.balaye ? s.n * S.balaye : 50 + Math.random() * 800;
+      const bruit = S.bruit ? (Math.random() * 2 - 1) * S.bruit : 0, n = Math.hypot(bruit, 1);
+      P.obus.push({ x, h: 300, vx: bruit / n * VOBUS, vh: -VOBUS / n, camp: P.J, deg: S.degats, spe: s.age, vie: 3.5,
+                    src: { camp: P.J, nom: AGES[s.age].special } });
+      s.n++;
+    }
+    if (s.n >= S.n) P.special = null;
+  }
+  function anims(dt){
+    [P.J, P.E].forEach(C => {
+      C.touche = Math.max(0, C.touche - dt);
+      for (const u of C.unites){
+        u.frappe = Math.max(0, u.frappe - dt); u.tire = Math.max(0, u.tire - dt);
+        u.touche = Math.max(0, u.touche - dt); u.cri = Math.max(0, u.cri - dt);
+      }
+      C.tours.forEach(tr => { if (tr) tr.tt = Math.max(0, (tr.tt || 0) - dt); });
+    });
+    for (let i = P.tirs.length - 1; i >= 0; i--) if ((P.tirs[i].t += dt) >= P.tirs[i].dur) P.tirs.splice(i, 1);
+    for (let i = P.effets.length - 1; i >= 0; i--){
+      const p = P.effets[i];
+      p.vie -= dt; p.x += p.vx * dt; p.h += p.vh * dt; p.vh -= 260 * dt;
+      if (p.vie <= 0) P.effets.splice(i, 1);
+    }
+    for (let i = P.textes.length - 1; i >= 0; i--){
+      const x = P.textes[i];
+      x.vie -= dt; x.h += 16 * dt;
+      if (x.vie <= 0) P.textes.splice(i, 1);
+    }
+    for (let i = P.morts.length - 1; i >= 0; i--) if ((P.morts[i].t += dt) >= 0.6) P.morts.splice(i, 1);
+    P.secousse = Math.max(0, P.secousse - dt * 1.6);
+    if (P.livraison && (P.livraison.t += dt) > 2.8) P.livraison = null;
+  }
+  const PAS = 1 / 60;
+  function pasJeu(dt){
+    P.t += dt;
+    former(dt);
+    ia(dt);
+    avancer(P.J, dt); avancer(P.E, dt);
+    combattre(P.J, dt); combattre(P.E, dt);
+    tourelles(P.J, dt); tourelles(P.E, dt);
+    special(dt);
+    obus(dt);
+    ramasser();
+    P.recharge = Math.max(0, P.recharge - dt);
+    anims(dt);
+    if (P.E.pv <= 0) finir(true);
+    else if (P.J.pv <= 0) finir(false);
+  }
+
+  /* ---- les effets ---- */
+  function etincelles(x, h, n, col){
+    for (let k = 0; k < n; k++) P.effets.push({ x, h, vx: (Math.random() - 0.5) * 90, vh: 40 + Math.random() * 70, vie: 0.25 + Math.random() * 0.2, col, t: 1 });
+  }
+  function fumee(x, h){
+    for (let k = 0; k < 6; k++) P.effets.push({ x: x + (Math.random() - 0.5) * 12, h, vx: (Math.random() - 0.5) * 40, vh: 30 + Math.random() * 40, vie: 0.5, col: '#d8d8d8', t: 2 });
+  }
+  function explosion(x, h, spe){
+    const cols = spe === 4 ? ['#b25bff', '#6dff5a', '#4dfcff', '#ffffff'] : spe === 3 ? ['#e8d8b0', '#c01818', '#ffd24a'] : ['#ffd060', '#ff7a30', '#ffffff'];
+    for (let k = 0; k < 9; k++) P.effets.push({ x, h: Math.max(0, h), vx: (Math.random() - 0.5) * 160, vh: 40 + Math.random() * 120, vie: 0.4 + Math.random() * 0.3, col: cols[k % cols.length], t: 2 });
+    if (spe === 4) P.secousse = Math.max(P.secousse, 0.6);
+    if (spe === 3 || spe === 4) son('seumBoum', spe === 4 ? 1 : 0.6);
+  }
+  function texte(x, h, txt, col, vie = 1){ P.textes.push({ x, h, txt, col, vie }); }
+  // le fil des morts, à la Counter-Strike (le sweat CS:CO en porte un sur la manche)
+  function tueur(src, v){
+    if (!src) return;
+    const d = document.createElement('div');
+    const a = document.createElement('span'), b = document.createElement('span');
+    a.className = src.camp === P.J ? 'j' : 'e'; a.textContent = L(src.nom);
+    b.className = v.camp === P.J ? 'j' : 'e'; b.textContent = L(CAST[v.id].nom);
+    d.append(a, ' ▸ ', b);
+    killsEl.appendChild(d);
+    while (killsEl.children.length > 5) killsEl.firstChild.remove();
+    setTimeout(() => d.remove(), 3300);
+  }
+  // les sons : un plafond par sorte, sans quoi une mêlée de dix unités ferait un mur de bruit
+  const dejaSonne = {};
+  function son(nom, v){
+    const now = performance.now();
+    if (now - (dejaSonne[nom] || 0) < (nom === 'seumCaisse' ? 110 : 55)) return;
+    dejaSonne[nom] = now;
+    if (sfx[nom]) sfx[nom](v);
+  }
+
+  /* ---- les gestes du joueur ---- */
+  function refus(cle, arg){
+    sfx.refus();
+    montrerInfo(T(cle).replace('%1', arg == null ? '' : arg), true);
+  }
+  function recruter(rang){
+    const a = P.J.age;
+    if (rang === 3 && a !== 4) return;
+    const id = a * 3 + rang;
+    if (P.file.length >= FILE_MAX) return refus('seumPlein');
+    if (P.or < U[id][0]) return refus('seumPauvre');
+    P.or -= U[id][0];
+    P.file.push(id);
+    sfx.select();
+  }
+  function acheterTour(rang){
+    const id = P.J.age * 3 + rang, s = P.J.tours.findIndex((tr, i) => i < P.J.places && !tr);
+    if (s < 0) return refus('seumPasPlace');
+    if (P.or < TR[id][0]) return refus('seumPauvre');
+    P.or -= TR[id][0];
+    P.J.tours[s] = { id, t: -1, tt: 0 };
+    sfx.select();
+    if (menu === 'vendre') construireSous();
+  }
+  function vendre(s){
+    const tr = P.J.tours[s];
+    if (!tr) return;
+    P.or += Math.floor(TR[tr.id][0] / 2);
+    P.J.tours[s] = null;
+    son('seumCaisse');
+    fumee(X_TOURELLE, HAUT_PLACE[s] + 6);
+    if (menu === 'vendre') construireSous();
+  }
+  function acheterPlace(){
+    if (P.J.places >= 4) return refus('seumMaxPlaces');
+    const prix = PRIX_PLACE[P.J.places - 1];
+    if (P.or < prix) return refus('seumPauvre');
+    P.or -= prix;
+    P.J.places++;
+    sfx.select();
+    if (menu === 'vendre') construireSous();
+  }
+  function evoluer(){
+    if (P.J.age >= 4) return refus('seumDernierAge');
+    if (P.xp < XP_AGE[P.J.age]) return refus('seumPasXp', XP_AGE[P.J.age]);
+    P.J.age++;
+    P.J.pv += PV_BASE[P.J.age] - PV_BASE[P.J.age - 1]; P.J.pvMax = PV_BASE[P.J.age];
+    sfx.seumKlaxon();
+    annoncer(T('seumAge').replace('%1', P.J.age + 1), L(AGES[P.J.age].nom));
+    construireSous();
+  }
+  function lancerSpecial(){
+    if (P.recharge > 0) return refus('seumRecharge', Math.ceil(P.recharge));
+    const a = P.J.age, S = SPECIAUX[a];
+    P.recharge = RECHARGE;
+    if (S.soin){
+      P.J.unites.forEach(u => { u.soin = true; });
+      P.soin = S.soin;
+      P.livraison = { t: 0 };
+    } else P.special = { age: a, n: 0, t: S.pas };
+    sfx.seumSpecial(a);
+    if (a === 4){ sfx.seumDrop(); P.secousse = 1; }
+    annoncer(L(AGES[a].special), '', true);
+  }
+  function finir(victoire){
+    if (etat !== 'jeu') return;
+    etat = 'fin';
+    const C = victoire ? P.E : P.J;
+    for (let k = 0; k < 5; k++) explosion(C.cote ? CHAMP - 20 - k * 20 : 20 + k * 20, 40 + k * 20, 0);
+    P.secousse = 1.2;
+    P.finT = 1.1;
+    P.victoire = victoire;
+    if (victoire){ sfx.win(); sfx.seumKlaxon(); } else sfx.seumTrombone();
+  }
+
+  /* ---- l'image ---- */
+  const vue = { k: 2, W: 0, H: 0 };
+  const cam = { x: MONDE_G };
+  function borner(){
+    const max = MONDE_D - vue.W;
+    cam.x = max <= MONDE_G ? (MONDE_G + max) / 2 : Math.max(MONDE_G, Math.min(max, cam.x));
+  }
+  // une scène vide, pour l'écran-titre : la rue, les deux bases, personne
+  const DECOR = { J: camp(0), E: camp(1), tirs: [], obus: [], effets: [], textes: [], morts: [], secousse: 0, livraison: null };
+  DECOR.J.adv = DECOR.E; DECOR.E.adv = DECOR.J;
+  function unite(u, SOL, camX, t){
+    const L = Math.max(U[u.id][7], 16), d = dir(u.camp);
+    let sx = Math.round(u.x - camX);
+    if (sx < -L - 60 || sx > vue.Wp + L + 60) return;
+    if (u.frappe > 0) sx += d * Math.round(3 * Math.sin((u.frappe / 0.16) * Math.PI));
+    else if (u.tire > 0.09) sx -= d;
+    if (u.touche > 0) sx += (u.touche * 100) & 1 ? 1 : -1;
+    g.save();
+    g.translate(sx, SOL);
+    if (u.camp.cote){ g.scale(-1, 1); miroir = true; }
+    O(-(L >> 1), 0, (L >> 1) - 2, 1, u.camp.cote ? '#ff4545' : '#3c9bff');   // l'ombre, à la couleur du camp
+    const ph = u.marche ? (Math.floor(u.anim * 7) & 1) : 0;
+    DESSINS[u.id](u, ph, u.frappe > 0, u.tire > 0, t);
+    g.restore();
+    miroir = false;
+  }
+  function barreVie(u, SOL, camX){
+    const w = u.id === 11 || u.id === 14 ? 30 : (u.id === 2 || u.id === 5 ? 22 : 14);
+    const x = Math.round(centre(u) - camX - w / 2), y = SOL - HAUT[u.id] - 5 - (u.id === 5 ? 6 : 0);
+    R(x - 1, y - 1, w + 2, 4, NOIR); R(x, y, w, 2, '#3a1f22');
+    R(x, y, Math.max(0, Math.round(w * u.pv / u.pvMax)), 2, u.camp.cote ? '#ff5a4a' : '#5ce37a');
+  }
+  function bulle(txt, cx, y){
+    const w = largeur(txt) + 6, x = Math.round(cx - w / 2);
+    R(x - 1, y - 1, w + 2, 11, NOIR); R(x, y, w, 9, '#ffffff');
+    R(x + (w >> 1) - 1, y + 9, 3, 2, NOIR); R(x + (w >> 1), y + 9, 1, 1, '#ffffff');
+    ecrire(txt, x + 3, y + 2, NOIR);
+  }
+  function base(C, SOL, camX, t){
+    const ox = C.cote ? CHAMP - 20 : 20;
+    let sx = Math.round(ox - camX);
+    if (sx < -60 && !C.cote) return;
+    if (sx > vue.Wp + 60 && C.cote) return;
+    if (C.touche > 0) sx += (C.touche * 90) & 1 ? 1 : -1;
+    g.save();
+    g.translate(sx, SOL);
+    if (C.cote){ g.scale(-1, 1); miroir = true; }
+    BASES[C.age](t);
+    const n = C.cote ? Math.max(1, C.tours.reduce((m, tr, s) => (tr ? s + 1 : m), 0)) : C.places;
+    echafaudage(n);
+    C.tours.forEach((tr, s) => {
+      if (!tr) return;
+      g.save(); g.translate(30, -HAUT_PLACE[s]);
+      TOURELLES[tr.id](tr.tt > 0, t);
+      g.restore();
+    });
+    g.restore();
+    miroir = false;
+  }
+  function projectile(o, SOL, camX, t){
+    const x = Math.round(o.x - camX), y = Math.round(SOL - o.h);
+    if (x < -20 || x > vue.Wp + 20) return;
+    if (o.spe != null){
+      if (o.spe === 0){ R(x - 8, y - 6, 16, 12, NOIR); R(x - 7, y - 5, 14, 10, '#ffffff'); R(x - 7, y - 5, 14, 3, '#2a64d8'); R(x + 4, y - 5, 3, 3, '#e03030'); ecrire('WIN', x - 5, y - 1, '#1a1a1a'); }
+      else if (o.spe === 1){ BO(x, y, 4, 4, '#ffd43a'); R(x - 3, y - 2, 2, 1, NOIR); R(x + 1, y - 2, 2, 1, NOIR); R(x - 2, y + 1, 4, 2, '#7a2a1a'); R(x - 5, y - 1, 1, 3, '#4ab0ff'); R(x + 5, y - 1, 1, 3, '#4ab0ff'); }
+      else if (o.spe === 3){ B(x - 6, y - 4, 12, 8, '#e8d8b0'); R(x - 5, y - 3, 10, 1, '#b89868'); ecrire('€', x - 1, y - 2, '#c01818'); }
+      else {
+        for (let yy = 0; yy < y; yy += 4){ const dx = ((yy >> 2) + ((t * 20) | 0)) & 1 ? 1 : -1; R(x + dx - 1, yy, 3, 4, (yy >> 2) & 1 ? '#b25bff' : '#6dff5a'); }
+        R(x - 3, y - 3, 7, 7, '#ffffff');
+      }
+      return;
+    }
+    switch (o.id){
+      case 0: B(x - 1, y - 3, 3, 6, '#3c4a5f'); R(x, y - 2, 1, 2, '#a8c96b'); break;
+      case 1: ecrire('WIZZ', x - 7, y - 2, '#ff9a1a', 1, NOIR); break;
+      case 2: BO(x, y, 3, 3, '#9a9a9a'); R(x - 2, y - 3, 3, 1, NOIR); R(x + 1, y - 4, 1, 1, NOIR); break;
+      case 3: B(x - 3, y - 2, 7, 5, '#ff7ad9'); R(x - 3 + (((t * 20) | 0) % 7), y - 2, 1, 1, '#ffffff'); break;
+      case 4: if (o.frag) B(x - 2, y - 2, 5, 4, '#f5f0e6'); else { B(x - 4, y - 3, 8, 6, '#f5f0e6'); R(x - 1, y - 1, 2, 2, '#e0304a'); } break;
+      case 5: R(x - 1, y - 2, 3, 4, '#f0b030'); R(x, y + 2, 1, 1, '#f0b030'); break;
+      case 6: for (let a = 0; a < 8; a++) R(x + Math.round(Math.cos(a * 0.785) * 4), y + Math.round(Math.sin(a * 0.785) * 3), 2, 2, '#e4e4e4'); break;
+      case 7: ecrire('FEUR', x - 7, y - 2, '#ffffff', 1, NOIR); break;
+      case 8: if (o.frag) BO(x, y, 2, 1, '#7a3f1f'); else { B(x - 4, y - 3, 9, 6, '#e8c07a'); R(x - 3, y - 2, 7, 1, '#b8803a'); R(x - 2, y, 5, 1, '#6cc24a'); } break;
+      case 9: R(x - 1, y - 3, 3, 7, '#ff5fc2'); R(x - 3, y - 1, 7, 3, '#ff5fc2'); R(x, y, 1, 1, '#ffffff'); break;
+      case 10: BO(x, y, 3, 3, '#3a7bd5'); R(x - 2, y - 1, 3, 2, '#4cc26a'); R(x - 5, y, 11, 1, '#d8262c'); break;
+      case 11: BO(x, y, 3, 3, '#e8302a'); R(x - 2, y - 1, 1, 1, NOIR); R(x + 1, y - 1, 1, 1, NOIR); R(x - 1, y + 1, 3, 1, NOIR); break;
+      case 12: { const n = Math.hypot(o.vx, o.vh) || 1; for (let k = 0; k < 7; k++) R(Math.round(x - o.vx / n * k * 2), Math.round(y + o.vh / n * k * 2), 2, 2, k < 2 ? '#ffffff' : '#ff2020'); break; }
+      case 13: BO(x, y, 3, 3, '#ff2d2d'); R(x, y - 1, 1, 3, '#ffffff'); break;
+      default: BO(x, y, 3, 3, '#1d9bf0'); R(x - 2, y, 1, 1, '#ffffff'); R(x - 1, y + 1, 1, 1, '#ffffff'); R(x, y, 1, 1, '#ffffff'); R(x + 1, y - 1, 1, 1, '#ffffff');
+    }
+  }
+  function tirVisuel(s, SOL, camX, t){
+    const p = s.t / s.dur;
+    const x = Math.round(s.x0 + (s.x1 - s.x0) * p - camX), y = Math.round(SOL - (s.h0 + (s.h1 - s.h0) * p + Math.sin(p * Math.PI) * s.T.arc));
+    if (s.T.k === 'mot') ecrire(s.mot, x - (largeur(s.mot) >> 1), y - 2, s.col, 1, NOIR);
+    else if (s.T.k === 'coeur'){ ecrire('<', x - 2, y - 2, '#e8303a', 1, NOIR); }
+    else if (s.T.k === 'lettre'){ B(x - 3, y - 2, 7, 5, '#ffffff'); R(x, y - 1, 2, 2, '#d8262c'); }
+    else { const x0 = Math.round(s.x0 - camX); R(Math.min(x0, x), y, Math.abs(x - x0) + 1, 1, '#ffe066'); }
+  }
+  /* Tout, dans l'ordre : le ciel, les deux plans du fond, la rue et ses
+     objets, les bases, les corps qui tombent, les unités, ce qui vole, puis
+     par-dessus tout les barres de vie et les bulles. */
+  function peindre(c2d, W, H, camX, t, S){
+    const avant = g;
+    g = c2d; miroir = false;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.imageSmoothingEnabled = false;
+    vue.Wp = W;
+    const SOL = H - 40;
+    ciel(W, H, SOL, camX);
+    couches(W, H).forEach(c => g.drawImage(c.cv, Math.round(c.x0 - camX * c.f), 0));
+    rue(W, H, SOL, camX);
+    decor(W, SOL, camX, t);
+    base(S.J, SOL, camX, t); base(S.E, SOL, camX, t);
+    for (const m of S.morts){
+      g.globalAlpha = Math.max(0, 1 - m.t / 0.6);
+      unite({ id: m.id, camp: m.cote ? S.E : S.J, x: m.x, marche: false, anim: 0, frappe: 0, tire: 0, touche: 0 }, SOL + Math.round(m.t * 6), camX, t);
+    }
+    g.globalAlpha = 1;
+    S.E.unites.forEach(u => unite(u, SOL, camX, t));
+    for (let i = S.J.unites.length - 1; i >= 0; i--) unite(S.J.unites[i], SOL, camX, t);
+    S.tirs.forEach(s => tirVisuel(s, SOL, camX, t));
+    S.obus.forEach(o => projectile(o, SOL, camX, t));
+    for (const p of S.effets){
+      const x = Math.round(p.x - camX), y = Math.round(SOL - p.h);
+      R(x, y, p.t, p.t, p.col);
+    }
+    if (S.livraison){
+      // le scooter du spécial de l'âge 3 : il traverse l'écran sur la voie de
+      // devant, sous les unités, en semant des cuisses de poulet
+      const lx = Math.round(-40 + (W + 80) * (S.livraison.t / 2.8)), ly = SOL + 20;
+      g.save(); g.translate(lx, ly);
+      DESSINS[6]({ anim: 0 }, 0, false, false, t);
+      g.restore();
+      for (let k = 1; k < 4; k++){ const px = lx - 14 - k * 22; BO(px, ly - 6 + (k & 1), 2, 1, '#b8642a'); R(px + 2, ly - 6 + (k & 1), 2, 1, '#ffffff'); }
+    }
+    [S.J, S.E].forEach(C => C.unites.forEach(u => {
+      barreVie(u, SOL, camX);
+      if (u.cri > 0 && t) bulle(CAST[u.id].cri, centre(u) - camX, SOL - HAUT[u.id] - 20 - (u.id === 5 ? 6 : u.id === 15 ? 10 : 0));
+    }));
+    for (const x of S.textes){
+      g.globalAlpha = Math.min(1, x.vie * 2);
+      ecrire(x.txt, Math.round(x.x - camX - largeur(x.txt) / 2), Math.round(SOL - x.h), x.col, 1, NOIR);
+    }
+    g.globalAlpha = 1;
+    g = avant;
+  }
+  function dessiner(t){
+    const r = scene.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    /* Le pixel du jeu vaut un nombre ENTIER de pixels d'écran, choisi pour que
+       la rue garde à peu près 300 pixels de haut : c'est la hauteur qu'il faut
+       pour voir la tourelle du haut et le ciel au-dessus. En largeur, on voit
+       ce que la fenêtre permet, et l'on fait défiler le reste. */
+    const k = Math.max(1, Math.round(r.height / 300));
+    const W = Math.max(1, Math.round(r.width / k)), H = Math.max(1, Math.round(r.height / k));
+    if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
+    vue.k = k; vue.W = W; vue.H = H;
+    borner();
+    const S = P || DECOR;
+    let cx = Math.round(cam.x);
+    if (S.secousse > 0) cx += Math.round((Math.random() - 0.5) * 8 * S.secousse);
+    peindre(ctx0, W, H, cx, t, S);
+  }
+
+  /* ---- le tableau de bord ----
+     En HTML, par-dessus le ciel : des plaques embouties comme celles de
+     Versus. En haut à gauche l'argent, l'expérience, l'âge et la file de
+     formation ; en haut à droite les six menus d'Age of War et le sous-menu
+     ouvert ; en bas, les points de vie des deux bases. */
+  let etat = 'titre', menu = 'unites';
+  const MENUS = [
+    { m: 'unites', cle: 'seumRecruter', k: 'R' }, { m: 'tourelles', cle: 'seumTourelles', k: 'T' },
+    { m: 'vendre', cle: 'seumVendre', k: 'V' }, { m: 'place', cle: 'seumPlace', k: 'P' },
+    { m: 'evoluer', cle: 'seumEvoluer', k: 'E' }, { m: 'special', cle: 'seumSpecial', k: 'S' },
+  ];
+  const btMenu = {};
+  let btSous = [];
+  const sansFocus = (b) => { b.type = 'button'; b.tabIndex = -1; b.addEventListener('mousedown', e => e.preventDefault()); };
+  function construireMenu(){
+    menuEl.textContent = '';
+    MENUS.forEach(d => {
+      const b = document.createElement('button');
+      b.className = 'seum-m seum-plaque';
+      sansFocus(b);
+      const nom = document.createElement('span'); nom.textContent = T(d.cle);
+      const kbd = document.createElement('kbd'); kbd.textContent = d.k;
+      const jauge = document.createElement('i'); jauge.className = 'seum-jauge';
+      b.append(nom, kbd, jauge);
+      b.addEventListener('click', () => actionMenu(d.m));
+      b.addEventListener('mouseenter', () => montrerInfo(infoMenu(d.m)));
+      b.addEventListener('mouseleave', () => montrerInfo(''));
+      menuEl.appendChild(b);
+      btMenu[d.m] = { b, nom };
+    });
+  }
+  function actionMenu(m){
+    if (etat !== 'jeu') return;
+    if (m === 'place') acheterPlace();
+    else if (m === 'evoluer') evoluer();
+    else if (m === 'special') lancerSpecial();
+    else { menu = m; sfx.select(); construireSous(); }
+  }
+  function infoMenu(m){
+    if (!P) return '';
+    if (m === 'place') return P.J.places >= 4 ? T('seumMaxPlaces') : T('seumPlaceAide').replace('%1', PRIX_PLACE[P.J.places - 1]);
+    if (m === 'evoluer') return P.J.age >= 4 ? T('seumDernierAge') : T('seumEvoAide').replace('%1', XP_AGE[P.J.age]).replace('%2', L(AGES[P.J.age + 1].nom));
+    if (m === 'special') return L(AGES[P.J.age].special).toUpperCase() + ' — ' + L(AGES[P.J.age].quoi);
+    return '';
+  }
+  function infoUnite(id){
+    const D = U[id];
+    let s = L(CAST[id].nom).toUpperCase() + ' — ' + D[2] + ' ' + T('seumPv') + ' · ' + D[3] + ' ' + T('seumCac');
+    if (D[4]) s += ' · ' + D[4] + ' ' + T('seumDist');
+    return s + '. ' + L(CAST[id].desc);
+  }
+  function infoTour(id){
+    const D = TR[id];
+    return L(TOURS[id].nom).toUpperCase() + ' — ' + D[1] + ' ' + T('seumDegats') + ' · ' + T('seumPortee') + ' ' + D[2] + '. ' + L(TOURS[id].desc);
+  }
+  // une vignette : le même dessin que sur la rue, dans un carré de 36
+  function vignette(c, peint){
+    const x = c.getContext('2d'), avant = g, m = miroir;
+    g = x; miroir = false;
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.imageSmoothingEnabled = false;
+    x.fillStyle = '#1d2638'; x.fillRect(0, 0, 36, 36);
+    x.fillStyle = '#26314a'; x.fillRect(0, 26, 36, 10);
+    peint();
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    g = avant; miroir = m;
+  }
+  function construireSous(){
+    sousEl.textContent = ''; btSous = [];
+    Object.entries(btMenu).forEach(([m, o]) => o.b.classList.toggle('on', m === menu));
+    scene.classList.toggle('vente', menu === 'vendre');
+    const a = P.J.age, items = [];
+    if (menu === 'unites') for (let i = 0; i < (a === 4 ? 4 : 3); i++){
+      const id = a * 3 + i, [dx, dy] = CADRE[id] || [28, 33];
+      items.push({ i, nom: CAST[id].nom, prix: U[id][0], info: () => infoUnite(id),
+                   peint: () => { g.translate(dx, dy); DESSINS[id]({ anim: 0, marche: false }, 0, false, false, 0); } });
+    } else if (menu === 'tourelles') for (let i = 0; i < 3; i++){
+      const id = a * 3 + i;
+      items.push({ i, nom: TOURS[id].nom, prix: TR[id][0], info: () => infoTour(id), peint: () => { g.translate(18, 28); TOURELLES[id](false, 0); } });
+    } else for (let s = 0; s < P.J.places; s++){
+      const tr = P.J.tours[s];
+      items.push({ i: s, nom: tr ? TOURS[tr.id].nom : T('seumVide'), prix: tr ? Math.floor(TR[tr.id][0] / 2) : null, rend: true,
+                   info: () => T('seumVenteAide'), vide: !tr,
+                   peint: () => { if (tr){ g.translate(18, 28); TOURELLES[tr.id](false, 0); } else ecrire('?', 17, 15, '#5a6682'); } });
+    }
+    items.forEach(it => {
+      const b = document.createElement('button');
+      b.className = 'seum-bt seum-plaque' + (it.vide ? ' vide' : '');
+      sansFocus(b);
+      const c = document.createElement('canvas'); c.width = 36; c.height = 36;
+      vignette(c, it.peint);
+      const txt = document.createElement('span');
+      const nom = document.createElement('b'), prix = document.createElement('small');
+      nom.textContent = (it.i + 1) + ' · ' + L(it.nom);
+      prix.textContent = it.prix == null ? '' : (it.rend ? '+' : '') + it.prix + ' €';
+      txt.append(nom, prix);
+      b.append(c, txt);
+      b.addEventListener('click', () => agir(it.i));
+      b.addEventListener('mouseenter', () => montrerInfo(it.info()));
+      b.addEventListener('mouseleave', () => montrerInfo(''));
+      sousEl.appendChild(b);
+      btSous.push({ b, it });
+    });
+    for (const k in dejaEcrit) if (k.startsWith('bt')) delete dejaEcrit[k];
+  }
+  function agir(i){
+    if (etat !== 'jeu') return;
+    if (menu === 'unites') recruter(i);
+    else if (menu === 'tourelles') acheterTour(i);
+    else vendre(i);
+  }
+  let infoMinuteur = 0;
+  function montrerInfo(txt, non){
+    clearTimeout(infoMinuteur);
+    infoEl.textContent = txt || '';
+    infoEl.classList.toggle('non', !!non);
+    if (non) infoMinuteur = setTimeout(() => { infoEl.textContent = ''; infoEl.classList.remove('non'); }, 1800);
+  }
+  const dejaEcrit = {};
+  function ecrireSi(el, cle, v){ if (dejaEcrit[cle] !== v){ dejaEcrit[cle] = v; el.textContent = v; } }
+  function basculer(el, cle, classe, v){ const k = cle + classe; if (dejaEcrit[k] !== v){ dejaEcrit[k] = v; el.classList.toggle(classe, v); } }
+  function majHud(){
+    const J = P.J, seuil = XP_AGE[J.age];
+    ecrireSi(orEl, 'or', P.or + ' €');
+    ecrireSi(xpEl, 'xp', seuil ? P.xp + ' / ' + seuil + ' XP' : P.xp + ' XP');
+    ecrireSi(ageEl, 'age', T('seumAge').replace('%1', J.age + 1) + ' · ' + L(AGES[J.age].nom));
+    [...fileEl.children].forEach((i, n) => basculer(i, 'f' + n, 'plein', n < P.file.length));
+    const p = P.file.length ? Math.min(1, P.forme / (U[P.file[0]][1] / IPS)) : 0;
+    formeEl.style.setProperty('--p', p.toFixed(3));
+    ecrireSi(btMenu.place.nom, 'place', J.places >= 4 ? T('seumPlace') + ' 4/4' : T('seumPlace') + ' ' + PRIX_PLACE[J.places - 1] + ' €');
+    basculer(btMenu.place.b, 'place', 'cher', J.places < 4 && P.or < PRIX_PLACE[J.places - 1]);
+    basculer(btMenu.evoluer.b, 'evo', 'pret', J.age < 4 && P.xp >= seuil);
+    basculer(btMenu.evoluer.b, 'evo', 'cher', J.age >= 4 || P.xp < seuil);
+    basculer(btMenu.special.b, 'spe', 'pret', P.recharge <= 0);
+    btMenu.special.b.style.setProperty('--p', (1 - P.recharge / RECHARGE).toFixed(3));
+    btSous.forEach(({ b, it }, n) => basculer(b, 'bt' + n, 'cher', !it.rend && it.prix != null && P.or < it.prix));
+    pvJ.style.transform = 'scaleX(' + Math.max(0, J.pv / J.pvMax).toFixed(3) + ')';
+    pvE.style.transform = 'scaleX(' + Math.max(0, P.E.pv / P.E.pvMax).toFixed(3) + ')';
+    ecrireSi(pvJT, 'pvj', T('seumBaseJ') + ' · ' + Math.max(0, Math.ceil(J.pv)) + ' / ' + J.pvMax);
+    ecrireSi(pvET, 'pve', T('seumBaseE') + ' · ' + Math.max(0, Math.ceil(P.E.pv)) + ' / ' + P.E.pvMax);
+  }
+  let annonceMinuteur = 0;
+  function annoncer(grand, petit, discret){
+    annonceEl.textContent = '';
+    const a = document.createElement('b'), b = document.createElement('span');
+    a.textContent = grand; b.textContent = petit || '';
+    annonceEl.append(a, b);
+    annonceEl.classList.toggle('discret', !!discret);
+    annonceEl.classList.remove('go');
+    void annonceEl.offsetWidth;                      // relance l'animation
+    annonceEl.classList.add('go');
+    clearTimeout(annonceMinuteur);
+    annonceMinuteur = setTimeout(() => annonceEl.classList.remove('go'), 2700);
+  }
+
+  /* ---- les cartes : l'écran-titre, puis la fin ---- */
+  function montrerCarte(mode){
+    carte.classList.toggle('titre', mode === 'titre');
+    carte.hidden = false;
+    btGo.focus();
+  }
+  function ecranTitre(){
+    etat = 'titre';
+    hudEl.hidden = true; pvBox.hidden = true; killsEl.textContent = '';
+    carteT.textContent = 'AGE OF SEUM';
+    carteS.textContent = T('seumSub');
+    carteA.textContent = T('seumHow');
+    carteA.hidden = false;
+    btGo.textContent = T('seumStart');
+    btQuit.textContent = T('arenaQuit');
+    montrerCarte('titre');
+  }
+  const duree = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s) % 60).padStart(2, '0');
+  function montrerFin(){
+    majHud();                                        // la barre de la base tombée descend jusqu'à zéro
+    carteT.textContent = T(P.victoire ? 'seumWin' : 'seumLose');
+    carteS.textContent = T(P.victoire ? 'seumWinSub' : 'seumLoseSub').replace('%1', duree(P.t));
+    carteA.hidden = true;
+    btGo.textContent = T('jumpAgain');
+    btQuit.textContent = T('arenaQuit');
+    hudEl.hidden = true;
+    montrerCarte('fin');
+  }
+  function commencer(){
+    nouvellePartie();
+    etat = 'jeu'; gel = false; reste = 0;
+    carte.hidden = true;
+    hudEl.hidden = false; pvBox.hidden = false; killsEl.textContent = '';
+    menu = 'unites';
+    for (const k in dejaEcrit) delete dejaEcrit[k];
+    construireMenu(); construireSous();
+    montrerInfo('');
+    cam.x = MONDE_G;
+    annonceEl.classList.remove('go');
+  }
+
+  /* ---- la boucle ---- */
+  let ouvert = false, raf = 0, dernier = 0, reste = 0, gel = false;   // gel : la partie figée, voir debug
+  const touches = { gauche: false, droite: false };
+  let souris = null, glisse = null;
+  function camera(dt){
+    if (etat === 'titre'){
+      // l'écran-titre fait lentement le tour de la rue, d'une base à l'autre
+      const span = MONDE_D - MONDE_G - vue.W;
+      cam.x = span > 0 ? MONDE_G + span * (0.5 - 0.5 * Math.cos(performance.now() / 1000 * 0.22)) : MONDE_G;
+      return;
+    }
+    let v = (touches.droite ? 1 : 0) - (touches.gauche ? 1 : 0);
+    if (souris && !glisse && souris.y > 0.42){
+      if (souris.x < 0.035) v = -1;
+      else if (souris.x > 0.965) v = 1;
+    }
+    cam.x += v * 460 * dt;
+    borner();
+  }
+  function boucle(now){
+    raf = requestAnimationFrame(boucle);
+    const dt = Math.min(0.05, (now - dernier) / 1000 || 0);
+    dernier = now;
+    if (etat === 'jeu' && !gel){
+      reste += dt;
+      let n = 0;
+      while (reste >= PAS && n < 6 && etat === 'jeu'){ pasJeu(PAS); reste -= PAS; n++; }
+      if (n === 6) reste = 0;
+    } else if (etat === 'fin' && P){
+      anims(dt);
+      if (P.finT > 0 && (P.finT -= dt) <= 0) montrerFin();
+    }
+    camera(dt);
+    dessiner(now / 1000);
+    if (etat === 'jeu') majHud();
+  }
+  function ouvrir(){
+    if (ouvert) return;
+    ouvert = true;
+    P = null;
+    overlay.classList.add('open');
+    sfx.startup();
+    sfx.combat(true, 'seum');      // la nappe du menu se tait, le dubstep prend la main
+    ecranTitre();
+    cancelAnimationFrame(raf);
+    dernier = performance.now();
+    raf = requestAnimationFrame(boucle);
+  }
+  function fermer(){
+    if (!ouvert) return;
+    ouvert = false;
+    cancelAnimationFrame(raf); raf = 0;
+    etat = 'titre'; P = null;
+    touches.gauche = touches.droite = false; souris = null; glisse = null;
+    overlay.classList.remove('open');
+    annonceEl.classList.remove('go');
+    sfx.combat(false);
+    // on revient sur la tuile du jeu, comme en quittant une application
+    const ci = DATA.findIndex(c => c.kind === 'game');
+    const ii = ci >= 0 ? DATA[ci].items.findIndex(it => it.jeu === 'seum') : -1;
+    if (ci >= 0 && (activeCat !== ci || activeItem !== ii)){ activeCat = ci; activeItem = Math.max(0, ii); render(); }
+  }
+
+  /* ---- clavier ----
+     Les chiffres se lisent sur la TOUCHE (e.code) et non sur le caractère :
+     sur un clavier AZERTY, la rangée du haut donne « & é " ' » sans
+     majuscule. Les lettres, elles, se lisent sur le caractère — T est T sur
+     les deux claviers. Les quatre chiffres font ce que dit le sous-menu
+     ouvert : recruter, acheter une tourelle, ou vendre celle de
+     l'emplacement donné. */
+  function touche(e){
+    if (e.key === 'Escape'){ fermer(); return true; }
+    if (!carte.hidden){
+      const bt = [btGo, btQuit];
+      if (e.key.startsWith('Arrow')){
+        e.preventDefault();
+        const i = bt.indexOf(document.activeElement);
+        bt[(i < 0 ? 0 : i + 1) % bt.length].focus();
+        return true;
+      }
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        const i = bt.indexOf(document.activeElement);
+        if (i < 0) bt[0].focus(); else bt[i].click();
+      }
+      return true;
+    }
+    if (etat !== 'jeu') return true;
+    if (e.key === 'ArrowLeft'){ touches.gauche = true; e.preventDefault(); return true; }
+    if (e.key === 'ArrowRight'){ touches.droite = true; e.preventDefault(); return true; }
+    const chiffre = /^(?:Digit|Numpad)([1-4])$/.exec(e.code);
+    if (chiffre){ e.preventDefault(); agir(+chiffre[1] - 1); return true; }
+    if (e.repeat) return true;
+    const k = e.key.toLowerCase();
+    if (k === 'r') actionMenu('unites');
+    else if (k === 't') actionMenu('tourelles');
+    else if (k === 'v') actionMenu('vendre');
+    else if (k === 'p') actionMenu('place');
+    else if (k === 'e') actionMenu('evoluer');
+    else if (k === 's') actionMenu('special');
+    if (e.key === ' ' || e.key === 'Enter') e.preventDefault();
+    return true;
+  }
+  function relache(e){
+    if (e.key === 'ArrowLeft') touches.gauche = false;
+    if (e.key === 'ArrowRight') touches.droite = false;
+  }
+  btGo.addEventListener('click', commencer);
+  btQuit.addEventListener('click', fermer);
+  $('seumClose').addEventListener('click', fermer);
+  overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
+  // la molette fait défiler la rue ; elle ne doit pas, en plus, faire défiler la liste derrière
+  overlay.addEventListener('wheel', e => {
+    e.stopPropagation();
+    if (etat !== 'jeu') return;
+    e.preventDefault();
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    cam.x += d * (e.deltaMode === 1 ? 16 : 1) / vue.k;
+    borner();
+  }, { passive: false });
+  /* La souris : on attrape la rue pour la faire glisser ; en mode vente, un
+     clic sur une de ses tourelles la revend. Au bord de l'écran, sous le
+     tableau de bord, la rue défile toute seule, comme dans le jeu d'origine. */
+  cv.addEventListener('pointerdown', e => {
+    if (etat !== 'jeu') return;
+    glisse = { x: e.clientX, cam: cam.x, bouge: false };
+    try { cv.setPointerCapture(e.pointerId); } catch (err){}
+  });
+  cv.addEventListener('pointermove', e => {
+    const r = scene.getBoundingClientRect();
+    souris = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+    if (!glisse) return;
+    const dx = e.clientX - glisse.x;
+    if (Math.abs(dx) > 5) glisse.bouge = true;
+    if (glisse.bouge){ cam.x = glisse.cam - dx / vue.k; borner(); }
+  });
+  cv.addEventListener('pointerup', e => {
+    const g0 = glisse;
+    glisse = null;
+    if (!g0 || g0.bouge || etat !== 'jeu' || menu !== 'vendre') return;
+    const r = scene.getBoundingClientRect();
+    const wx = (e.clientX - r.left) / vue.k + Math.round(cam.x), h = vue.H - 40 - (e.clientY - r.top) / vue.k;
+    const s = P.J.tours.findIndex((tr, i) => tr && Math.abs(wx - X_TOURELLE) < 16 && h > HAUT_PLACE[i] - 4 && h < HAUT_PLACE[i] + 22);
+    if (s >= 0) vendre(s);
+  });
+  cv.addEventListener('pointerleave', () => { souris = null; });
+  cv.addEventListener('pointercancel', () => { glisse = null; });
+
+  /* ---- l'aperçu du panneau : la rue, le sanglier, et une échauffourée ---- */
+  const vig = { taille: '' };
+  function apercu(force){
+    const box = document.getElementById('arenaTeaser');
+    const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
+    if (!box || !bc) return;
+    const r = box.getBoundingClientRect();
+    if (!r.width) return;
+    const k = Math.min(2, window.devicePixelRatio || 1);
+    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
+    if (!force && vig.taille === cle) return;
+    vig.taille = cle;
+    [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
+    fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
+    /* La scène est peinte à sa taille de jeu puis agrandie d'un facteur
+       ENTIER : réduite, ou agrandie de 1,3, elle perdrait un pixel sur trois
+       et les enseignes deviendraient illisibles. */
+    const s = Math.max(1, Math.round(bc.height / 150));
+    const H = Math.max(1, Math.round(bc.height / s)), W = Math.max(1, Math.round(bc.width / s));
+    const S = { J: camp(0), E: camp(1), tirs: [], obus: [], effets: [], textes: [], morts: [], secousse: 0, livraison: null };
+    S.J.adv = S.E; S.E.adv = S.J;
+    const pose = (C, id, x, extra) => C.unites.push(Object.assign({ id, camp: C, x, pv: 1, pvMax: 1, marche: false, anim: 0, frappe: 0, tire: 0, touche: 0, cri: 0 }, extra));
+    // les deux camps de part et d'autre du matelas, et un « wow » qui passe au-dessus du sanglier
+    pose(S.J, 0, 418, {}); pose(S.J, 1, 384, { tire: 0.1 }); pose(S.J, 3, 346, {});
+    pose(S.E, 2, 506, {}); pose(S.E, 4, 604, { tire: 0.1 });
+    S.tirs.push({ x0: 384, h0: 28, x1: 520, h1: 24, t: 0.19, dur: 0.35, T: TIRS[1], mot: 'WOW', col: '#4dfcff' });
+    const tmp = document.createElement('canvas');
+    tmp.width = W; tmp.height = H;
+    peindre(tmp.getContext('2d'), W, H, Math.round(470 - W / 2), 0, S);
+    const b = bc.getContext('2d');
+    b.setTransform(1, 0, 0, 1, 0, 0);
+    b.imageSmoothingEnabled = false;
+    b.drawImage(tmp, 0, 0, bc.width, bc.height);
+  }
+
+  /* Contrôle, dans l'esprit de jumper.debug() : l'état de la partie, et de
+     quoi la pousser pour vérifier un âge sans le jouer en entier — poser une
+     unité (`creer: [id, 1]` pour le camp d'en face), une tourelle
+     (`tour: [id, emplacement]`), lancer le spécial de l'âge (`special: 1`). */
+  const debug = (o) => {
+    if (o && P){
+      if (o.creer){ const u = creer(o.creer[1] ? P.E : P.J, o.creer[0]); if (o.creer[2] != null) u.x = o.creer[2]; }
+      if (o.gel != null) gel = !!o.gel;
+      // `avance` : fait tourner la partie de tant de secondes d'un coup, puis peint (un onglet caché ne tourne pas)
+      if (o.avance){ for (let i = Math.round(o.avance / PAS); i > 0 && etat === 'jeu'; i--) pasJeu(PAS); dessiner(performance.now() / 1000); }
+      if (o.tour){ P.J.places = Math.max(P.J.places, o.tour[1] + 1); P.J.tours[o.tour[1]] = { id: o.tour[0], t: -1, tt: 0 }; }
+      if (o.special){ P.recharge = 0; lancerSpecial(); }
+      if (o.or != null) P.or = o.or;
+      if (o.xp != null) P.xp = o.xp;
+      if (o.pvE != null) P.E.pv = o.pvE;
+      if (o.ageE != null){ P.E.age = o.ageE; P.E.pvMax = PV_BASE[o.ageE]; P.E.pv = Math.min(P.E.pv, P.E.pvMax); P.ia = { t: 0, niveau: 0, ev: 0, spawn: 1 }; }
+      if (o.age != null){ P.J.age = o.age; P.J.pvMax = PV_BASE[o.age]; P.J.pv = P.J.pvMax; construireSous(); }
+      if (o.cam != null){ cam.x = o.cam; borner(); }
+    }
+    return P ? { etat, t: +P.t.toFixed(1), or: P.or, xp: P.xp, age: P.J.age + 1, ageE: P.E.age + 1,
+                 pv: Math.ceil(P.J.pv), pvE: Math.ceil(P.E.pv), unites: P.J.unites.length, ennemis: P.E.unites.length,
+                 file: P.file.length, recharge: Math.ceil(P.recharge), cam: Math.round(cam.x), k: vue.k, W: vue.W, H: vue.H }
+             : { etat };
+  };
+
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu, debug };
+})();
+
 /* ---------------- mini-jeu « Dress Up » ----------------
    Un salon d'essayage, dans la grammaire des jeux d'habillage en Flash de la
    fin des années 2000 : un mannequin d'un côté, un portant de l'autre, on
@@ -15213,6 +17554,7 @@ window.addEventListener('keydown', (e)=>{
   // Mini-jeu ouvert : il prend toutes les touches (voir arena.key / jumper.key).
   if (arena.isOpen()){ arena.key(e); return; }
   if (jumper.isOpen()){ jumper.key(e); return; }
+  if (seum.isOpen()){ seum.key(e); return; }
   // Dress Up rend les touches dont il ne fait rien : le salon d'essayage se
   // joue à la souris, seules Échap et les flèches l'intéressent.
   if (dressup.isOpen() && dressup.key(e)) return;
@@ -15269,7 +17611,8 @@ window.addEventListener('keydown', (e)=>{
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
 });
 // Jumper a besoin des RELÂCHEMENTS : c'est en lâchant Espace que le saut part.
-window.addEventListener('keyup', (e) => { if (jumper.isOpen()) jumper.up(e); });
+// Age of Seum aussi : la rue défile tant qu'on tient une flèche.
+window.addEventListener('keyup', (e) => { if (jumper.isOpen()) jumper.up(e); if (seum.isOpen()) seum.up(e); });
 
 // Touche de direction relâchée : la sélection est arrivée, le son mis de côté
 // pendant le défilement part tout de suite (voir sfx.land).
