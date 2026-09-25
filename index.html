@@ -68,8 +68,10 @@
     --accent-rgb:90,168,194;
     --accent2-rgb:60,110,140;
     /* Le bleu du bouton d'achat : FIXE, applyMood n'y touche pas (voir .cta-duo.achat) */
-    --achat:#2f7df5;
+    --achat:#2f7df5;            /* le bleu d'origine, jusqu'à la première ambiance : voir ACHAT_REF */
     --achat-rgb:47,125,245;
+    --achat-survol:#4a90ff;
+    --achat-bord-rgb:160,200,255;
     --sale-rgb:217,185,106;
     --bg-0-hex:#04080c;
     --bg-1-hex:#0d1f30;
@@ -411,8 +413,6 @@
     padding:0;border:0;background:none;
     overflow:visible;
     cursor:pointer;
-    opacity:0;
-    transition:opacity 0.35s ease;
     z-index:2;
   }
   .bord-nav::before{
@@ -426,28 +426,38 @@
       rgba(var(--accent-rgb),0.02) 55%,
       rgba(var(--accent-rgb),0) 100%);
     pointer-events:none;
+    /* éteinte, retirée de l'affichage et pas seulement transparente (voir
+       .slide-edge::before, la lueur qui clignotait) */
+    opacity:0;
+    visibility:hidden;
+    transition:opacity 0.35s ease, visibility 0s linear 0.35s;
   }
   .bord-nav.gauche{left:0;}
   .bord-nav.droite{right:0;transform:scaleX(-1);}
-  .bord-nav:hover,.bord-nav:focus-visible{opacity:1;outline:none;}
+  .bord-nav:focus-visible{outline:none;}
+  .bord-nav:hover::before,.bord-nav:focus-visible::before{opacity:1;visibility:visible;transition:opacity 0.35s ease, visibility 0s;}
   @media (hover:none){ .bord-nav{display:none;} }
   /* ---- les pastilles des sections, en haut au centre ----
      Une par section de la barre, la courante allumée : les pastilles de la
      galerie de la fiche (voir .dot), avec leur reflet qui passe de gauche à
      droite. Chacune se clique et mène à sa section. Le bouton est plus grand
-     que la pastille : une cible de 20 px pour un point de 7. */
+     que la pastille : une cible de 20 px pour un point de 5,6.
+     20 % PLUS PETITES ET 20 % MOINS OPAQUES (demande du 25 sept. 2026 au
+     soir) : 5,6 px au lieu de 7, et toute la rangée à 80 % — la courante,
+     les autres et leur reflet ensemble, dans le même rapport. */
   .pager{
     position:fixed;top:38px;left:50%;   /* centrées sur l'encadré du statut (30 + 36 / 2) */
     transform:translateX(-50%);
     z-index:6;
     display:flex;align-items:center;gap:2px;
+    opacity:0.8;
   }
   .pager-pas{
     width:20px;height:20px;padding:0;border:0;background:none;
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;
   }
-  .pager-pas .dot{width:7px;height:7px;pointer-events:none;}
+  .pager-pas .dot{width:5.6px;height:5.6px;pointer-events:none;}
   .pager-pas:hover .dot:not(.active){background:rgba(255,255,255,0.7);}
   .pager-pas:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:0;border-radius:50%;}
   /* Écran de téléphone : la marque et l'encadré du statut occupent toute la
@@ -685,10 +695,13 @@
       0 0 12px 2px rgba(255,255,255,0.045);
     border-radius:var(--radius);
     border-color:transparent;
-    box-shadow:
+    /* --peau : les ombres du cadre, dans une variable pour que la peau
+       des coulures les reprenne telles quelles (voir « LES COULURES ») */
+    --peau:
       var(--soft-edge),
       0 24px 60px rgba(0,0,0,0.35),
       0 0 40px rgba(var(--accent2-rgb),0.10);
+    box-shadow:var(--peau);
   }
   /* La lueur de bord (une nappe d'accent sur l'arête gauche, à la hauteur de
      l'icône cachée) a été retirée le 15 sept. 2026 à la demande. Les icônes
@@ -861,7 +874,7 @@
      miniature), sans attendre le mode panneau — c'est le même état pour l'œil,
      la fiche est dépliée et c'est elle qu'on regarde. */
   .preview.focused,.preview.choisi{
-    box-shadow:
+    --peau:
       var(--soft-edge),
       inset 0 0 5px rgba(var(--accent-rgb),0.30),
       0 0 4px rgba(var(--accent-rgb),0.60),
@@ -893,7 +906,8 @@
      au-dessus du bouton »). Elles avaient leur propre accordéon, ouvert au
      survol d'« Ajouter » ; il n'y a plus qu'un seul dépliage, celui de
      `.preview-info`, et donc qu'une seule hauteur à mesurer (--info-h).
-     Une pastille CHOISIT la taille (.pill.active), le bouton bleu l'ajoute.
+     Une pastille CHOISIT la taille (.pill.active, à la couleur du bouton
+     d'achat), le bouton l'ajoute.
      Masquées (`hidden`) partout où il n'y a rien à acheter : panneaux texte,
      mini-jeux, pièce verrouillée. */
   .size-picker{margin-top:16px;}
@@ -1129,9 +1143,7 @@
     top:0;bottom:0;
     width:calc(16% + var(--pad));
     padding:0;border:none;background:none;
-    opacity:0;
     cursor:pointer;
-    transition:opacity 0.22s ease;
     /* SOUS les photos (qui sont à 1) : la lueur ne teinte plus le vêtement,
        elle ne se voit que dans la marge du panneau et au-dessus et au-dessous
        de l'image — là où il n'y a rien à salir. Le bouton reste malgré tout
@@ -1142,17 +1154,167 @@
   /* La peinture remplit le bouton. Elle est mise à part plutôt que sur le fond
      du bouton parce qu'elle porte le fondu du bas quand la fiche est dépliée
      (voir plus haut, .preview:not(.gallery)), et qu'un masque sur le bouton
-     lui-même rognerait aussi la zone sensible. */
+     lui-même rognerait aussi la zone sensible.
+     ÉTEINTE, ELLE N'EST PLUS PEINTE DU TOUT (25 sept. 2026 : « la lueur des
+     deux côtés clignote sans que rien ne la survole, comme si l'état caché
+     glitchait »). C'était le BOUTON qui passait à opacité 0 : la lueur restait
+     peinte, seulement transparente — la cause la plus probable, sans preuve :
+     le clignotement ne se reproduit pas dans les captures du navigateur
+     intégré, recalculées à part de ce que l'écran affiche. Le fondu est
+     maintenant porté par la lueur elle-même, et `visibility:hidden` la retire
+     de l'affichage une fois éteinte — le bouton, lui, reste là pour la souris.
+     Même traitement pour les bords de l'écran (.bord-nav), faits sur ce modèle.
+     Plus de miroir non plus (scaleX(-1)) pour la lueur de droite : son
+     dégradé part simplement dans l'autre sens. */
   .slide-edge::before{
     content:'';
     position:absolute;
     inset:0;
     background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));
     pointer-events:none;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity 0.22s ease, visibility 0s linear 0.22s;
   }
   .slide-edge.prev{left:0;}
-  .slide-edge.next{right:0;transform:scaleX(-1);}
-  .slide-edge:hover,.slide-edge:focus-visible{opacity:1;outline:none;}
+  .slide-edge.next{right:0;}
+  .slide-edge.next::before{background:linear-gradient(to left, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0));}
+  .slide-edge:focus-visible{outline:none;}
+  /* Allumée : sous la souris, au clavier, et le temps d'un appui. Le survol
+     seulement là où il existe vraiment : sur un téléphone, le « survol »
+     reste collé au dernier endroit touché, et la lueur restait allumée
+     après un tap. */
+  .slide-edge:focus-visible::before,.slide-edge:active::before{
+    opacity:1;visibility:visible;
+    transition:opacity 0.22s ease, visibility 0s;
+  }
+  @media (hover:hover){
+    .slide-edge:hover::before{opacity:1;visibility:visible;transition:opacity 0.22s ease, visibility 0s;}
+  }
+  /* ---- LES COULURES (25 sept. 2026) ----
+     Les flèches de la galerie. D'abord des chevrons blancs à cheval sur le
+     bord (retour de Matisse : « un overlay des flèches < > […] pour
+     renforcer la lecture »), puis trois fois plus gros ; le soir même, « un
+     truc melted à l'intérieur du edge des border side, qui se déclenche à
+     la proximité de la souris — genre ça melt out en petite flèche ». Une
+     première pointe, colorée et posée contre la fiche, a été refusée : « c'est
+     un élément séparé du cadre ; c'est le bord même de la modal qui se
+     déforme que je veux, avec la même opacité, le même gradient de lumière,
+     seamless ». LA POINTE EST LA FICHE : son verre et son liseré s'étirent.
+     Au repos, rien : l'arête est droite. La souris approche d'un côté, dehors
+     comme dedans, et le bord se soulève, puis s'étire en pointe à mesure
+     qu'elle se rapproche ; elle s'éloigne, la pointe se résorbe (le
+     mouvement, la forme : voir `coulures`). Au milieu de la hauteur de la
+     fiche, quelle que soit cette hauteur, sur ses deux arêtes.
+     TROIS PIÈCES, parce qu'aucune ne peut tout faire seule :
+     - LE VERRE (.coulure-verre) : le flou, la saturation, la teinte et le
+       reflet diagonal de la fiche (ceux de .glass), découpés à la forme
+       ENTIÈRE — la fiche et ses pointes. Tant qu'une pointe est dehors,
+       c'est lui qui fait le verre de la fiche : elle éteint le sien. Deux
+       verres côte à côte ne se raccordaient pas — chacun ne floute que ce
+       qui est derrière lui, et au pied de la pointe l'un voyait un t-shirt
+       blanc que l'autre ignorait : un trait, clair ou sombre selon le décor.
+       Hors de la fiche dans le document, juste avant elle : un flou
+       d'arrière-plan posé DANS la fiche ne voit que la fiche — elle a son
+       propre flou, le navigateur s'arrête à elle — et montrerait la scène
+       nette. Juste sous elle, il floute exactement ce que floutait la fiche.
+       Le script le cale sur la fiche à chaque image où il se montre, et lui
+       donne son opacité (la fiche s'estompe à chaque changement d'article).
+     - LA PEAU (.peau) : les ombres et le liseré de la fiche (--peau). Le
+       temps que le bord coule, elles passent de la fiche à ce calque, qui
+       les porte à l'identique, pour y être PERCÉES autour de la pointe :
+       dehors, sur --co-hx × 2 --co-hy ; dedans, une bande de --co-bx sur
+       2 --co-by, où courait le liseré intérieur.
+     - LE LISERÉ DE LA FORME (.peau-coulure) : dans ces trous, les mêmes
+       ombres, calculées par un filtre SVG sur la forme ENTIÈRE, fiche et
+       pointe réunies (voir `coulures.filtres`). Le liseré suit le bord
+       déformé, le halo contourne la pointe, le reflet du haut glisse sur son
+       flanc, et au bord des trous il retrouve celui de la fiche.
+     La pointe ne prend que la souris : au clavier et au lecteur d'écran, ce
+     sont les bandes du bord qui servent ; sur un écran tactile, il n'y a
+     pas d'approche à guetter. Seulement quand il y a plusieurs vues ;
+     rentrée pendant le zoom à la molette et descriptif ouvert. */
+  .peau{display:none;}
+  .preview.coulee-g,.preview.coulee-d{box-shadow:none;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;}
+  .preview.coulee-g > .peau,.preview.coulee-d > .peau{
+    display:block;
+    position:absolute;
+    /* la boîte de la fiche, bordure comprise : ses ombres s'y posent à l'identique.
+       --co-bord : la bordure telle que le navigateur l'a arrondie aux pixels de
+       l'écran (0,8 px pour 1 px à 125 %) ; 1 px de trop laissait un fil de
+       scène nue, sombre, entre le verre et la lueur du bord. */
+    inset:calc(-1 * var(--co-bord, 1px));
+    border-radius:inherit;
+    box-shadow:var(--peau);
+    z-index:-1;                 /* sous le contenu, comme les ombres d'un cadre */
+    pointer-events:none;
+  }
+  /* Les trous, un par pointe sortie. Un seul polygone en pair-impair : le
+     tour de la fiche et de ses ombres, puis chaque trou, rattaché par un
+     aller-retour qui ne découpe rien. */
+  .preview.coulee-g:not(.coulee-d) > .peau{clip-path:polygon(evenodd,
+    -400px -400px, calc(100% + 400px) -400px, calc(100% + 400px) calc(100% + 400px), -400px calc(100% + 400px), -400px -400px,
+    calc(-1 * var(--co-hx)) calc(50% - var(--co-hy)), 0 calc(50% - var(--co-hy)), 0 calc(50% - var(--co-by)), var(--co-bx) calc(50% - var(--co-by)),
+    var(--co-bx) calc(50% + var(--co-by)), 0 calc(50% + var(--co-by)), 0 calc(50% + var(--co-hy)), calc(-1 * var(--co-hx)) calc(50% + var(--co-hy)),
+    calc(-1 * var(--co-hx)) calc(50% - var(--co-hy)), -400px -400px);}
+  .preview.coulee-d:not(.coulee-g) > .peau{clip-path:polygon(evenodd,
+    -400px -400px, calc(100% + 400px) -400px, calc(100% + 400px) calc(100% + 400px), -400px calc(100% + 400px), -400px -400px,
+    calc(100% + var(--co-hx)) calc(50% - var(--co-hy)), 100% calc(50% - var(--co-hy)), 100% calc(50% - var(--co-by)), calc(100% - var(--co-bx)) calc(50% - var(--co-by)),
+    calc(100% - var(--co-bx)) calc(50% + var(--co-by)), 100% calc(50% + var(--co-by)), 100% calc(50% + var(--co-hy)), calc(100% + var(--co-hx)) calc(50% + var(--co-hy)),
+    calc(100% + var(--co-hx)) calc(50% - var(--co-hy)), -400px -400px);}
+  .preview.coulee-g.coulee-d > .peau{clip-path:polygon(evenodd,
+    -400px -400px, calc(100% + 400px) -400px, calc(100% + 400px) calc(100% + 400px), -400px calc(100% + 400px), -400px -400px,
+    calc(-1 * var(--co-hx)) calc(50% - var(--co-hy)), 0 calc(50% - var(--co-hy)), 0 calc(50% - var(--co-by)), var(--co-bx) calc(50% - var(--co-by)),
+    var(--co-bx) calc(50% + var(--co-by)), 0 calc(50% + var(--co-by)), 0 calc(50% + var(--co-hy)), calc(-1 * var(--co-hx)) calc(50% + var(--co-hy)),
+    calc(-1 * var(--co-hx)) calc(50% - var(--co-hy)), -400px -400px,
+    calc(100% + var(--co-hx)) calc(50% - var(--co-hy)), 100% calc(50% - var(--co-hy)), 100% calc(50% - var(--co-by)), calc(100% - var(--co-bx)) calc(50% - var(--co-by)),
+    calc(100% - var(--co-bx)) calc(50% + var(--co-by)), 100% calc(50% + var(--co-by)), 100% calc(50% + var(--co-hy)), calc(100% + var(--co-hx)) calc(50% + var(--co-hy)),
+    calc(100% + var(--co-hx)) calc(50% - var(--co-hy)), -400px -400px);}
+  /* Le liseré de la forme, dans les trous. Tracé vers la droite, l'origine
+     sur l'arête : la fiche à gauche (x < 0), la pointe à droite ; celui du
+     bord gauche est retourné. Rogné à son trou : la bande du dedans est
+     moins haute que la part du dehors. */
+  .peau-coulure{
+    display:none;
+    position:absolute;
+    z-index:-1;
+    top:calc(50% - var(--co-hy));
+    width:calc(var(--co-hx) + var(--co-bx));
+    height:calc(2 * var(--co-hy));
+    overflow:visible;
+    pointer-events:none;
+    clip-path:polygon(var(--co-bx) 0, 100% 0, 100% 100%, var(--co-bx) 100%,
+      var(--co-bx) calc(50% + var(--co-by)), 0 calc(50% + var(--co-by)), 0 calc(50% - var(--co-by)), var(--co-bx) calc(50% - var(--co-by)));
+  }
+  .preview.coulee-g > .peau-coulure.prev,.preview.coulee-d > .peau-coulure.next{display:block;}
+  .peau-coulure.prev{left:calc(-1 * var(--co-bord, 1px) - var(--co-hx));transform:scaleX(-1);}   /* --co-bord : de la marge intérieure à l'arête */
+  .peau-coulure.next{left:calc(100% + var(--co-bord, 1px) - var(--co-bx));}
+  .peau-coulure .forme{filter:url(#peauBase);}
+  .preview.focused .peau-coulure .forme,.preview.choisi .peau-coulure .forme{filter:url(#peauChoisie);}
+  .peau-filtres{position:absolute;width:0;height:0;overflow:hidden;}
+  /* Le verre : celui de .glass, découpé (clip-path), placé et teinté par le
+     script — le reflet diagonal y est posé pour tomber, sur la fiche,
+     exactement où était le sien (voir `coulures`). */
+  .coulure-verre{
+    position:fixed;
+    left:0;top:0;
+    z-index:6;                  /* celui de la fiche ; juste avant elle, donc juste dessous */
+    visibility:hidden;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    backdrop-filter:blur(28px) saturate(1.7) brightness(1.06);
+    -webkit-backdrop-filter:blur(28px) saturate(1.7) brightness(1.06);
+  }
+  .coulure-verre.sortie{visibility:visible;}
+  /* sous la souris, la lueur du bord (.slide-edge) déborde dans la pointe ;
+     --co-x : la place d'une pointe à côté de la fiche, --co-y : la demi-hauteur de son pied */
+  .coulure-lueur{position:absolute;top:calc(50% - var(--co-y));height:calc(2 * var(--co-y));width:calc(var(--co-x) + 2px);
+    opacity:0;transition:opacity 0.22s ease;pointer-events:none;}
+  .coulure-lueur.prev{left:0;background:linear-gradient(to left, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
+  .coulure-lueur.next{right:0;background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
+  .coulure-lueur.allumee{opacity:1;}
+  .preview.lueur-g .slide-edge.prev::before,
+  .preview.lueur-d .slide-edge.next::before{opacity:1;visibility:visible;transition:opacity 0.22s ease, visibility 0s;}
   /* Fiche au repos : seule la galerie est visible. C'est la sélection de
      l'article — un clic sur la miniature ou Entrée — qui déplie le reste.
      --info-h est mesuré au remplissage : sans lui l'animation partirait d'un
@@ -1489,9 +1651,12 @@
   /* ---- le bouton d'achat (demande du 25 sept. 2026) ----
      « Ajouter au panier » sur une pièce en vente : EN BAS À DROITE de la
      fiche, sous les tailles, le « Guide des tailles » restant à gauche — et
-     BLEU. Un bleu fixe, qui ne suit pas la teinte d'ambiance : c'est le
-     bouton qu'on doit trouver sans le chercher, à toute heure du cycle, et
-     le seul de la fiche à être plein plutôt que de verre.
+     PLEIN, le seul de la fiche à l'être plutôt que de verre : c'est le bouton
+     qu'on doit trouver sans le chercher, à toute heure du cycle.
+     Bleu fixe d'abord ; depuis le soir du 25 sept., DANS LA TEINTE DE
+     L'AMBIANCE, mais à la clarté et à la vivacité du bleu d'origine (voir
+     ACHAT_REF dans le script) : il suit le thème sans rien perdre de son
+     contraste, le prix blanc reste aussi lisible à toute heure.
      Seulement pour un achat (classe `achat`, posée par fillPreview) : « Jouer »,
      « Instagram » et le bouton d'une pièce verrouillée gardent le galet
      d'accent. Placé après `.cta-duo:hover` : son `background` raccourci
@@ -1500,11 +1665,11 @@
     margin-left:auto;
     background-color:var(--achat);
     background-image:linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%);
-    border-color:rgba(160,200,255,0.55);
+    border-color:rgba(var(--achat-bord-rgb),0.55);
     box-shadow:0 0 16px rgba(var(--achat-rgb),0.45), inset 0 1px 0 rgba(255,255,255,0.22);
   }
   .cta-duo.achat:hover{
-    background-color:#4a90ff;
+    background-color:var(--achat-survol);
     background-image:linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(255,255,255,0) 60%);
     box-shadow:0 0 12px rgba(var(--achat-rgb),0.65), 0 0 30px rgba(var(--achat-rgb),0.35), inset 0 1px 0 rgba(255,255,255,0.28);
   }
@@ -1620,6 +1785,18 @@
     border-color:var(--blue);
     box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
   }
+  /* LA TAILLE CHOISIE, À LA COULEUR DU BOUTON D'ACHAT (demande du 25 sept.
+     2026) : pleine, comme lui — la teinte de l'ambiance à la clarté du bleu
+     d'origine (--achat, voir .cta-duo.achat), son reflet, son liseré, son
+     halo. La pastille et le bouton se lisent ensemble : ce qu'on a choisi,
+     ce qui l'achète. Les pastilles des Réglages gardent l'accent. */
+  .size-picker .pill.active{
+    color:var(--white);
+    background-color:var(--achat);
+    background-image:linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%);
+    border-color:rgba(var(--achat-bord-rgb),0.55);
+    box-shadow:0 0 14px rgba(var(--achat-rgb),0.45), inset 0 1px 0 rgba(255,255,255,0.22);
+  }
 
   /* ---------- bottom hint bar ---------- */
   /* La pastille d'annonce : un jeton de verre qui monte, tient quelques
@@ -1664,12 +1841,17 @@
     transition:opacity 0.35s ease, filter 0.35s ease;
   }
   .hintbar span{display:flex;align-items:center;gap:7px;}
-  /* Effacée au bout de quelques secondes (voir effacerAideBientot) : floutée
-     et fondue, lentement ; le retour au survol est plus vif. Rien que de
-     l'opacité et du flou, jamais de déplacement : on mesure son haut pour
-     caler la fiche produit. Invisible, elle reçoit toujours la souris — c'est
-     sa bande qu'on survole pour la rappeler. */
-  .hintbar.effacee{opacity:0;filter:blur(6px);transition:opacity 1.2s ease, filter 1.2s ease;}
+  /* Estompée au bout de quelques secondes (voir estomperAideBientot) : floutée
+     et à moitié fondue, lentement ; le retour au survol est plus vif.
+     ELLE NE DISPARAÎT PLUS (demande du 25 sept. 2026) : « au lieu de la
+     cacher », elle reste en fantôme, à 50 % et floue — on sait qu'elle est
+     là, sans qu'elle se lise par-dessus la page. 2 px de flou et pas plus :
+     à 3 px, sur un texte de 12 px déjà pâle, elle se perdait dans le fond
+     et revenait à être cachée. Rien que de l'opacité et du flou, jamais de
+     déplacement : on mesure son haut pour caler la fiche produit. Elle
+     reçoit toujours la souris — c'est sa bande qu'on survole pour la
+     rappeler. */
+  .hintbar.estompee{opacity:0.5;filter:blur(2px);transition:opacity 1.2s ease, filter 1.2s ease;}
   /* Un écran tactile n'a pas de clavier : les touches qu'elle décrit n'y
      existent pas. Cachée sans être retirée — sa place reste mesurée, la fiche
      se cale sur elle comme à l'ordinateur. */
@@ -2422,11 +2604,23 @@
     -webkit-backdrop-filter:blur(var(--voile-flou));
     transition:background-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
   }
+  /* REFAITE LE 25 SEPT. 2026 — « plus design et digeste, dans une fenêtre
+     plus petite, aux bords arrondis comme les autres, un texte plus aéré ».
+     Avant : 980 × 720, une colonne de rubriques à gauche, 6 px d'arrondi, du
+     13 px serré. Maintenant le gabarit des autres fenêtres (Réglages, guide
+     des tailles) : 16 px d'arrondi, un en-tête titre + sous-titre en
+     capitales, et les rubriques en ONGLETS sur une ligne, sous le titre — la
+     colonne de gauche mangeait un tiers de la largeur.
+     640 px de large, c'est une colonne de lecture : ~80 signes par ligne en
+     14 px, et les six onglets anglais y tiennent sur une ligne (591 px
+     mesurés, les français 558). La hauteur est FIXE et non ajustée au
+     texte : changer de rubrique ne fait pas sauter la fenêtre. */
   .legal-panel{
-    width:min(100%,980px);
-    height:min(100%,720px);
+    width:min(100%,640px);
+    height:min(100%,640px);
     display:flex;
-    border-radius:6px;
+    flex-direction:column;
+    border-radius:16px;
     overflow:hidden;
     transform:translateY(12px) scale(0.975);
     transition:transform 0.2s ease; /* fermeture : rapide, contenu conservé jusqu'au bout */
@@ -2439,49 +2633,14 @@
   .legal-panel > *{opacity:0;transition:opacity 0s linear 0.2s;}
   .legal-overlay.open .legal-panel > *{opacity:1;transition:opacity 0.3s ease 0.05s;}
 
-  /* colonne de rubriques, même langage que la liste verticale du XMB */
-  .legal-nav{
-    flex:0 0 220px;
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-    padding:34px 18px 34px 28px;
-    border-right:1px solid rgba(255,255,255,0.06);
-  }
-  .legal-nav-item{
-    background:none;border:none;
-    font:inherit;
-    text-align:left;
-    padding:9px 4px;
-    font-size:14px;
-    font-weight:450;
-    letter-spacing:0.2px;
-    color:var(--white-35);
-    cursor:pointer;
-    transform-origin:left center;
-    transition:color 0.2s ease, transform 0.25s cubic-bezier(.2,.8,.2,1), text-shadow 0.2s ease;
-  }
-  .legal-nav-item:hover{color:var(--white-60);}
-  .legal-nav-item:focus-visible{outline:none;color:var(--white-60);}
-  .legal-nav-item.selected{
-    color:var(--white);
-    font-weight:550;
-    transform:translateX(4px) scale(1.06);
-    text-shadow:0 0 6px rgba(var(--accent-rgb),0.7), 0 0 14px rgba(var(--accent-rgb),0.35);
-  }
-
-  .legal-main{
-    flex:1;
-    min-width:0;
-    display:flex;
-    flex-direction:column;
-  }
+  /* l'en-tête : les mesures de .info-header (Réglages, guide des tailles) */
   .legal-header{
+    flex:none;
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
     gap:16px;
-    padding:30px 32px 18px;
+    padding:26px 28px 10px;
   }
   .legal-header h2{
     font-size:22px;
@@ -2497,47 +2656,188 @@
   }
   .legal-close:hover,.legal-close:focus-visible{color:var(--white);outline:none;}
 
-  /* avertissement visible tant qu'il reste des champs [à compléter] */
-  .legal-todo{
-    margin:0 32px 12px;
-    padding:8px 12px;
-    font-size:11px;
-    letter-spacing:0.3px;
-    color:var(--sale);
-    border:1px dashed rgba(var(--sale-rgb),0.45);
-    border-radius:3px;
+  /* Les onglets. L'onglet choisi est porté par un CURSEUR : la pastille
+     active des Réglages (.pill.active — fond, liseré et halo d'accent),
+     détachée des onglets et posée sous eux, qui GLISSE de l'un à
+     l'autre (voir placerCurseur). Les onglets eux-mêmes n'ont pas de fond :
+     seul le curseur bouge. Si la rangée déborde (petit écran), elle défile
+     de côté, sans barre, et l'onglet choisi est ramené en vue.
+     Le haut de la rangée garde 8 px : un bloc qui défile coupe ce qui dépasse
+     de lui, halo du curseur compris. */
+  .legal-nav{
+    position:relative;
+    flex:none;
+    display:flex;
+    gap:2px;
+    padding:8px 20px 14px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    border-bottom:1px solid rgba(255,255,255,0.07);
   }
-
-  .legal-note{ /* en anglais : rappel que la version française fait foi */
+  .legal-nav::-webkit-scrollbar{display:none;}
+  /* quand elle déborde, ses bords s'estompent : on voit qu'il y a de la suite */
+  .legal-nav.deborde{
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+    mask-image:linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  }
+  .legal-nav-item{
+    position:relative;
+    z-index:1;            /* au-dessus du curseur */
+    flex:none;
+    background:none;
+    border:1px solid transparent;
+    border-radius:999px;
+    font:inherit;
+    padding:7px 10px;
+    font-size:12.5px;
+    font-weight:500;
+    letter-spacing:0.2px;
+    white-space:nowrap;
     color:var(--white-35);
-    border-color:rgba(255,255,255,0.15);
+    cursor:pointer;
+    transition:color 0.2s ease, background-color 0.2s ease;
   }
+  .legal-nav-item:hover{color:var(--white-60);}
+  .legal-nav-item:not(.selected):hover{background:rgba(255,255,255,0.05);}
+  .legal-nav-item:focus-visible{outline:none;color:var(--white);border-color:rgba(255,255,255,0.35);}
+  .legal-nav-item.selected{color:var(--white);}
+  .legal-nav-curseur{
+    position:absolute;left:0;top:0;
+    width:var(--w, 0px);height:var(--h, 0px);
+    transform:translate(var(--x, 0px), var(--y, 0px));
+    border-radius:999px;
+    background:rgba(var(--accent-rgb),0.15);
+    border:1px solid var(--blue);
+    box-shadow:0 0 14px rgba(var(--accent-rgb),0.35);
+    pointer-events:none;
+    transition:transform 0.35s cubic-bezier(.2,.8,.2,1), width 0.35s cubic-bezier(.2,.8,.2,1);
+  }
+  .legal-nav-curseur.pose{transition:none;}   /* à l'ouverture : il est déjà à sa place, il n'y glisse pas */
 
+  /* LE TEXTE, AÉRÉ : 14 px sur 1,8 d'interligne (13 sur 1,7 avant), des
+     paragraphes plus espacés, un blanc cassé un peu plus lumineux que
+     --white-60 pour qu'une page entière se lise sans effort sur le verre. */
   .legal-body{
     flex:1;
+    min-height:0;
     overflow-y:auto;
-    padding:0 32px 32px;
-    font-size:13px;
-    line-height:1.7;
+    overscroll-behavior:contain;
+    padding:24px 30px 34px 28px;
+    font-size:14px;
+    line-height:1.8;
     font-weight:450;
-    color:var(--white-60);
+    color:rgba(255,255,255,0.64);
     scrollbar-width:thin;
     scrollbar-color:rgba(var(--accent-rgb),0.35) transparent;
   }
   .legal-body:focus{outline:none;}
-  .legal-body:focus-visible{outline:1px solid rgba(var(--accent-rgb),0.4);outline-offset:-1px;}
-  .legal-body h3{
-    margin:26px 0 8px;
-    font-size:12px;
-    font-weight:550;
-    letter-spacing:0.8px;
+  .legal-body:focus-visible{outline:1px solid rgba(var(--accent-rgb),0.4);outline-offset:-2px;}
+  /* changer de rubrique : le texte monte en fondu, le temps d'un battement */
+  .legal-texte.entre{animation:legalEntre 0.3s cubic-bezier(.2,.8,.2,1);}
+  @keyframes legalEntre{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  /* Deux avis au-dessus du texte, en pastilles arrondies et non plus en
+     cadres pointillés : les champs [à compléter] (visible tant qu'il en
+     reste), et en anglais le rappel que la version française fait foi. */
+  .legal-avis{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    margin:0 0 8px;
+    padding:9px 13px;
+    border-radius:11px;
+    font-size:11.5px;
+    line-height:1.55;
+    letter-spacing:0.2px;
+    color:var(--sale);
+    background:rgba(var(--sale-rgb),0.07);
+    border:1px solid rgba(var(--sale-rgb),0.24);
+  }
+  .legal-avis::before{
+    content:"";
+    flex:none;
+    width:6px;height:6px;
+    margin-top:5px;
+    border-radius:50%;
+    background:currentColor;
+    box-shadow:0 0 8px currentColor;
+  }
+  .legal-avis.legal-note{
+    color:var(--white-60);
+    background:rgba(255,255,255,0.03);
+    border-color:rgba(255,255,255,0.09);
+  }
+  .legal-avis:not([hidden]) ~ .legal-texte{margin-top:22px;}
+
+  /* L'ESSENTIEL : trois chiffres en tête de rubrique, pour savoir d'un coup
+     d'œil ce qu'elle dit (14 jours pour se rétracter, 0 cookie…). Des faits
+     tirés du texte qui suit, qui ne le remplacent pas : le texte fait foi.
+     Trois colonnes ; une seule, en lignes, sur une fenêtre très étroite. */
+  .legal-essentiel{margin:0 0 28px;}
+  .legal-essentiel-titre{
+    margin-bottom:10px;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:1.6px;
     text-transform:uppercase;
+    color:var(--white-35);
+  }
+  .legal-faits{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+  }
+  .legal-fait{
+    padding:14px 15px 15px;
+    border-radius:14px;
+    background:linear-gradient(160deg, rgba(var(--accent-rgb),0.10), rgba(var(--accent-rgb),0.02) 70%);
+    border:1px solid rgba(var(--accent-rgb),0.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .legal-fait b{
+    display:block;
+    font-size:17px;
+    font-weight:600;
+    line-height:1.25;
+    letter-spacing:0.2px;
+    color:var(--white);
+    text-shadow:0 0 12px rgba(var(--accent-rgb),0.45);
+  }
+  .legal-fait span{
+    display:block;
+    margin-top:6px;
+    font-size:12px;
+    line-height:1.5;
+    color:var(--white-60);
+  }
+
+  /* Les intertitres : chaque partie ouverte par un filet et du blanc, pour
+     qu'une longue rubrique se lise par morceaux. Le numéro des articles
+     (« Article 6 », « 01 ») passe au-dessus du titre, en petites capitales
+     d'accent (voir numeroterLegal) ; le titre, lui, est en casse normale —
+     les capitales serrées de 12 px d'avant se lisaient mal. */
+  .legal-body h3{
+    margin:30px 0 12px;
+    padding-top:26px;
+    border-top:1px solid rgba(255,255,255,0.07);
+    font-size:15px;
+    font-weight:600;
+    line-height:1.4;
+    letter-spacing:0.1px;
     color:var(--white);
   }
-  .legal-body h3:first-child{margin-top:0;}
-  .legal-body p{margin:0 0 12px;}
-  .legal-body ul,.legal-body ol{margin:0 0 12px 20px;}
-  .legal-body li{margin-bottom:6px;}
+  .legal-num{
+    display:block;
+    margin-bottom:6px;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:1.6px;
+    text-transform:uppercase;
+    color:var(--blue);
+    text-shadow:0 0 10px rgba(var(--accent-rgb),0.45);
+  }
+  .legal-body p{margin:0 0 16px;}
   .legal-body a{
     color:var(--blue);
     text-decoration:none;
@@ -2547,51 +2847,133 @@
   .legal-body a:hover{color:var(--white);}
   .legal-body strong{color:var(--white);font-weight:550;}
   .legal-body em{color:var(--white-35);font-style:normal;}
+  .legal-body code{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12px;
+    padding:1px 6px;
+    border-radius:6px;
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.09);
+    color:rgba(255,255,255,0.82);
+    white-space:nowrap;
+  }
+
+  /* listes : une puce d'accent lumineuse ; les listes numérotées, des
+     numéros dans un rond, comme les touches de la barre d'aide */
+  .legal-body ul,.legal-body ol{list-style:none;margin:0 0 16px;padding:0;}
+  .legal-body li{position:relative;margin-bottom:10px;padding-left:22px;}
+  .legal-body li:last-child{margin-bottom:0;}
+  .legal-body ul > li::before{
+    content:"";
+    position:absolute;left:5px;top:calc(0.9em - 3px);
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--blue);
+    box-shadow:0 0 8px rgba(var(--accent-rgb),0.7);
+  }
+  .legal-body ol{counter-reset:legal-n;}
+  .legal-body ol > li{counter-increment:legal-n;padding-left:34px;}
+  .legal-body ol > li::before{
+    content:counter(legal-n);
+    position:absolute;left:0;top:calc(0.9em - 11px);
+    width:22px;height:22px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:50%;
+    border:1px solid rgba(var(--accent-rgb),0.55);
+    background:rgba(var(--accent-rgb),0.10);
+    box-shadow:0 0 10px rgba(var(--accent-rgb),0.22);
+    font-size:11px;font-weight:600;line-height:1;
+    color:var(--white);
+  }
+
+  /* L'éditeur (Mentions légales) : une fiche, intitulé à gauche et valeur à
+     droite, une ligne par entrée */
   .legal-body dl{
     display:grid;
     grid-template-columns:max-content 1fr;
-    gap:6px 18px;
-    margin:0 0 12px;
+    margin:2px 0 18px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.03);
+    overflow:hidden;
+    font-size:13.5px;
+    line-height:1.6;
   }
-  .legal-body dt{color:var(--white-35);white-space:nowrap;}
-  .legal-body dd{margin:0;}
-  .legal-body table{
-    width:100%;
-    border-collapse:collapse;
-    margin:0 0 14px;
-    font-size:12px;
-    line-height:1.55;
+  .legal-body dt,.legal-body dd{margin:0;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);}
+  .legal-body dt{padding-left:18px;padding-right:22px;color:var(--white-35);white-space:nowrap;}
+  .legal-body dd{padding-right:18px;color:rgba(255,255,255,0.86);}
+  .legal-body dt:first-of-type,.legal-body dt:first-of-type + dd{border-top:none;}
+
+  /* Le tableau RGPD (Confidentialité) : une carte par traitement plutôt que
+     quatre colonnes serrées — le traitement en titre, les données sur toute
+     la largeur, la base légale et la durée côte à côte. Les intitulés des
+     colonnes viennent de data-label. */
+  .legal-body table{display:block;margin:2px 0 18px;}
+  .legal-body thead{display:none;}
+  .legal-body tbody{display:flex;flex-direction:column;gap:10px;}
+  .legal-body tr{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 22px;
+    padding:15px 18px 16px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.03);
   }
-  .legal-body th,.legal-body td{
-    text-align:left;
-    vertical-align:top;
-    padding:8px 12px 8px 0;
-    border-bottom:1px solid rgba(255,255,255,0.07);
+  .legal-body td{display:block;padding:0;border:none;font-size:13px;line-height:1.65;}
+  .legal-body td:nth-child(-n+2){grid-column:1 / -1;}
+  .legal-body td:first-child{font-size:14px;font-weight:600;line-height:1.45;color:var(--white);}
+  .legal-body td + td::before{
+    content:attr(data-label);
+    display:block;
+    margin:10px 0 2px;
+    font-size:10.5px;
+    font-weight:550;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    color:var(--white-35);
   }
-  .legal-body th{color:var(--white);font-weight:550;letter-spacing:0.3px;}
+
   .legal-box{ /* encadré obligatoire sur les garanties légales */
-    margin:14px 0;
-    padding:14px 18px;
-    border:1px solid rgba(var(--accent-rgb),0.3);
-    border-radius:3px;
-    background:rgba(var(--accent-rgb),0.04);
+    margin:20px 0 24px;
+    padding:20px 22px;
+    border:1px solid rgba(var(--accent-rgb),0.26);
+    border-radius:14px;
+    background:rgba(var(--accent-rgb),0.06);
   }
   .legal-box p:last-child{margin-bottom:0;}
+  .legal-box ol{margin-bottom:16px;}
   .legal-form{ /* formulaire type de rétractation */
-    margin:14px 0;
-    padding:14px 18px;
-    border:1px dashed rgba(255,255,255,0.18);
-    border-radius:3px;
+    margin:20px 0 24px;
+    padding:18px 20px;
+    border:1px dashed rgba(255,255,255,0.2);
+    border-radius:14px;
+    background:rgba(255,255,255,0.025);
     font-family:ui-monospace,Menlo,Consolas,monospace;
-    font-size:12px;
+    font-size:12.5px;
+    line-height:1.9;
   }
   .legal-form p:last-child{margin-bottom:0;}
   mark.todo{
     background:rgba(var(--sale-rgb),0.14);
     color:var(--sale);
-    padding:0 3px;
-    border-radius:2px;
+    padding:1px 4px;
+    border-radius:4px;
     border-bottom:1px dotted rgba(var(--sale-rgb),0.7);
+  }
+  /* le rappel des touches, aligné sur l'en-tête ; rien à rappeler sur un
+     écran tactile, qui n'a pas de clavier */
+  .legal-panel .legal-hint{padding:12px 28px;}
+  @media (hover:none) and (pointer:coarse){ .legal-panel .legal-hint{display:none;} }
+  @media (max-width:540px){
+    .legal-faits{grid-template-columns:1fr;gap:8px;}
+    .legal-fait{display:flex;align-items:baseline;gap:14px;padding:12px 15px;}
+    .legal-fait b{flex:0 0 36%;}
+    .legal-fait span{margin-top:0;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .legal-nav-curseur{transition:none;}
+    .legal-texte.entre{animation:none;}
   }
   .legal-hint{
     display:flex;
@@ -3391,38 +3773,17 @@
     .legalbar-links{flex-wrap:wrap;justify-content:center;}
     .legalbar-links button{padding:5px 8px;}
 
-    .legal-overlay{padding:0;}
-    .legal-panel{width:100%;height:100%;border-radius:0;flex-direction:column;}
-    .legal-nav{
-      flex:0 0 auto;
-      flex-direction:row;
-      gap:4px;
-      overflow-x:auto;
-      padding:16px 14px 8px;
-      border-right:none;
-      border-bottom:1px solid rgba(255,255,255,0.06);
-    }
-    .legal-nav-item{white-space:nowrap;font-size:13px;padding:6px 8px;}
-    .legal-nav-item.selected{transform:none;}
-    .legal-header{padding:18px 18px 12px;}
-    .legal-todo{margin:0 18px 12px;}
-    .legal-body{padding:0 18px 24px;}
-    .legal-body dl{grid-template-columns:1fr;gap:2px;}
-    .legal-body dt{margin-top:8px;}
-    /* tableau RGPD : une fiche par ligne plutôt que 4 colonnes tronquées */
-    .legal-body table,.legal-body tbody,.legal-body tr,.legal-body td{display:block;}
-    .legal-body thead{display:none;}
-    .legal-body tr{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07);}
-    .legal-body td{padding:2px 0;border:none;}
-    .legal-body td::before{
-      content:attr(data-label);
-      display:block;
-      margin-top:6px;
-      font-size:10px;
-      letter-spacing:0.5px;
-      text-transform:uppercase;
-      color:var(--white-35);
-    }
+    /* la fenêtre légale : arrondie comme à l'ordinateur, simplement plus
+       près des bords ; la fiche de l'éditeur et les cartes RGPD passent
+       sur une colonne */
+    .legal-overlay{padding:12px;}
+    .legal-header{padding:18px 18px 8px;}
+    .legal-nav{padding:6px 10px 12px;}
+    .legal-body{padding:18px 18px 26px;}
+    .legal-body dl{grid-template-columns:1fr;}
+    .legal-body dt{padding:11px 18px 0;white-space:normal;}
+    .legal-body dd{padding:2px 18px 11px;border-top:none;}
+    .legal-body tr{grid-template-columns:1fr;}
     .legal-hint{display:none;}
     .info-header{padding:18px 18px 10px;}
     .info-body{padding:0 18px 18px;}
@@ -3461,7 +3822,7 @@
   .tourner-texte{max-width:270px;font-size:13.5px;line-height:1.5;color:var(--white-60);}
   .tourner-bouton{
     margin-top:8px;padding:12px 24px;
-    border-radius:999px;border:1px solid rgba(160,200,255,0.55);
+    border-radius:999px;border:1px solid rgba(var(--achat-bord-rgb),0.55);
     background-color:var(--achat);
     background-image:linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%);
     color:#fff;font-size:14px;font-weight:600;letter-spacing:0.4px;
@@ -3663,7 +4024,20 @@
     .size-panel,.reglages-panel,.cart-panel{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow:auto;}
     /* les fenêtres, écartées de l'encoche : la page va maintenant jusque sous elle */
     .legal-overlay,.info-overlay{padding:8px max(16px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom) / 2) max(16px, env(safe-area-inset-left));}
-    .legal-panel{border-radius:12px;}
+    /* la fenêtre légale : toute la hauteur est comptée — un en-tête plus
+       ramassé laisse au texte l'essentiel des 375 px ; pas de rappel des
+       touches, il n'y a pas de clavier */
+    .legal-header{padding:14px 18px 2px;}
+    .legal-header h2{font-size:18px;}
+    .legal-header .info-sub{margin-top:2px;font-size:10.5px;}
+    .legal-nav{padding:6px 12px 10px;}
+    .legal-body{padding:16px 20px 22px;font-size:13.5px;line-height:1.7;}
+    .legal-essentiel{margin-bottom:22px;}
+    .legal-fait{padding:11px 13px 12px;}
+    .legal-fait b{font-size:15px;}
+    .legal-fait span{font-size:11.5px;}
+    .legal-body h3{margin-top:24px;padding-top:20px;}
+    .legal-panel .legal-hint{display:none;}
     .cart-panel{padding:18px calc(20px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom) / 2) 20px;}
     .arena-panel{width:min(1180px, calc(100vw - 2 * max(12px, env(safe-area-inset-left), env(safe-area-inset-right))));}
 
@@ -3847,7 +4221,19 @@
   </div>
 </div>
 
+<!-- Le verre des coulures, JUSTE AVANT la fiche : un flou posé dedans ne
+     verrait que la fiche, pas la scène. Le temps qu'une pointe sort, il
+     porte le verre de la fiche ET de ses pointes (voir « LES COULURES »). -->
+<div class="coulure-verre" aria-hidden="true"><div class="coulure-lueur prev"></div><div class="coulure-lueur next"></div></div>
 <div class="preview glass" id="preview">
+  <!-- La peau : les ombres du cadre, percées autour des coulures pendant
+       qu'elles sortent ; le reste du temps, c'est la fiche qui les porte.
+       Puis, dans ces trous, le liseré de la forme entière (voir « LES
+       COULURES »), et ses filtres, faits par le script. -->
+  <div class="peau" aria-hidden="true"></div>
+  <svg class="peau-coulure prev" aria-hidden="true"><g class="forme"><path class="cadre"/><path class="bosse"/></g></svg>
+  <svg class="peau-coulure next" aria-hidden="true"><g class="forme"><path class="cadre"/><path class="bosse"/></g></svg>
+  <svg class="peau-filtres" aria-hidden="true" focusable="false"></svg>
   <!-- Les icônes de la barre qui passent SOUS la fiche, redessinées dans son
        verre, floues et pâles : le flou du verre (28 px) les effaçait
        complètement. Sous le contenu, rognées par l'arrondi. Voir majIconesCachees. -->
@@ -3997,7 +4383,6 @@
   <span data-hint="browse"><span class="key">←</span><span class="key">→</span> <span data-label>browse</span></span>
   <span data-hint="select"><span class="key">↑</span><span class="key">↓</span> <span data-label>select</span></span>
   <span data-hint="enter"><span class="key">⏎</span> <span data-label>add to cart</span></span>
-  <span data-hint="info"><span class="key">I</span> <span data-label>more info</span></span>
   <span data-hint="back" hidden><span class="key wide">esc</span> <span data-label>back</span></span>
 </div>
 
@@ -4279,22 +4664,31 @@
   <nav class="legalbar-links" id="legalbarLinks" data-i18n-aria="legalInfo" aria-label="Legal information"></nav>
 </footer>
 
-<!-- Fenêtre des textes légaux -->
+<!-- Fenêtre des textes légaux (refaite le 25 sept. 2026) : le gabarit des
+     autres fenêtres — titre, date en sous-titre, croix —, les rubriques en
+     onglets sous le titre, puis le texte, qui seul défile. Les onglets sont
+     générés depuis LEGAL, comme la banderole. -->
 <div class="legal-overlay" id="legalOverlay" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
   <div class="legal-panel glass">
-    <nav class="legal-nav" id="legalNav" data-i18n-aria="legalNavAria" aria-label="Sections"></nav>
-    <div class="legal-main">
-      <div class="legal-header">
+    <div class="legal-header">
+      <div>
         <h2 id="legalTitle"></h2>
-        <button class="legal-close" id="legalClose" data-i18n-aria="close" aria-label="Close">✕</button>
+        <div class="info-sub" id="legalMaj"></div>
       </div>
-      <div class="legal-todo" id="legalTodo" data-i18n="legalTodo" hidden></div>
-      <div class="legal-todo legal-note" id="legalNote" data-i18n="legalNote" hidden></div>
-      <div class="legal-body" id="legalBody" tabindex="0"></div>
-      <div class="legal-hint">
-        <span><span class="key">↑</span><span class="key">↓</span> <span data-i18n="legalSections">sections</span></span>
-        <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
-      </div>
+      <button class="legal-close" id="legalClose" data-i18n-aria="close" aria-label="Close">✕</button>
+    </div>
+    <nav class="legal-nav" id="legalNav" role="tablist" data-i18n-aria="legalNavAria" aria-label="Sections">
+      <span class="legal-nav-curseur" id="legalCurseur" aria-hidden="true"></span>
+    </nav>
+    <div class="legal-body" id="legalBody" role="tabpanel" tabindex="0">
+      <div class="legal-avis" id="legalTodo" data-i18n="legalTodo" hidden></div>
+      <div class="legal-avis legal-note" id="legalNote" data-i18n="legalNote" hidden></div>
+      <div class="legal-texte" id="legalTexte"></div>
+    </div>
+    <div class="legal-hint">
+      <span><span class="key">←</span><span class="key">→</span> <span data-i18n="legalSections">sections</span></span>
+      <span><span class="key">↑</span><span class="key">↓</span> <span data-i18n="hintScroll">scroll</span></span>
+      <span><span class="key wide">esc</span> <span data-i18n="legalClose">close</span></span>
     </div>
   </div>
 </div>
@@ -4403,7 +4797,9 @@ const LEGAL = [
 <h3>Crédits</h3>
 <p>Conception et réalisation : ${C.legalName}. L'interface est un hommage librement inspiré des menus de consoles de jeu ; ${C.brand} n'est affilié à, ni sponsorisé par, aucun fabricant de consoles.</p>
 `},
-{ id:"cgv", label:"CGV", title:"Conditions générales de vente", html:`
+{ id:"cgv", label:"CGV", title:"Conditions générales de vente",
+  essentiel:[["14 jours", "pour vous rétracter, à compter de la réception"], ["2 ans", "de garantie légale de conformité"], [C.shipping.delivery.fr, "de livraison, une fois la commande préparée"]],
+  html:`
 <p>Les présentes conditions générales de vente (« CGV ») régissent les ventes de vêtements et d'articles textiles conclues à distance entre ${C.legalName} (« ${C.brand} », « nous »), ${C.legalForm}, ${C.address}, ${C.rcs}, et tout consommateur passant commande sur le site ${C.site} (« le Client »). Toute commande implique l'acceptation sans réserve des présentes CGV, accessibles à tout moment depuis le pied de page du site.</p>
 
 <h3>Article 1 — Produits</h3>
@@ -4488,7 +4884,9 @@ Date : ______<br>
 <p>Les présentes CGV sont soumises au droit français, sans préjudice des dispositions impératives plus favorables de la loi du pays de résidence du Client au sein de l'Union européenne. Elles sont rédigées en français ; si le site ou une traduction sont proposés dans une autre langue, la version française prévaut en cas de divergence. À défaut de résolution amiable ou par médiation, tout litige relève des juridictions françaises compétentes.</p>
 <p><em>Version en vigueur au ${UPDATED.fr}. La version applicable à une commande est celle en vigueur le jour de sa validation.</em></p>
 `},
-{ id:"cgu", label:"CGU", title:"Conditions générales d'utilisation", html:`
+{ id:"cgu", label:"CGU", title:"Conditions générales d'utilisation",
+  essentiel:[["Gratuit", "l'accès au site, sans compte à créer"], ["Protégé", "textes, visuels, code : pas de copie sans accord écrit"], ["Hommage", "aux menus de consoles, sans aucune affiliation"]],
+  html:`
 <p>Les présentes conditions générales d'utilisation (« CGU ») définissent les règles d'accès et d'utilisation du site ${C.site} (« le Site »), édité par ${C.legalName}. En naviguant sur le Site, l'utilisateur les accepte. Les achats sont régis par les <a data-legal-link="cgv">conditions générales de vente</a>.</p>
 <h3>1. Accès au Site</h3>
 <p>Le Site est accessible gratuitement, sans création de compte, à tout utilisateur disposant d'un accès à Internet ; les frais d'accès et d'équipement restent à sa charge. ${C.brand} s'efforce d'assurer l'accès au Site en continu mais peut l'interrompre à tout moment pour maintenance, mise à jour ou en cas de force majeure, sans que sa responsabilité puisse être engagée. Le Site se pilote au clavier (flèches, Entrée, Échap) et à la souris ; il nécessite JavaScript.</p>
@@ -4505,7 +4903,9 @@ Date : ______<br>
 <h3>7. Modification des CGU et droit applicable</h3>
 <p>${C.brand} peut modifier les présentes CGU à tout moment ; la version applicable est celle publiée sur le Site au moment de la navigation. Les CGU sont soumises au droit français. Dernière mise à jour : ${UPDATED.fr}.</p>
 `},
-{ id:"livraison", label:"Livraison & retours", title:"Livraison, retours et remboursements", html:`
+{ id:"livraison", label:"Livraison & retours", title:"Livraison, retours et remboursements",
+  essentiel:[[C.shipping.delivery.fr, "de livraison, numéro de suivi par e-mail"], ["48 h", "pour signaler un colis abîmé ou incomplet"], ["14 jours", "pour nous prévenir d'un retour"]],
+  html:`
 <p>Cette page résume les modalités pratiques ; en cas de doute, les <a data-legal-link="cgv">CGV</a> (articles 5 à 7) font foi.</p>
 <h3>Zones et délais</h3>
 <ul>
@@ -4529,7 +4929,9 @@ Date : ______<br>
 <h3>Échange de taille</h3>
 <p>[Décrire la politique d'échange, ou préciser qu'il faut retourner l'article et passer une nouvelle commande. Les pièces uniques ne peuvent pas être échangées.]</p>
 `},
-{ id:"confidentialite", label:"Confidentialité", title:"Politique de confidentialité", html:`
+{ id:"confidentialite", label:"Confidentialité", title:"Politique de confidentialité",
+  essentiel:[["Jamais vendues", "vos données ne vont qu'à nous et à nos prestataires"], ["Sur l'appareil", "profil et personnage : nous n'y avons pas accès"], ["Vos droits", "accès, rectification, effacement : il suffit d'écrire"]],
+  html:`
 <p>${C.legalName} (${C.address}, ${C.email}), responsable du traitement, protège les données personnelles des visiteurs et clients du site ${C.site} conformément au règlement (UE) 2016/679 (RGPD) et à la loi n° 78-17 du 6 janvier 1978 modifiée. Contact pour toute question relative aux données : ${C.email}.</p>
 <h3>Données collectées et finalités</h3>
 <table>
@@ -4550,11 +4952,22 @@ Date : ______<br>
 <p>Le site est servi via une connexion chiffrée (HTTPS) et les paiements sont traités par un prestataire certifié PCI-DSS. ${C.brand} met en œuvre des mesures techniques et organisationnelles raisonnables pour protéger les données contre l'accès non autorisé, la perte ou l'altération.</p>
 <p><em>Dernière mise à jour : ${UPDATED.fr}.</em></p>
 `},
-{ id:"cookies", label:"Cookies", title:"Cookies et traceurs", html:`
+{ id:"cookies", label:"Cookies", title:"Cookies et traceurs",
+  essentiel:[["0 cookie", "ni mesure d'audience, ni traceur publicitaire"], ["5 éléments", "gardés dans votre navigateur, jamais envoyés"], ["1 clic", "pour charger Instagram, jamais sans vous"]],
+  html:`
 <p>Un cookie est un petit fichier déposé sur votre terminal lors de la consultation d'un site. Conformément à l'article 82 de la loi Informatique et Libertés et aux lignes directrices de la CNIL, seuls les traceurs strictement nécessaires au fonctionnement du site peuvent être déposés sans votre consentement.</p>
 <h3>État actuel</h3>
 <p>À la date du ${UPDATED.fr}, le site ${C.site} ne dépose <strong>aucun cookie</strong> et n'utilise aucun outil de mesure d'audience ni aucun traceur publicitaire ou de réseau social. Les polices de caractères sont servies par le site lui-même : aucune ressource n'est chargée depuis un serveur tiers, à la seule exception de la page Instagram du panneau Contact, et uniquement si vous la demandez (voir ci-dessous).</p>
-<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là. <strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée. <strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet. <strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé. <strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site). <strong>Votre personnage</strong> (clé <code>fp.tenue</code>) : celui que vous composez à l'atelier — sexe, silhouette, visage, coiffure, tenue, accessoires et attitude. Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable. Vous pouvez les effacer à tout moment : la photo de profil depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
+<p>Cinq éléments peuvent être conservés sur votre terminal, dans le stockage local de votre navigateur, et uniquement là :</p>
+<ul>
+<li><strong>La liste des épreuves que vous avez passées</strong> (clé <code>fp.debloque</code> : mini-jeux terminés et pièces trouvées), qui donne accès aux pièces qu'elles débloquent ; sans elle, un simple rechargement de page vous reprendrait une récompense déjà gagnée.</li>
+<li><strong>Votre meilleur temps au mini-jeu Jumper et le nombre de chutes de ce parcours</strong> (clé <code>fp.jumper</code>), sans quoi un record ne survivrait pas à la fermeture de l'onglet.</li>
+<li><strong>Vos réglages</strong> (clé <code>fp.reglages</code> : langue, devise, musique et bruitages), pour que le site s'ouvre comme vous l'avez laissé.</li>
+<li><strong>Votre profil</strong> (clé <code>fp.profil</code>), si vous en créez un : le gamertag que vous choisissez, la photo de profil que vous déposez, votre dépense totale et vos commandes lorsque la boutique sera ouverte, ainsi que des statistiques de visite (jours de connexion, temps passé sur le site).</li>
+<li><strong>Votre personnage</strong> (clé <code>fp.tenue</code>) : celui que vous composez à l'atelier — sexe, silhouette, visage, coiffure, tenue, accessoires et attitude.</li>
+</ul>
+<p>Ces éléments ne sont jamais envoyés à un serveur — le site n'en a pas — et ne permettent pas de vous suivre d'un site à l'autre ; ils relèvent des traceurs strictement nécessaires à un service que vous avez expressément demandé, et ne requièrent donc pas votre consentement préalable.</p>
+<p>Vous pouvez les effacer à tout moment : la photo de profil depuis le site (« Retirer »), le reste en vidant les données de site de votre navigateur — la récompense devra alors être regagnée, le record repart à zéro, le profil disparaît. C'est pourquoi aucun bandeau de consentement n'est affiché.</p>
 <h3>La page Instagram du panneau Contact</h3>
 <p>Le panneau Contact peut afficher, dans le site, la page Instagram du compte @fakeparadisetm. Elle n'est <strong>chargée qu'à votre demande</strong>, quand vous cliquez sur « Voir la page en direct » : tant que vous ne l'avez pas fait, rien n'est demandé à Instagram. Ce clic charge la page depuis les serveurs d'Instagram (Meta Platforms Ireland Ltd.), qui reçoit alors votre adresse IP et les informations techniques de votre navigateur, et peut déposer ses propres cookies, soumis à sa propre politique de confidentialité. Ce choix ne vaut que pour la visite en cours : il n'est conservé nulle part, et la page ne sera de nouveau chargée qu'après un nouveau clic.</p>
 <h3>Évolutions</h3>
@@ -4593,7 +5006,9 @@ mentions: { label:"Legal notice", title:"Legal notice", html:`
 <h3>Credits</h3>
 <p>Design and development: ${C.legalName}. The interface is a tribute loosely inspired by video game console menus; ${C.brand} is neither affiliated with nor sponsored by any console manufacturer.</p>
 `},
-cgv: { label:"Terms of sale", title:"Terms and conditions of sale", html:`
+cgv: { label:"Terms of sale", title:"Terms and conditions of sale",
+  essentiel:[["14 days", "to withdraw, from the day your order arrives"], ["2 years", "of legal guarantee of conformity"], [C.shipping.delivery.en, "delivery, once your order is prepared"]],
+  html:`
 <p>These terms and conditions of sale ("Terms") govern distance sales of clothing and textile goods between ${C.legalName} ("${C.brand}", "we"), ${C.legalForm}, ${C.address}, ${C.rcs}, and any consumer placing an order on ${C.site} (the "Customer"). Placing an order implies full acceptance of these Terms, which can be viewed at any time from the site footer.</p>
 
 <h3>Article 1 — Products</h3>
@@ -4679,7 +5094,9 @@ Date: ______<br>
 <p>These Terms are governed by French law, without prejudice to more favourable mandatory provisions of the law of the Customer's country of residence within the European Union. They are drawn up in French; where the site or a translation is offered in another language, the French version prevails in the event of any discrepancy. Failing an amicable settlement or mediation, any dispute falls within the jurisdiction of the competent French courts.</p>
 <p><em>Version in force as of ${UPDATED.en}. The version applicable to an order is the one in force on the day it is validated.</em></p>
 `},
-cgu: { label:"Terms of use", title:"Terms of use", html:`
+cgu: { label:"Terms of use", title:"Terms of use",
+  essentiel:[["Free", "to browse, no account needed"], ["Protected", "texts, visuals, code: no copying without written consent"], ["Tribute", "to console menus, with no affiliation"]],
+  html:`
 <p>These terms of use ("Terms of Use") set out the rules for accessing and using ${C.site} (the "Site"), published by ${C.legalName}. By browsing the Site, users accept them. Purchases are governed by the <a data-legal-link="cgv">terms of sale</a>.</p>
 <h3>1. Access to the Site</h3>
 <p>The Site is accessible free of charge, without creating an account, to any user with Internet access; access and equipment costs remain at their expense. ${C.brand} strives to keep the Site available continuously but may interrupt it at any time for maintenance, updates or in the event of force majeure, without incurring liability. The Site is operated with the keyboard (arrow keys, Enter, Esc) and the mouse; it requires JavaScript.</p>
@@ -4696,7 +5113,9 @@ cgu: { label:"Terms of use", title:"Terms of use", html:`
 <h3>7. Changes to the Terms of Use and governing law</h3>
 <p>${C.brand} may change these Terms of Use at any time; the applicable version is the one published on the Site at the time of browsing. The Terms of Use are governed by French law. Last updated: ${UPDATED.en}.</p>
 `},
-livraison: { label:"Shipping & returns", title:"Shipping, returns and refunds", html:`
+livraison: { label:"Shipping & returns", title:"Shipping, returns and refunds",
+  essentiel:[[C.shipping.delivery.en, "delivery, tracking number by e-mail"], ["48 h", "to report a damaged or incomplete parcel"], ["14 days", "to let us know about a return"]],
+  html:`
 <p>This page summarises the practical arrangements; in case of doubt, the <a data-legal-link="cgv">terms of sale</a> (Articles 5 to 7) prevail.</p>
 <h3>Areas and delivery times</h3>
 <ul>
@@ -4720,7 +5139,9 @@ livraison: { label:"Shipping & returns", title:"Shipping, returns and refunds", 
 <h3>Size exchange</h3>
 <p>[Describe the exchange policy, or state that the item must be returned and a new order placed. Unique pieces cannot be exchanged.]</p>
 `},
-confidentialite: { label:"Privacy", title:"Privacy policy", html:`
+confidentialite: { label:"Privacy", title:"Privacy policy",
+  essentiel:[["Never sold", "your data only goes to us and our providers"], ["On your device", "profile and character: we can't access them"], ["Your rights", "access, rectification, erasure: just write to us"]],
+  html:`
 <p>${C.legalName} (${C.address}, ${C.email}), as data controller, protects the personal data of visitors and customers of ${C.site} in accordance with Regulation (EU) 2016/679 (GDPR) and French Law No. 78-17 of 6 January 1978 as amended. Contact for any question about your data: ${C.email}.</p>
 <h3>Data collected and purposes</h3>
 <table>
@@ -4741,11 +5162,22 @@ confidentialite: { label:"Privacy", title:"Privacy policy", html:`
 <p>The site is served over an encrypted connection (HTTPS) and payments are processed by a PCI-DSS certified provider. ${C.brand} implements reasonable technical and organisational measures to protect data against unauthorised access, loss or alteration.</p>
 <p><em>Last updated: ${UPDATED.en}.</em></p>
 `},
-cookies: { label:"Cookies", title:"Cookies and trackers", html:`
+cookies: { label:"Cookies", title:"Cookies and trackers",
+  essentiel:[["0 cookies", "no analytics, no ad trackers"], ["5 items", "kept in your browser, never sent"], ["1 click", "to load Instagram, never without you"]],
+  html:`
 <p>A cookie is a small file stored on your device when you visit a website. Under Article 82 of the French Data Protection Act and the guidelines of the CNIL, only trackers strictly necessary for the operation of the site may be set without your consent.</p>
 <h3>Current status</h3>
 <p>As of ${UPDATED.en}, ${C.site} sets <strong>no cookies</strong> and uses no audience measurement tool and no advertising or social media tracker. Fonts are served by the site itself: no resource is loaded from a third-party server, with the sole exception of the Instagram page in the Contact panel, and only if you ask for it (see below).</p>
-<p>Five items may be kept on your device, in your browser's local storage, and nowhere else. <strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned. <strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab. <strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it. <strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site). <strong>Your character</strong> (key <code>fp.tenue</code>): the one you build in the character creator — sex, build, face, hairstyle, outfit, accessories and pose. These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent. You can erase them at any time: the profile picture from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
+<p>Five items may be kept on your device, in your browser's local storage, and nowhere else:</p>
+<ul>
+<li><strong>The list of challenges you have passed</strong> (key <code>fp.debloque</code>: minigames completed and pieces found), which grants access to the pieces they unlock; without it, simply reloading the page would take back a reward you had already earned.</li>
+<li><strong>Your best time on the Jumper minigame and the number of falls in that run</strong> (key <code>fp.jumper</code>), without which a record would not survive closing the tab.</li>
+<li><strong>Your settings</strong> (key <code>fp.reglages</code>: language, currency, music and sound effects), so the site opens the way you left it.</li>
+<li><strong>Your profile</strong> (key <code>fp.profil</code>), if you create one: the gamertag you choose, the profile picture you add, your total spend and orders once the shop opens, and visit statistics (login days, time spent on the site).</li>
+<li><strong>Your character</strong> (key <code>fp.tenue</code>): the one you build in the character creator — sex, build, face, hairstyle, outfit, accessories and pose.</li>
+</ul>
+<p>These items are never sent to a server — the site has none — and cannot be used to track you across sites; they qualify as strictly necessary for a service you explicitly requested, and therefore do not require your prior consent.</p>
+<p>You can erase them at any time: the profile picture from the site itself ("Remove"), the rest by clearing your browser's site data — the reward would then have to be earned again, the record starts over, the profile is gone. This is why no consent banner is displayed.</p>
 <h3>The Instagram page in the Contact panel</h3>
 <p>The Contact panel can display the Instagram page of the @fakeparadisetm account within the site. It is <strong>only loaded at your request</strong>, when you click "See the live page": until you do, nothing is requested from Instagram. That click loads the page from the servers of Instagram (Meta Platforms Ireland Ltd.), which then receives your IP address and your browser's technical information, and may set its own cookies, governed by its own privacy policy. This choice only applies to the current visit: it is not stored anywhere, and the page will only be loaded again after a new click.</p>
 <h3>Future changes</h3>
@@ -4861,6 +5293,7 @@ const STRINGS = {
     hintChoose:"choose", hintSection:"section", hintApply:"apply", hintScroll:"scroll", hintBack:"back", hintView:"next view", hintViews:"change view",
     sale:"SALE", close:"Close",
     legalSections:"sections", legalClose:"close", legalInfo:"Legal information", legalNavAria:"Sections",
+    legalMaj:"Updated {d}", legalEssentiel:"At a glance",
     legalTodo:"Highlighted fields must be filled in before going live (COMPANY object in the code).",
     legalNote:"Courtesy translation: the French version is the contractual one and prevails in case of discrepancy.",
   },
@@ -4934,6 +5367,7 @@ const STRINGS = {
     hintChoose:"choisir", hintSection:"section", hintApply:"appliquer", hintScroll:"défiler", hintBack:"retour", hintView:"vue suivante", hintViews:"changer de vue",
     sale:"PROMO", close:"Fermer",
     legalSections:"rubriques", legalClose:"fermer", legalInfo:"Informations légales", legalNavAria:"Rubriques",
+    legalMaj:"Mis à jour le {d}", legalEssentiel:"L'essentiel",
     legalTodo:"Champs surlignés à compléter avant mise en ligne (objet COMPANY dans le code).",
     legalNote:"",
   },
@@ -5388,6 +5822,54 @@ function moodSat(h){
   return MOOD.sat * (1 - 0.45 * bump);
 }
 
+/* ---- le bouton d'achat suit l'ambiance (25 sept. 2026 au soir) ----
+   « Qu'il suive la couleur du thème tout en gardant son contraste » : il prend
+   la TEINTE de l'accent du moment, mais garde la CLARTÉ et la vivacité du
+   bleu d'origine (#2f7df5), mesurées en OKLCH — un espace où deux couleurs
+   de même clarté paraissent aussi claires l'une que l'autre, quelle que soit
+   leur teinte. En HSL, une clarté fixe aurait donné un jaune éblouissant, où
+   le blanc du prix ne se lirait plus, et un bleu sombre. Là où la vivacité du
+   bleu dépasse ce que l'écran sait afficher (les jaunes, les verts), elle est
+   réduite juste assez pour y rentrer : la clarté, elle, ne bouge jamais. */
+const linRgb = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const delinRgb = v => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+function oklabDeRgb(c){
+  const R = linRgb(c[0]), G = linRgb(c[1]), B = linRgb(c[2]);
+  const l = Math.cbrt(0.4122214708*R + 0.5363325363*G + 0.0514459929*B);
+  const m = Math.cbrt(0.2119034982*R + 0.6806995451*G + 0.1073969566*B);
+  const s = Math.cbrt(0.0883024619*R + 0.2817188376*G + 0.6299787005*B);
+  return [0.2104542553*l + 0.7936177850*m - 0.0040720468*s,
+          1.9779984951*l - 2.4285922050*m + 0.4505937099*s,
+          0.0259040371*l + 0.7827717662*m - 0.8086757660*s];
+}
+// OKLCH (clarté, vivacité, teinte en radians) → sRGB linéaire, sans borne
+function linDeOklch(L, C, h){
+  const a = C * Math.cos(h), b = C * Math.sin(h);
+  const l = Math.pow(L + 0.3963377774*a + 0.2158037573*b, 3);
+  const m = Math.pow(L - 0.1055613458*a - 0.0638541728*b, 3);
+  const s = Math.pow(L - 0.0894841775*a - 1.2914855480*b, 3);
+  return [ 4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
+          -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
+          -0.0041960863*l - 0.7034186147*m + 1.7076147010*s];
+}
+// la couleur de clarté L et de vivacité C AU PLUS, dans la teinte h, ramenée à l'écran
+function rgbDeOklch(L, C, h){
+  const affichable = c => linDeOklch(L, c, h).every(v => v >= -1e-4 && v <= 1 + 1e-4);
+  let c = C;
+  if (!affichable(c)){ let lo = 0, hi = C; for (let i = 0; i < 18; i++){ const mi = (lo + hi) / 2; if (affichable(mi)) lo = mi; else hi = mi; } c = lo; }
+  return linDeOklch(L, c, h).map(v => Math.round(Math.max(0, Math.min(255, delinRgb(Math.max(0, Math.min(1, v)))))));
+}
+/* Le contraste du prix blanc sur le bouton, au sens du WCAG. La clarté OKLCH
+   le tient à peu près : de 3,55 (les verts) à 4,24 (les rouges) sur le tour,
+   pour 3,91 au bleu. Sous ce plancher, le bouton s'assombrit juste assez
+   pour le retrouver (voir applyMood) : jamais moins lisible que le bleu. */
+const contrasteBlanc = c => { const f = v => linRgb(v); return 1.05 / (0.2126*f(c[0]) + 0.7152*f(c[1]) + 0.0722*f(c[2]) + 0.05); };
+// la mesure : le bleu d'origine du bouton (L ≈ 0,61, vivacité ≈ 0,195), son contraste, son survol (#4a90ff) et son liseré
+const ACHAT_REF = (() => {
+  const [L, a, b] = oklabDeRgb([47, 125, 245]), [Ls] = oklabDeRgb([74, 144, 255]), [Lb, ab, bb] = oklabDeRgb([160, 200, 255]);
+  return { L, C: Math.hypot(a, b), contraste: contrasteBlanc([47, 125, 245]), Ls, Lb, Cb: Math.hypot(ab, bb) };
+})();
+
 function applyMood(){
   moodHue = currentHue();
   const h = moodHue, s = moodSat(h);
@@ -5413,6 +5895,14 @@ function applyMood(){
   poserVar('--sale', rgbCss(sale));
   poserVar('--sale-rgb', rgbStr(sale));
   poserVar('--tint-neutral', rgbCss(neutral));
+  // le bouton d'achat : la teinte de l'accent, la clarté et la vivacité du bleu d'origine (voir ACHAT_REF)
+  const [, aA, aB] = oklabDeRgb(accent), hA = Math.atan2(aB, aA), R = ACHAT_REF;
+  let dL = 0, achat = rgbDeOklch(R.L, R.C, hA);
+  while (contrasteBlanc(achat) < R.contraste && dL < 0.1){ dL += 0.005; achat = rgbDeOklch(R.L - dL, R.C, hA); }
+  poserVar('--achat', rgbCss(achat));
+  poserVar('--achat-rgb', rgbStr(achat));
+  poserVar('--achat-survol', rgbCss(rgbDeOklch(R.Ls - dL, R.C, hA)));
+  poserVar('--achat-bord-rgb', rgbStr(rgbDeOklch(R.Lb, R.Cb, hA)));
   const fondBody = rgbCss(bg0);
   if (moodEcrit.body !== fondBody){ moodEcrit.body = fondBody; document.body.style.background = fondBody; }
   // Le fond et le ruban sont peints par la carte graphique : elle veut des
@@ -7066,7 +7556,11 @@ const model3d = (() => {
      l'éclair rouge du coup encaissé (et servait à l'aperçu du mini-jeu, que
      son affiche a remplacé), et depuis le 25 sept. 2026 au visage qui rougit
      sur le buste de la page Info. L'ajout, lui, ne monte qu'au carré : il fait
-     rayonner la teinte quand elle domine, sans éclaircir un simple reflet. */
+     rayonner la teinte quand elle domine, sans éclaircir un simple reflet.
+     uPlat (25 sept. 2026) : à 1, la teinte SANS l'éclairage — une silhouette
+     d'une seule couleur, pour la lueur de l'article choisi (voir drawRows).
+     Éclairée, elle montrait les plis du vêtement et se lisait comme un double
+     sombre posé dessous. 0 partout ailleurs : rien d'autre ne change. */
   /* La TRAME DE SORTIE, troisième signature, allumée par le même uPS1.z. La
      console ne savait afficher que 32 niveaux par voie : ses dégradés se
      seraient cassés en bandes larges si le matériel n'avait pas tramé à la
@@ -7078,12 +7572,13 @@ const model3d = (() => {
      Le motif s'obtient sans tableau (ESSL 1 n'indexe pas librement) : la
      matrice de Bayer se construit par récurrence sur la 2 × 2, dont
      `m2` est la forme close. */
-  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;uniform mediump vec3 uPS1;
+  const FS = `precision mediump float;uniform sampler2D uTex;uniform float uAlpha;uniform vec4 uTint;uniform mediump vec3 uPS1;uniform float uPlat;
     varying vec2 vUV;varying vec2 vSh;varying float vW;
     float m2(vec2 p){ return 2.0*p.x + 3.0*p.y - 4.0*p.x*p.y; }
     void main(){
       vec3 base = mix(texture2D(uTex,vUV/vW).rgb, uTint.rgb, uTint.a);
       vec3 c = base*vSh.x + vSh.y + uTint.rgb*uTint.a*uTint.a*0.30;
+      c = mix(c, uTint.rgb, uPlat);
       if (uPS1.z > 0.0){
         vec2 q = floor(gl_FragCoord.xy);
         float b = (4.0*m2(mod(q, 2.0)) + m2(mod(floor(q*0.5), 2.0))) / 16.0;
@@ -7123,7 +7618,7 @@ const model3d = (() => {
     const gl = cv.getContext('webgl', { antialias:true, alpha:true, premultipliedAlpha:true });
     if (!gl) return null;
     const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
-    let prog, aPos, aUV, aSh, uMVP, uTex, uAlpha, uTint, uPS1;
+    let prog, aPos, aUV, aSh, uMVP, uTex, uAlpha, uTint, uPS1, uPlat;
     let textures = new WeakMap(), buffers = new WeakMap(); // objets GPU de ce contexte, par source
     let perdu = false;
     function monter(){
@@ -7137,6 +7632,7 @@ const model3d = (() => {
       uTex = gl.getUniformLocation(prog, 'uTex'); uAlpha = gl.getUniformLocation(prog, 'uAlpha');
       uTint = gl.getUniformLocation(prog, 'uTint'); // teinte de dégât du mini-jeu ; (0,0,0,0) ailleurs
       uPS1 = gl.getUniformLocation(prog, 'uPS1');   // grille de sommets et placage affine ; (0,0,0) ailleurs
+      uPlat = gl.getUniformLocation(prog, 'uPlat'); // teinte sans éclairage (la lueur de la vedette) ; 0 ailleurs
       gl.enable(gl.DEPTH_TEST);
       gl.enable(gl.CULL_FACE);
       gl.cullFace(gl.BACK);
@@ -7228,7 +7724,7 @@ const model3d = (() => {
        gl.uniformMatrix4fv recopie la matrice : la réutiliser ensuite est sûr. */
     const BASC = rotX(BASCULE), ROT = ident(), M1 = new Float32Array(16), M2 = new Float32Array(16),
           MVP1 = new Float32Array(16), MVP2 = new Float32Array(16), BOITE = ident();
-    function render(a, ang, pv, alpha, box, side, tint, libre){
+    function render(a, ang, pv, alpha, box, side, tint, libre, plat){
       if (perdu) return;   // contexte repris par le navigateur : on attend sa restauration
       /* `a.cadre` : une mise en place du modèle AVANT son orientation — la tête
          et son buste, réduits et remontés d'un bloc (voir CADRE_BUSTE). Les
@@ -7267,6 +7763,7 @@ const model3d = (() => {
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
       gl.uniform4f(uTint, tint ? tint[0] : 0, tint ? tint[1] : 0, tint ? tint[2] : 0, tint ? tint[3] : 0);
+      gl.uniform1f(uPlat, plat ? 1 : 0);
       /* Grille d'accrochage à ZÉRO : l'accrochage des sommets est éteint, il
          hachait la rotation (voir PS1_GRILLE). Le placage affine et la trame
          de sortie, eux, restent allumés pour la tête. */
@@ -9831,6 +10328,18 @@ const model3d = (() => {
     if (!fxg) return;
     const liste = (a && a.eclat3d && a.mesh) ? pointsEclat(a.mesh) : null;
     const fume = !!(a && a.buste);
+    /* RIEN À PEINDRE — un vêtement : ni éclat, ni fumée. Les deux calques
+       restent cachés et on n'y touche plus. Jusqu'au 25 sept. 2026, leur
+       `hidden` était réécrit à chaque image, soixante écritures par seconde
+       dans la vue 3D pour une valeur qui ne changeait pas, pendant que les
+       lueurs de la galerie, juste à côté, clignotaient (voir .slide-edge).
+       Ils sont effacés quand ils resservent, plus bas, avant d'y dessiner. */
+    if ((!liste || !liste.length) && !fume){
+      if (!fx.hidden) fx.hidden = true;
+      if (fxFond && !fxFond.hidden) fxFond.hidden = true;
+      grains.length = 0;
+      return;
+    }
     /* On dessine toujours en pixels CSS, le tampon suivant la densité de
        l'écran — sauf en mode console, où l'éclat prend la MÊME définition que
        le rendu (le tampon du canvas, voir resize) et le même agrandissement au
@@ -9849,9 +10358,8 @@ const model3d = (() => {
       g.setTransform(k, 0, 0, k, 0, 0);
       g.clearRect(0, 0, w, w);
     });
-    if (fxFond) fxFond.hidden = !fume;
-    if ((!liste || !liste.length) && !fume){ fx.hidden = true; grains.length = 0; return; }
-    fx.hidden = false;
+    if (fxFond && fxFond.hidden !== !fume) fxFond.hidden = !fume;
+    if (fx.hidden) fx.hidden = false;
     const P = projecteur(a, ang, libre), M = P.R0, MVP = P.MVP;
     const pt = ptM;
     t = t || performance.now();
@@ -10246,8 +10754,8 @@ const model3d = (() => {
           ech = 1 + Math.sin(u * Math.PI) * 0.25;  // +25 % au passage
         }
       }
-      // ce qui déborde le plus de la case : le halo de la vedette, 1,5 fois la case (un quart de chaque côté),
-      // autour d'une case que la rotation de sélection grandit déjà d'un quart
+      // ce qui déborde le plus de la case : la lueur de la vedette (1,2 fois la case) et l'ombre portée,
+      // autour d'une case que la rotation de sélection grandit déjà d'un quart — 0,35 laisse de la marge
       const m = 0.35 * c.s * ech;
       if (c.x - m < x0) x0 = c.x - m;
       if (c.x + c.s * ech + m > x1) x1 = c.x + c.s * ech + m;
@@ -10268,41 +10776,55 @@ const model3d = (() => {
       list.gl.disable(list.gl.SCISSOR_TEST);
       list.gl.clear(list.gl.DEPTH_BUFFER_BIT);
     };
-    // aide au dessin d'une passe décalée et/ou agrandie, teinte imposée
-    const passe = (p, dx, dy, ech2, alpha, teinte) => {
+    // aide au dessin d'une passe décalée et/ou agrandie, teinte imposée (`plat` : sans éclairage, voir uPlat)
+    const passe = (p, dx, dy, ech2, alpha, teinte, plat) => {
       const s3 = p.box.s * ech2, d3 = (s3 - p.box.s) / 2;
       list.render(p.a, p.ang, PVrow, p.alpha * alpha,
-        { x: p.box.x - d3 + p.box.s * dx, y: p.box.y - d3 + p.box.s * dy, s: s3 }, '', teinte);
+        { x: p.box.x - d3 + p.box.s * dx, y: p.box.y - d3 + p.box.s * dy, s: s3 }, '', teinte, null, plat);
     };
     /* Halo : la silhouette du vêtement redessinée plus grande, en blanc très
        transparent, deux fois. Il épouse donc la FORME du produit au lieu d'être
-       un disque, et c'est ce qui décolle un sweat noir du fond sombre. */
+       un disque, et c'est ce qui décolle un sweat noir du fond sombre.
+       `sauf` : la part de la vedette qui ne reçoit plus ni ce halo ni l'ombre
+       (voir plus bas) — 1 pour une ligne ordinaire, 0 pour la vedette, et
+       entre les deux pendant la bascule, qui se fait donc en fondu. */
     const BLANC = [1, 1, 1, 1], NOIR = [0, 0, 0, 1];
-    for (const p of pose){ passe(p, 0, 0, 1.20, 0.028, BLANC); passe(p, 0, 0, 1.10, 0.034, BLANC); }
-    /* La lueur de l'article choisi, monté dans la case de l'icône (voir render,
-       « vedette ») : le même principe que le halo blanc — la silhouette,
-       agrandie — mais dans la teinte vive de l'ambiance (VIVID, celle du halo
-       du ruban), bien plus présente, et qui respire lentement. Toujours la
-       FORME du vêtement : un disque derrière la sélection a été retiré le
-       15 sept. 2026, ce n'est pas pour le remettre. */
-    const vive = [VIVID[0] / 255, VIVID[1] / 255, VIVID[2] / 255, 1];
+    const sauf = p => 1 - Math.min(1, Math.max(0, p.glow || 0));
+    for (const p of pose){ const k = sauf(p); if (k < 0.01) continue; passe(p, 0, 0, 1.20, 0.028 * k, BLANC); passe(p, 0, 0, 1.10, 0.034 * k, BLANC); }
+    /* LA LUEUR DE L'ARTICLE CHOISI, monté dans la case de l'icône (voir
+       render, « vedette »). Jusqu'au 25 sept. 2026 au soir : cinq silhouettes
+       agrandies jusqu'à 1,5 fois, dans la teinte vive de l'ambiance, et
+       ÉCLAIRÉES — avec l'ombre portée, elles se lisaient comme un double sombre
+       posé sous le vêtement (« un underlay »). Demande : l'article aussi gros
+       que ce double (VEDETTE_S), plus de double, une lueur subtile.
+       La lueur : la silhouette encore, mais d'une couleur PLATE (uPlat, sans
+       les plis de l'éclairage), claire — la teinte vive mêlée de blanc — et
+       à peine posée : six passes de 2 à 20 % plus grandes, chacune à 3 %,
+       FONDUES les unes sur les autres (mélange alpha, sans test de
+       profondeur : le moteur, lui, remplace ses pixels sans les mélanger).
+       Près du vêtement elles s'additionnent (≈ 17 %), plus loin il n'en
+       reste qu'une : un dégradé qui épouse la forme et s'éteint vers
+       l'extérieur. Elle respire lentement, comme avant. Toujours la FORME du
+       vêtement : un disque derrière la sélection a été retiré le 15 sept. 2026,
+       ce n'est pas pour le remettre. */
+    const lueur = [0.55 * VIVID[0] / 255 + 0.45, 0.55 * VIVID[1] / 255 + 0.45, 0.55 * VIVID[2] / 255 + 0.45, 1];
     const souffle = reduced ? 1 : 0.82 + 0.18 * Math.sin(now / 560);
-    // cinq silhouettes de plus en plus grandes et pâles : un dégradé, et pas trois contours
+    const G = list.gl;
     for (const p of pose) if (p.glow > 0.01){
-      passe(p, 0, 0, 1.50, 0.05 * p.glow * souffle, vive);
-      passe(p, 0, 0, 1.38, 0.07 * p.glow * souffle, vive);
-      passe(p, 0, 0, 1.27, 0.09 * p.glow * souffle, vive);
-      passe(p, 0, 0, 1.17, 0.12 * p.glow, vive);
-      passe(p, 0, 0, 1.08, 0.16 * p.glow, vive);
+      G.enable(G.BLEND); G.blendFunc(G.ONE, G.ONE_MINUS_SRC_ALPHA); G.disable(G.DEPTH_TEST);
+      for (let i = 0; i < 6; i++) passe(p, 0, 0, 1.02 + i * 0.036, 0.03 * p.glow * souffle, lueur, true);
+      G.disable(G.BLEND); G.enable(G.DEPTH_TEST);
     }
     videProfondeur();
     /* Ombre portée : le même maillage en noir, décalé. Trois passes légèrement
        écartées la rendent floue — bien moins cher qu'un filtre CSS sur le
-       canvas, qui repeindrait tout l'écran à chaque image et hacherait la barre. */
+       canvas, qui repeindrait tout l'écran à chaque image et hacherait la barre.
+       Pas pour la vedette (voir sa lueur, plus haut). */
     for (const p of pose){
-      passe(p, 0.045, 0.060, 1.05, 0.13, NOIR);
-      passe(p, 0.035, 0.050, 1.02, 0.13, NOIR);
-      passe(p, 0.028, 0.042, 1.00, 0.12, NOIR);
+      const k = sauf(p); if (k < 0.01) continue;
+      passe(p, 0.045, 0.060, 1.05, 0.13 * k, NOIR);
+      passe(p, 0.035, 0.050, 1.02, 0.13 * k, NOIR);
+      passe(p, 0.028, 0.042, 1.00, 0.12 * k, NOIR);
     }
     videProfondeur();
     /* Un emplacement « bientôt » (voir creerAVenir) : le maillage d'un article
@@ -11681,7 +12203,14 @@ const slider = (() => {
     [...dotsEl.children].forEach((d, i) => d.classList.toggle('active', i === index));
     if (cur === 0) model3d.show(item); else model3d.hide();
   }
-  function go(i){ if (avail.length < 2) return; index = (i + avail.length) % avail.length; apply(); }
+  // `quandPas` : prévenu de chaque changement de vue et de son sens, -1 ou 1 (les coulures y répondent)
+  let quandPas = null;
+  function go(i){
+    if (avail.length < 2) return;
+    const sens = Math.sign(i - index);
+    index = (i + avail.length) % avail.length; apply();
+    if (quandPas && sens) quandPas(sens);
+  }
   document.getElementById('slidePrev').addEventListener('click', (e) => { e.stopPropagation(); go(index - 1); });
   document.getElementById('slideNext').addEventListener('click', (e) => { e.stopPropagation(); go(index + 1); });
   /* Un clic au MILIEU de la galerie déplie la fiche. Les deux zones de bord et
@@ -11709,7 +12238,292 @@ const slider = (() => {
   });
   // les flèches non plus ne gardent pas le focus après un clic (Entrée = mode panneau, pas « vue suivante »)
   ['slidePrev', 'slideNext'].forEach(id => document.getElementById(id).addEventListener('mousedown', (e) => e.preventDefault()));
-  return { setup, go, next: () => go(index + 1), prev: () => go(index - 1), atFirst: () => index === 0, current: () => (avail.length ? avail[index] : -1), count: () => avail.length };
+  return { setup, go, next: () => go(index + 1), prev: () => go(index - 1), atFirst: () => index === 0, current: () => (avail.length ? avail[index] : -1), count: () => avail.length,
+    surPas: (fn) => { quandPas = fn; } };
+})();
+
+/* ---------------- les coulures (voir « LES COULURES ») ----------------
+   Le bord de la fiche qui fond en une petite flèche quand la souris
+   approche. Chaque côté a sa sortie, `g` : 0, l'arête est droite ; 1, la
+   pointe est sortie en entier. Sa cible dépend de la distance de la souris
+   au pied de la pointe — pleine à 10 px, nulle à 150 px — et `g` la
+   rejoint par un ressort un peu mou : un peu moins qu'amorti, il dépasse
+   d'un rien et se pose. Au-dessus du texte de la fiche, sous la galerie, la
+   souris vient lire ou acheter : rien ne coule. Chaque changement de vue
+   fait bondir la pointe de son côté (`coup`), au clic, au clavier ou par
+   les pastilles.
+   LE PROFIL : la flèche de la maquette — un triangle posé sur l'arête, la
+   pointe dehors — FONDUE dans l'arête. C'est l'union des deux formes
+   adoucie : un maximum lissé entre l'arête (x = 0) et le triangle creuse,
+   à chaque coin du pied, un congé qui le raccorde au bord en douceur, et un
+   minimum lissé entre ses deux flancs arrondit la pointe. La largeur des
+   raccords suit la sortie : à peine sortie, la pointe n'est qu'un
+   soulèvement de l'arête ; sortie en entier, une flèche aux flancs droits.
+   LE LISERÉ : les ombres de --peau recopiées une à une en primitives SVG
+   (`OMBRES`, dans le même ordre ; à changer ensemble), appliquées à la
+   forme entière — le cadre de la fiche et la pointe, remplis ensemble. Une
+   ombre extérieure : la forme, étalée, floutée (écart type = flou / 2,
+   comme le navigateur pour box-shadow), décalée, teinte, gardée hors de la
+   forme ; une ombre intérieure : la même chose avec l'envers de la forme,
+   gardée dedans. Les intérieures partent du bord intérieur de la bordure,
+   comme celles du navigateur : la forme y est d'abord rétrécie d'autant.
+   À chaque image où une pointe est dehors, la fiche est relue — sa place,
+   sa taille, son opacité —, le verre (celui de la fiche et de ses pointes,
+   d'un seul tenant) calé et découpé, le liseré retracé.
+   La boucle ne tourne que le temps d'un mouvement ou d'une pointe sortie ;
+   sans souris, elle ne tourne jamais. */
+const coulures = (() => {
+  const zone = document.getElementById('galleryZone');
+  const sw = document.getElementById('previewSwatch');
+  const bandes = [document.getElementById('slidePrev'), document.getElementById('slideNext')];
+  const souris = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const calme = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const SVG = 'http://www.w3.org/2000/svg';
+  // points par moitié de profil ; px de la bande intérieure ; px autour de la pointe où ses ombres portent encore
+  const N = 36, BANDE = 20, PORTEE = 80;
+  // H : la base du triangle, E : sa sortie complète, Y : la demi-hauteur de son pied, congés compris
+  let H = 104, E = 44, Y = 62, HX = 0, HY = 0;
+  const verre = document.querySelector('.coulure-verre');
+  const lueurs = [...verre.querySelectorAll('.coulure-lueur')];
+  let XM = 0;   // la place d'une pointe, de chaque côté de la fiche, dans la boîte du verre
+  const cotes = ['prev', 'next'].map((nom, i) => {
+    const liseret = previewEl.querySelector('.peau-coulure.' + nom);
+    return { i, liseret, cadre: liseret.querySelector('.cadre'), bosse: liseret.querySelector('.bosse'),
+      g: 0, v: 0, coup: 0, trace: -1, pts: null, sortie: false, allumee: false };
+  });
+  const lisse = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // minimum et maximum adoucis (polynomiaux) : k, la largeur du raccord
+  const smin = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k / 4; };
+  const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + h * h * k / 4; };
+  // la sortie à la hauteur y (≥ 0) du milieu, pour une pointe sortie de a sur une demi-base b ; nulle au-delà de 1,2 b
+  function profil(y, a, b){
+    const triangle = smin(a * (1 + y / b), a * (1 - y / b), a * 0.3);   // la pointe arrondie
+    return smax(0, triangle, a * 0.2);                                    // les congés du pied
+  }
+
+  /* Les filtres du liseré. [dedans, dx, dy, flou, étalement, couleur] : la
+     liste de --peau, première ombre dessus. */
+  const BORD = [
+    [1, 0, 1, 0, 0, 'rgba(255,255,255,0.10)'],
+    [1, 0, 0, 3, 0, 'rgba(255,255,255,0.10)'],
+    [1, 0, 0, 10, 0, 'rgba(255,255,255,0.04)'],
+    [0, 0, 0, 3, 0, 'rgba(255,255,255,0.12)'],
+    [0, 0, 0, 12, 2, 'rgba(255,255,255,0.045)']
+  ];
+  const OMBRES = {
+    peauBase: [...BORD,
+      [0, 0, 24, 60, 0, 'rgba(0,0,0,0.35)'],
+      [0, 0, 0, 40, 0, 'rgba(var(--accent2-rgb),0.10)']],
+    peauChoisie: [...BORD,
+      [1, 0, 0, 5, 0, 'rgba(var(--accent-rgb),0.30)'],
+      [0, 0, 0, 4, 0, 'rgba(var(--accent-rgb),0.60)'],
+      [0, 0, 0, 14, 2, 'rgba(var(--accent-rgb),0.30)'],
+      [0, 0, 0, 40, 0, 'rgba(var(--accent-rgb),0.25)'],
+      [0, 0, 24, 60, 0, 'rgba(0,0,0,0.35)']]
+  };
+  const noeud = (nom, attrs) => { const e = document.createElementNS(SVG, nom); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const filtres = Object.entries(OMBRES).map(([id, couches]) => {
+    const f = noeud('filter', { id, filterUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB' });
+    // le dedans de la bordure, et son envers : ce qui porte les ombres intérieures
+    f.appendChild(noeud('feMorphology', { in: 'SourceAlpha', operator: 'erode', radius: 1, result: 'dedans' }));
+    const envers = noeud('feComponentTransfer', { in: 'dedans', result: 'envers' });
+    envers.appendChild(noeud('feFuncA', { type: 'table', tableValues: '1 0' }));
+    f.appendChild(envers);
+    const couches_ = couches.map(([dedans, dx, dy, flou, etale, couleur], k) => {
+      const nom = s => 'o' + k + s;
+      let src = dedans ? 'envers' : 'SourceAlpha';
+      if (dedans && (dx || dy)){ f.appendChild(noeud('feOffset', { in: src, dx, dy, result: nom('d') })); src = nom('d'); }
+      if (etale){ f.appendChild(noeud('feMorphology', { in: src, operator: 'dilate', radius: etale, result: nom('e') })); src = nom('e'); }
+      if (flou){ f.appendChild(noeud('feGaussianBlur', { in: src, stdDeviation: flou / 2, result: nom('f') })); src = nom('f'); }
+      if (!dedans && (dx || dy)){ f.appendChild(noeud('feOffset', { in: src, dx, dy, result: nom('d') })); src = nom('d'); }
+      const teinte = noeud('feFlood', { result: nom('t') });
+      teinte.style.setProperty('flood-color', couleur);
+      f.appendChild(teinte);
+      f.appendChild(noeud('feComposite', { in: nom('t'), in2: src, operator: 'in', result: nom('m') }));
+      f.appendChild(noeud('feComposite', { in: nom('m'), in2: dedans ? 'dedans' : 'SourceAlpha', operator: dedans ? 'in' : 'out', result: nom('x') }));
+      return nom('x');
+    });
+    const fusion = noeud('feMerge', {});
+    couches_.reverse().forEach(n => fusion.appendChild(noeud('feMergeNode', { in: n })));
+    f.appendChild(fusion);
+    previewEl.querySelector('.peau-filtres').appendChild(f);
+    return f;
+  });
+
+  function poser(){
+    const h = sw.offsetHeight;
+    if (!h) return;   // fiche cachée (écran étroit) : rien à mesurer
+    const tel = TELEPHONE_COUCHE.matches;
+    H = tel ? Math.max(56, Math.min(90, h * 0.3)) : Math.max(84, Math.min(150, h * 0.34));
+    E = H * 0.42; Y = H / 2 * 1.2;
+    // les trous : la pointe et la portée de ses ombres dehors (le décalage de l'ombre portée compris), la bande dedans
+    HX = Math.ceil(E * 1.3 + PORTEE); HY = Math.ceil(Y + PORTEE + 24);
+    const st = previewEl.style;
+    st.setProperty('--co-hx', HX + 'px'); st.setProperty('--co-hy', HY + 'px');
+    st.setProperty('--co-bx', BANDE + 'px'); st.setProperty('--co-by', Math.ceil(Y + BANDE) + 'px');
+    // la bordure exacte, arrondie aux pixels de l'écran (clientLeft l'arrondit, lui, au pixel CSS)
+    const bord = parseFloat(getComputedStyle(previewEl).borderLeftWidth) || 0;
+    st.setProperty('--co-bord', bord + 'px');
+    filtres.forEach(f => {
+      f.setAttribute('x', -BANDE - 120); f.setAttribute('y', -HY - 120);
+      f.setAttribute('width', BANDE + HX + 240); f.setAttribute('height', 2 * HY + 240);
+      f.firstElementChild.setAttribute('radius', bord);
+    });
+    cotes.forEach(c => {
+      c.liseret.setAttribute('viewBox', `${-BANDE} ${-HY} ${BANDE + HX} ${2 * HY}`);
+      c.trace = -1;
+    });
+    /* Le verre : la fiche, et la place d'une pointe de chaque côté. Son
+       reflet diagonal (celui de .glass : 0,07, puis 0,015 à 45 %, puis 0,03,
+       à 135°) doit tomber sur la fiche exactement où tombait le sien. Le
+       navigateur mesure ce dégradé sur la boîte intérieure de la fiche ; la
+       boîte du verre est plus large de deux pointes et de deux bordures, et
+       son axe à 135° plus long d'autant fois √2 / 2 : l'axe de la fiche
+       commence à D de celui du verre et finit à D de sa fin. */
+    XM = Math.ceil(E * 1.3 + 3);
+    const D = +((XM + 2 * bord) * Math.SQRT1_2).toFixed(3);
+    verre.style.background = `linear-gradient(135deg, rgba(255,255,255,0.07) ${D}px, `
+      + `rgba(255,255,255,0.015) calc(${D}px + 0.45 * (100% - ${2 * D}px)), rgba(255,255,255,0.03) calc(100% - ${D}px)), rgba(8,20,30,0.20)`;
+    verre.style.setProperty('--co-x', XM + 'px');
+    verre.style.setProperty('--co-y', Y + 'px');
+    boite = calage = decoupe = '';
+    reveiller();
+  }
+
+  // le cadre de la fiche, dans le repère du liseré : l'arête en x = 0, la fiche vers les x négatifs
+  const cadre = (W, Hf, R) => `M${-W + R},${-Hf / 2}H${-R}A${R},${R} 0 0 1 0,${-Hf / 2 + R}V${Hf / 2 - R}A${R},${R} 0 0 1 ${-R},${Hf / 2}`
+    + `H${-W + R}A${R},${R} 0 0 1 ${-W},${Hf / 2 - R}V${-Hf / 2 + R}A${R},${R} 0 0 1 ${-W + R},${-Hf / 2}Z`;
+  let cadreTrace = '';
+
+  // un côté : sa sortie, son profil, et le liseré de la forme entière
+  function dessiner(c, f){
+    const g = Math.min(1.3, Math.max(0, c.g));
+    c.sortie = !!(g > 0.002 && f);
+    previewEl.classList.toggle(c.i ? 'coulee-d' : 'coulee-g', c.sortie);
+    // rentrée, elle n'est plus sous la souris, même si le navigateur ne l'a pas encore dit
+    if (!c.sortie){ c.allumee = false; previewEl.classList.remove(c.i ? 'lueur-d' : 'lueur-g'); return; }
+    previewEl.classList.toggle(c.i ? 'lueur-d' : 'lueur-g', c.allumee);
+    // la place : jamais au-delà du bord de l'écran
+    const place = c.i ? window.innerWidth - f.right : f.left;
+    const a = Math.max(0, Math.min(E, place - 6)) * g, b = H / 2;
+    const cle = a.toFixed(2);
+    if (cle === c.trace) return;
+    c.trace = cle;
+    // le profil, du haut du pied à son bas, des points plus serrés vers la pointe, où il tourne ; x vers l'extérieur
+    const pts = [];
+    for (let k = N; k >= 0; k--){ const y = Y * Math.pow(k / N, 1.3); pts.push([profil(y, a, b), -y]); }
+    for (let k = 1; k <= N; k++){ const y = Y * Math.pow(k / N, 1.3); pts.push([profil(y, a, b), y]); }
+    c.pts = pts;
+    c.bosse.setAttribute('d', `M-1,${(-Y).toFixed(2)}L` + pts.map(q => q[0].toFixed(2) + ',' + q[1].toFixed(2)).join('L') + `L-1,${Y.toFixed(2)}Z`);
+  }
+  /* Le verre, d'un seul tenant : le cadre de la fiche, puis chaque pointe
+     dehors, parcourus dans le même sens — leur réunion. Chaque pointe part
+     d'un pixel sous la fiche : pas de jour entre les deux. */
+  let boite = '', calage = '', decoupe = '';
+  function peindre(f, op, R){
+    const dehors = !!f && cotes.some(c => c.sortie);
+    verre.classList.toggle('sortie', dehors);
+    if (!dehors) return;
+    const W = f.width, Hf = f.height, x0 = XM, x1 = XM + W, cy = Hf / 2;
+    const b = (W + 2 * XM).toFixed(3) + ' ' + Hf.toFixed(3);
+    if (b !== boite){ boite = b; verre.style.width = (W + 2 * XM) + 'px'; verre.style.height = Hf + 'px'; }
+    const p = `translate(${(f.left - XM).toFixed(3)}px,${f.top.toFixed(3)}px)`;
+    if (p !== calage){ calage = p; verre.style.transform = p; }
+    if (verre.style.opacity !== op) verre.style.opacity = op;
+    const n = v => v.toFixed(2);
+    let d = `M${n(x0 + R)},0H${n(x1 - R)}A${R},${R} 0 0 1 ${n(x1)},${R}V${n(Hf - R)}A${R},${R} 0 0 1 ${n(x1 - R)},${n(Hf)}`
+      + `H${n(x0 + R)}A${R},${R} 0 0 1 ${n(x0)},${n(Hf - R)}V${R}A${R},${R} 0 0 1 ${n(x0 + R)},0Z`;
+    const [g, dr] = cotes;
+    if (g.sortie) d += `M${n(x0 + 1)},${n(cy + Y)}` + g.pts.slice().reverse().map(q => `L${n(x0 - q[0])},${n(cy + q[1])}`).join('') + `L${n(x0 + 1)},${n(cy - Y)}Z`;
+    if (dr.sortie) d += `M${n(x1 - 1)},${n(cy - Y)}` + dr.pts.map(q => `L${n(x1 + q[0])},${n(cy + q[1])}`).join('') + `L${n(x1 - 1)},${n(cy + Y)}Z`;
+    if (d !== decoupe){ decoupe = d; verre.style.clipPath = `path("${d}")`; }
+    cotes.forEach((c, i) => lueurs[i].classList.toggle('allumee',
+      c.sortie && (c.allumee || bandes[i].matches(':hover') || bandes[i].matches(':focus-visible'))));
+  }
+
+  const actif = () => souris.matches && previewEl.classList.contains('show') && zone.classList.contains('has-slides')
+    && !previewEl.classList.contains('zoome') && !previewEl.classList.contains('desc-open')
+    && !previewEl.classList.contains('info-panel') && !previewEl.classList.contains('profil');
+  let px = null, py = null;   // la souris, null hors de la fenêtre
+  function cible(i, now, f, gal){
+    let t = 0;
+    if (px !== null){
+      const x = i ? f.right : f.left, y = f.top + f.height / 2;
+      // au-dessus du texte de la fiche, sous la galerie : on vient lire ou acheter
+      const dansLeTexte = px > f.left && px < f.right && py > gal.bottom && py < f.bottom;
+      if (!dansLeTexte) t = 1 - lisse(10, 150, Math.hypot(px - x, Math.max(0, Math.abs(py - y) - H * 0.4)));
+    }
+    if (bandes[i].matches(':focus-visible')) t = 1;
+    if (now < cotes[i].coup) t = Math.max(t, 1);
+    return t;
+  }
+  let raf = 0, avant = 0;
+  function image(now){
+    raf = 0;
+    const dt = Math.min(0.05, Math.max(0.001, (now - avant) / 1000)); avant = now;
+    const on = actif();
+    let f = on || cotes.some(c => c.g > 0) ? previewEl.getBoundingClientRect() : null;
+    if (f && !f.width) f = null;   // fiche sortie de la mise en page
+    const gal = on && f ? zone.getBoundingClientRect() : null;
+    const cs = f ? getComputedStyle(previewEl) : null;
+    const op = cs ? cs.opacity : '0';
+    const rayon = cs ? parseFloat(cs.borderTopLeftRadius) || 0 : 0;
+    if (f){
+      const trace = cadre(f.width, f.height, rayon);
+      if (trace !== cadreTrace){ cadreTrace = trace; cotes.forEach(c => c.cadre.setAttribute('d', trace)); }
+    }
+    let encore = false;
+    cotes.forEach((c, i) => {
+      const t = on && f ? cible(i, now, f, gal) : 0;
+      if (calme.matches || !f){ c.g = t; c.v = 0; }
+      else {
+        // ressort : raideur 170, amortissement 0,6 du critique
+        c.v += (170 * (t - c.g) - 15.6 * c.v) * dt;
+        c.g += c.v * dt;
+        if (c.g < 0){ c.g = 0; if (c.v < 0) c.v = 0; }
+        if (Math.abs(t - c.g) < 0.001 && Math.abs(c.v) < 0.01){ c.g = t; c.v = 0; }
+      }
+      // tant qu'elle est dehors, elle suit la fiche, qui peut bouger sous elle
+      if (c.g > 0 || c.v || now < c.coup) encore = true;
+      dessiner(c, f);
+    });
+    peindre(f, op, rayon);
+    if (encore) raf = requestAnimationFrame(image);
+  }
+  function reveiller(){ if (!raf){ avant = performance.now(); raf = requestAnimationFrame(image); } }
+  // le bond d'un côté : la pointe sort en entier et dépasse, puis revient où l'appelle la souris
+  function coup(i){
+    const c = cotes[i];
+    c.coup = performance.now() + 260;
+    if (!calme.matches) c.v += 4;
+    reveiller();
+  }
+  slider.surPas(sens => { if (actif()) coup(sens < 0 ? 0 : 1); });
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
+    px = e.clientX; py = e.clientY; reveiller();
+  }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { px = py = null; reveiller(); });
+  window.addEventListener('blur', () => { px = py = null; reveiller(); });
+  bandes.forEach(b => { b.addEventListener('focus', reveiller); b.addEventListener('blur', reveiller); });
+  /* La pointe se clique comme la bande du bord, sans prendre le focus, et
+     allume la lueur de son côté. Le verre passe sous la fiche : il n'a la
+     souris que sur les pointes, et c'est la moitié où elle se trouve qui dit
+     laquelle. */
+  const cote = (e) => { const f = previewEl.getBoundingClientRect(); return e.clientX < f.left + f.width / 2 ? 0 : 1; };
+  verre.addEventListener('click', (e) => { e.stopPropagation(); if (cote(e)) slider.next(); else slider.prev(); });
+  verre.addEventListener('mousedown', (e) => e.preventDefault());
+  verre.addEventListener('pointermove', (e) => { const i = cote(e); cotes.forEach(c => { c.allumee = c.i === i; }); reveiller(); });
+  verre.addEventListener('pointerleave', () => { cotes.forEach(c => { c.allumee = false; }); reveiller(); });
+  if (window.ResizeObserver){ const ro = new ResizeObserver(poser); ro.observe(sw); ro.observe(zone); }
+  window.addEventListener('resize', poser);
+  // la fiche qui s'ouvre, se ferme, zoome, ouvre son descriptif ; la galerie qui gagne ou perd ses vues
+  const mo = new MutationObserver(reveiller);
+  mo.observe(previewEl, { attributes: true, attributeFilter: ['class'] });
+  mo.observe(zone, { attributes: true, attributeFilter: ['class'] });
+  if (souris.addEventListener) souris.addEventListener('change', reveiller);
+  poser();
+  return { poser, coup };
 })();
 
 /* ---------------- la loupe de la fiche (demande du 25 sept. 2026) ----------------
@@ -11757,7 +12571,11 @@ const loupe = (() => {
 })();
 
 // ROW_H, le pas vertical d'une ligne : déclaré avec ITEM_CSS, il suit l'échelle de la barre (voir echelleBarre)
-const VEDETTE_S = 1.22; // l'article choisi, dans la case de l'icône : 107 px, à peine plus que l'icône (104)
+/* L'article choisi, dans la case de l'icône. 1,22 (107 px, à peine plus que
+   l'icône de 104) jusqu'au 25 sept. 2026 au soir : « aussi gros que son
+   underlay », la silhouette sombre qu'on voyait sous lui et qui montait à
+   1,5 fois sa taille — elle est retirée (voir drawRows), il en prend la place. */
+const VEDETTE_S = 1.83;
 
 /* ---- LES LISTES DE PRODUITS : EN BOUCLE, OU COMPLÉTÉES « BIENTÔT » ----
    (demandes du 25 sept. 2026) La colonne d'un rayon est pleine au-dessus
@@ -11975,7 +12793,7 @@ function updateHints(){
   };
   if (panelMode && cat.kind === 'shop' && productPart === 'sizes'){ // fiche produit : la rangée des tailles
     show('browse', true, T('hintSize')); show('select', true, T('hintSection'));
-    show('enter', true, T('hintSelect')); show('info', false); show('back', true, T('hintBack'));
+    show('enter', true, T('hintSelect')); show('back', true, T('hintBack'));
   } else if (panelMode && cat.kind === 'shop' && productPart){ // fiche produit : le visuel, ou la rangée des boutons
     /* Sur une pièce verrouillée, le bouton ne mène pas au panier : il lance le
        jeu qui l'ouvre, ou rien du tout quand son épreuve n'en est pas un. La
@@ -11987,10 +12805,10 @@ function updateHints(){
                     : verrouIci ? T('hintPlay') : T('hintAdd');
     show('browse', true, productPart === 'visual' ? T('hintViews') : T('hintChoose')); show('select', true, T('hintSection'));
     show('enter', !(verrouIci && !jeuIci && productPart !== 'visual'), surBouton);
-    show('info', false); show('back', true, T('hintBack'));
+    show('back', true, T('hintBack'));
   } else if (panelMode){
     show('browse', false); show('select', true, T('hintScroll'));
-    show('enter', false); show('info', false); show('back', true, T('hintBack'));
+    show('enter', false); show('back', true, T('hintBack'));
   } else {
     show('browse', true, T('hintBrowse')); show('select', true, T('hintSelect'));
     /* Une pièce verrouillée mène au jeu, pas au panier : l'aide doit le dire —
@@ -12000,38 +12818,37 @@ function updateHints(){
     const jeuIci = verrouIci ? jeuDuVerrou(cat.items[activeItem]) : null;
     // Info : rien à ouvrir, tout est déjà à l'écran — pas d'aide « entrée »
     show('enter', cat.kind !== 'about' && !(verrouIci && !jeuIci), verrouIci ? T('hintPlay') : cat.kind === 'shop' ? T('hintAdd') : cat.kind === 'contact' ? T('hintInstagram') : cat.kind === 'game' ? T('hintPlay') : cat.kind === 'profil' ? T('hintProfil') : T('hintOpen'));
-    show('info', cat.kind === 'shop', T('hintInfo'));
     show('back', false);
   }
 }
 
-/* La barre d'aide s'efface (voir .hintbar.effacee) après un temps pleinement
+/* La barre d'aide s'estompe (voir .hintbar.estompee) après un temps pleinement
    visible, et revient dès que la souris survole sa bande — au doigt, un
    toucher. Le décompte part à la fin de l'allumage (voir runStartup), puis
    chaque fois que la souris quitte la bande ; tant qu'elle y reste, rien ne
-   s'efface.
+   s'estompe.
    6 s LA PREMIÈRE FOIS, 3 s ENSUITE (demande du 25 sept. 2026) : à l'arrivée
    on découvre les touches et on a le temps de les lire ; ensuite on vient
    seulement de les revoir, un coup d'œil suffit. */
 const AIDE_PREMIERE = 6000, AIDE_ENSUITE = 3000;
 const aideBarre = document.getElementById('hintbar');
 let aideMinuteur = 0, aideSurvolee = false, aidePremiere = true;
-function effacerAideBientot(){
+function estomperAideBientot(){
   clearTimeout(aideMinuteur);
   const delai = aidePremiere ? AIDE_PREMIERE : AIDE_ENSUITE;
   aidePremiere = false;
   aideMinuteur = setTimeout(() => {
-    if (!aideSurvolee) aideBarre.classList.add('effacee');
+    if (!aideSurvolee) aideBarre.classList.add('estompee');
   }, delai);
 }
 aideBarre.addEventListener('pointerenter', () => {
   aideSurvolee = true;
   clearTimeout(aideMinuteur);
-  aideBarre.classList.remove('effacee');
+  aideBarre.classList.remove('estompee');
 });
 aideBarre.addEventListener('pointerleave', () => {
   aideSurvolee = false;
-  effacerAideBientot();
+  estomperAideBientot();
 });
 
 /* ---------------- la livraison : le camion (demande du 25 sept. 2026) ----------------
@@ -14077,10 +14894,16 @@ addBtn.addEventListener('click', ()=>{
   ajouterTailleChoisie();
 });
 
-/* ---------------- legal panel ---------------- */
+/* ---------------- legal panel ----------------
+   Refaite le 25 sept. 2026 (voir .legal-panel) : les rubriques en onglets
+   sous le titre, un curseur qui glisse sur l'onglet choisi, « l'essentiel »
+   en tête de rubrique et le texte aéré dessous. ←/→ changent de rubrique —
+   les onglets sont en ligne —, ↑/↓ font défiler le texte. */
 const legalOverlay = document.getElementById('legalOverlay');
 const legalNav = document.getElementById('legalNav');
 const legalBody = document.getElementById('legalBody');
+const legalTexte = document.getElementById('legalTexte');
+const legalCurseur = document.getElementById('legalCurseur');
 const legalTitle = document.getElementById('legalTitle');
 const legalbar = document.getElementById('legalbar');
 let legalIndex = 0;
@@ -14113,7 +14936,9 @@ function buildLegal(){
     const nav = document.createElement('button');
     nav.type = 'button';
     nav.className = 'legal-nav-item';
-    nav.addEventListener('click', () => showLegal(i));
+    nav.setAttribute('role', 'tab');
+    nav.setAttribute('aria-controls', 'legalBody');
+    nav.addEventListener('click', () => { if (i !== legalIndex) showLegal(i); });
     legalNav.appendChild(nav);
     legalNavButtons.push(nav);
   });
@@ -14138,27 +14963,83 @@ function syncFooterHeight(){
 }
 window.addEventListener('resize', syncFooterHeight);
 
-function showLegal(i){
+// « L'essentiel » d'une rubrique : ses trois chiffres (voir .legal-essentiel),
+// ou rien pour celles qui n'en ont pas (les Mentions : leur fiche en tient lieu).
+function essentielLegal(s){
+  const faits = legalText(s, 'essentiel');
+  if (!faits) return '';
+  return `<div class="legal-essentiel"><div class="legal-essentiel-titre">${esc(T('legalEssentiel'))}</div>`
+    + `<div class="legal-faits">${faits.map(([v, l]) => `<div class="legal-fait"><b>${v}</b><span>${l}</span></div>`).join('')}</div></div>`;
+}
+
+// Le numéro des articles passe au-dessus de leur titre (.legal-num) :
+// « Article 6 — Droit de rétractation » (CGV) donne « ARTICLE 6 » puis le
+// titre, « 1. Accès au Site » (CGU) donne « 01 » puis le titre. L'intitulé
+// d'origine reste le nom du titre pour un lecteur d'écran.
+function numeroterLegal(){
+  legalTexte.querySelectorAll('h3').forEach(h => {
+    const t = h.textContent.trim();
+    const m = t.match(/^(Article\s+\d+)\s+—\s+(.+)$/) || t.match(/^(\d+)\.\s+(.+)$/);
+    if (!m) return;
+    const num = /^\d+$/.test(m[1]) ? m[1].padStart(2, '0') : m[1];
+    h.setAttribute('aria-label', t);
+    h.innerHTML = `<span class="legal-num" aria-hidden="true">${esc(num)}</span>${esc(m[2])}`;
+  });
+}
+
+// Le curseur se pose sous l'onglet choisi, à sa taille. glisser = false à
+// l'ouverture : il y est déjà, il ne traverse pas la rangée depuis sa place
+// de la dernière fois. Les mesures sont celles de la mise en page, que la
+// fenêtre fermée (visibility:hidden) et son entrée (transform) ne changent pas.
+function placerCurseur(glisser){
+  const b = legalNavButtons[legalIndex];
+  if (!b) return;
+  legalCurseur.classList.toggle('pose', !glisser);
+  legalCurseur.style.setProperty('--x', b.offsetLeft + 'px');
+  legalCurseur.style.setProperty('--y', b.offsetTop + 'px');
+  legalCurseur.style.setProperty('--w', b.offsetWidth + 'px');
+  legalCurseur.style.setProperty('--h', b.offsetHeight + 'px');
+  // la rangée déborde (petit écran) : l'onglet choisi est ramené en vue,
+  // hors des bords estompés (.legal-nav.deborde)
+  legalNav.classList.toggle('deborde', legalNav.scrollWidth > legalNav.clientWidth + 1);
+  const avant = b.offsetLeft - 20, apres = b.offsetLeft + b.offsetWidth + 20 - legalNav.clientWidth;
+  if (legalNav.scrollLeft > avant) legalNav.scrollLeft = avant;
+  else if (legalNav.scrollLeft < apres) legalNav.scrollLeft = apres;
+}
+window.addEventListener('resize', () => { if (legalOverlay.classList.contains('open')) placerCurseur(false); });
+
+function showLegal(i, glisser = true){
   legalIndex = i;
   const s = LEGAL[i];
   legalTitle.textContent = legalText(s, 'title');
-  legalBody.innerHTML = highlightTodos(legalText(s, 'html'));
+  document.getElementById('legalMaj').textContent = T('legalMaj').replace('{d}', UPDATED[currentLang] || UPDATED.en);
+  legalTexte.innerHTML = highlightTodos(essentielLegal(s) + legalText(s, 'html'));
+  numeroterLegal();
   legalBody.scrollTop = 0;
-  legalNavButtons.forEach((b, bi) => b.classList.toggle('selected', bi === i));
-  legalBody.querySelectorAll('[data-legal-link]').forEach(a => {
+  legalNavButtons.forEach((b, bi) => {
+    b.classList.toggle('selected', bi === i);
+    b.setAttribute('aria-selected', bi === i ? 'true' : 'false');
+    b.tabIndex = bi === i ? 0 : -1;       // un seul arrêt de tabulation dans la rangée ; ←/→ font le reste
+  });
+  placerCurseur(glisser);
+  legalTexte.querySelectorAll('[data-legal-link]').forEach(a => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
       const target = LEGAL.findIndex(x => x.id === a.dataset.legalLink);
       if (target >= 0) showLegal(target);
     });
   });
-  document.getElementById('legalTodo').hidden = legalBody.querySelector('mark.todo') === null;
+  document.getElementById('legalTodo').hidden = legalTexte.querySelector('mark.todo') === null;
   document.getElementById('legalNote').hidden = currentLang === 'fr';
+  // le texte de la nouvelle rubrique entre en fondu (voir .legal-texte.entre)
+  legalTexte.classList.remove('entre');
+  void legalTexte.offsetWidth;
+  legalTexte.classList.add('entre');
 }
 
 function openLegal(i){
   legalReturnFocus = document.activeElement;
-  showLegal(i);
+  showLegal(i, false);
   legalOverlay.classList.add('open');
   document.getElementById('legalClose').focus();
 }
@@ -17632,13 +18513,24 @@ window.addEventListener('keydown', (e)=>{
     if (e.key === 'Escape') closeInfo();
     return;
   }
-  // Fenêtre légale ouverte : ↑/↓ changent de rubrique, Échap ferme.
-  // Si le texte lui-même a le focus, ↑/↓ le font défiler normalement.
+  // Fenêtre légale ouverte : ←/→ changent de rubrique (ses onglets sont en
+  // ligne depuis le 25 sept. 2026), ↑/↓ font défiler le texte, Échap ferme.
+  // Si le texte a lui-même le focus, ↑/↓ le font défiler nativement.
   if (legalOverlay.classList.contains('open')){
     if (e.key === 'Escape'){ closeLegal(); return; }
-    if (document.activeElement === legalBody) return;
-    if (e.key === 'ArrowDown'){ e.preventDefault(); showLegal(Math.min(LEGAL.length-1, legalIndex+1)); }
-    if (e.key === 'ArrowUp'){ e.preventDefault(); showLegal(Math.max(0, legalIndex-1)); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){
+      e.preventDefault();
+      const j = Math.max(0, Math.min(LEGAL.length - 1, legalIndex + (e.key === 'ArrowRight' ? 1 : -1)));
+      if (j === legalIndex) return;
+      const surOnglet = document.activeElement && document.activeElement.classList.contains('legal-nav-item');
+      showLegal(j);
+      if (surOnglet) legalNavButtons[j].focus();   // le focus suit l'onglet, comme dans une vraie rangée d'onglets
+      return;
+    }
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement !== legalBody){
+      e.preventDefault();
+      legalBody.scrollBy({ top: e.key === 'ArrowDown' ? 72 : -72, behavior: 'smooth' });
+    }
     return;
   }
   // Panier ouvert : Échap le ferme ; les touches XMB ne pilotent plus
@@ -17673,6 +18565,8 @@ window.addEventListener('keydown', (e)=>{
     else if (k === 'profil') profil.editer();          // créer son profil, ou personnaliser son personnage (l'atelier)
     else { ouvrirFiche(true); enterPanel(); }
   }
+  // I : le guide des tailles. La barre d'aide ne l'annonce plus (retirée le
+  // 25 sept. 2026, à la demande) ; la touche reste, pour qui la connaît.
   if ((e.key === 'i' || e.key === 'I') && DATA[activeCat].kind === 'shop'){ openInfo(); }
 });
 // Jumper a besoin des RELÂCHEMENTS : c'est en lâchant Espace que le saut part.
@@ -17845,18 +18739,23 @@ const SHEETS = [
 ];
 /* LES FILS DE SOIE (demande du 25 sept. 2026 : « un meilleur effet de
    traînée »). Les voiles donnent le corps du ruban ; ce qui fait la TRAÎNÉE du
-   XMB, ce sont les dizaines de filaments fins qui le parcourent, se serrent
-   en un faisceau puis s'évasent, comme la fumée d'une lumière qui passe.
-   Seize fils, chacun un simple liseré (même nuanceur, même appel de dessin
+   XMB, ce sont les filaments fins qui le parcourent, se serrent en un
+   faisceau puis s'évasent, comme la fumée d'une lumière qui passe.
+   Chaque fil est un simple liseré (même nuanceur, même appel de dessin
    que les voiles) : décalé de la spine d'une part `o` de la hauteur, avec sa
    propre petite ondulation. Le faisceau entier se resserre là où `serre`
    est bas — et ce resserrement voyage lentement le long de l'écran. Les
    réglages sont tirés d'une suite fixe, pas du hasard : le ruban est le même
-   à chaque visite. */
-const FILS = Array.from({ length: 16 }, (_, k) => {
+   à chaque visite.
+   SIX FILS ET NON PLUS SEIZE, et plus de liseré au bas des voiles (demande
+   du 25 sept. 2026 au soir : « je vois vingt et quelques traits, mets-en
+   plutôt douze ») : six liserés hauts de voile, six fils — douze traits.
+   Le faisceau garde la même largeur, en moins serré. */
+const NB_FILS = 6;
+const FILS = Array.from({ length: NB_FILS }, (_, k) => {
   const q = (m, d) => ((k * m) % d) / d;       // pseudo-hasard fixe, entre 0 et 1
   return {
-    o: -0.085 + (k + 0.5) / 16 * 0.19,         // du dessus de la spine à dessous
+    o: -0.085 + (k + 0.5) / NB_FILS * 0.19,    // du dessus de la spine à dessous
     a: 0.006 + q(37, 11) * 0.013,              // ondulation propre (fraction de H)
     c: 1.2 + q(53, 7) * 1.5,                   // cycles par écran
     s: (k % 2 ? 1 : -1) * (0.0009 + q(29, 9) * 0.0013),
@@ -17899,7 +18798,7 @@ function spineY(x){ return spineIn(x, W, H); }
    leur intensité, et l'épaisseur du liseré — 0 pour le corps. Tout tient dans
    un seul tableau, les rubans étant cousus par des triangles plats. */
 const V_FLOATS = 5;                    // x, y, v, intensité, demi-épaisseur
-const STRIPS = SHEETS.length * 3 + FILS.length;   // trois rubans par voile, un par fil de soie
+const STRIPS = SHEETS.length * 2 + FILS.length;   // deux rubans par voile (le corps, le liseré du haut), un par fil de soie
 let verts = null, vertCount = 0;
 let spBuf = null, topBuf = null, botBuf = null;
 
@@ -17942,8 +18841,7 @@ function buildRibbon(){
       if (i === 0) start(x, topBuf[0], 0, sh.alpha, 0); else put(x, topBuf[i], 0, sh.alpha, 0);
       put(x, botBuf[i], 1, sh.alpha, 0);
     }
-    edgeStrip(topBuf, 1.3, sh.edge);    // bord haut net et lumineux
-    edgeStrip(botBuf, 1.0, sh.edge * 0.4); // bord bas plus discret
+    edgeStrip(topBuf, 1.3, sh.edge);    // bord haut net et lumineux ; le bas n'a plus de liseré (voir FILS) : le corps s'y estompe
   }
   // les fils de soie, par-dessus : un liseré chacun (voir FILS)
   for (const f of FILS){
@@ -19487,7 +20385,7 @@ function runStartup(){
         layer.remove();
         tint.remove();
         document.body.classList.remove('boot-fade');
-        effacerAideBientot();   // l'interface est pleinement là : la barre d'aide entame son décompte
+        estomperAideBientot();   // l'interface est pleinement là : la barre d'aide entame son décompte
       },
     });
   };
