@@ -2,51 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-/* LE TÉLÉPHONE COUCHÉ MONTRE LE SITE DE L'ORDINATEUR, EN PETIT (demande du
-   25 sept. 2026 : « la même chose que sur l'ordi, en plus petit », « avec les
-   volumes du web »).
-   `width=device-width` donne au site une fenêtre de la taille du téléphone :
-   couché, environ 750 × 320 pixels CSS. La mise en page de l'ordinateur,
-   faite pour une fenêtre de 1 500 à 1 900 de large, n'y tenait pas — icônes,
-   fiche et textes ont leurs tailles en pixels —, et un gabarit à part la
-   remplaçait (voir « LE GABARIT DU PAYSAGE ») : ce n'était plus le même site.
-   Couché, le téléphone reçoit maintenant une fenêtre d'ORDINATEUR, haute de
-   740 pixels CSS comme celle d'un portable, large de ce que la forme de son
-   écran demande, et le navigateur la réduit pour qu'elle tienne : la même
-   page, les mêmes proportions. Debout, rien ne change : on n'y voit que le
-   voile qui demande de tourner le téléphone, et il doit rester lisible.
-   Une tablette (plus de 500 px sur son petit côté) garde sa propre fenêtre,
-   déjà assez grande pour la mise en page de l'ordinateur. */
-(function(){
-  var mq = window.matchMedia;
-  if (!mq || !mq('(hover: none) and (pointer: coarse)').matches) return;   // une souris : un ordinateur
-  if (Math.min(screen.width, screen.height) > 500) return;                  // une tablette
-  var meta = document.querySelector('meta[name="viewport"]');
-  var DEBOUT = 'width=device-width, initial-scale=1.0', HAUTEUR = 740;
-  var couche = mq('(orientation: landscape)');
-  var pose = DEBOUT, large = 0, ideal = 0;   // ideal : la largeur du téléphone couché, à l'échelle 1
-  function regler(){
-    if (!couche.matches){
-      large = 0;
-      if (pose !== DEBOUT){ pose = DEBOUT; meta.setAttribute('content', pose); }
-      return;
-    }
-    var w = window.innerWidth, h = window.innerHeight;
-    if (!w || !h || w < h) return;                // la fenêtre n'a pas encore tourné : le redimensionnement rappellera
-    if (pose === DEBOUT) ideal = w;               // encore à l'échelle 1
-    var voulu = Math.max(1280, Math.min(2400, Math.round(HAUTEUR * w / h)));
-    if (large && Math.abs(voulu - large) <= 8) return;   // les arrondis de la fenêtre ne font pas osciller
-    large = voulu;
-    pose = 'width=' + large + (ideal ? ', initial-scale=' + (ideal / large).toFixed(4) : '');
-    meta.setAttribute('content', pose);
-  }
-  regler();
-  if (couche.addEventListener) couche.addEventListener('change', regler); else couche.addListener(regler);
-  window.addEventListener('resize', regler);
-})();
-</script>
+<!-- LA FENÊTRE DU TÉLÉPHONE EST CELLE DU TÉLÉPHONE. Le 25 sept. 2026, quelques
+     heures durant, un script lui a donné une fenêtre d'ordinateur (1 700
+     pixels CSS de large) que le navigateur réduisait : « le site de
+     l'ordinateur, en plus petit ».
+     Sur l'iPhone, la mesure prise au chargement tombait mal et la page
+     finissait réduite à 31 % : icônes, textes et boutons inutilisables, et
+     aucun moyen de rattraper l'échelle ensuite. Le téléphone garde donc sa
+     fenêtre, et c'est la mise en page qui se met à SA taille, dans les
+     proportions de l'ordinateur (voir « LE BUREAU EN MINIATURE »).
+     `viewport-fit=cover` : la page va jusqu'aux bords de l'écran, sous
+     l'encoche et les coins arrondis, au lieu de laisser deux bandes noires
+     de chaque côté en paysage ; ce qui doit rester lisible s'écarte des
+     bords avec env(safe-area-inset-*). -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- LE TITRE DIT CE QU'ON VEND. « FakeParadise™ » seul ne parle qu'à ceux qui
      connaissent déjà la marque ; dans un onglet, un favori ou un résultat de
      recherche, il faut la marque ET ce qu'elle fait. -->
@@ -75,6 +44,18 @@
 <link rel="canonical" href="https://shopfakeparadise.com/">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/favicon-180.png">
+<!-- LE PLEIN ÉCRAN PAR L'ÉCRAN D'ACCUEIL (demande du 25 sept. 2026 : « plus
+     d'espace et d'immersion qu'avec la barre du navigateur »). Sur iPhone,
+     aucun navigateur ne laisse une page passer en plein écran : le seul
+     moyen est d'ajouter le site à l'écran d'accueil (le bouton plein écran
+     l'explique, voir `plein`). Ouvert de là, il s'affiche SANS AUCUNE BARRE —
+     c'est ce que disent ces lignes — et, sur Android, en plein écran et en
+     paysage (manifest.webmanifest). -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FakeParadise">
 <!-- l'écran de démarrage n'a plus d'images (voir demarrage) : c'est la police du sous-titre FakeStation qui est préchargée -->
 <link rel="preload" as="font" type="font/woff2" href="fonts/InterVariable.woff2" crossorigin>
 <style>
@@ -143,12 +124,16 @@
     overflow:hidden;
     user-select:none;
   }
-  /* Le téléphone couché affiche la page d'ordinateur réduite (voir le script
-     du <head>). Sur une page ainsi réduite, les navigateurs mobiles
-     grossissent d'eux-mêmes les textes qu'ils jugent trop petits — Chrome
-     sur Android surtout —, et casseraient la mise en page : ici, un texte
-     garde sa taille. */
+  /* Couché, un téléphone grossit de lui-même les textes qu'il juge trop
+     petits — Safari à chaque passage en paysage, Chrome sur Android aussi —,
+     ce qui casserait la mise en page : ici, un texte garde sa taille. */
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  /* Au doigt : pas de flash gris sur ce qu'on touche (le site a ses propres
+     états), et pas de zoom au double toucher — deux touchers rapides sur une
+     taille ou sur la liste doivent rester deux touchers. Le pincement, lui,
+     reste permis hors de la scène. */
+  html{-webkit-tap-highlight-color:transparent;}
+  @media (any-pointer:coarse){ html{touch-action:manipulation;} }
 
   /* ---------- wave background ----------
      UN SEUL CALQUE, OPAQUE, SANS FILTRE NI MODE DE FUSION. Le ruban, son halo,
@@ -234,6 +219,8 @@
     transition:opacity 0.6s ease 0.2s;
   }
   .startup.show .startup-hint{opacity:1;}
+  /* « flèches et Entrée » : sur un écran tactile, il n'y a ni l'un ni l'autre */
+  @media (hover:none) and (pointer:coarse){ .startup-hint{display:none;} }
   /* L'AIDE S'EN VA PLUS TÔT (demande du 25 sept. 2026) : lue pendant que le
      logo FS3 se montre, elle s'efface quand il se transforme, et laisse la
      fin de la séquence au seul logo (voir demarrage, HINT_FIN). */
@@ -244,10 +231,10 @@
      2026 : la roue dentée se voyait sur l'écran de démarrage, et un bord
      s'allumait au passage de la souris). */
   body.booting .brand,body.booting .topbar,body.booting .stage,body.booting .pager,
-  body.booting .preview,body.booting .hintbar,body.booting .legalbar,body.booting .reglages-bouton{opacity:0;pointer-events:none;}
+  body.booting .preview,body.booting .hintbar,body.booting .legalbar,body.booting .reglages-bouton,body.booting .plein-bouton{opacity:0;pointer-events:none;}
   body.booting .bord-nav{display:none;}
   body.boot-fade .brand,body.boot-fade .topbar,body.boot-fade .stage,body.boot-fade .pager,
-  body.boot-fade .preview,body.boot-fade .hintbar,body.boot-fade .legalbar,body.boot-fade .reglages-bouton{transition:opacity 1.6s ease;}
+  body.boot-fade .preview,body.boot-fade .hintbar,body.boot-fade .legalbar,body.boot-fade .reglages-bouton,body.boot-fade .plein-bouton{transition:opacity 1.6s ease;}
 
   /* ---------- top bar ---------- */
   /* Pas de marge à droite : l'encadré du statut (.statut) va jusqu'au bord de
@@ -311,6 +298,10 @@
     display:flex;
     align-items:center;
   }
+  /* Au doigt, les gestes de la scène sont au script — la liste qu'on pousse,
+     la barre qu'on tire (voir « au doigt ») : le navigateur n'y fait ni
+     défilement ni zoom, sans quoi il les prendrait pour lui. */
+  @media (any-pointer:coarse){ .stage{touch-action:none;} }
 
   .categories{
     position:relative;
@@ -1813,6 +1804,31 @@
   .reglages-bouton:hover img,
   .reglages-bouton:focus-visible img{filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(var(--accent-rgb),0.7));}
   .reglages-bouton:focus-visible{outline:2px solid rgba(255,255,255,0.85);outline-offset:2px;border-radius:50%;}
+  /* ---------- le plein écran (demande du 25 sept. 2026) ----------
+     Sur un écran tactile seulement (voir `plein`), juste à gauche de la roue
+     des Réglages et traité comme elle : même effacement au repos, même lueur
+     d'accent, même cible de 44 px. Deux dessins dans le bouton : les quatre
+     coins s'écartent pour entrer en plein écran, se resserrent pour en sortir. */
+  .plein-bouton{
+    position:fixed;
+    right:calc(17px - 10px + 40px);
+    bottom:calc(var(--footer-h) + 17px - 10px);
+    z-index:6;
+    width:44px;height:44px;
+    padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;
+    color:#fff;
+    cursor:pointer;
+    opacity:0.55;
+    transition:opacity 0.2s ease;
+  }
+  .plein-bouton[hidden]{display:none;}
+  .plein-bouton svg{width:21px;height:21px;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5));transition:filter 0.2s ease;}
+  .plein-bouton .sortir,.plein-bouton.actif .entrer{display:none;}
+  .plein-bouton.actif .sortir{display:block;}
+  .plein-bouton:hover,.plein-bouton:focus-visible{opacity:1;outline:none;}
+  .plein-bouton:hover svg,.plein-bouton:focus-visible svg{filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5)) drop-shadow(0 0 8px rgba(var(--accent-rgb),0.7));}
   /* ---------- fenêtre Réglages ----------
      Le gabarit du guide des tailles (.info-overlay + .size-panel), en plus
      étroit ; les groupes sont centrés, comme ils l'étaient dans l'ancien
@@ -3080,11 +3096,14 @@
     .atelier-hud{left:16px;top:14px;}
     .atelier-vues{left:12px;bottom:12px;}
   }
+  /* Le salon occupe tout l'écran, encoche comprise (voir le <head>) : ses
+     commandes s'écartent de l'encoche et de la barre d'accueil. */
   @media (orientation:landscape) and (max-height:500px){
     .atelier .arena-panel{width:100vw;height:100dvh;border-radius:0;}
-    .atelier-cote{width:50%;right:6px;top:6px;bottom:6px;border-radius:12px;}
-    .atelier-fermer{right:auto;left:10px;top:10px;}
-    .atelier-hud{left:56px;top:12px;}
+    .atelier-cote{width:50%;right:max(6px, env(safe-area-inset-right));top:6px;bottom:max(6px, calc(env(safe-area-inset-bottom) / 2));border-radius:12px;}
+    .atelier-fermer{right:auto;left:max(10px, env(safe-area-inset-left));top:10px;}
+    .atelier-hud{left:calc(46px + max(10px, env(safe-area-inset-left)));top:12px;}
+    .atelier-vues{left:max(12px, env(safe-area-inset-left));bottom:max(12px, calc(env(safe-area-inset-bottom) / 2 + 4px));}
     .atelier-titre{font-size:18px;}
     .atelier-titre::after{margin-top:5px;}
     .atelier-onglet{font-size:0;gap:0;padding:6px 1px;}
@@ -3449,86 +3468,173 @@
     box-shadow:0 0 16px rgba(var(--achat-rgb),0.45);
   }
 
-  /* LE GABARIT DU PAYSAGE : un écran bas, de 360 à 430 px. Tout se resserre en
-     hauteur — l'encadré du statut et le panier sur une seule ligne, pas de
-     barre d'aide (pas de clavier), la banderole légale réduite — et la fiche
-     passe en DEUX COLONNES : le visuel à gauche, aussi grand que la hauteur
-     le permet, et à droite le nom, les tailles et le bouton, toujours montrés
-     (sur un téléphone, déplier la fiche coûterait un geste de plus pour rien).
-     Placé après le gabarit étroit : un téléphone de moins de 820 px de large
-     en garde les réductions, et ce bloc rend la fiche que ce gabarit cachait.
-     Une fenêtre d'ordinateur très basse le reçoit aussi : c'est le même
-     problème, la même réponse.
-     DEPUIS LE 25 SEPT. 2026 (soir), UN TÉLÉPHONE NE LE REÇOIT PLUS : couché,
-     il affiche la page de l'ordinateur, réduite (voir le script du <head>),
-     et sa fenêtre n'est plus « basse ». Le gabarit reste pour les fenêtres
-     d'ordinateur très basses, et pour un navigateur de téléphone qui
-     ignorerait le changement de fenêtre. */
+  /* ---------- LE BUREAU EN MINIATURE : le téléphone couché ----------
+     Refait le 25 sept. 2026 au soir, après une capture de l'iPhone : « des
+     trous sur les bords, le fond aplati, les icônes trop petites, le footer
+     trop petit, les boutons des tailles et d'achat trop petits, les listes ne
+     se tirent pas au doigt… inutilisable ».
+     Le téléphone couché montre la page de l'ordinateur — la barre d'icônes au
+     tiers de la hauteur, la colonne d'articles sous l'icône choisie, la fiche
+     à droite, l'encadré en haut, la banderole en bas — DESSINÉE À SA TAILLE,
+     et non plus réduite par le navigateur (voir le <head>).
+     UNE SEULE MESURE, --u : ce que vaut ici un pixel de l'ordinateur. Elle
+     suit la hauteur de l'écran — 0,187 % de la hauteur : 0,61 px sur un écran
+     de 325, 0,73 sur 390 —, bornée entre 0,5 et 0,8. C'est 1,4 fois la simple
+     réduction (325 / 760 = 0,43) : un téléphone se tient plus près de l'œil
+     et se vise du doigt. Les icônes, la colonne et leurs écarts en découlent
+     tous : ce sont les proportions de l'ordinateur. Le script lit la même
+     mesure pour les lignes qu'il place lui-même (voir echelleBarre).
+     LES TEXTES ET LES CIBLES ONT UN PLANCHER : 11 px pour lire, une trentaine
+     de pixels pour viser du doigt. Là, la proportion cède.
+     LA FICHE PASSE EN DEUX COLONNES — le visuel à gauche, le nom, les tailles
+     et le bouton à droite, toujours montrés. En une seule colonne comme à
+     l'ordinateur, le texte et des boutons à la taille du doigt mangeaient la
+     hauteur, et il restait au vêtement un timbre-poste.
+     LES BORDS. La page va jusque sous l'encoche (viewport-fit=cover) : le
+     fond remplit tout l'écran, et ce qui se lit ou se touche s'écarte de
+     env(safe-area-inset-*) — l'encoche à gauche ou à droite, la barre
+     d'accueil en bas.
+     Une fenêtre d'ordinateur très basse reçoit aussi ce gabarit : même
+     problème, même réponse. Ce bloc passe après le gabarit étroit
+     (max-width:820px), qui ne vaut que pour une partie des téléphones
+     couchés : tout ce que celui-ci touche est redit ici, pour qu'un iPhone
+     de 844 px et un de 667 aient la même page. */
   @media (orientation:landscape) and (max-height:500px){
-    :root{--xmb-bar:40vh;}
-    .brand{top:12px;left:18px;font-size:11px;letter-spacing:2px;}
-    .topbar{flex-direction:row;align-items:center;justify-content:flex-end;gap:14px;padding:8px 0 0 18px;}
-    .topbar .cart{order:-1;margin-right:0;font-size:11.5px;}      /* le panier à gauche de l'encadré, sur sa ligne */
-    .statut{height:28px;gap:10px;padding:0 16px 0 10px;font-size:11.5px;}
+    :root{
+      --u:clamp(0.5px, 0.1868vh, 0.8px);
+      --u:clamp(0.5px, 0.1868dvh, 0.8px);
+      --xmb-bar:35vh;--xmb-bar:35dvh;
+      --haut:35px;                                          /* la ligne du haut : 9 px de marge, l'encadré de 26 */
+      --bas:calc(25px + env(safe-area-inset-bottom) / 2);   /* la banderole, montée au-dessus de la barre d'accueil */
+      --bord-d:max(3vw, calc(env(safe-area-inset-right) + 8px));
+    }
+    /* pas de rebond ni de « tirer pour recharger » : la page ne défile pas, un geste raté ne doit rien déplacer */
+    html,body{overscroll-behavior:none;}
+
+    /* LE HAUT : la marque, les pastilles, et sur UNE ligne le panier et l'encadré */
+    .brand{top:11px;left:max(18px, env(safe-area-inset-left));font-size:11px;letter-spacing:2px;}
+    .topbar{flex-direction:row;align-items:center;justify-content:flex-end;gap:14px;padding:9px 0 0 18px;font-size:11.5px;}
+    .topbar .cart{order:-1;margin-right:0;padding:6px 0;font-size:11.5px;}   /* à gauche de l'encadré ; la marge verticale agrandit la cible */
+    .statut{height:26px;gap:10px;padding:0 calc(12px + env(safe-area-inset-right)) 0 10px;}
     .statut .topbar-gt:not([hidden]){padding-right:10px;}
     #topbarGtNom{display:none;}
-    .pager{top:14px;}
-    .hintbar{display:none;}
-    .legalbar{padding:2px 10px;gap:2px 10px;font-size:9px;min-height:0;}
-    .legalbar-copy{display:none;}
-    .legalbar-links button{padding:3px 7px;}
-    /* la roue passe en bas à GAUCHE : à droite, elle mordait sur le coin de la fiche */
-    .reglages-bouton{--coin:6px;right:auto;left:calc(var(--coin) - 10px);}
-    .categories{padding-left:4vw;}
-    .category{width:96px;margin-right:52px;}
-    .cat-icon{width:76px;height:76px;}
-    .cat-icon img,.cat-glow{width:44px;height:44px;}
-    .cat-label{margin-top:6px;font-size:11.5px;}
+    .topbar-gt img,.topbar-gt-initiale{width:20px;height:20px;border-radius:6px;}
+    .statut-horloge{width:14px;height:14px;margin-left:-4px;}
+    .pager{top:12px;}                                       /* centrées sur l'encadré (9 + 26 / 2 − 10) */
 
-    /* la fiche : à droite, entre l'encadré et la banderole */
+    /* LA BARRE ET SA COLONNE, en --u */
+    .categories{
+      padding-left:max(8vw, calc(env(safe-area-inset-left) + 16px));
+      padding-bottom:calc(100vh - 2 * var(--xmb-bar));
+      padding-bottom:calc(100dvh - 2 * var(--xmb-bar));
+    }
+    .category{width:calc(112 * var(--u));margin-right:calc(72 * var(--u));}
+    .cat-icon{width:calc(104 * var(--u));height:calc(104 * var(--u));}
+    /* le glyphe, un peu plus grand dans sa case qu'à l'ordinateur (62 pour 58) : c'est lui qu'on vise */
+    .cat-icon img,.cat-glow,.fantome img{width:calc(62 * var(--u));height:calc(62 * var(--u));}
+    .fantome img{filter:blur(3px);}
+    .cat-label{margin-top:calc(12 * var(--u));font-size:max(11px, calc(13 * var(--u)));}
+    .item-column{top:calc(100% + 14 * var(--u));}
+    .xmb-item{height:calc(38 * var(--u));line-height:calc(22 * var(--u));padding:calc(8 * var(--u)) 2px;font-size:max(12px, calc(18 * var(--u)));}
+    .xmb-item.has-3d{width:calc(88 * var(--u));height:calc(88 * var(--u));padding:0;}   /* = ITEM_CSS dans le script */
+    .xmb-item.has-3d .tag{right:calc(-8 * var(--u));top:calc(-6 * var(--u));font-size:max(8.5px, calc(11 * var(--u)));}
+    .hintbar{display:none;}                                 /* les touches du clavier : pas de clavier */
+
+    /* LE BAS : la banderole, lisible et au-dessus de la barre d'accueil ; la
+       roue des Réglages et le plein écran au bout de sa ligne — plus haut, à
+       droite, ils mordaient sur le coin de la fiche */
+    .legalbar{min-height:0;padding:0 12px calc(env(safe-area-inset-bottom) / 2);gap:0;font-size:10.5px;flex-wrap:nowrap;}
+    .legalbar-copy{display:none;}
+    .legalbar-links{flex-wrap:nowrap;}
+    .legalbar-links button{padding:6px 9px;}
+    .reglages-bouton,.plein-bouton{bottom:calc(env(safe-area-inset-bottom) / 2 - 9.5px);}
+    .reglages-bouton{right:max(0px, calc(env(safe-area-inset-right) - 6px));}
+    .reglages-bouton img{width:22px;height:22px;}
+    .plein-bouton{right:calc(max(0px, calc(env(safe-area-inset-right) - 6px)) + 40px);}
+
+    /* LA FICHE : à droite, centrée entre les deux lignes, en deux colonnes */
     .preview{
       display:block;
-      --pad:12px;--radius:14px;
-      --reserve:108px;                     /* l'encadré, la banderole, leurs marges et le rembourrage de la fiche */
-      left:auto;right:12px;
-      top:calc(50% + 7px);
+      --pad:10px;--radius:14px;
+      --reserve:calc(var(--haut) + var(--bas) + 12px + 2 * var(--pad));   /* ce qui n'est pas le visuel, en hauteur */
+      left:auto;right:var(--bord-d);
+      top:calc(50% + (var(--haut) - var(--bas)) / 2);
       width:auto;max-width:calc(100vw - 24px);
     }
-    .preview:not(.info-panel):not(.profil) #previewProduct{display:flex;align-items:stretch;gap:14px;}
+    .preview:not(.info-panel):not(.profil) #previewProduct{display:flex;align-items:stretch;gap:12px;}
     .preview:not(.info-panel) .gallery-zone,
     .preview.gallery:not(.info-panel) .gallery-zone{
       flex:0 0 auto;
       margin:calc(-1 * var(--pad)) 0 calc(-1 * var(--pad)) calc(-1 * var(--pad));
       padding:var(--pad) 0 var(--pad) var(--pad);
+      border-radius:var(--radius) 0 0 var(--radius);        /* elle borde la fiche à gauche seulement */
     }
     .preview:not(.info-panel) .preview-swatch{
-      width:min(36vw, calc(100vh - var(--reserve)));
-      width:min(36vw, calc(100dvh - var(--reserve)));
+      width:min(34vw, calc(100vh - var(--reserve)));
+      width:min(34vw, calc(100dvh - var(--reserve)));
     }
+    /* la colonne de droite : jamais plus haute que le visuel (même formule), le bouton calé sur son bas */
     .preview:not(.info-panel) .preview-info,
     .preview.gallery:not(.info-panel) .preview-info{
-      flex:0 0 180px;min-width:0;
+      flex:0 0 clamp(150px, 19vw, 190px);min-width:0;
       display:flex;flex-direction:column;justify-content:flex-end;
-      max-height:none;opacity:1;overflow:visible;
+      max-height:min(34vw, calc(100vh - var(--reserve)));
+      max-height:min(34vw, calc(100dvh - var(--reserve)));
+      opacity:1;overflow:visible;
     }
     .preview-head{margin-top:0;}
-    .preview:not(.info-panel) .preview-name{font-size:16px;white-space:normal;height:auto;line-height:1.25;}
-    .preview:not(.info-panel) .preview-price{font-size:16px;}
-    .preview-desc{max-height:30vh;}
-    .preview.info:not(.info-panel) .preview-desc:not(.preview-desc-probe){max-height:calc(100dvh - 190px);}
-    .preview-bas.achat{flex-direction:column;align-items:stretch;gap:10px;margin-top:10px;}
-    .preview-bas.achat .preview-actions{margin:0;}
-    .preview-bas.achat .cta-duo.achat{margin-left:0;}
-    .preview-bas.achat .size-picker .pill{min-width:48px;padding:5px 6px;font-size:12px;}
+    .preview:not(.info-panel) .preview-head{gap:8px;}
+    .preview:not(.info-panel) .preview-name{
+      font-size:15px;line-height:1.25;height:auto;white-space:normal;
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;   /* deux lignes au plus */
+    }
+    .preview:not(.info-panel) .preview-price{font-size:15px;}
+    .desc-toggle{width:26px;height:26px;}
+    /* le descriptif déplié prend dans la colonne la place qu'il y a, et défile */
+    .preview:not(.info-panel) .preview-desc:not(.preview-desc-probe){
+      flex:0 1 var(--desc-h, 0px);height:auto;min-height:0;max-height:var(--desc-h, 0px);
+      font-size:12.5px;line-height:1.5;
+      margin-right:calc(4px - var(--pad));padding-right:calc(var(--pad) - 4px);
+      transition:flex-basis 0.3s cubic-bezier(.2,.8,.2,1), max-height 0.3s cubic-bezier(.2,.8,.2,1), margin-top 0.3s cubic-bezier(.2,.8,.2,1);
+    }
+    .preview.desc-open:not(.info-panel) .preview-desc{margin-top:8px;}
+    /* Déplié, il prend TOUTE la colonne sous le nom : à côté des tailles et du
+       bouton, il ne lui restait que deux lignes. Les tailles et le bouton
+       reviennent quand on le replie (le + devenu ×). */
+    .preview.desc-open:not(.info-panel) .preview-info{justify-content:flex-start;}
+    .preview.desc-open:not(.info-panel) .preview-desc:not(.preview-desc-probe){flex:1 1 auto;max-height:none;}
+    .preview.desc-open:not(.info-panel) .preview-bas.achat{display:none;}
+    .preview-desc-probe{left:auto;right:var(--pad);width:clamp(150px, 19vw, 190px);font-size:12.5px;line-height:1.5;}   /* mesure à la largeur de la colonne */
+    /* les tailles, trois par rangée sur toute la largeur, et le bouton dessous : à la taille du doigt */
+    .preview-bas.achat{flex-direction:column;align-items:stretch;gap:9px;margin-top:9px;}
+    .preview-bas.achat .size-picker .settings-label{margin-bottom:5px;padding:3px 0;font-size:12px;}
+    .preview-bas.achat .size-picker .pills{grid-template-columns:repeat(3, minmax(0, 1fr));justify-content:stretch;gap:6px;}
+    .preview-bas.achat .size-picker .pill{min-width:0;min-height:32px;padding:5px 4px;font-size:13px;}
+    .preview-bas.achat .preview-actions{display:flex;margin:0;}
+    .preview-bas.achat .cta-duo.achat{flex:1 1 auto;margin-left:0;}
+    .preview-bas.achat .cta-duo.achat > #addBtn{flex:1 1 auto;justify-content:center;min-height:40px;padding:8px 12px;}
+    #addBtn .cta-prix{font-size:16px;}
+    .preview-cta{font-size:13px;padding:10px 18px;}
 
-    /* les panneaux texte (Contact, jeux) et le profil : plus larges, pas plus hauts que l'écran */
+    /* les panneaux texte (Contact, jeux) et le profil : entre les deux lignes, jamais plus hauts */
     .preview.info-panel{
-      width:min(62vw, 520px);min-height:0;
-      max-height:calc(100vh - 70px);max-height:calc(100dvh - 70px);
+      --pad:14px;
+      width:min(56vw, 500px);min-height:0;
+      max-height:calc(100vh - var(--haut) - var(--bas) - 12px);
+      max-height:calc(100dvh - var(--haut) - var(--bas) - 12px);
       overflow:auto;
     }
-    .preview.info-panel .preview-name{font-size:22px;}
-    .preview.info-panel.contact{height:calc(100vh - 70px);height:calc(100dvh - 70px);}
+    .preview.info-panel .preview-name{font-size:20px;}
+    .preview.info-panel .preview-price{font-size:14px;}
+    .preview.info-panel .preview-desc:not(.preview-desc-probe){font-size:13px;line-height:1.55;margin-top:10px;max-height:none;}
+    .preview.info-panel .preview-actions{margin-top:12px;}
+    .preview.info-panel .preview-cta{font-size:13px;padding:10px 20px;}
+    .preview.info-panel.contact{
+      height:calc(100vh - var(--haut) - var(--bas) - 12px);
+      height:calc(100dvh - var(--haut) - var(--bas) - 12px);
+    }
+    .preview.info-panel.contact .preview-actions{margin-top:10px;}
+    .insta-barre{height:30px;}
     .insta-page .insta-card{padding:10px 14px 6px;gap:14px;}
     .insta-page .insta-avatar{width:56px;height:56px;}
     .insta-page .insta-handle{font-size:17px;}
@@ -3536,15 +3642,45 @@
     .insta-page .insta-name{margin-top:5px;font-size:12.5px;}
     .insta-page .insta-bio{font-size:12px;}
     .insta-direct{padding:6px 14px 10px;}
-    .insta-charger{padding:7px 16px;font-size:12.5px;}
-    .insta-note{margin-top:4px;font-size:10px;}  /* gardée, même petite : on doit savoir à quoi mène le clic avant de le faire */
-    .preview.info-panel.contact .preview-actions{margin-top:10px;}
-    .preview.info-panel .preview-cta{font-size:13px;padding:10px 20px;}
-    /* l'affiche d'un mini-jeu : c'est la HAUTEUR qui manque, elle la règle, et la largeur suit le 4:3 */
-    .jeu-affiche{width:auto;height:calc(100vh - 150px);height:calc(100dvh - 150px);max-width:100%;margin:0 auto;}
-    .preview.info-panel.jeu .preview-actions{margin-top:12px;}
-    .preview.profil{left:12px;right:12px;width:auto;max-height:calc(100dvh - 60px);overflow:auto;}
-    .size-panel,.reglages-panel,.cart-panel{max-height:calc(100dvh - 16px);overflow:auto;}
+    .insta-charger{padding:9px 16px;font-size:12.5px;}
+    .insta-note{margin-top:4px;font-size:10px;}             /* gardée, même petite : on doit savoir à quoi mène le clic avant de le faire */
+    /* l'affiche d'un mini-jeu : c'est la HAUTEUR qui manque, elle la règle, la
+       largeur suit le 4:3 et la fiche se serre autour, comme à l'ordinateur */
+    .preview.info-panel.jeu{width:auto;}
+    .jeu-affiche{
+      width:auto;max-width:100%;margin:0 auto;
+      height:calc(100vh - var(--haut) - var(--bas) - 12px - 2 * var(--pad) - 52px);
+      height:calc(100dvh - var(--haut) - var(--bas) - 12px - 2 * var(--pad) - 52px);
+    }
+    .preview.info-panel.jeu .preview-actions{margin-top:10px;}
+    /* le profil laisse voir le début de la barre : c'est par elle qu'on en repart */
+    .preview.profil{
+      left:auto;right:var(--bord-d);width:min(68vw, 640px);
+      max-height:calc(100vh - var(--haut) - var(--bas) - 12px);
+      max-height:calc(100dvh - var(--haut) - var(--bas) - 12px);
+      overflow:auto;
+    }
+    .size-panel,.reglages-panel,.cart-panel{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow:auto;}
+    /* les fenêtres, écartées de l'encoche : la page va maintenant jusque sous elle */
+    .legal-overlay,.info-overlay{padding:8px max(16px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom) / 2) max(16px, env(safe-area-inset-left));}
+    .legal-panel{border-radius:12px;}
+    .cart-panel{padding:18px calc(20px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom) / 2) 20px;}
+    .arena-panel{width:min(1180px, calc(100vw - 2 * max(12px, env(safe-area-inset-left), env(safe-area-inset-right))));}
+
+    /* la livraison : le camion comme à l'ordinateur, à 48 % de la hauteur, sous les libellés */
+    .camion-scene{display:flex;}
+    .camion-route{position:relative;left:auto;bottom:auto;width:min(94vw, calc(48vh * 1100 / 560));width:min(94vw, calc(48dvh * 1100 / 560));}
+    .camion-texte h2{font-size:clamp(12px, 3.8dvh, 16px);}
+    .camion-texte p{font-size:clamp(10px, 3dvh, 12.5px);line-height:1.4;}
+
+    /* l'annonce : sous la ligne du haut, et sur deux lignes s'il le faut */
+    .egg-note{top:44px;max-width:min(92vw, 560px);flex-direction:column;align-items:center;gap:3px;padding:9px 18px;border-radius:18px;text-align:center;}
+  }
+  /* un petit téléphone (667 px, l'iPhone SE) : la banderole se resserre pour
+     finir avant le plein écran et la roue, au bout de sa ligne */
+  @media (orientation:landscape) and (max-height:500px) and (max-width:720px){
+    .legalbar{font-size:10px;}
+    .legalbar-links button{padding:6px 6px;}
   }
 </style>
 </head>
@@ -3870,6 +4006,12 @@
      même modèle que le guide des tailles. -->
 <button type="button" class="reglages-bouton" id="reglagesBouton" data-i18n-aria="settings" aria-label="Settings">
   <img src="icons/settings icon.png" alt="" draggable="false">
+</button>
+<!-- Le plein écran (demande du 25 sept. 2026) : caché tant que le script ne
+     l'a pas jugé utile (voir `plein`). -->
+<button type="button" class="plein-bouton" id="pleinBouton" data-i18n-aria="fullscreen" aria-label="Full screen" hidden>
+  <svg class="entrer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  <svg class="sortir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
 </button>
 <div class="info-overlay" id="reglagesOverlay" role="dialog" aria-modal="true" aria-labelledby="reglagesTitle">
   <div class="size-panel reglages-panel glass">
@@ -4636,6 +4778,8 @@ const STRINGS = {
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
     sizeLabel:"Size", sizeFirst:"Choose a size", sound:"Sound", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
     rotateTitle:"Turn your phone", rotateText:"FakeParadise is played in landscape, like a console.", rotateButton:"Switch to landscape",
+    fullscreen:"Full screen", fullscreenExit:"Exit full screen",
+    homeTitle:"Full screen on iPhone", homeText:"Tap Share, then “Add to Home Screen”: opened from there, FakeParadise shows no browser bars.",
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
     language:"Language", currency:"Currency", music:"Music", effects:"Sound effects", soundOn:"On", soundOff:"Off",
     settings:"Settings", settingsSub:"Saved on this device, for your next visits",
@@ -4730,6 +4874,8 @@ const STRINGS = {
     moreInfo:"Plus d'infos", sizeGuide:"Guide des tailles", sizeNote:"Vêtement mesuré à plat, en centimètres, pouces en dessous.", hintInfo:"plus d'infos",
     sizeLabel:"Taille", sizeFirst:"Choisissez une taille", sound:"Son", hintSize:"choisir la taille", oneLess:"Un de moins", oneMore:"Un de plus",
     rotateTitle:"Tourne ton téléphone", rotateText:"FakeParadise se visite en paysage, comme une console.", rotateButton:"Passer en paysage",
+    fullscreen:"Plein écran", fullscreenExit:"Quitter le plein écran",
+    homeTitle:"Plein écran sur iPhone", homeText:"Touche Partager, puis « Sur l'écran d'accueil » : ouvert de là, FakeParadise s'affiche sans les barres du navigateur.",
     photo:"Photo", prevPhoto:"Vue précédente", nextPhoto:"Vue suivante",
     language:"Langue", currency:"Devise", music:"Musique", effects:"Bruitages", soundOn:"Activé", soundOff:"Coupé",
     settings:"Réglages", settingsSub:"Retenus sur cet appareil, pour vos prochaines visites",
@@ -6737,8 +6883,30 @@ window.addEventListener('resize', majOngletPanier);   // la place disponible a c
       position de sa ligne (aucune recopie d'image par ligne et par image).
    Sans WebGL : classe no-gl sur le cadre, photos à plat (CSS), noms en liste.
    Déclaré avant build() : fillPreview appelle show/hide à chaque fiche. */
+/* Le gabarit « téléphone couché » du CSS (même requête), c'est-à-dire tout
+   écran bas : voir « LE BUREAU EN MINIATURE ». */
+const TELEPHONE_COUCHE = window.matchMedia('(orientation:landscape) and (max-height:500px)');
+/* ---- LA BARRE À L'ÉCHELLE DU TÉLÉPHONE ----
+   Couché, le téléphone dessine la barre de l'ordinateur à sa taille : un
+   pixel de l'ordinateur y vaut K_BARRE pixels (0,187 % de la hauteur de
+   l'écran, entre 0,5 et 0,8 ; 1 partout ailleurs). Le CSS en tire les icônes
+   et leurs écarts (--u) ; le script, les lignes de la colonne qu'il place
+   lui-même. La valeur est posée ICI, en --u sur la racine, pour que les deux
+   lisent exactement le même nombre. Premier à écouter le redimensionnement :
+   les mesures qui suivent trouvent la barre déjà à sa nouvelle taille. */
+let K_BARRE = 1;
 // aperçus 3D des lignes de la liste : côté d'une ligne en px CSS (voir .xmb-item.has-3d et ROW_H)
-const ITEM_CSS = 88;
+let ITEM_CSS = 88;
+let ROW_H = 96;   // pas vertical d'une ligne à l'échelle 1 : aperçu 3D de 88 px (ITEM_CSS) + 8 px (voir .xmb-item.has-3d)
+function echelleBarre(){
+  const k = TELEPHONE_COUCHE.matches ? Math.round(Math.min(0.8, Math.max(0.5, window.innerHeight * 0.001868)) * 1000) / 1000 : 1;
+  if (k === K_BARRE) return;
+  K_BARRE = k; ITEM_CSS = 88 * k; ROW_H = 96 * k;
+  if (k === 1) document.documentElement.style.removeProperty('--u');
+  else document.documentElement.style.setProperty('--u', k + 'px');
+}
+echelleBarre();
+window.addEventListener('resize', echelleBarre);
 const model3d = (() => {
   const canvas = document.getElementById('previewGL');
   const swatch = document.getElementById('previewSwatch');
@@ -11265,7 +11433,8 @@ const model3d = (() => {
    protéger, seulement un plaisir à ménager pour qui ne lit pas le code. */
 const eggNote = document.getElementById('eggNote');
 let eggFin = 0;
-function annoncer(titre, detail){
+// `ms` : combien de temps elle reste (une consigne à suivre se lit plus longtemps qu'une nouvelle)
+function annoncer(titre, detail, ms = 5200){
   if (!eggNote) return;
   document.getElementById('eggNoteTitre').textContent = titre;
   document.getElementById('eggNoteOu').textContent = detail;
@@ -11277,7 +11446,7 @@ function annoncer(titre, detail){
   eggFin = setTimeout(() => {
     eggNote.classList.remove('show');
     setTimeout(() => { if (!eggNote.classList.contains('show')) eggNote.hidden = true; }, 600);
-  }, 5200);
+  }, ms);
 }
 model3d.surClope(() => {
   if (DEBLOQUE.a('vertige')) return;
@@ -11404,7 +11573,7 @@ const loupe = (() => {
   return { remettre, valeur: () => z };
 })();
 
-const ROW_H = 96; // pas vertical d'une ligne à l'échelle 1 : aperçu 3D de 88 px (ITEM_CSS) + 8 px (voir .xmb-item.has-3d)
+// ROW_H, le pas vertical d'une ligne : déclaré avec ITEM_CSS, il suit l'échelle de la barre (voir echelleBarre)
 const VEDETTE_S = 1.22; // l'article choisi, dans la case de l'icône : 107 px, à peine plus que l'icône (104)
 
 /* ---- LES LISTES DE PRODUITS : EN BOUCLE, OU COMPLÉTÉES « BIENTÔT » ----
@@ -12084,7 +12253,7 @@ function render(){
     // suivantes s'empilent dessous en rapetissant ; celles qui la précèdent
     // enjambent le bloc icône + libellé et se rangent au-dessus de la barre,
     // comme sur la PS3. Taille et luminosité décroissent avec la distance.
-    const aboveGap = g.colTop + 12;
+    const aboveGap = g.colTop + 12 * K_BARRE;
     if (ci === activeCat) rowDur = noteStep(col) ? 180 : 450; // défilement rapide : glissements raccourcis
     // Visibilité (demandes du 15 sept. 2026) : taille décroissante avec la distance
     // (1 → 0,89 → 0,78 → 0,68 mini) ; pleine opacité jusqu'à 3 lignes de la sélection,
@@ -12148,7 +12317,7 @@ function render(){
       y += ROW_H * p.s;
     }
     // au-dessus, un peu plus d'air quand la vedette, plus grande que l'icône, déborde de sa case
-    y = -aboveGap - (pv ? Math.max(0, (ITEM_CSS * VEDETTE_S - g.icoH) / 2) + 8 : 0);
+    y = -aboveGap - (pv ? Math.max(0, (ITEM_CSS * VEDETTE_S - g.icoH) / 2) + 8 * K_BARRE : 0);
     for (let k = k0 - 1; k >= 0; k--){
       const p = place[k];
       y -= ROW_H * p.s;
@@ -12172,7 +12341,7 @@ function render(){
        les autres lignes : c'est l'icône qu'elle remplace. Les lignes grandissent
        depuis leur coin haut gauche (transform-origin), d'où le décalage. */
     if (pv){
-      const h = pv.carre ? ITEM_CSS : 38;              // 38 : hauteur d'une ligne texte (.xmb-item)
+      const h = pv.carre ? ITEM_CSS : 38 * K_BARRE;    // 38 : hauteur d'une ligne texte (.xmb-item)
       pv.tx = g.icoL + g.icoW / 2 - left - pv.w * pv.s / 2;
       pv.ty = g.icoT + g.icoH / 2 - g.colTop - h * pv.s / 2;
       pv.row.style.transform = `translate(${pv.tx}px, ${pv.ty}px) scale(${pv.s})`;
@@ -12399,8 +12568,8 @@ function majBords(){
       position à chaque changement de sélection : un glissement est un coup
       d'œil, pas un réglage qu'on garde. C'est voulu — sans cela, la barre
       resterait où on l'a laissée et la sélection pourrait sortir de l'écran.
-   La souris et le stylet seulement : le tactile a son propre défilement, et
-   lui prendre le glissement horizontal le casserait. */
+   La souris et le stylet seulement : le doigt a ses propres gestes, qui
+   tirent la barre de la même façon (voir « au doigt »). */
 const GLISSE_SEUIL = 5;
 let glisse = null, glisseFin = 0;
 function glisseMax(){
@@ -12500,6 +12669,101 @@ document.addEventListener('click', (e) => {
   if (performance.now() - glisseFin < 250){ e.stopPropagation(); e.preventDefault(); }
 }, true);
 
+/* ---- AU DOIGT : LA LISTE ET LA BARRE (demande du 25 sept. 2026) ----
+   « Les drag au doigt des molettes produits marchent pas » : sur un écran
+   tactile, rien ne répondait au doigt qui glisse — la barre ne se tirait qu'à
+   la souris, la liste ne se parcourait qu'à la molette et au clavier. Le
+   geste se lit à son premier mouvement franc :
+   - VERTICAL, il parcourt la liste de la catégorie ouverte, comme la
+     molette : un article chaque fois que le doigt a fait un peu plus d'une
+     demi-ligne. Le doigt monte, la liste monte — l'article suivant vient à la
+     sélection, comme sur toute liste qu'on pousse. Lâchée d'un coup sec,
+     elle file encore de quelques articles, de moins en moins vite.
+   - HORIZONTAL, il tire la barre exactement comme la souris (voir « la barre
+     se tire à la souris ») : même borne, même élan.
+   Un simple toucher reste un clic ; celui qui suit un geste est avalé
+   (glisseFin). Le navigateur, lui, ne fait rien sur la scène (touch-action,
+   voir .stage) : il prendrait sinon le geste pour un défilement. */
+const sceneEl = document.querySelector('.stage');
+const DOIGT_SEUIL = 8;              // px : en deçà, c'est encore un toucher
+let doigt = null, lanceListe = 0, pasDoigtAt = 0;
+function arreterLanceListe(){ clearTimeout(lanceListe); lanceListe = 0; }
+// un pas de la liste au doigt, avec le son de la molette (plus discret quand les pas s'enchaînent)
+function pasAuDoigt(dir){
+  if (panelMode) exitPanel();
+  const now = performance.now(), rapide = now - pasDoigtAt < WHEEL_FAST;
+  if (!pasDansListe(dir)) return false;
+  pasDoigtAt = now;
+  sfx.tick(rapide);
+  return true;
+}
+/* L'élan de la liste : la distance qu'elle aurait encore parcourue en
+   freinant, en articles, huit au plus — puis les pas s'espacent. */
+function lancerListe(v){
+  arreterLanceListe();
+  if (moinsDAnimation.matches) return;
+  const n = Math.min(8, Math.floor(Math.abs(v) * 160 / (ROW_H * 0.55)));
+  if (n < 1) return;
+  const dir = Math.sign(v);
+  let i = 0;
+  const suivant = () => {
+    lanceListe = 0;
+    if (!pasAuDoigt(dir) || ++i >= n) return;
+    lanceListe = setTimeout(suivant, 55 + i * 25);
+  };
+  lanceListe = setTimeout(suivant, 40);
+}
+sceneEl.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'touch' || !e.isPrimary || startupActive) return;
+  arreterLanceListe(); arreterElan();
+  doigt = { id: e.pointerId, x0: e.clientX, y0: e.clientY, y: e.clientY, sens: '', depart: camShift,
+            t: performance.now(), v: 0, reste: 0 };
+});
+window.addEventListener('pointermove', (e) => {
+  if (!doigt || e.pointerId !== doigt.id) return;
+  const dx = e.clientX - doigt.x0, dy = e.clientY - doigt.y0;
+  if (!doigt.sens){
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < DOIGT_SEUIL) return;
+    doigt.sens = Math.abs(dy) > Math.abs(dx) ? 'liste' : 'barre';
+    // rien à tirer (tout tient à l'écran) : le geste ne fait rien, mais il n'est plus un clic
+    if (doigt.sens === 'barre'){
+      if (!geom.ready || glisseMax() <= 0) doigt.sens = 'rien';
+      else categoriesEl.classList.add('glissee');
+    }
+    doigt.y = e.clientY; doigt.t = performance.now();
+    return;
+  }
+  const t = performance.now(), dt = Math.max(8, t - doigt.t);
+  if (doigt.sens === 'barre'){
+    const avant = camShift;
+    poserBarre(doigt.depart - dx);
+    doigt.v = doigt.v * 0.6 + ((camShift - avant) / dt) * 0.4;   // relevée sur la barre, comme à la souris
+  } else if (doigt.sens === 'liste'){
+    const d = doigt.y - e.clientY, pas = ROW_H * 0.55;          // le doigt monte : d > 0, l'article suivant
+    doigt.v = doigt.v * 0.6 + (d / dt) * 0.4;
+    doigt.reste += d;
+    while (Math.abs(doigt.reste) >= pas){
+      const dir = Math.sign(doigt.reste);
+      doigt.reste -= dir * pas;
+      if (!pasAuDoigt(dir)){ doigt.reste = 0; break; }        // au bout d'une liste finie : rien ne s'accumule
+    }
+    doigt.y = e.clientY;
+  }
+  doigt.t = t;
+});
+const finDoigt = (e) => {
+  if (!doigt || e.pointerId !== doigt.id) return;
+  const g = doigt;
+  doigt = null;
+  if (!g.sens) return;                          // un toucher : le clic suit, comme d'habitude
+  glisseFin = performance.now();                // le clic qui suit un geste est avalé
+  if (g.sens === 'barre'){ if (g.v) lancerElan(g.v); else finElan(); }
+  // l'élan ne part que d'un doigt encore en mouvement au moment où il quitte l'écran
+  else if (g.sens === 'liste' && performance.now() - g.t < 90) lancerListe(g.v);
+};
+window.addEventListener('pointerup', finDoigt);
+window.addEventListener('pointercancel', finDoigt);
+
 let lastPreviewCat = -1, previewSwapTimer = null, affichesChargees = false;
 // Changement de catégorie : le panneau perd son opacité, puis le nouveau
 // contenu apparaît en la regagnant. Dans une même catégorie, mise à jour directe.
@@ -12565,11 +12829,9 @@ function majInfoH(){
    connues : le cadre, le visuel selon sa propre formule CSS, le bloc de texte
    (infoBase, tailles comprises) et le descriptif s'il est déplié. */
 const MARGE_BARRE = 10;   // entre la fiche et chacune des deux barres (la même qu'appliquerDesc)
-/* Le gabarit « paysage » du CSS (même requête) : la fiche y est en deux
-   colonnes, le visuel à côté du texte et non au-dessus — rien de ce qui suit
-   ne s'y applique. Il ne sert plus qu'aux fenêtres d'ordinateur très basses :
-   un téléphone couché affiche la page de l'ordinateur (voir le <head>). */
-const TELEPHONE_COUCHE = window.matchMedia('(orientation:landscape) and (max-height:500px)');
+/* Le gabarit du téléphone couché (TELEPHONE_COUCHE, voir « LE BUREAU EN
+   MINIATURE ») : la fiche y est en deux colonnes, le visuel à côté du texte
+   et non au-dessus — rien de ce qui suit ne s'y applique. */
 function reserverTailles(){
   const cat = DATA[activeCat];
   const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
@@ -17347,9 +17609,20 @@ let sparklesReady = false;
    étincelles. */
 const GLOW_SCALE = 0.25;
 let fondGL = null;   // le moteur du fond (voir makeFond), créé plus bas
+/* LA HOULE GARDE SES PROPORTIONS SUR UN ÉCRAN TRÈS LARGE. Ses ondulations
+   se comptent en cycles PAR LARGEUR d'écran et leur hauteur en part de la
+   hauteur : sur un téléphone couché, deux fois et demie plus large que haut,
+   le ruban s'étirait et s'aplatissait (« le fond est aplati »). Là, on
+   compte les cycles sur la largeur qu'aurait une fenêtre d'ordinateur de la
+   même hauteur (FORMAT_ONDE : 2 pour 1) : plus d'ondulations à l'écran, et la
+   même forme qu'à l'ordinateur. ONDE est cette largeur, en part de l'écran ;
+   1 partout ailleurs, où rien ne change. */
+const FORMAT_ONDE = 2;
+let ONDE = 1;
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W; canvas.height = H;
+  ONDE = TELEPHONE_COUCHE.matches ? Math.min(1, H * FORMAT_ONDE / W) : 1;
   if (sparklesReady) seedSparkles(); // le nombre de particules dépend de la largeur
   // les calques hors écran suivent la fenêtre, et le ruban y est repeint tout de suite : pas une image de noir
   if (fondGL){ fondGL.taille(); paintWaves(); }
@@ -17410,10 +17683,10 @@ const FILS = Array.from({ length: 16 }, (_, k) => {
   };
 });
 // le faisceau se serre (0,32) puis s'évase (1) le long de l'écran
-const serreFils = (x, w) => 0.32 + 0.68 * (0.5 + 0.5 * Math.sin(x * TAU * 0.62 / w + t * 0.0009 + 1.1));
+const serreFils = (x, w) => 0.32 + 0.68 * (0.5 + 0.5 * Math.sin(x * TAU * 0.62 / (w * ONDE) + t * 0.0009 + 1.1));
 // hauteur d'un fil à l'écran (les traînées lumineuses le suivent, voir cometes)
 function filY(f, x){
-  return spineY(x) + H * (f.o * serreFils(x, W) + f.a * Math.sin(x * TAU * f.c / W + t * f.s + f.p));
+  return spineY(x) + H * (f.o * serreFils(x, W) + f.a * Math.sin(x * TAU * f.c / (W * ONDE) + t * f.s + f.p));
 }
 // Couleur des voiles = couleur d'accent du moment, éclaircie : corps vif,
 // liserés plus clairs. Le profil de haut en bas (liseré lumineux puis corps
@@ -17430,7 +17703,7 @@ function colorRibbon(rgb){
 // exactement la même forme, en moins de pixels.
 function spineIn(x, w, h){
   let y = h * WAVE.y;
-  for (const c of WAVE.spine) y += h * c.amp * Math.sin(x * TAU * c.cycles / w + t * c.speed + c.phase);
+  for (const c of WAVE.spine) y += h * c.amp * Math.sin(x * TAU * c.cycles / (w * ONDE) + t * c.speed + c.phase);
   return y;
 }
 // Hauteur de la spine à l'écran (utilisée par les particules, qui, elles, sont nettes).
@@ -17448,7 +17721,7 @@ let verts = null, vertCount = 0;
 let spBuf = null, topBuf = null, botBuf = null;
 
 function buildRibbon(){
-  const w = W, h = H, step = WAVE.step;
+  const w = W, h = H, step = WAVE.step, wo = w * ONDE;   // wo : la largeur sur laquelle se comptent les cycles (voir ONDE)
   const n = Math.ceil(w / step) + 3;
   const need = (STRIPS * 2 * n + (STRIPS - 1) * 2) * V_FLOATS;
   if (!verts || verts.length !== need){
@@ -17476,8 +17749,8 @@ function buildRibbon(){
   for (const sh of SHEETS){
     for (let i = 0; i < n; i++){
       const x = (i - 1) * step;
-      const yT = spBuf[i] + h * (sh.off + sh.a * Math.sin(x * TAU * sh.c / w + t * sh.s + sh.p));
-      const u = 0.5 + 0.5 * Math.sin(x * TAU * sh.tc / w + t * sh.ts + sh.tp);
+      const yT = spBuf[i] + h * (sh.off + sh.a * Math.sin(x * TAU * sh.c / wo + t * sh.s + sh.p));
+      const u = 0.5 + 0.5 * Math.sin(x * TAU * sh.tc / wo + t * sh.ts + sh.tp);
       topBuf[i] = yT;
       botBuf[i] = yT + h * sh.thick * (1 - sh.twist + sh.twist * u);
     }
@@ -17493,7 +17766,7 @@ function buildRibbon(){
   for (const f of FILS){
     for (let i = 0; i < n; i++){
       const x = (i - 1) * step;
-      topBuf[i] = spBuf[i] + h * (f.o * serreFils(x, w) + f.a * Math.sin(x * TAU * f.c / w + t * f.s + f.p));
+      topBuf[i] = spBuf[i] + h * (f.o * serreFils(x, w) + f.a * Math.sin(x * TAU * f.c / wo + t * f.s + f.p));
     }
     edgeStrip(topBuf, f.width, f.alpha);
   }
@@ -18936,6 +19209,53 @@ const paysage = (() => {
   }
   voile.addEventListener('click', basculer);
   return { basculer };
+})();
+/* ---------------- le plein écran (demande du 25 sept. 2026) ----------------
+   « Un bouton qui active le mode paysage et met en plein écran : plus
+   d'espace et d'immersion qu'avec la barre du navigateur. »
+   Là où le navigateur le permet (Android, tablettes), le bouton passe la page
+   en plein écran et y verrouille le paysage — le geste du bouton du voile,
+   voir `paysage` — et en sort au second toucher.
+   SUR IPHONE, AUCUN NAVIGATEUR NE LE PERMET : ni plein écran pour une page ni
+   verrouillage de l'orientation, dans Safari comme dans Chrome, qui n'y est
+   qu'un Safari habillé. Le seul plein écran y est celui du site ouvert depuis
+   l'écran d'accueil, sans aucune barre (voir le <head>) : le bouton dit donc
+   comment l'y mettre. Ouvert de là, il n'a plus rien à faire et disparaît.
+   Un écran tactile seulement : à l'ordinateur, le navigateur a sa touche. */
+const plein = (() => {
+  const bouton = document.getElementById('pleinBouton');
+  const racine = document.documentElement;
+  const demander = racine.requestFullscreen || racine.webkitRequestFullscreen;
+  const quitter = document.exitFullscreen || document.webkitExitFullscreen;
+  const permis = !!(demander && (document.fullscreenEnabled || document.webkitFullscreenEnabled));
+  const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const tactile = window.matchMedia('(hover: none) and (pointer: coarse)');
+  const installe = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)');
+  const dedans = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function maj(){
+    bouton.hidden = !tactile.matches || installe.matches || navigator.standalone === true || !(permis || iOS);
+    const actif = dedans();
+    bouton.classList.toggle('actif', actif);
+    // le libellé suit l'état, et la langue (applyLanguage relit data-i18n-aria)
+    bouton.dataset.i18nAria = actif ? 'fullscreenExit' : 'fullscreen';
+    bouton.setAttribute('aria-label', T(bouton.dataset.i18nAria));
+  }
+  bouton.addEventListener('click', () => {
+    if (dedans()){ quitter.call(document); return; }
+    if (permis){
+      Promise.resolve(demander.call(racine, { navigationUI: 'hide' }))
+        .then(() => (screen.orientation && screen.orientation.lock) ? screen.orientation.lock('landscape') : null)
+        .catch(() => {});                    // refusé : la page reste où elle est
+      return;
+    }
+    annoncer(T('homeTitle'), T('homeText'), 9000);
+  });
+  document.addEventListener('fullscreenchange', maj);
+  document.addEventListener('webkitfullscreenchange', maj);
+  if (tactile.addEventListener) tactile.addEventListener('change', maj);
+  if (installe.addEventListener) installe.addEventListener('change', maj);
+  maj();
+  return { maj };
 })();
 function runStartup(){
   const layer = document.getElementById('startup');
