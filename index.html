@@ -4836,7 +4836,15 @@ const SIZE_CHARTS = {
    foi : il est écrit par le gestionnaire de produits (admin.html, lancé par
    gerer-produits.bat) et remplace au chargement les produits des catégories
    boutique, ainsi que leurs guides des tailles. Pensez donc à envoyer
-   catalogue.json et le dossier products/ en même temps que index.html. */
+   catalogue.json et le dossier products/ en même temps que index.html.
+
+   ELLE SUIT LE CATALOGUE : mêmes articles, même ordre, mêmes photos (sans
+   `v`, qui ne sert qu'au catalogue) — réalignée le 25 sept. 2026. Ses photos
+   sont demandées même quand catalogue.json est là : celles du premier
+   article dès l'ouverture (la fiche se remplit avant que le fichier
+   n'arrive), toutes s'il tarde plus d'une seconde et demie. Une photo
+   supprimée par le gestionnaire mais encore citée ici, c'est une erreur 404
+   à chaque visite : quand il retire un article, le retirer ici aussi. */
 // Descriptifs bilingues partagés par les tees aux caractéristiques identiques.
 const DESC = {
   teeBlack: { en:"280 GSM (100% cotton)\nBoxy fit\nBlack\nCustom neck print", fr:"280 g/m² (100 % coton)\nCoupe boxy\nNoir\nImpression au col personnalisée" },
@@ -4853,18 +4861,13 @@ const DATA = [
   // img2 = seconde photo révélée au survol, sz = guide des tailles (SIZE_CHARTS).
   { id:"tshirts", name:{en:"T-Shirts", fr:"T-shirts"}, icon:"tshirt icon.png", kind:"shop", items:[
     // Nouveautés en tête de liste (règle de l'utilisateur, 15 sept. 2026).
-    {n:"AMBIANCE 2000 POLO", p:25, d:{en:"240 GSM (100% cotton)\nOversized fit\nWhite\nCustom neck print", fr:"240 g/m² (100 % coton)\nCoupe oversize\nBlanc\nImpression au col personnalisée"}, img:"products/ambiance-2000-polo.jpg", img2:"products/ambiance-2000-polo-2.jpg", sz:"polo"},
+    {n:"KETAMINE POLO", p:30, d:{en:"270 GSM (48.8% polyester, 47.6% cotton，3.6% spandex)\nBoxy fit\nRed\nCustom label\nsizeguidetemp", fr:"270 GSM (48,8 % polyester, 47,6 % coton, 3,6 % élasthanne)\nCoupe boxy\nRouge\nÉtiquette personnalisée"}, img:"products/ketamine-polo.jpg", img2:"products/ketamine-polo-2.jpg", sz:"tee", sizes:["S","M","L","XL","2XL"]},
+    {n:"FUCK MY LIFE TEE", p:25, d:DESC.teeWhite, img:"products/fuck-my-gwer-life-tee.jpg", img2:"products/fuck-my-gwer-life-tee-2.jpg", sz:"tee"},
     {n:"FISH BOOTLEG TEE", p:25, d:DESC.teeBlack, img:"products/fish-bootleg-tee.jpg", img2:"products/fish-bootleg-tee-2.jpg", sz:"tee"},
     {n:"HELLO❤️ TEE", p:25, d:DESC.teeWhite, img:"products/hello-tee.jpg", img2:"products/white-tee-back.jpg", sz:"tee"},
-    {n:"KETAMINE TEE", p:25, d:DESC.teeWhite, img:"products/ketamine-tee.jpg", img2:"products/white-tee-back.jpg", sz:"tee"},
     {n:"ACAB TEE", p:25, d:DESC.teeWhite, img:"products/acab-tee.jpg", img2:"products/white-tee-back.jpg", sz:"tee"},
     {n:"SILK ROAD TEE", p:25, d:{en:"280 GSM (100% cotton)\nBoxy fit\nWhite\nGlitter print skull detail on front\nCustom neck print", fr:"280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nCrâne pailleté imprimé sur le devant\nImpression au col personnalisée"}, img:"products/silk-road-tee.jpg", img2:"products/silk-road-tee-2.jpg", sz:"tee"},
-    {n:"HEAVEN'S GATE TEE", p:25, d:DESC.teeBlack, img:"products/heavens-gate-tee.jpg", img2:"products/heavens-gate-tee-2.jpg", sz:"tee"},
-    {n:"KILLEM TEE", p:15, d:{en:"I MAKE NO MONEY ON THIS SHIRT, EVERYONE SHOULD BE ABLE TO EXPRESS THEIR HATE FOR CHEAP // FUCKEM\n280 GSM (100% cotton)\nBoxy fit\nWhite\nCustom neck print", fr:"JE NE GAGNE RIEN SUR CE T-SHIRT, TOUT LE MONDE DOIT POUVOIR EXPRIMER SA HAINE POUR PAS CHER // FUCKEM\n280 g/m² (100 % coton)\nCoupe boxy\nBlanc\nImpression au col personnalisée"}, img:"products/killem-tee.jpg", img2:"products/white-tee-back.jpg", sz:"tee"},
-    {n:"N.W.O TEE", p:25, d:DESC.teeBlack, img:"products/nwo-tee.jpg", img2:"products/nwo-tee-2.jpg", sz:"tee"},
     {n:"I'M SO WOKE TEE", p:25, d:DESC.teeWhite, img:"products/im-so-woke-tee.jpg", img2:"products/im-so-woke-tee-2.jpg", sz:"tee"},
-    {n:"STRIPPER RAGLAN TEE", p:25, d:{en:"280 GSM (100% cotton)\nOversized fit\nWhite/black\nCustom neck print", fr:"280 g/m² (100 % coton)\nCoupe oversize\nBlanc/noir\nImpression au col personnalisée"}, img:"products/stripper-raglan-tee.jpg", img2:"products/stripper-raglan-tee-2.jpg", sz:"raglan"},
-    {n:"I <3 DUBSTEP TANK TOP", p:20, d:{en:"380 GSM (100% cotton)\nBoxy fit\nLight beige\nCustom neck print", fr:"380 g/m² (100 % coton)\nCoupe boxy\nBeige clair\nImpression au col personnalisée"}, img:"products/i-3-dubstep-tank-top.jpg", img2:"products/i-3-dubstep-tank-top-2.jpg", sz:"tank"},
     {n:"COCO&RICO MERCH TEE", p:25, d:DESC.teeBlack, img:"products/cocorico-merch-tee.jpg", img2:"products/cocorico-merch-tee-2.jpg", sz:"cocorico"},
     // Repris de la boutique le 15 sept. 2026, en bas de liste à la demande de l'utilisateur.
     {n:"HOLLANDAIS TEE", p:25, d:DESC.teeWhite, img:"products/hollandais-tee.jpg", img2:"products/hollandais-tee-2.jpg", sz:"hollandais"},
@@ -4873,8 +4876,6 @@ const DATA = [
   // repris tels quels (puces « * » retirées), guide des tailles « hoodie ».
   { id:"hoodies", name:{en:"Hoodies", fr:"Hoodies"}, icon:"hoodie icon.png", kind:"shop", items:[
     {n:"CS:CO HOODIE", p:40, d:{en:"400 GSM (100% cotton)\nBalloon Fit, Zip\nBlack\nCustom embroidery on left chest\nGlitter print on right chest\nKillfeed print on left sleeve\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"400 g/m² (100 % coton)\nCoupe ballon, zippé\nNoir\nBroderie personnalisée côté cœur\nImpression pailletée sur la poitrine droite\nImpression killfeed sur la manche gauche\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/csco-hoodie.jpg", img2:"products/csco-hoodie-2.jpg", sz:"hoodie"},
-    // version alt juste après l'original : même descriptif, manche droite et marron
-    {n:"CS:CO HOODIE (ALT)", p:40, d:{en:"400 GSM (100% cotton)\nBalloon Fit, Zip\nBrown\nCustom embroidery on left chest\nGlitter print on right chest\nKillfeed print on right sleeve\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"400 g/m² (100 % coton)\nCoupe ballon, zippé\nMarron\nBroderie personnalisée côté cœur\nImpression pailletée sur la poitrine droite\nImpression killfeed sur la manche droite\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/csco-hoodie-alt.jpg", img2:"products/csco-hoodie-alt-2.jpg", sz:"hoodie"},
     {n:"FISC HOODIE", p:40, d:{en:"COPS WILL NOT GIVE YOU SHIT FOR WEARING THIS IN PUBLIC, I TRIED\n400 GSM (100% cotton)\nBalloon Fit, Zip\nBlack\nCustom embroidery on left chest\nCustom neck print\nDue to printing method, graphics may appear less uniform than pictured.", fr:"LES FLICS NE TE DIRONT RIEN SI TU PORTES ÇA EN PUBLIC, J'AI TESTÉ\n400 g/m² (100 % coton)\nCoupe ballon, zippé\nNoir\nBroderie personnalisée côté cœur\nImpression au col personnalisée\nEn raison du procédé d'impression, les visuels peuvent être moins uniformes que sur les photos."}, img:"products/fisc-hoodie.jpg", img2:"products/fisc-hoodie-2.jpg", sz:"hoodie"},
   ]},
   /* Pièces uniques : elles se MÉRITENT. Elles restent VISIBLES tant qu'elles
