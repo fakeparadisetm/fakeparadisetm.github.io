@@ -100,87 +100,29 @@
     user-select:none;
   }
 
-  /* ---------- wave background ---------- */
+  /* ---------- wave background ----------
+     UN SEUL CALQUE, OPAQUE, SANS FILTRE NI MODE DE FUSION. Le ruban, son halo,
+     les deux orbes de couleur, les étincelles, la vignette et les lignes de
+     balayage étaient sept éléments empilés ici, avec des flous (jusqu'à
+     100 px) et des fusions « screen » et « overlay » : le compositeur les
+     refaisait à chaque image, à la définition de l'écran — ce qui écrasait
+     les téléphones. Ils sont maintenant composés dans le canvas par le script,
+     avec les mêmes formules (voir makeFond et COMPOSE_FS). */
   #waveCanvas{
     position:fixed;inset:0;width:100%;height:100%;
     z-index:0;
     background:#04080c; /* si la carte graphique lâche le contexte, le fond reste sombre */
-    /* le demi-pixel de flou servait à masquer les jointures des tranches du
-       ruban peint au pinceau ; le rendu GPU n'en a plus */
-    filter:saturate(1.05);
   }
-  #waveCanvasGlow{
-    position:fixed;inset:0;width:100%;height:100%;
-    z-index:0;
-    /* le canvas est au quart de la résolution : son agrandissement floute déjà
-       beaucoup, un rayon de 6 px suffit là où il en fallait 22, pour bien moins
-       cher (le flou plein écran était le poste le plus lourd sous Firefox) */
-    filter:blur(6px) saturate(1.1) brightness(1.1);
-    opacity:0.55;
-    mix-blend-mode:screen;
-  }
-
-  /* ---------- scintillement des vagues ----------
-     Particules lumineuses accrochées aux nappes de vagues (voir drawSparkles).
-     Sous la vignette pour que les bords restent sombres. */
-  #sparkleCanvas{
-    position:fixed;inset:0;width:100%;height:100%;
-    z-index:2;
-    pointer-events:none;
-    mix-blend-mode:screen;
-  }
-
-  .glow-orb{
-    position:fixed;
-    border-radius:50%;
-    filter:blur(100px);
-    z-index:1;
-    pointer-events:none;
-    mix-blend-mode:screen;
-    opacity:0.35;
-  }
-  .glow-orb.a{
-    width:46vw;height:46vw;
-    background:radial-gradient(circle, rgba(var(--accent-rgb),0.4), transparent 70%);
-    top:-14vw; left:-10vw;
-    animation:drift1 26s ease-in-out infinite;
-  }
-  .glow-orb.b{
-    width:38vw;height:38vw;
-    background:radial-gradient(circle, rgba(var(--accent2-rgb),0.35), transparent 70%);
-    bottom:-16vw; right:-8vw;
-    animation:drift2 30s ease-in-out infinite;
-  }
-  @keyframes drift1{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    50%{ transform:translate(3vw,4vw) scale(1.08); }
-  }
-  @keyframes drift2{
-    0%,100%{ transform:translate(0,0) scale(1); }
-    50%{ transform:translate(-3vw,-3vw) scale(1.1); }
-  }
-
+  /* La vignette de repli : seulement si le fond n'a pas pu obtenir WebGL (la
+     classe est posée par le script) ; sinon elle est peinte dans le canvas. */
   .vignette{
+    display:none;
     position:fixed;inset:0;
     background:radial-gradient(ellipse at center, transparent 30%, rgba(0,2,4,0.92) 100%);
     z-index:2;
     pointer-events:none;
   }
-
-  .scanlines{
-    position:fixed;inset:0;
-    z-index:2;
-    pointer-events:none;
-    background:repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,0.02) 0px,
-      rgba(255,255,255,0.02) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    mix-blend-mode:overlay;
-    opacity:0.45;
-  }
+  .fond-sans-gl .vignette{display:block;}
 
   /* ---------- écran de démarrage (façon console) ----------
      Comme sur la PS3 : le ruban ondule déjà sur un fond assombri, le logo se
@@ -607,11 +549,16 @@
      horizontal de la barre (translateX composité) s'applique à lui sans un
      seul calcul en JS. Les positions verticales des lignes, elles, sont
      animées par le module 3D avec la même courbe que les transitions CSS.
-     Il couvre la fenêtre : les catégories boutique étant les premières, leurs
-     colonnes restent dedans même quand la barre a glissé. */
+     UNE BANDE, PAS TOUTE LA FENÊTRE (25 sept. 2026). Il couvrait l'écran
+     entier, pour une colonne d'aperçus large comme une icône : un tampon
+     anticrénelé en double définition, effacé, résolu et superposé à tout le
+     reste à chaque image, dont les neuf dixièmes restaient vides. Il suit
+     maintenant les colonnes qu'il dessine (voir bandeListe) : sa largeur et sa
+     place (translateX) sont posées par le script, sa hauteur reste celle de
+     la scène. */
   .rows-gl{
-    position:absolute;inset:0;
-    width:100%;height:100%;
+    position:absolute;left:0;top:0;
+    width:0;height:100%;
     z-index:3;                /* au-dessus des catégories (l'active est à 2), sous les panneaux fixes */
     pointer-events:none;      /* les lignes en dessous gardent survol, clic et info-bulle */
   }
@@ -1254,23 +1201,41 @@
     background:transparent;
     cursor:pointer;
     transition:border-color 0.2s ease, background 0.2s ease, transform 0.28s cubic-bezier(.2,.8,.2,1);
-    /* Même battement que les pastilles du haut (voir .dot::after) : même
-       durée, même courbe, même moment dans le cycle, même couleur. Les deux
-       pseudo-éléments du bouton étant pris par les deux traits du +, le halo
-       passe par une OMBRE plutôt que par un disque : une portée intérieure
-       qui remplit le rond, une extérieure qui déborde de 2 px comme le disque
-       des pastilles déborde du point. */
+    isolation:isolate;   /* le halo (.desc-halo, z-index −1) passe sur le fond du bouton, sous les traits du + */
+  }
+  /* Même battement que les pastilles du haut (voir .dot::after) : même durée,
+     même courbe, même moment dans le cycle, même couleur. Un disque qui remplit
+     le rond, et un anneau qui déborde de 2 px comme le disque des pastilles
+     déborde du point.
+     C'était une OMBRE animée (box-shadow) sur le bouton : une ombre ne
+     s'anime pas sans être repeinte, et celle-ci l'était à chaque image, sans
+     fin, tant que la fiche était ouverte — sur un téléphone, du travail pour
+     le processeur même quand rien ne bouge. Le même dessin est maintenant
+     posé une fois pour toutes dans .desc-halo, et c'est son OPACITÉ qui bat :
+     la carte graphique s'en charge seule, sans rien repeindre. Même rendu :
+     une opacité de 0 à 1 sur un dessin à 0,26 donne exactement l'ombre de 0
+     à 0,26 d'avant.
+     0,26 et non 0,5 comme les pastilles : à opacité égale le + criait deux
+     fois plus fort, parce qu'il est deux fois plus large et que le halo
+     remplit tout son rond alors que celui des pastilles ne couvre que
+     quelques pixels. On égalise ce qu'on VOIT, pas ce qui est écrit. */
+  .desc-halo{
+    position:absolute;inset:0;          /* l'intérieur du bouton, bordure exclue */
+    z-index:-1;
+    border-radius:50%;
+    background:rgba(var(--accent-rgb),0.26);
+    opacity:0;
+    pointer-events:none;
     animation:plusSweep 2.6s ease-in-out infinite;
   }
-  @keyframes plusSweep{
-    0%,72%,100%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0), inset 0 0 0 11px rgba(var(--accent-rgb),0);}
-    /* 0,26 et non 0,5 comme les pastilles : à opacité égale le + criait deux
-       fois plus fort, parce qu'il est deux fois plus large et que le halo
-       remplit tout son rond alors que celui des pastilles ne couvre que
-       quelques pixels. On égalise ce qu'on VOIT, pas ce qui est écrit. */
-    82%{box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.26), inset 0 0 0 11px rgba(var(--accent-rgb),0.26);}
+  .desc-halo::before{                    /* l'anneau, tout autour de la bordure */
+    content:'';
+    position:absolute;inset:-1px;
+    border-radius:50%;
+    box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.26);
   }
-  @media (prefers-reduced-motion:reduce){ .desc-toggle{animation:none;} }
+  @keyframes plusSweep{ 0%,72%,100%{opacity:0;} 82%{opacity:1;} }
+  @media (prefers-reduced-motion:reduce){ .desc-halo{animation:none;} }
   .desc-toggle::before,.desc-toggle::after{
     content:'';
     position:absolute;left:50%;top:50%;
@@ -1288,7 +1253,8 @@
   /* Ouvert, le + est devenu une croix : le battement n'a plus rien à annoncer,
      et une croix qui clignote dirait « ferme-moi », ce qui n'est pas le
      message. Il s'arrête donc à l'ouverture et reprend à la fermeture. */
-  .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);animation:none;}
+  .preview.desc-open .desc-toggle{transform:rotate(45deg);border-color:rgba(var(--accent-rgb),0.85);}
+  .preview.desc-open .desc-halo{animation:none;}
   .preview-desc{
     margin-top:0;
     font-size:15px;
@@ -3525,13 +3491,11 @@
 </head>
 <body class="booting">
 
+<!-- Tout le fond — ruban, halo, orbes, étincelles, vignette — est composé dans
+     ce seul canvas (voir makeFond). La vignette en CSS ne sert que de repli,
+     sans WebGL. -->
 <canvas id="waveCanvas"></canvas>
-<canvas id="waveCanvasGlow"></canvas>
-<div class="glow-orb a"></div>
-<div class="glow-orb b"></div>
-<canvas id="sparkleCanvas"></canvas>
 <div class="vignette"></div>
-<div class="scanlines"></div>
 <div class="startup-tint" id="startupTint"></div>
 
 <!-- Le nom de la marque EST le titre de la page : un document a besoin d'un
@@ -3733,7 +3697,7 @@
            hauteur au lieu de deux, ce qui rend sa place au visuel. -->
       <div class="preview-head">
         <div class="preview-name" id="previewName"></div>
-        <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"></button>
+        <button type="button" class="desc-toggle" id="descToggle" aria-expanded="false" aria-controls="previewDesc" data-i18n-aria="descToggle" aria-label="Details"><span class="desc-halo" aria-hidden="true"></span></button>
         <div class="preview-price" id="previewPrice"></div>
       </div>
       <!-- Contact : la PAGE du compte Instagram, dans une fenêtre de navigateur
@@ -5228,22 +5192,37 @@ function applyMood(){
   const bg1     = hslToRgb(h, s, 0.13);                     // bas du fond
   const sale    = hslToRgb(h, Math.min(0.6, s + 0.15), 0.74); // tag promo, champs à compléter
   const neutral = hslToRgb(h, 0.16, 0.80);                  // marque et horloge
-  const root = document.documentElement.style;
-  root.setProperty('--blue', rgbCss(accent));
-  root.setProperty('--blue-soft', rgbCss(accent2));
-  root.setProperty('--blue-dim', rgbCss(dim));
-  root.setProperty('--accent-rgb', rgbStr(accent));
-  root.setProperty('--accent2-rgb', rgbStr(accent2));
-  root.setProperty('--sale', rgbCss(sale));
-  root.setProperty('--sale-rgb', rgbStr(sale));
-  root.setProperty('--tint-neutral', rgbCss(neutral));
-  document.body.style.background = rgbCss(bg0);
+  /* On N'ÉCRIT QUE CE QUI A CHANGÉ. Toucher une variable de :root oblige le
+     navigateur à recalculer le style de toute la page et à repeindre tout ce
+     qui s'en sert — textes lumineux, ombres, le verre de la fiche —, et le
+     fond du body est la page entière. Toutes les deux secondes, sur un
+     téléphone, c'était un à-coup régulier. Or d'un pas à l'autre la teinte ne
+     bouge que d'un quart de degré : la plupart du temps, aucune des valeurs
+     arrondies ne change, et il n'y a rien à écrire. */
+  poserVar('--blue', rgbCss(accent));
+  poserVar('--blue-soft', rgbCss(accent2));
+  poserVar('--blue-dim', rgbCss(dim));
+  poserVar('--accent-rgb', rgbStr(accent));
+  poserVar('--accent2-rgb', rgbStr(accent2));
+  poserVar('--sale', rgbCss(sale));
+  poserVar('--sale-rgb', rgbStr(sale));
+  poserVar('--tint-neutral', rgbCss(neutral));
+  const fondBody = rgbCss(bg0);
+  if (moodEcrit.body !== fondBody){ moodEcrit.body = fondBody; document.body.style.background = fondBody; }
   // Le fond et le ruban sont peints par la carte graphique : elle veut des
   // composantes, pas du texte. On garde donc les triplets tels quels.
   BG_TOP = bg0; BG_BOT = bg1;
   HORIZON = accent2;                                   // lueur d'horizon, en bas d'écran
   VIVID = hslToRgb(h, Math.min(0.85, s + 0.35), 0.55); // halo du ruban : même teinte, plus vive
+  ACCENT = accent; ACCENT2 = accent2;                  // les deux orbes
   colorRibbon(accent);
+}
+// la dernière valeur écrite de chaque variable d'ambiance (voir applyMood)
+const moodEcrit = {};
+function poserVar(nom, valeur){
+  if (moodEcrit[nom] === valeur) return;
+  moodEcrit[nom] = valeur;
+  document.documentElement.style.setProperty(nom, valeur);
 }
 
 
@@ -6760,6 +6739,17 @@ const model3d = (() => {
     for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++){ let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k]; o[c*4+r] = s; }
     return o; };
   const rotY = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); };
+  // les mêmes, écrites dans un tableau fourni (voir render) ; `o` ne doit être ni `a` ni `b`
+  const mulDans = (o, a, b) => {
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++){ let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k]; o[c*4+r] = s; }
+    return o;
+  };
+  const rotYDans = (o, t) => {
+    const c = Math.cos(t), s = Math.sin(t);
+    o[0] = c; o[1] = 0; o[2] = -s; o[3] = 0; o[4] = 0; o[5] = 1; o[6] = 0; o[7] = 0;
+    o[8] = s; o[9] = 0; o[10] = c; o[11] = 0; o[12] = 0; o[13] = 0; o[14] = 0; o[15] = 1;
+    return o;
+  };
   const rotX = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); };
   const ident = () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
   /* Rotation autour d'un axe QUELCONQUE (unitaire), formule de Rodrigues. Les
@@ -7002,13 +6992,22 @@ const model3d = (() => {
        angles d'Euler ont un haut et un bas, et le jour où le modèle passe
        par-dessus, la main s'inverse à l'écran. Une orientation accumulée n'a ni
        haut ni bas — voir « prise à la main ». */
+    /* Les matrices d'un rendu, calculées dans des tableaux gardés d'un appel à
+       l'autre : la liste en demande une centaine par image (halo, ombre, puis
+       le modèle, pour chaque ligne), et un tableau neuf à chaque produit, cinq
+       fois par appel, laissait au ramasse-miettes des dizaines de milliers de
+       petits tableaux par seconde — autant de pauses, sur un téléphone.
+       gl.uniformMatrix4fv recopie la matrice : la réutiliser ensuite est sûr. */
+    const BASC = rotX(BASCULE), ROT = ident(), M1 = new Float32Array(16), M2 = new Float32Array(16),
+          MVP1 = new Float32Array(16), MVP2 = new Float32Array(16), BOITE = ident();
     function render(a, ang, pv, alpha, box, side, tint, libre){
       if (perdu) return;   // contexte repris par le navigateur : on attend sa restauration
       /* `a.cadre` : une mise en place du modèle AVANT son orientation — la tête
          et son buste, réduits et remontés d'un bloc (voir CADRE_BUSTE). Les
          autres modèles n'en ont pas et rendent exactement comme avant. */
-      const M = a.cadre ? mul(mul(rotX(BASCULE), libre || rotY(ang)), a.cadre) : mul(rotX(BASCULE), libre || rotY(ang));
-      let MVP = mul(pv, M);
+      mulDans(M1, BASC, libre || rotYDans(ROT, ang));
+      const M = a.cadre ? mulDans(M2, M1, a.cadre) : M1;
+      let MVP = mulDans(MVP1, pv, M);
       if (box){
         /* `box.h` : la boîte peut être un RECTANGLE, et pas seulement le carré
            qu'elle a toujours été. Elle ne l'est que pour le salon d'essayage,
@@ -7034,7 +7033,8 @@ const model3d = (() => {
         gl.enable(gl.SCISSOR_TEST);
         gl.scissor(cx0, H - cy1, Math.max(0, cx1 - cx0), Math.max(0, cy1 - cy0));
         const sx = box.s / vw, sy = bh / vh, ox = (2 * (box.x - x0) + box.s) / vw - 1, oy = (2 * (y1 - box.y) - bh) / vh - 1;
-        MVP = mul(new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, ox,oy,0,1]), MVP);
+        BOITE[0] = sx; BOITE[5] = sy; BOITE[12] = ox; BOITE[13] = oy;   // [sx,0,0,0, 0,sy,0,0, 0,0,1,0, ox,oy,0,1]
+        MVP = mulDans(MVP2, BOITE, MVP1);
       } else { gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); }
       gl.uniformMatrix4fv(uMVP, false, MVP);
       gl.uniform1f(uAlpha, alpha);
@@ -8799,13 +8799,38 @@ const model3d = (() => {
       if (w > swatchW){ swatchW = w; resize(); }
     }).observe(swatch);
   }
-  let listW = 0, listH = 0, listK = 1; // taille du canvas de la barre en pixels CSS, et pixels de canvas par pixel CSS
+  /* Le canvas des lignes est une BANDE verticale de la barre (voir .rows-gl) :
+     bandeX, sa gauche, et listW, sa largeur, en pixels CSS de la barre ;
+     listH, sa hauteur ; listK, pixels de canvas par pixel CSS. */
+  let listW = 0, listH = 0, listK = 1, bandeX = 0, listDpr = 1, quantumListe = 1;
+  function poserBande(x, w){
+    bandeX = x; listW = w;
+    listCanvas.style.width = w + 'px';
+    listCanvas.style.transform = 'translateX(' + x + 'px)';
+    const bw = Math.max(1, Math.round(w * listDpr)), bh = Math.max(1, Math.round(listH * listDpr));
+    if (listCanvas.width !== bw || listCanvas.height !== bh){ listCanvas.width = bw; listCanvas.height = bh; }
+    listK = w ? listCanvas.width / w : listDpr;
+  }
   function resizeList(){ // mesuré au démarrage et au redimensionnement seulement
-    const dpr = dprCap();
-    listW = listCanvas.clientWidth; listH = listCanvas.clientHeight;
-    const w = Math.round(listW * dpr), h = Math.round(listH * dpr);
-    if (w && h && (listCanvas.width !== w || listCanvas.height !== h)){ listCanvas.width = w; listCanvas.height = h; }
-    listK = listW ? listCanvas.width / listW : 1;
+    listDpr = dprCap();
+    /* Bords et largeur de la bande en multiples d'un « quantum » qui tombe sur
+       des pixels entiers de l'écran (4 px CSS à 125 %, 2 à 150 %) : posé à
+       cheval sur deux pixels, le canvas serait rééchantillonné, donc flouté. */
+    quantumListe = 1;
+    for (let q = 1; q <= 8; q++) if (Math.abs(q * listDpr - Math.round(q * listDpr)) < 1e-6){ quantumListe = q; break; }
+    listH = categoriesEl.clientHeight;
+    poserBande(bandeX, listW);
+  }
+  /* La bande doit couvrir tout ce qui se dessine, de x0 à x1 (pixels CSS de
+     la barre). Elle ne bouge que si ce n'est plus le cas, ou si elle est
+     devenue bien trop large (une colonne qui a fini de s'effacer) : changer
+     sa taille réalloue le tampon, ce qu'on fait deux fois par changement de
+     rayon, pas à chaque image. Une marge de 24 px absorbe les petits
+     déplacements. */
+  function bandeListe(x0, x1){
+    if (x0 >= bandeX && x1 <= bandeX + listW && listW <= (x1 - x0) + 112) return;
+    const q = quantumListe, g = Math.floor((x0 - 24) / q) * q, d = Math.ceil((x1 + 24) / q) * q;
+    poserBande(g, d - g);
   }
   // maillage + textures d'un produit, en cache ; une photo de dos mal détourée
   // (tissu trop proche du fond, ex. raglan blanc sur blanc) emprunte la
@@ -9812,10 +9837,10 @@ const model3d = (() => {
   const SWAY_RANG = 1 / 13;
   const swayDe = (rang, t) => reduced ? 0 : Math.sin((t / 3800 + (rang || 0) * SWAY_RANG) * Math.PI * 2) * SWAY;
   function drawRows(now){
-    list.clear();
-    if (!listH) return;
+    if (!listH){ list.clear(); return; }
     const all = fading.length ? rows.concat(fading) : rows;
     const pose = [];
+    let x0 = Infinity, x1 = -Infinity;   // jusqu'où l'on dessine, en pixels CSS de la barre (voir bandeListe)
     for (const st of all){
       const c = st.cur = sample(st, now);
       const a = ready.get(keyOf(st.item));
@@ -9832,10 +9857,20 @@ const model3d = (() => {
           ech = 1 + Math.sin(u * Math.PI) * 0.25;  // +25 % au passage
         }
       }
-      const s2 = c.s * listK * ech, d2 = (s2 - c.s * listK) / 2;
-      pose.push({ a: a, ang: ang, alpha: c.a, glow: c.g, grise: st.grise, box: { x: c.x * listK - d2, y: c.y * listK - d2, s: s2 } });
+      // ce qui déborde le plus de la case : le halo de la vedette, 1,5 fois la case (un quart de chaque côté),
+      // autour d'une case que la rotation de sélection grandit déjà d'un quart
+      const m = 0.35 * c.s * ech;
+      if (c.x - m < x0) x0 = c.x - m;
+      if (c.x + c.s * ech + m > x1) x1 = c.x + c.s * ech + m;
+      pose.push({ a: a, ang: ang, alpha: c.a, glow: c.g, grise: st.grise, c, ech });
     }
+    if (pose.length) bandeListe(x0, x1);   // avant l'effacement : déplacer la bande vide le tampon
+    list.clear();
     if (!pose.length) return;
+    for (const p of pose){
+      const s2 = p.c.s * listK * p.ech, d2 = (s2 - p.c.s * listK) / 2;
+      p.box = { x: (p.c.x - bandeX) * listK - d2, y: p.c.y * listK - d2, s: s2 };
+    }
     /* Chaque passe écrit dans le tampon de profondeur, à la MÊME profondeur que
        la suivante, qui se verrait alors rejetée par le test — on ne verrait que
        la première. On vide donc la profondeur entre les passes, et hors
@@ -17182,7 +17217,10 @@ window.addEventListener('wheel', (e) => {
 function tickClock(){
   const d = new Date();
   const opts = { weekday:'short', hour:'2-digit', minute:'2-digit' };
-  document.getElementById('clock').textContent = d.toLocaleString(LANGS[currentLang].locale, opts);
+  const heure = d.toLocaleString(LANGS[currentLang].locale, opts);
+  // réécrire le même texte referait la mise en page et la peinture de l'encadré, flou compris : seulement quand l'heure change
+  const el = document.getElementById('clock');
+  if (el.textContent !== heure) el.textContent = heure;
 }
 tickClock();
 setInterval(tickClock, 1000*30);
@@ -17207,29 +17245,43 @@ setInterval(tickClock, 1000*30);
 
    (Une vraie « mise en boîte » du ruban — une minute d'images toutes prêtes
    rejouées en boucle — demanderait 25 Go de mémoire à cet écran : c'est
-   justement ce calcul-là que le GPU refait gratuitement à chaque image.) */
+   justement ce calcul-là que le GPU refait gratuitement à chaque image.)
+
+   UN SEUL CANVAS POUR TOUT LE FOND (25 sept. 2026 : « sur téléphone les
+   performances sont horribles »). Le fond était une pile de huit calques plein
+   écran : le ruban net (filtré saturate), le halo (un second contexte WebGL,
+   flouté, saturé, éclairci, fondu en « screen »), deux orbes floutés à 100 px
+   en « screen » qui dérivaient par animation CSS, les étincelles (un canvas 2D
+   en « screen »), la vignette, et des lignes de balayage en « overlay ».
+   Chaque filtre et chaque mode de fusion oblige le compositeur du navigateur
+   à rendre le calque à part, puis à relire ce qu'il y a dessous — à la
+   définition de l'ÉCRAN (trois pixels par point sur un téléphone), et à
+   chaque image puisque le ruban bouge. Un ordinateur l'absorbe ; un téléphone
+   y passait l'essentiel de chaque image, et le flou de 100 px des deux orbes
+   coûtait à lui seul plus que tout le reste.
+   Tout est maintenant composé ICI, dans ce canvas, avec les formules mêmes
+   que le navigateur appliquait (voir COMPOSE_FS) : le compositeur n'a plus
+   qu'un calque opaque à poser, sans filtre ni fusion. */
 const canvas = document.getElementById('waveCanvas');
-const canvasGlow = document.getElementById('waveCanvasGlow');
-const sparkleCanvas = document.getElementById('sparkleCanvas');
-const sctx = sparkleCanvas.getContext('2d');
 let W,H;
 // Couleurs courantes, en composantes 0-255 (applyMood les remplace).
 let BG_TOP = [4,8,12], BG_BOT = [13,31,48], HORIZON = [60,110,140], VIVID = [90,168,194];
 let BODY = [150,200,220], EDGE = [220,235,245];
+let ACCENT = [90,168,194], ACCENT2 = [60,110,140];   // les deux orbes (--accent-rgb, --accent2-rgb)
 let sparklesReady = false;
 /* Le halo est rendu au quart de la résolution de l'écran. Il n'est jamais vu
-   net : le CSS le floute, et l'agrandissement du navigateur le floute déjà
-   lui-même. Cela permet de descendre le flou CSS de 22 à 6 pixels, bien moins
-   coûteux, pour un rendu identique. Le ruban net, lui, est à pleine
-   résolution, comme les étincelles. */
+   net : il est flouté, et son agrandissement le floute déjà lui-même. Cela
+   permet de descendre le flou de 22 à 6 pixels, bien moins coûteux, pour un
+   rendu identique. Le ruban net, lui, est à pleine résolution, comme les
+   étincelles. */
 const GLOW_SCALE = 0.25;
+let fondGL = null;   // le moteur du fond (voir makeFond), créé plus bas
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
-  canvas.width = sparkleCanvas.width = W;
-  canvas.height = sparkleCanvas.height = H;
-  canvasGlow.width = Math.max(1, Math.round(W * GLOW_SCALE));
-  canvasGlow.height = Math.max(1, Math.round(H * GLOW_SCALE));
+  canvas.width = W; canvas.height = H;
   if (sparklesReady) seedSparkles(); // le nombre de particules dépend de la largeur
+  // les calques hors écran suivent la fenêtre, et le ruban y est repeint tout de suite : pas une image de noir
+  if (fondGL){ fondGL.taille(); paintWaves(); }
 }
 resize();
 window.addEventListener('resize', resize);
@@ -17404,19 +17456,21 @@ void main(){
   vec2 c = a_pos / u_size;
   gl_Position = vec4(c.x * 2.0 - 1.0, 1.0 - c.y * 2.0, 0.0, 1.0);
 }`;
-const RIB_FS = `
-precision mediump float;
-uniform vec3 u_body, u_edge;
-uniform float u_gain;
-varying vec3 v_var;
-// profil d'un voile, de son bord haut (0) à son bord bas (1)
+// profil d'un voile, de son bord haut (0) à son bord bas (1) : le même pour le ruban net et pour le halo
+const VOILE_GLSL = `
 float voile(float v){
   if (v < 0.03) return v / 0.03;
   if (v < 0.12) return mix(1.0, 0.55, (v - 0.03) / 0.09);
   if (v < 0.55) return mix(0.55, 0.35, (v - 0.12) / 0.43);
   if (v < 0.90) return mix(0.35, 0.15, (v - 0.55) / 0.35);
   return mix(0.15, 0.0, (v - 0.90) / 0.10);
-}
+}`;
+const RIB_FS = `
+precision mediump float;
+uniform vec3 u_body, u_edge;
+uniform float u_gain;
+varying vec3 v_var;
+${VOILE_GLSL}
 void main(){
   float hw = v_var.z;
   float liso = step(0.001, hw);
@@ -17424,14 +17478,271 @@ void main(){
   float a = mix(voile(v_var.x), trait, liso) * v_var.y * u_gain;
   gl_FragColor = vec4(mix(u_body, u_edge, liso) * a, a);  // additif : couleur pré-multipliée
 }`;
+/* Les passes qui lisent une image au texel près (réduction, flou, composition)
+   veulent la précision haute : en mediump, sur un téléphone, une coordonnée
+   de texture n'a que onze bits, soit un demi-pixel d'erreur sur un grand écran. */
+const PRECISION_HAUTE = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif`;
 
-function makeWaveGL(cnv, gain, lisse){
+/* --- le halo, quand WebGL 2 manque ---
+   Le halo est le même ruban, d'une seule couleur vive et plus intense, qui
+   est ensuite flouté de 6 px, saturé, éclairci et fondu en « screen » à 55 %
+   sur le ruban net (voir COMPOSE_FS). Il était rendu au quart de la
+   résolution dans son propre canvas, anticrénelé par le navigateur ; WebGL 2
+   refait exactement cela (voir makeFond). En WebGL 1, un rendu hors écran n'a
+   pas d'anticrénelage : on le rend à la MOITIÉ, puis on le réduit au quart en
+   moyennant chaque carré de 2 × 2 — quatre échantillons par pixel, comme
+   avant. À cette définition un liseré ne ferait qu'un demi-pixel, que la trame
+   du GPU trouerait : chaque trait est élargi d'un demi-pixel de rendu de part
+   et d'autre, et son intensité devient la part du pixel qu'il couvre
+   vraiment — puis ramenée à ce que l'ancien halo en montrait (voir plus bas). */
+const RIB_HALO_VS = `
+attribute vec2 a_pos;
+attribute vec3 a_var;      // hauteur dans la bande, intensité, demi-épaisseur du liseré (w/2 + 0,5 ; 0 pour un corps)
+uniform vec2 u_size;
+// pixels CSS par pixel de rendu, verticalement. Lu aussi par le fragment, en mediump :
+// un uniforme partagé doit avoir la même précision des deux côtés, sinon l'édition de liens échoue
+uniform mediump float u_texel;
+varying vec3 v_var;        // hauteur, intensité, demi-épaisseur VRAIE du trait (0 pour un corps)
+varying float v_d;         // distance signée à l'axe du trait, en pixels CSS
+void main(){
+  vec2 p = a_pos;
+  float s = a_var.x * 2.0 - 1.0;           // -1 sur le bord haut de la bande, +1 sur le bas
+  float demi = 0.0;
+  if (a_var.z > 0.0){
+    demi = a_var.z - 0.5 + 0.5 * u_texel;
+    p.y += s * (demi - a_var.z);           // les sommets passent de ±(w/2 + 0,5) à ±(w/2 + un demi-pixel de rendu)
+  }
+  v_var = vec3(a_var.xy, a_var.z > 0.0 ? a_var.z - 0.5 : 0.0);
+  v_d = s * demi;
+  vec2 c = p / u_size;
+  gl_Position = vec4(c.x * 2.0 - 1.0, 1.0 - c.y * 2.0, 0.0, 1.0);
+}`;
+const RIB_HALO_FS = `
+precision mediump float;
+uniform vec3 u_col;
+uniform float u_gain, u_texel;
+varying vec3 v_var;
+varying float v_d;
+${VOILE_GLSL}
+/* Le facteur des liserés : l'ancien halo n'en gardait qu'une partie. Son
+   anticrénelage calculait la couleur au CENTRE de chaque pixel du quart, et un
+   trait plus fin qu'un pixel passe le plus souvent à côté du centre — il n'y
+   valait plus rien, même là où il couvrait des échantillons. Mesuré (tirage au
+   hasard de la position du trait, motif d'échantillons standard) : 44 % de sa
+   lumière pour un trait de 0,7 px, 50 % à 1 px, 58 % à 1,3 px, soit presque
+   exactement 0,29 + 0,22 × largeur. C'est ce halo-là qu'on voyait. */
+void main(){
+  float a;
+  if (v_var.z > 0.0){
+    float d = abs(v_d), w = v_var.z, P = u_texel;
+    a = clamp((min(d + 0.5 * P, w) - max(d - 0.5 * P, -w)) / P, 0.0, 1.0);   // la part du pixel couverte par le trait
+    a *= 0.29 + 0.44 * w;                                                      // 0,29 + 0,22 × largeur (w est la demi-largeur)
+  } else a = voile(v_var.x);
+  a *= v_var.y * u_gain;
+  gl_FragColor = vec4(u_col * a, a);
+}`;
+
+/* --- passes plein cadre : réduction, flou, composition --- */
+const QUAD_VS = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main(){ v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+// la réduction de moitié : lu au coin commun de quatre pixels, le filtrage linéaire en rend la moyenne
+const COPIE_FS = `
+${PRECISION_HAUTE}
+uniform sampler2D u_tex;
+varying vec2 v_uv;
+void main(){ gl_FragColor = texture2D(u_tex, v_uv); }`;
+/* Le flou gaussien, en deux passes (horizontale puis verticale). Chaque
+   lecture tombe ENTRE deux pixels, à l'endroit où le filtrage linéaire les
+   mêle dans la proportion de leurs poids : sept lectures pour onze pixels. */
+const FLOU_FS = `
+${PRECISION_HAUTE}
+uniform sampler2D u_tex;
+uniform vec2 u_pas;
+uniform vec4 u_off, u_poids;
+varying vec2 v_uv;
+void main(){
+  vec4 c = texture2D(u_tex, v_uv) * u_poids.x;
+  c += (texture2D(u_tex, v_uv + u_pas * u_off.y) + texture2D(u_tex, v_uv - u_pas * u_off.y)) * u_poids.y;
+  c += (texture2D(u_tex, v_uv + u_pas * u_off.z) + texture2D(u_tex, v_uv - u_pas * u_off.z)) * u_poids.z;
+  c += (texture2D(u_tex, v_uv + u_pas * u_off.w) + texture2D(u_tex, v_uv - u_pas * u_off.w)) * u_poids.w;
+  gl_FragColor = c;
+}`;
+
+/* --- les étincelles ---
+   Elles étaient peintes dans un canvas 2D à part, chaque dessin ajouté au
+   précédent (« lighter »), puis le canvas entier fondu sur le fond en
+   « screen ». Même chose ici, dans un calque hors écran : les mêmes dessins
+   (spriteCore, spriteGlow…) aux mêmes places et aux mêmes opacités,
+   additionnés ; la composition applique ensuite le « screen ». */
+const SPRITE_VS = `
+attribute vec2 a_pos;      // pixels CSS
+attribute vec3 a_uva;      // coordonnées dans le dessin, opacité
+uniform vec2 u_size;
+varying vec3 v_uva;
+void main(){
+  v_uva = a_uva;
+  vec2 c = a_pos / u_size;
+  gl_Position = vec4(c.x * 2.0 - 1.0, 1.0 - c.y * 2.0, 0.0, 1.0);
+}`;
+const SPRITE_FS = `
+precision mediump float;
+uniform sampler2D u_tex;
+varying vec3 v_uva;
+void main(){ gl_FragColor = texture2D(u_tex, v_uva.xy) * v_uva.z; }`;
+// les traînées des comètes : des segments à bouts ronds (le lineCap round du pinceau), lissés comme lui
+const TRAIT_VS = `
+attribute vec2 a_pos;      // un coin de la boîte du segment, pixels CSS
+attribute vec4 a_seg;      // le segment : x0, y0, x1, y1
+attribute vec2 a_trait;    // demi-épaisseur, opacité
+uniform vec2 u_size;
+varying vec2 v_pa, v_ba, v_trait;   // rapportés au début du segment : de petits nombres, précis même en mediump
+void main(){
+  v_pa = a_pos - a_seg.xy; v_ba = a_seg.zw - a_seg.xy; v_trait = a_trait;
+  vec2 c = a_pos / u_size;
+  gl_Position = vec4(c.x * 2.0 - 1.0, 1.0 - c.y * 2.0, 0.0, 1.0);
+}`;
+const TRAIT_FS = `
+precision mediump float;
+uniform vec3 u_col;
+varying vec2 v_pa, v_ba, v_trait;
+void main(){
+  float h = clamp(dot(v_pa, v_ba) / max(dot(v_ba, v_ba), 0.0001), 0.0, 1.0);
+  float d = length(v_pa - v_ba * h), hw = v_trait.x;
+  float a = clamp(min(d + 0.5, hw) - max(d - 0.5, -hw), 0.0, 1.0) * v_trait.y;   // la part du pixel couverte
+  gl_FragColor = vec4(u_col * a, a);
+}`;
+
+/* --- la composition ---
+   Les calques d'avant, dans leur ordre, avec les formules du navigateur
+   (Filter Effects et Compositing, W3C) :
+   1. le ruban net, saturate(1.05) ;
+   2. le halo, déjà flouté : saturate(1.1), brightness(1.1), opacité 0,55,
+      fondu en « screen » ;
+   3. les deux orbes, en « screen » (voir ORBES) ;
+   4. les étincelles, en « screen » ;
+   5. la vignette, un voile presque noir posé par-dessus ;
+   6. les lignes de balayage, en « overlay » : 2 % de blanc à 45 %, une ligne
+      sur trois ;
+   et un tramage d'un demi-niveau, qui empêche les dégradés sombres de se
+   casser en bandes. « screen » de a sur b : b + a·(1 − b). */
+const COMPOSE_FS = `
+${PRECISION_HAUTE}
+uniform sampler2D u_net, u_halo, u_etin, u_orbes;
+uniform vec2 u_size;
+uniform vec4 u_haloCadre;       // le halo est au milieu d'une marge transparente : uv → uv du halo
+uniform vec4 u_orbeA, u_orbeB;  // centre (pixels CSS), échelle, portée du profil (pixels CSS, avant l'échelle)
+uniform vec2 u_orbePic;
+uniform vec3 u_accent, u_accent2;
+uniform vec4 u_on;              // halo, orbes, étincelles, vignette : 1 allumé (voir ?diag)
+varying vec2 v_uv;
+// feColorMatrix type="saturate", c'est-à-dire le filtre CSS saturate()
+vec3 sature(vec3 c, float s){
+  return vec3(
+    (0.213 + 0.787 * s) * c.r + (0.715 - 0.715 * s) * c.g + (0.072 - 0.072 * s) * c.b,
+    (0.213 - 0.213 * s) * c.r + (0.715 + 0.285 * s) * c.g + (0.072 - 0.072 * s) * c.b,
+    (0.213 - 0.213 * s) * c.r + (0.715 - 0.715 * s) * c.g + (0.072 + 0.928 * s) * c.b);
+}
+float orbe(vec2 p, vec4 o, float rangee){
+  float u = length(p - o.xy) / (o.z * o.w);
+  return u < 1.0 ? texture2D(u_orbes, vec2((u * 255.0 + 0.5) / 256.0, rangee)).r : 0.0;
+}
+void main(){
+  vec2 p = vec2(gl_FragCoord.x, u_size.y - gl_FragCoord.y);   // pixels CSS, depuis le haut
+  vec3 r = clamp(sature(texture2D(u_net, v_uv).rgb, 1.05), 0.0, 1.0);
+  vec4 h = texture2D(u_halo, u_haloCadre.xy + v_uv * u_haloCadre.zw);
+  if (h.a > 0.001){
+    vec3 c = clamp(sature(h.rgb / h.a, 1.1), 0.0, 1.0);
+    c = min(c * 1.1, 1.0);
+    r += u_on.x * 0.55 * h.a * c * (1.0 - r);
+  }
+  r += u_on.y * u_orbePic.x * orbe(p, u_orbeA, 0.25) * u_accent * (1.0 - r);
+  r += u_on.y * u_orbePic.y * orbe(p, u_orbeB, 0.75) * u_accent2 * (1.0 - r);
+  r += u_on.z * texture2D(u_etin, v_uv).rgb * (1.0 - r);
+  vec2 q = (p - 0.5 * u_size) / (0.70710678 * u_size);         // l'ellipse « farthest-corner » : 1 aux coins
+  r = mix(r, vec3(0.0, 2.0, 4.0) / 255.0, u_on.w * 0.92 * clamp((length(q) - 0.3) / 0.7, 0.0, 1.0));
+  if (mod(floor(p.y), 3.0) < 0.5) r = mix(r, mix(2.0 * r, vec3(1.0), step(0.5, r)), 0.009);
+  r += (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) / 255.0;
+  gl_FragColor = vec4(r, 1.0);
+}`;
+
+/* --- les orbes ---
+   Deux grandes lueurs de la couleur d'ambiance, dans les coins, qui dérivent
+   lentement. C'étaient deux div (.glow-orb.a et .b) : un disque en
+   radial-gradient(circle, couleur, transparent 70 %), flouté de 100 px, à
+   0,35 d'opacité, fondu en « screen », et animé (translate + scale, aller et
+   retour en ease-in-out). Les mêmes nombres ici ; les tailles et les places
+   restent en vw, comme en CSS. Le flou n'est plus refait à chaque image : le
+   profil du disque flouté se calcule une fois (coneFlou), et la composition
+   n'a plus qu'à le lire. */
+const ORBE_FLOU = 100, ORBE_OPACITE = 0.35, ORBE_LUT = 256;
+const ORBES = [
+  // haut gauche : 46vw de côté, coin à (−10vw, −14vw), accent à 0,4, 26 s
+  { cote: 46, centre: vw => [13 * vw, 9 * vw], pic: 0.40, periode: 26000, dx: 3, dy: 4, ds: 0.08 },
+  // bas droite : 38vw, right −8vw, bottom −16vw, accent2 à 0,35, 30 s
+  { cote: 38, centre: vw => [W - 11 * vw, H - 3 * vw], pic: 0.35, periode: 30000, dx: -3, dy: -3, ds: 0.10 },
+];
+const T0_ORBES = performance.now();
+// ease-in-out = cubic-bezier(0.42, 0, 0.58, 1), résolue par bissection
+const EASE_IO = (() => {
+  const at = (a, b, t) => { const u = 1 - t; return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t; };
+  return x => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 20; i++){ if (at(0.42, 0.58, t) < x) lo = t; else hi = t; t = (lo + hi) / 2; }
+    return at(0, 1, t);
+  };
+})();
+// où en est la dérive : 0 au repos, 1 au milieu de la période (le 50 % des images clés)
+const derive = (now, periode) => { const u = ((((now - T0_ORBES) / periode) % 1) + 1) % 1; return EASE_IO(u < 0.5 ? 2 * u : 2 - 2 * u); };
+/* Le profil d'un disque dégradé — un cône : 1 au centre, 0 au rayon R0 —
+   flouté par une gaussienne d'écart-type sigma, à la distance rho du centre.
+   Le flou d'une figure ronde reste rond : il se calcule le long d'un rayon,
+   par une intégrale sur r où la fonction de Bessel I0 fait le tour du cercle.
+   i0e(x) = I0(x)·e^(−x), approximations d'Abramowitz et Stegun (9.8.1-2). */
+function i0e(x){
+  if (x < 3.75){
+    const t = (x / 3.75) * (x / 3.75);
+    return Math.exp(-x) * (1 + t * (3.5156229 + t * (3.0899424 + t * (1.2067492 + t * (0.2659732 + t * (0.0360768 + t * 0.0045813))))));
+  }
+  const t = 3.75 / x;
+  return (0.39894228 + t * (0.01328592 + t * (0.00225319 + t * (-0.00157565 + t * (0.00916281 + t * (-0.02057706
+    + t * (0.02635537 + t * (-0.01647633 + t * 0.00392377)))))))) / Math.sqrt(x);
+}
+function coneFlou(rho, R0, sigma){
+  const M = 128, s2 = sigma * sigma;
+  let somme = 0;
+  for (let j = 0; j < M; j++){
+    const r = (j + 0.5) / M * R0;
+    somme += (1 - r / R0) * r * i0e(rho * r / s2) * Math.exp(-(rho - r) * (rho - r) / (2 * s2));
+  }
+  return somme * (R0 / M) / s2;
+}
+
+// interrupteurs du ?diag : chaque élément du fond peut s'éteindre, pour voir ce qu'il coûte
+const FOND_ON = { halo: true, orbes: true, etincelles: true, vignette: true };
+
+function makeFond(cnv){
+  /* WebGL 2 d'abord, pour une seule raison : le halo. Il était rendu par un
+     canvas anticrénelé par le navigateur, et cet anticrénelage (MSAA, quatre
+     échantillons par pixel) fait partie de son dessin — il ne laisse passer
+     qu'une partie des fils les plus fins. WebGL 2 sait rendre hors écran avec
+     le même anticrénelage : le halo est alors EXACTEMENT celui d'avant. Sans
+     WebGL 2, on s'en approche autrement (voir RIB_HALO_VS). */
   let gl;
   try {
-    gl = cnv.getContext('webgl', { alpha:false, antialias:!!lisse, depth:false, stencil:false });
+    const attributs = { alpha:false, antialias:false, depth:false, stencil:false };
+    gl = cnv.getContext('webgl2', attributs) || cnv.getContext('webgl', attributs);
   } catch (e){ return null; }
   if (!gl) return null;
-  const build = (vs, fs, attrs) => {
+  const estGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+  const construire = (vs, fs, attrs) => {
     const mk = (type, src) => {
       const s = gl.createShader(type);
       gl.shaderSource(s, src); gl.compileShader(s);
@@ -17441,75 +17752,303 @@ function makeWaveGL(cnv, gain, lisse){
     const p = gl.createProgram();
     gl.attachShader(p, mk(gl.VERTEX_SHADER, vs));
     gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
-    attrs.forEach((name, i) => gl.bindAttribLocation(p, i, name)); // mêmes emplacements pour les deux programmes
+    attrs.forEach((name, i) => gl.bindAttribLocation(p, i, name)); // mêmes emplacements dans tous les programmes
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-    return p;
+    const u = {};                                                   // les uniformes, par leur nom
+    for (let i = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS) - 1; i >= 0; i--){
+      const nom = gl.getActiveUniform(p, i).name;
+      u[nom] = gl.getUniformLocation(p, nom);
+    }
+    return { p, u, n: attrs.length };
   };
-  let bgP, ribP;
+  let P;
   try {
-    bgP = build(BG_VS, BG_FS, ['a_pos']);
-    ribP = build(RIB_VS, RIB_FS, ['a_pos', 'a_var']);
-  } catch (e){ console.warn('ruban GPU indisponible :', e.message); return null; }
-  const uBg = { px: gl.getUniformLocation(bgP, 'u_px'), top: gl.getUniformLocation(bgP, 'u_top'),
-                bot: gl.getUniformLocation(bgP, 'u_bot'), horizon: gl.getUniformLocation(bgP, 'u_horizon') };
-  const uRib = { size: gl.getUniformLocation(ribP, 'u_size'), body: gl.getUniformLocation(ribP, 'u_body'),
-                 edge: gl.getUniformLocation(ribP, 'u_edge'), gain: gl.getUniformLocation(ribP, 'u_gain') };
+    P = {
+      fond:   construire(BG_VS, BG_FS, ['a_pos']),
+      net:    construire(RIB_VS, RIB_FS, ['a_pos', 'a_var']),
+      halo:   construire(RIB_HALO_VS, RIB_HALO_FS, ['a_pos', 'a_var']),
+      copie:  construire(QUAD_VS, COPIE_FS, ['a_pos']),
+      flou:   construire(QUAD_VS, FLOU_FS, ['a_pos']),
+      sprite: construire(SPRITE_VS, SPRITE_FS, ['a_pos', 'a_uva']),
+      trait:  construire(TRAIT_VS, TRAIT_FS, ['a_pos', 'a_seg', 'a_trait']),
+      compo:  construire(QUAD_VS, COMPOSE_FS, ['a_pos']),
+    };
+  } catch (e){ console.warn('fond GPU indisponible :', e.message); return null; }
+  let actifs = 0;                        // attributs de sommets allumés : 0 … actifs − 1
+  const utiliser = (prog) => {
+    gl.useProgram(prog.p);
+    while (actifs < prog.n) gl.enableVertexAttribArray(actifs++);
+    while (actifs > prog.n) gl.disableVertexAttribArray(--actifs);
+  };
+  const lier = (unite, tex) => { gl.activeTexture(gl.TEXTURE0 + unite); gl.bindTexture(gl.TEXTURE_2D, tex); };
+  const tri = new Float32Array(3);       // les couleurs passent de 0-255 à 0-1 pour les nuanceurs
+  const c3 = (rgb) => { tri[0] = rgb[0] / 255; tri[1] = rgb[1] / 255; tri[2] = rgb[2] / 255; return tri; };
+
+  // ---- tampons ----
   const quad = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, quad);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-  const ribBuf = gl.createBuffer();
-  const tri = new Float32Array(3); // les couleurs passent de 0-255 à 0-1 pour le nuanceur
-  const c3 = (rgb) => { tri[0] = rgb[0]/255; tri[1] = rgb[1]/255; tri[2] = rgb[2]/255; return tri; };
-  return function draw(data, count){
-    if (gl.isContextLost()) return;
-    gl.viewport(0, 0, cnv.width, cnv.height);
-    // fond
-    gl.disable(gl.BLEND);
-    gl.useProgram(bgP);
-    gl.uniform2f(uBg.px, cnv.width, cnv.height);
-    gl.uniform3fv(uBg.top, c3(BG_TOP));
-    gl.uniform3fv(uBg.bot, c3(BG_BOT));
-    gl.uniform3fv(uBg.horizon, c3(HORIZON));
-    gl.disableVertexAttribArray(1);
+  const plein = () => {                  // un rectangle sur toute la cible
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-    gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+  const vboRuban = gl.createBuffer(), vboLot = gl.createBuffer(), ibo = gl.createBuffer();
+  let iboQuads = 0;
+  const indices = (n) => {               // deux triangles par quadrilatère, pour n quadrilatères au moins
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    if (n <= iboQuads) return;
+    iboQuads = Math.min(16383, Math.max(n, iboQuads * 2, 512));
+    const idx = new Uint16Array(iboQuads * 6);
+    for (let q = 0; q < iboQuads; q++){
+      const b = q * 4, o = q * 6;
+      idx[o] = b; idx[o + 1] = b + 1; idx[o + 2] = b + 2; idx[o + 3] = b + 2; idx[o + 4] = b + 1; idx[o + 5] = b + 3;
+    }
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+  };
+
+  // ---- textures : les dessins des étincelles, le profil des orbes, les calques hors écran ----
+  const texture = (filtre) => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtre);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filtre);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  };
+  // les dessins tels que le canvas 2D les tient, prémultipliés : drawImage filtrait ces mêmes valeurs
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  const dessins = new Map();
+  for (const s of [spriteCore, spriteGlow, spriteBokeh, spriteEtoile]){
+    dessins.set(s, texture(gl.LINEAR));
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s);
+  }
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  const lut = texture(gl.LINEAR);
+  const cible = (filtre) => ({ tex: texture(filtre), fb: gl.createFramebuffer(), w: 0, h: 0 });
+  const dimension = (c, w, h) => {
+    w = Math.max(1, w); h = Math.max(1, h);
+    if (c.w === w && c.h === h) return;
+    c.w = w; c.h = h;
+    gl.bindTexture(gl.TEXTURE_2D, c.tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, c.fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, c.tex, 0);
+  };
+  // net : le ruban net ; etin : les étincelles ; haloA, haloB : le halo au quart, flouté
+  const net = cible(gl.NEAREST), etin = cible(gl.NEAREST), haloA = cible(gl.LINEAR), haloB = cible(gl.LINEAR);
+  /* Le halo avant son flou. En WebGL 2 : rendu au quart dans un tampon
+     anticrénelé (msaa), puis résolu dans haloR. Sinon : rendu à la moitié dans
+     halo2, que la réduction moyenne par carrés de 2 × 2. */
+  const echantillons = estGL2 ? Math.min(4, gl.getParameter(gl.MAX_SAMPLES) || 0) : 0;
+  const msaa = echantillons ? { fb: gl.createFramebuffer(), rb: gl.createRenderbuffer() } : null;
+  const haloR = msaa ? cible(gl.NEAREST) : null, halo2 = msaa ? null : cible(gl.LINEAR);
+  const PAD = 6;                         // la marge transparente autour du halo : le flou y trouve le « dehors » du canvas
+  let qW = 1, qH = 1, noyauX = null, noyauY = null, profils = null, nRuban = 0;
+
+  /* Les poids du flou, pour un écart-type en pixels du quart, groupés par
+     paires voisines (voir FLOU_FS). */
+  function noyau(sigma){
+    const R = Math.min(6, Math.ceil(3 * sigma)), w = [];
+    let somme = 0;
+    for (let k = 0; k <= 6; k++){ const v = k <= R ? Math.exp(-k * k / (2 * sigma * sigma)) : 0; w.push(v); somme += k ? 2 * v : v; }
+    for (let k = 0; k <= 6; k++) w[k] /= somme;
+    const paire = (a, b) => { const s = w[a] + w[b]; return [s ? (a * w[a] + b * w[b]) / s : a, s]; };
+    const [o1, p1] = paire(1, 2), [o2, p2] = paire(3, 4), [o3, p3] = paire(5, 6);
+    return { off: new Float32Array([0, o1, o2, o3]), poids: new Float32Array([w[0], p1, p2, p3]) };
+  }
+  // le profil de chaque orbe à la taille de la fenêtre, normé à 1 au centre, en texture de 256 × 2
+  function profilsOrbes(){
+    const vw = W / 100, donnees = new Uint8Array(ORBE_LUT * 2), res = [];
+    ORBES.forEach((o, rang) => {
+      const R0 = 0.7 * Math.SQRT2 * (o.cote / 2 * vw);   // « transparent 70 % » d'un cercle en farthest-corner
+      const rmax = R0 + 4 * ORBE_FLOU;                   // au-delà, plus rien ne se voit
+      const v = new Float64Array(ORBE_LUT);
+      for (let i = 0; i < ORBE_LUT; i++) v[i] = coneFlou(i / (ORBE_LUT - 1) * rmax, R0, ORBE_FLOU);
+      const haut = v[0] || 1;
+      for (let i = 0; i < ORBE_LUT; i++) donnees[rang * ORBE_LUT + i] = Math.round(255 * Math.max(0, v[i] / haut));
+      res.push({ rmax, pic: ORBE_OPACITE * o.pic * haut });
+    });
+    gl.bindTexture(gl.TEXTURE_2D, lut);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, ORBE_LUT, 2, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, donnees);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    return res;
+  }
+  function taille(){
+    if (gl.isContextLost()) return;
+    qW = Math.max(1, Math.round(W * GLOW_SCALE)); qH = Math.max(1, Math.round(H * GLOW_SCALE));
+    dimension(net, W, H); dimension(etin, W, H);
+    if (msaa){
+      gl.bindRenderbuffer(gl.RENDERBUFFER, msaa.rb);
+      gl.renderbufferStorageMultisample(gl.RENDERBUFFER, echantillons, gl.RGBA8, qW, qH);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, msaa.fb);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, msaa.rb);
+      dimension(haloR, qW, qH);
+    } else dimension(halo2, 2 * qW, 2 * qH);
+    dimension(haloA, qW + 2 * PAD, qH + 2 * PAD); dimension(haloB, qW + 2 * PAD, qH + 2 * PAD);
+    noyauX = noyau(6 * qW / W); noyauY = noyau(6 * qH / H);   // le flou de 6 px CSS, en pixels du quart
+    profils = profilsOrbes();
+  }
+  taille();
+  for (const c of [net, etin, haloA, haloB, msaa, haloR || halo2].filter(Boolean)){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, c.fb);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE){ console.warn('fond GPU : rendu hors écran refusé'); return null; }
+  }
+  utiliser(P.compo);
+  gl.uniform1i(P.compo.u.u_net, 0); gl.uniform1i(P.compo.u.u_halo, 1);
+  gl.uniform1i(P.compo.u.u_etin, 2); gl.uniform1i(P.compo.u.u_orbes, 3);
+
+  // ---- le ruban : le net à pleine résolution, le halo au quart ----
+  /* Une passe du ruban : le fond, puis les voiles. `mode` : 'net' (le ruban
+     net), 'halo' (le halo tel que le traçait son canvas : mêmes nuanceurs,
+     une seule couleur vive, gain 1,7 — il remplace les deux recopies, pleine
+     puis 0,7, du pinceau 2D) ou 'demi' (le halo à la moitié, sans
+     anticrénelage : voir RIB_HALO_VS). */
+  function passeRuban(fb, w, h, mode){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.viewport(0, 0, w, h);
+    gl.disable(gl.BLEND);
+    utiliser(P.fond);
+    gl.uniform2f(P.fond.u.u_px, w, h);
+    gl.uniform3fv(P.fond.u.u_top, c3(BG_TOP));
+    gl.uniform3fv(P.fond.u.u_bot, c3(BG_BOT));
+    gl.uniform3fv(P.fond.u.u_horizon, c3(HORIZON));
+    plein();
     // voiles, en additif comme le « lighter » du pinceau 2D
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
-    gl.useProgram(ribP);
-    gl.uniform2f(uRib.size, W, H);
-    gl.uniform3fv(uRib.body, c3(gain > 1 ? VIVID : BODY)); // le halo est d'une seule couleur, vive
-    gl.uniform3fv(uRib.edge, c3(gain > 1 ? VIVID : EDGE));
-    gl.uniform1f(uRib.gain, gain);
-    gl.bindBuffer(gl.ARRAY_BUFFER, ribBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    const R = mode === 'demi' ? P.halo : P.net;
+    utiliser(R);
+    gl.uniform2f(R.u.u_size, W, H);
+    if (mode === 'demi'){
+      gl.uniform3fv(R.u.u_col, c3(VIVID));
+      gl.uniform1f(R.u.u_gain, 1.7);
+      gl.uniform1f(R.u.u_texel, H / h);
+    } else {
+      gl.uniform3fv(R.u.u_body, c3(mode === 'halo' ? VIVID : BODY));   // le halo est d'une seule couleur, vive
+      gl.uniform3fv(R.u.u_edge, c3(mode === 'halo' ? VIVID : EDGE));
+      gl.uniform1f(R.u.u_gain, mode === 'halo' ? 1.7 : 1);
+    }
     const stride = V_FLOATS * 4;
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 8);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, count);
-  };
+    gl.bindBuffer(gl.ARRAY_BUFFER, vboRuban);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 8);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, nRuban);
+  }
+  function flou(src, dst, px, py, k){
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
+    gl.viewport(0, 0, dst.w, dst.h);
+    utiliser(P.flou);
+    lier(0, src.tex);
+    gl.uniform1i(P.flou.u.u_tex, 0);
+    gl.uniform2f(P.flou.u.u_pas, px, py);
+    gl.uniform4fv(P.flou.u.u_off, k.off);
+    gl.uniform4fv(P.flou.u.u_poids, k.poids);
+    plein();
+  }
+  function ruban(data, count){
+    if (gl.isContextLost()) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, vboRuban);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    nRuban = count;
+    passeRuban(net.fb, net.w, net.h, 'net');
+    if (!FOND_ON.halo) return;
+    let source;
+    if (msaa){
+      // au quart, anticrénelé comme l'était son canvas, puis résolu (moyenne des échantillons)
+      passeRuban(msaa.fb, qW, qH, 'halo');
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, msaa.fb);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, haloR.fb);
+      gl.blitFramebuffer(0, 0, qW, qH, 0, 0, qW, qH, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+      source = haloR;
+    } else {
+      passeRuban(halo2.fb, halo2.w, halo2.h, 'demi');
+      source = halo2;
+    }
+    // posé au quart (la moitié : chaque pixel, la moyenne de 2 × 2) au milieu de sa marge transparente…
+    gl.disable(gl.BLEND);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, haloA.fb);
+    gl.viewport(0, 0, haloA.w, haloA.h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.viewport(PAD, PAD, qW, qH);
+    utiliser(P.copie);
+    lier(0, source.tex);
+    gl.uniform1i(P.copie.u.u_tex, 0);
+    plein();
+    // … puis flouté : horizontalement dans B, verticalement retour dans A
+    flou(haloA, haloB, 1 / haloA.w, 0, noyauX);
+    flou(haloB, haloA, 0, 1 / haloA.h, noyauY);
+  }
+
+  // ---- chaque image : les étincelles, puis la composition à l'écran ----
+  function lot(l, prog, parSommet){
+    if (!l.n) return;
+    indices(l.n);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vboLot);
+    gl.bufferData(gl.ARRAY_BUFFER, l.f.subarray(0, l.n * 4 * parSommet), gl.STREAM_DRAW);
+    const stride = parSommet * 4;
+    if (prog === P.sprite){
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 8);
+    } else {
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+      gl.vertexAttribPointer(1, 4, gl.FLOAT, false, stride, 8);
+      gl.vertexAttribPointer(2, 2, gl.FLOAT, false, stride, 24);
+    }
+    gl.drawElements(gl.TRIANGLES, l.n * 6, gl.UNSIGNED_SHORT, 0);
+  }
+  function composer(now){
+    if (gl.isContextLost()) return;
+    // 1. les étincelles, additionnées dans leur calque
+    gl.bindFramebuffer(gl.FRAMEBUFFER, etin.fb);
+    gl.viewport(0, 0, etin.w, etin.h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (FOND_ON.etincelles){
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      utiliser(P.sprite);
+      gl.uniform2f(P.sprite.u.u_size, W, H);
+      gl.uniform1i(P.sprite.u.u_tex, 0);
+      for (const l of LOTS.dessins){ if (l.n){ lier(0, dessins.get(l.dessin)); lot(l, P.sprite, 5); } }
+      if (LOTS.traits.n){
+        utiliser(P.trait);
+        gl.uniform2f(P.trait.u.u_size, W, H);
+        gl.uniform3fv(P.trait.u.u_col, c3(EDGE));
+        lot(LOTS.traits, P.trait, 8);
+      }
+    }
+    // 2. la composition
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, cnv.width, cnv.height);
+    gl.disable(gl.BLEND);
+    const C = P.compo;
+    utiliser(C);
+    lier(0, net.tex); lier(1, haloA.tex); lier(2, etin.tex); lier(3, lut);
+    gl.uniform2f(C.u.u_size, W, H);
+    gl.uniform4f(C.u.u_haloCadre, PAD / haloA.w, PAD / haloA.h, qW / haloA.w, qH / haloA.h);
+    const vw = W / 100;
+    ORBES.forEach((o, i) => {
+      const e = derive(now, o.periode), c = o.centre(vw);
+      gl.uniform4f(i ? C.u.u_orbeB : C.u.u_orbeA, c[0] + o.dx * vw * e, c[1] + o.dy * vw * e, 1 + o.ds * e, profils[i].rmax);
+    });
+    gl.uniform2f(C.u.u_orbePic, profils[0].pic, profils[1].pic);
+    gl.uniform3fv(C.u.u_accent, c3(ACCENT));
+    gl.uniform3fv(C.u.u_accent2, c3(ACCENT2));
+    gl.uniform4f(C.u.u_on, FOND_ON.halo ? 1 : 0, FOND_ON.orbes ? 1 : 0, FOND_ON.etincelles ? 1 : 0, FOND_ON.vignette ? 1 : 0);
+    plein();
+  }
+  return { taille, ruban, composer };
 }
 
-// Le halo reprend le même ruban de triangles, au quart de la résolution, d'une
-// seule couleur vive : c'est ce que faisait le « source-in » du pinceau 2D. Le
-// gain 1,7 remplace les deux recopies (pleine puis 0,7) qui l'intensifiaient.
-let drawSharp = makeWaveGL(canvas, 1, false);
-let drawGlow = makeWaveGL(canvasGlow, 1.7, true);
-// Le pilote peut reprendre un contexte à tout moment (veille, changement de
-// carte) : sans ces deux lignes le fond resterait noir jusqu'au rechargement.
-canvas.addEventListener('webglcontextlost', e => e.preventDefault());
-canvas.addEventListener('webglcontextrestored', () => { drawSharp = makeWaveGL(canvas, 1, false); });
-canvasGlow.addEventListener('webglcontextlost', e => e.preventDefault());
-canvasGlow.addEventListener('webglcontextrestored', () => { drawGlow = makeWaveGL(canvasGlow, 1.7, true); });
-
 function paintWaves(){
-  if (!drawSharp && !drawGlow) return;   // sans GPU : le fond uni du body reste
+  if (!fondGL) return;   // sans GPU : le fond uni du body reste, et la vignette en CSS
   buildRibbon();
-  if (drawSharp) drawSharp(verts, vertCount);
-  if (drawGlow) drawGlow(verts, vertCount);
+  fondGL.ruban(verts, vertCount);
 }
 
 /* ---------------- scintillement ----------------
@@ -17574,6 +18113,57 @@ const spriteEtoile = (() => {
   x.fillStyle = r; x.fillRect(0, 0, S, S);
   return c;
 })();
+/* Ce qu'on dessine à chaque image, rangé par dessin : un drawImage devient un
+   quadrilatère (quatre sommets : x, y, coordonnées dans le dessin, opacité),
+   un trait de comète un segment (quatre coins : x, y, le segment, sa
+   demi-épaisseur, son opacité). Tout part au GPU en un envoi par lot (voir
+   makeFond, composer). Les tableaux sont gardés d'une image à l'autre. */
+const lotVide = (dessin, parQuad) => ({ dessin, parQuad, f: new Float32Array(64 * parQuad), n: 0 });
+const LOTS = {
+  dessins: [lotVide(spriteCore, 20), lotVide(spriteGlow, 20), lotVide(spriteBokeh, 20), lotVide(spriteEtoile, 20)],
+  traits: lotVide(null, 32),
+};
+const [LOT_COEUR, LOT_HALO, LOT_BOKEH, LOT_ETOILE] = LOTS.dessins;
+function placeLot(l){
+  if ((l.n + 1) * l.parQuad <= l.f.length) return;
+  const f = new Float32Array(l.f.length * 2);
+  f.set(l.f);
+  l.f = f;
+}
+// l'équivalent de drawImage(dessin, x, y, w, h) sous globalAlpha = a
+function poser(l, x, y, w, h, a){
+  placeLot(l);
+  const f = l.f; let o = l.n++ * 20;
+  f[o++] = x;     f[o++] = y;     f[o++] = 0; f[o++] = 0; f[o++] = a;
+  f[o++] = x + w; f[o++] = y;     f[o++] = 1; f[o++] = 0; f[o++] = a;
+  f[o++] = x;     f[o++] = y + h; f[o++] = 0; f[o++] = 1; f[o++] = a;
+  f[o++] = x + w; f[o++] = y + h; f[o++] = 1; f[o++] = 1; f[o]   = a;
+}
+// l'équivalent de moveTo(x0, y0), lineTo(x1, y1), stroke() : lineCap round, lineWidth = largeur, globalAlpha = a
+function tracer(x0, y0, x1, y1, largeur, a){
+  const l = LOTS.traits;
+  placeLot(l);
+  const hw = largeur / 2, m = hw + 1;   // la boîte du segment, plus un pixel pour le lissage
+  const xa = Math.min(x0, x1) - m, xb = Math.max(x0, x1) + m, ya = Math.min(y0, y1) - m, yb = Math.max(y0, y1) + m;
+  const f = l.f, o = l.n++ * 32;
+  for (let i = 0; i < 4; i++){
+    const k = o + i * 8;
+    f[k] = i & 1 ? xb : xa; f[k + 1] = i & 2 ? yb : ya;
+    f[k + 2] = x0; f[k + 3] = y0; f[k + 4] = x1; f[k + 5] = y1; f[k + 6] = hw; f[k + 7] = a;
+  }
+}
+
+// le moteur du fond : tout ce qu'il dessine est défini, il peut naître
+fondGL = makeFond(canvas);
+if (!fondGL) document.documentElement.classList.add('fond-sans-gl');
+/* Le pilote peut reprendre un contexte à tout moment (veille, changement de
+   carte) : sans ces lignes le fond resterait noir jusqu'au rechargement.
+   Tout ce que le GPU tenait est perdu avec lui ; makeFond le refait. */
+canvas.addEventListener('webglcontextlost', e => e.preventDefault());
+canvas.addEventListener('webglcontextrestored', () => {
+  fondGL = makeFond(canvas);
+  if (fondGL){ document.documentElement.classList.remove('fond-sans-gl'); paintWaves(); }
+});
 
 let sparkles = [], bokehs = [];
 function newSparkle(){
@@ -17638,9 +18228,7 @@ function drawCometes(k, now){
     prochaineComete = now + 1000 * (COMETES.attente[0] + Math.random() * (COMETES.attente[1] - COMETES.attente[0]));
   }
   if (!cometes.length) return;
-  const [r, g, b] = EDGE;
-  sctx.lineCap = 'round';
-  sctx.strokeStyle = `rgb(${r},${g},${b})`;
+  // (la couleur, EDGE, est celle des liserés : le moteur du fond la donne aux traits)
   for (const c of cometes){
     c.x += c.v * k;
     // la queue, du bout (pâle, fin) à la tête (vive, épaisse) : une suite de segments sur la courbe du fil
@@ -17649,37 +18237,30 @@ function drawCometes(k, now){
     for (let i = 1; i <= N; i++){
       const u = i / N;                                 // 0 au bout de la queue, 1 à la tête
       const x = c.x - c.queue * (1 - u), y = filY(c.f, x);
-      const fond = c.a * Math.pow(u, 1.8);
-      sctx.beginPath(); sctx.moveTo(px, py); sctx.lineTo(x, y);
-      sctx.globalAlpha = fond * 0.22; sctx.lineWidth = 1 + c.w * u * 4;   // la lueur, large et pâle…
-      sctx.stroke();
-      sctx.globalAlpha = fond; sctx.lineWidth = 0.4 + c.w * u;           // … et le trait, fin et vif
-      sctx.stroke();
+      const eclat = c.a * Math.pow(u, 1.8);
+      tracer(px, py, x, y, 1 + c.w * u * 4, eclat * 0.22);   // la lueur, large et pâle…
+      tracer(px, py, x, y, 0.4 + c.w * u, eclat);            // … et le trait, fin et vif
       px = x; py = y;
     }
     // la tête : un cœur blanc et un halo
-    sctx.globalAlpha = c.a;
-    sctx.drawImage(spriteCore, c.x - 5, py - 5, 10, 10);
-    sctx.globalAlpha = c.a * 0.6;
-    sctx.drawImage(spriteGlow, c.x - 22, py - 22, 44, 44);
+    poser(LOT_COEUR, c.x - 5, py - 5, 10, 10, c.a);
+    poser(LOT_HALO, c.x - 22, py - 22, 44, 44, c.a * 0.6);
   }
   cometes = cometes.filter(c => c.x - c.queue < W + 40);
 }
 
-function drawSparkles(){
+function drawSparkles(now){
   // le pas de temps, en images à 60 i/s : le mouvement ne dépend pas de la cadence de l'écran
-  const now = performance.now();
   const k = sparkT ? Math.min(3, (now - sparkT) / 16.7) : 1;
   sparkT = now;
-  sctx.clearRect(0, 0, W, H);
-  sctx.globalCompositeOperation = 'lighter';
-  // les flous de premier plan, derrière le reste
+  for (const l of LOTS.dessins) l.n = 0;
+  LOTS.traits.n = 0;
+  // les flous de premier plan (l'ordre ne compte pas : tout s'additionne)
   for (const b of bokehs){
     b.x += b.vx * k;
     if (b.x - b.r > W + 20) Object.assign(b, newBokeh(true));
     const y = spineY(b.x) + b.dy + Math.sin(t * 0.004 + b.phase) * 10;
-    sctx.globalAlpha = b.a * (0.75 + 0.25 * Math.sin(t * 0.006 + b.phase));
-    sctx.drawImage(spriteBokeh, b.x - b.r, y - b.r, b.r * 2, b.r * 2);
+    poser(LOT_BOKEH, b.x - b.r, y - b.r, b.r * 2, b.r * 2, b.a * (0.75 + 0.25 * Math.sin(t * 0.006 + b.phase)));
   }
   for (const s of sparkles){
     s.x += s.vx * k;
@@ -17694,23 +18275,18 @@ function drawSparkles(){
     const alpha = fade * (SPARKLE.base + (1 - SPARKLE.base) * tw * tw) * (0.45 + 0.55 * s.z);
     if (alpha < 0.02) continue;
     const d = s.size * 2 + 2;
-    sctx.globalAlpha = alpha;
-    sctx.drawImage(spriteCore, s.x - d/2, y - d/2, d, d);
+    poser(LOT_COEUR, s.x - d/2, y - d/2, d, d, alpha);
     if (s.glow){
       const g = s.size * 10 + 10;
-      sctx.globalAlpha = alpha * 0.35;
-      sctx.drawImage(spriteGlow, s.x - g/2, y - g/2, g, g);
+      poser(LOT_HALO, s.x - g/2, y - g/2, g, g, alpha * 0.35);
     }
     // l'éclat en croix, au sommet de la pulsation des plus proches
     if (s.z > 0.6 && tw > 0.9){
       const e = (tw - 0.9) / 0.1, taille = 10 + s.size * 9;
-      sctx.globalAlpha = alpha * e * 0.8;
-      sctx.drawImage(spriteEtoile, s.x - taille/2, y - taille/2, taille, taille);
+      poser(LOT_ETOILE, s.x - taille/2, y - taille/2, taille, taille, alpha * e * 0.8);
     }
   }
   drawCometes(k, now);
-  sctx.globalAlpha = 1;
-  sctx.globalCompositeOperation = 'source-over';
 }
 
 /* ---------------- mesure et diagnostic ----------------
@@ -17765,10 +18341,15 @@ function drawFrame(ts){
      plafonné pour qu'un retour d'onglet ne fasse pas bondir la vague. */
   t += Math.min(100, tLast ? now2 - tLast : 16.7) * 0.06;
   tLast = now2;
-  // L'arène du mini-jeu couvre tout l'écran : inutile de peindre le ruban derrière,
-  // et le duel a besoin de tout le temps disponible.
-  if (!arena.isOpen() && now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
-  drawSparkles();
+  /* Les mini-jeux et l'atelier couvrent tout l'écran d'un noir plein (voir
+     .arena-overlay.open) : rien du fond ne se voit, inutile de le peindre — et
+     le jeu a besoin de tout le temps disponible. */
+  const couvert = arena.isOpen() || jumper.isOpen() || seum.isOpen() || dressup.isOpen();
+  if (!couvert && fondGL){
+    if (now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
+    drawSparkles(now2);        // les étincelles bougent…
+    fondGL.composer(now2);     // … et le fond est recomposé, en un seul calque
+  }
   requestAnimationFrame(drawFrame);
 }
 let wavesAt = 0, tLast = 0, ipsCadre = 0;
@@ -17780,20 +18361,46 @@ if (DIAG){
   document.body.appendChild(box);
   // interrupteurs, pour trouver ce qui coûte cher sur SA machine : chaque
   // touche éteint un élément, on lit les images par seconde juste après
-  const off = { halo: false, etincelles: false, verre: false, ruban: false };
+  const off = { halo: false, etincelles: false, verre: false, ruban: false, orbes: false, liste: false, fiche: false };
+  const TOUCHES = { '1':'halo', '2':'etincelles', '3':'verre', '4':'ruban', '5':'orbes', '7':'liste', '8':'fiche' };
   const vraiPaint = paintWaves;
+  const basculer = (k) => {
+    off[k] = !off[k];
+    FOND_ON.halo = !off.halo; FOND_ON.etincelles = !off.etincelles; FOND_ON.orbes = !off.orbes;
+    document.querySelectorAll('.glass, .preview, .statut, .legalbar').forEach(g => {
+      g.style.backdropFilter = off.verre ? 'none' : '';
+      g.style.webkitBackdropFilter = off.verre ? 'none' : '';   // Safari ne lit que le nom préfixé
+    });
+    const liste = document.querySelector('.rows-gl');
+    if (liste) liste.style.visibility = off.liste ? 'hidden' : '';
+    document.getElementById('previewGL').style.visibility = off.fiche ? 'hidden' : '';
+    paintWaves = off.ruban ? () => {} : vraiPaint;
+    wavesAt = 0;         // le halo rallumé doit être repeint tout de suite
+    bgWorst = 0;
+    boutons.forEach(b => { b.style.opacity = off[b.dataset.k] ? '0.45' : '1'; });
+  };
   window.addEventListener('keydown', e => {
     // 6 : 25 € de dépense de plus sur le profil — pour voir l'XP et le niveau bouger sans boutique
     if (e.key === '6'){ profil.ajouterDepense(25, 1); return; }
-    const k = { '1':'halo', '2':'etincelles', '3':'verre', '4':'ruban' }[e.key];
-    if (!k) return;
-    off[k] = !off[k];
-    document.getElementById('waveCanvasGlow').style.display = off.halo ? 'none' : '';
-    document.getElementById('sparkleCanvas').style.display = off.etincelles ? 'none' : '';
-    document.querySelectorAll('.glass, .preview').forEach(g => g.style.backdropFilter = off.verre ? 'none' : '');
-    paintWaves = off.ruban ? () => {} : vraiPaint;
-    bgWorst = 0;
+    const k = TOUCHES[e.key];
+    if (k) basculer(k);
   });
+  /* Sur un téléphone il n'y a pas de clavier : les mêmes interrupteurs en
+     boutons, sous le relevé. Un bouton pâli est un élément éteint. */
+  const rangee = document.createElement('div');
+  rangee.style.cssText = 'position:fixed;left:8px;z-index:99;display:flex;flex-wrap:wrap;gap:4px;max-width:calc(100vw - 16px);';
+  const boutons = Object.values(TOUCHES).map(k => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = k; b.dataset.k = k;
+    b.style.cssText = 'font:11px/1 Consolas,monospace;padding:7px 8px;border-radius:6px;border:1px solid #2e6b45;'
+      + 'background:rgba(0,0,0,0.78);color:#7fe0a0;cursor:pointer;';
+    b.addEventListener('click', (e) => { e.stopPropagation(); basculer(k); });
+    b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    rangee.appendChild(b);
+    return b;
+  });
+  document.body.appendChild(rangee);
+  const placerRangee = () => { rangee.style.top = (box.getBoundingClientRect().bottom + 4) + 'px'; };
   // le niveau est relevé à chaque image, sans quoi un clic de 12 ms passerait entre deux mesures
   let crete = 0, creteT = 0;
   (function echantillonne(){
@@ -17812,8 +18419,9 @@ if (DIAG){
       'horloge ' + (sfx.clock || 0).toFixed(1) + ' s   avance ' + Math.round(((sfx.lastAt || 0) - (sfx.clock || 0)) * 1000) + ' ms\n' +
       'joues   clic ' + sfx.plays.tick + '  souffle ' + sfx.plays.move + '  panier ' + sfx.plays.add + '\n' +
       'ecran   ' + innerWidth + 'x' + innerHeight + ' @' + (window.devicePixelRatio || 1) + '\n' +
-      'touches 1 halo  2 etincelles  3 verre  4 ruban  6 +25 EUR\n' +
+      'touches 1 halo  2 etincelles  3 verre  4 ruban  5 orbes  7 liste  8 fiche  6 +25 EUR\n' +
       'eteints ' + (eteints.length ? eteints.join(', ') : 'aucun');
+    placerRangee();
   }, 400);
 }
 
@@ -18053,8 +18661,13 @@ const demarrage = (() => {
       eclatsCoeur[pi].setAttribute('r', f1(40 + 240 * sortie(kc)));
       eclatsCoeur[pi].setAttribute('opacity', (kc > 0 && kc < 1 ? 0.7 * pc : 0).toFixed(3));
     });
-    svg.style.setProperty('--eclat', (b > 0 && ke < 1 ? pic : 0).toFixed(3));
+    /* --eclat règle les deux ombres portées floues du logo : la changer, c'est
+       les recalculer. Elle ne vaut autre chose que 0 que pendant l'éclosion ;
+       on ne l'écrit donc que quand elle change. */
+    const eclatV = (b > 0 && ke < 1 ? pic : 0).toFixed(3);
+    if (eclatV !== eclatEcrit){ eclatEcrit = eclatV; svg.style.setProperty('--eclat', eclatV); }
   }
+  let eclatEcrit = '';
 
   /* ---- la poussière (métamorphose) et les étincelles (éclosion) ----
      Une toile sur toute la fenêtre, en pixels d'écran. La poussière : les
