@@ -7327,7 +7327,12 @@ const model3d = (() => {
     g.drawImage(img, Math.round((n - w) / 2), Math.round((n - h) / 2));
     return c;
   }
-  function silhouette(img, troue){
+  /* Un générateur de la file de préparation, mené d'un trait : pour les appels
+     qui ne peuvent pas attendre (voir la file de préparation, plus bas). */
+  function finir(g){ let r = g.next(); while (!r.done) r = g.next(); return r.value; }
+  // `detourer` rend la main entre ses étapes (voir la file de préparation) ; `silhouette` la fait d'un trait
+  function silhouette(img, troue){ return finir(detourer(img, troue)); }
+  function* detourer(img, troue){
     const N = MASK_N, c = document.createElement('canvas'); c.width = N; c.height = N;
     const ctx = c.getContext('2d', { willReadFrequently:true });
     ctx.drawImage(img, 0, 0, N, N);
@@ -7342,12 +7347,19 @@ const model3d = (() => {
     } else {
       for (let i = 0; i < N*N; i++){ const dr = d[i*4]-r, dg = d[i*4+1]-g, db = d[i*4+2]-b; bg[i] = (dr*dr+dg*dg+db*db) < TOL*TOL ? 1 : 0; }
     }
-    const outside = new Uint8Array(N*N), stack = []; // extérieur : fond relié aux bords
-    const push = i => { if (!outside[i] && bg[i]){ outside[i] = 1; stack.push(i); } };
+    /* Les remplissages qui suivent vont de voisin en voisin sur une PILE TYPÉE,
+       sans tableau neuf à chaque case (voir extendTexture) : ce qu'ils rendent —
+       qui est relié à quoi, et combien de cases — ne dépend pas de l'ordre de
+       visite. Chaque case n'y entre qu'une fois : la pile tient en N × N. */
+    const NN = N*N, pile = new Int32Array(NN);
+    let h = 0;
+    yield;
+    const outside = new Uint8Array(NN); // extérieur : fond relié aux bords
+    const push = i => { if (!outside[i] && bg[i]){ outside[i] = 1; pile[h++] = i; } };
     for (let x = 0; x < N; x++){ push(x); push((N-1)*N+x); }
     for (let y = 0; y < N; y++){ push(y*N); push(y*N+N-1); }
-    while (stack.length){ const i = stack.pop(), x = i % N, y = (i-x)/N;
-      if (x > 0) push(i-1); if (x < N-1) push(i+1); if (y > 0) push(i-N); if (y < N-1) push(i+N); }
+    while (h){ const i = pile[--h], x = i % N;
+      if (x > 0) push(i-1); if (x < N-1) push(i+1); if (i >= N) push(i-N); if (i < NN-N) push(i+N); }
     /* LA PLUS GRANDE FORME, ET CELLES QUI LUI RESSEMBLENT. Ne garder que la
        plus grande écarte les poussières et les reflets, mais coupait aussi les
        PAIRES en deux : les deux Converse de shoes2 ne se touchent pas, et une
@@ -7360,15 +7372,16 @@ const model3d = (() => {
        partout, sauf la paire (99,6 %) et le dos du raglan (94,6 %) — entre ces
        deux-là et la plus grosse poussière (9,1 %), le seuil est large. */
     const PAIRE = 0.25;
+    yield;
     const label = new Int32Array(N*N).fill(-1); // les formes non extérieures
     const tailles = [];
     let k = 0;
-    for (let s = 0; s < N*N; s++){
+    const prendre = j => { if (!outside[j] && label[j] < 0){ label[j] = k; pile[h++] = j; } };
+    for (let s = 0; s < NN; s++){
       if (outside[s] || label[s] >= 0) continue;
-      let size = 0; const st = [s]; label[s] = k;
-      while (st.length){ const i = st.pop(); size++; const x = i % N, y = (i-x)/N;
-        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
-        for (const j of nb) if (!outside[j] && label[j] < 0){ label[j] = k; st.push(j); } }
+      let size = 0; h = 0; pile[h++] = s; label[s] = k;
+      while (h){ const i = pile[--h]; size++; const x = i % N;
+        if (x > 0) prendre(i-1); if (x < N-1) prendre(i+1); if (i >= N) prendre(i-N); if (i < NN-N) prendre(i+N); }
       tailles.push(size);
       k++;
     }
@@ -7406,6 +7419,7 @@ const model3d = (() => {
        `troue` vaut donc 'objet' pour un objet, où toute grande poche est un
        vrai trou (l'anse d'un cadenas), et 'col' pour un vêtement porté, où
        seules celles des deux extrémités en sont. */
+    yield;
     const vue = troue ? new Uint8Array(N*N) : null;
     let bx0 = N, bx1 = 0, by0 = N, by1 = 0;
     if (troue === 'col') for (let i = 0; i < N*N; i++) if (mask[i]){
@@ -7413,22 +7427,24 @@ const model3d = (() => {
       if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
     }
     const COL = { part: 0.01, large: 0.16, haut: 0.25, bord: 0.10 };   // seuils du col et de l'entrejambe
-    for (let s = 0; troue && s < N*N; s++){
+    const poche = troue ? new Int32Array(NN) : null;   // les cases de la poche en cours
+    let np = 0;
+    const suivre = j => { if (mask[j] && bg[j] && !vue[j]){ vue[j] = 1; pile[h++] = j; poche[np++] = j; } };
+    for (let s = 0; troue && s < NN; s++){
       if (!mask[s] || !bg[s] || vue[s]) continue;
-      const st = [s], poche = [s]; vue[s] = 1;
-      while (st.length){ const i = st.pop(), x = i % N, y = (i-x)/N;
-        const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
-        for (const j of nb) if (mask[j] && bg[j] && !vue[j]){ vue[j] = 1; st.push(j); poche.push(j); } }
-      let garder = poche.length > aire * TROU;
+      h = 0; np = 0; pile[h++] = s; poche[np++] = s; vue[s] = 1;
+      while (h){ const i = pile[--h], x = i % N;
+        if (x > 0) suivre(i-1); if (x < N-1) suivre(i+1); if (i >= N) suivre(i-N); if (i < NN-N) suivre(i+N); }
+      let garder = np > aire * TROU;
       if (troue === 'col'){
         let sx = 0, sy = 0, pb = 0;
-        poche.forEach(i => { const x = i % N, y = (i - x) / N; sx += x; sy += y; if (y > pb) pb = y; });
+        for (let q = 0; q < np; q++){ const i = poche[q], x = i % N, y = (i - x) / N; sx += x; sy += y; if (y > pb) pb = y; }
         const H = by1 - by0 || 1;
-        const cx = (sx / poche.length - bx0) / (bx1 - bx0 || 1), cy = (sy / poche.length - by0) / H;
-        garder = poche.length > aire * COL.part && Math.abs(cx - 0.5) < COL.large
+        const cx = (sx / np - bx0) / (bx1 - bx0 || 1), cy = (sy / np - by0) / H;
+        garder = np > aire * COL.part && Math.abs(cx - 0.5) < COL.large
                  && (cy < COL.haut || (pb - by0) / H > 1 - COL.bord);
       }
-      if (garder) for (const i of poche) mask[i] = 0;
+      if (garder) for (let q = 0; q < np; q++) mask[poche[q]] = 0;
     }
     mask.bg = [r, g, b]; mask.alphaMode = a < 30; // repris par extendTexture (jugement pixel par pixel au contour)
     return mask;
@@ -7459,13 +7475,28 @@ const model3d = (() => {
   //      (imprimés et étiquettes dilués). Une partie du relief qui déborde de la
   //      photo (capuche vue de dos, aisselles) montre ainsi toujours du tissu.
   //      `info` = masque de la photo elle-même (couleur du fond, mode alpha).
-  function extendTexture(img, mask, info){
-    const N = MASK_N, dist = distances(mask), BAND = 4;
+  /* LE MÊME CALCUL, SANS RIEN FABRIQUER EN ROUTE (25 sept. 2026). Chaque
+     pixel de la photo — 640 000 sur une photo de 800 — appelait deux petites
+     fonctions et créait un tableau de trois nombres, et chaque case du masque
+     un tableau de voisins : environ 100 ms par photo, dix-huit photos au
+     démarrage, pendant l'écran d'allumage qui en restait figé. Tout ce qui ne
+     dépend que de la case du masque — son seuil de fond, le centre de son
+     bloc source, sa rangée et sa colonne — est maintenant calculé une fois par
+     case, et la boucle des pixels ne fait plus que lire et écrire. Les
+     opérations sont les mêmes, dans le même ordre : la texture est identique
+     à l'octet près, vérifié sur les photos de la boutique et du vestiaire.
+     `etendre` est le calcul lui-même, qui rend la main entre ses étapes et
+     toutes les 3 ms dans la boucle des pixels (voir la file de préparation) ;
+     `extendTexture` le fait d'un trait, pour ceux qui ne peuvent pas attendre. */
+  function extendTexture(img, mask, info){ return finir(etendre(img, mask, info)); }
+  function* etendre(img, mask, info){
+    const N = MASK_N, NN = N * N, dist = distances(mask), BAND = 4;
     const bgc = (info && info.bg) || [255, 255, 255], alphaMode = !!(info && info.alphaMode);
     const cs = document.createElement('canvas'); cs.width = N; cs.height = N;
     const sctx = cs.getContext('2d', { willReadFrequently:true });
     sctx.drawImage(img, 0, 0, N, N);
     const sd = sctx.getImageData(0, 0, N, N).data;
+    yield;
     // tables cumulées (R, V, B, effectif) sur les pixels solides (blocs à ≥ 2 px du bord)
     const W1 = N + 1, SR = new Float64Array(W1*W1), SG = new Float64Array(W1*W1), SB = new Float64Array(W1*W1), SC = new Float64Array(W1*W1);
     for (let y = 1; y <= N; y++) for (let x = 1; x <= N; x++){
@@ -7475,55 +7506,92 @@ const model3d = (() => {
       SB[o] = (solid ? sd[i*4+2] : 0) + SB[o-1] + SB[o-W1] - SB[o-W1-1];
       SC[o] = solid + SC[o-1] + SC[o-W1] - SC[o-W1-1];
     }
-    const avg = (x, y, r) => {
-      const xa = Math.max(0, x-r), ya = Math.max(0, y-r), xb = Math.min(N-1, x+r) + 1, yb = Math.min(N-1, y+r) + 1;
-      const sum = T => T[yb*W1+xb] - T[ya*W1+xb] - T[yb*W1+xa] + T[ya*W1+xa];
-      const c = sum(SC); return c ? [sum(SR)/c, sum(SG)/c, sum(SB)/c] : null; };
-    // bloc solide le plus proche de chaque bloc (propagation en largeur depuis les blocs solides)
-    const src = new Int32Array(N*N).fill(-1), queue = [];
-    for (let i = 0; i < N*N; i++) if (dist[i] >= 2){ src[i] = i; queue.push(i); }
-    for (let q = 0; q < queue.length; q++){ const i = queue[q], x = i % N, y = (i-x)/N;
-      const nb = []; if (x > 0) nb.push(i-1); if (x < N-1) nb.push(i+1); if (y > 0) nb.push(i-N); if (y < N-1) nb.push(i+N);
-      for (const j of nb) if (src[j] < 0){ src[j] = src[i]; queue.push(j); } }
-    // couleur de repli des blocs non francs : moyenne locale autour de leur bloc source
-    const fill = new Uint8ClampedArray(N*N*3);
-    for (let i = 0; i < N*N; i++){
-      if (dist[i] >= BAND || src[i] < 0) continue;
-      const s = src[i], a = avg(s % N, (s - s % N) / N, EXT_R) || [sd[s*4], sd[s*4+1], sd[s*4+2]];
-      fill[i*3] = a[0]; fill[i*3+1] = a[1]; fill[i*3+2] = a[2];
+    yield;
+    // bloc solide le plus proche de chaque bloc (propagation en largeur depuis les blocs
+    // solides) ; voisins pris dans l'ordre gauche, droite, haut, bas
+    const src = new Int32Array(NN).fill(-1), queue = new Int32Array(NN);
+    let fin = 0;
+    for (let i = 0; i < NN; i++) if (dist[i] >= 2){ src[i] = i; queue[fin++] = i; }
+    for (let q = 0; q < fin; q++){
+      const i = queue[q], x = i % N, s = src[i];
+      if (x > 0 && src[i-1] < 0){ src[i-1] = s; queue[fin++] = i-1; }
+      if (x < N-1 && src[i+1] < 0){ src[i+1] = s; queue[fin++] = i+1; }
+      if (i >= N && src[i-N] < 0){ src[i-N] = s; queue[fin++] = i-N; }
+      if (i < NN-N && src[i+N] < 0){ src[i+N] = s; queue[fin++] = i+N; }
     }
+    yield;
+    // couleur de repli des blocs non francs : moyenne locale (rayon EXT_R) autour de leur
+    // bloc source, ou la couleur du bloc lui-même s'il n'a aucun voisin solide
+    const fill = new Uint8ClampedArray(NN*3);
+    for (let i = 0; i < NN; i++){
+      if (dist[i] >= BAND || src[i] < 0) continue;
+      const s = src[i], x = s % N, y = (s - x) / N;
+      const xa = Math.max(0, x-EXT_R), ya = Math.max(0, y-EXT_R), xb = Math.min(N-1, x+EXT_R) + 1, yb = Math.min(N-1, y+EXT_R) + 1;
+      const kbd = yb*W1+xb, khd = ya*W1+xb, kbg = yb*W1+xa, khg = ya*W1+xa;
+      const c = SC[kbd] - SC[khd] - SC[kbg] + SC[khg];
+      if (c){
+        fill[i*3]   = (SR[kbd] - SR[khd] - SR[kbg] + SR[khg]) / c;
+        fill[i*3+1] = (SG[kbd] - SG[khd] - SG[kbg] + SG[khg]) / c;
+        fill[i*3+2] = (SB[kbd] - SB[khd] - SB[kbg] + SB[khg]) / c;
+      } else { fill[i*3] = sd[s*4]; fill[i*3+1] = sd[s*4+1]; fill[i*3+2] = sd[s*4+2]; }
+    }
+    yield;
     // pleine résolution
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height; // Image ou canvas (voir carrer)
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d', { willReadFrequently:true });
     ctx.drawImage(img, 0, 0);
     const id = ctx.getImageData(0, 0, W, H), d = id.data, orig = new Uint8ClampedArray(d), sx = N / W, sy = N / H;
-    // pixel à remplacer : tout ce qui n'est pas franchement de la couleur locale du tissu
-    // (à moins de 30 % de l'écart tissu-fond). Les pixels de transition anti-crénelés du
-    // contour sont ainsi remplacés ; remplacer un vrai pixel de tissu est sans effet visible.
-    const d2 = (o, c) => (orig[o]-c[0])*(orig[o]-c[0]) + (orig[o+1]-c[1])*(orig[o+1]-c[1]) + (orig[o+2]-c[2])*(orig[o+2]-c[2]);
-    const isBgPx = (o, m) => { if (alphaMode) return orig[o+3] < 128;
-      const fab = [fill[m*3], fill[m*3+1], fill[m*3+2]];
-      const sep = (fab[0]-bgc[0])*(fab[0]-bgc[0]) + (fab[1]-bgc[1])*(fab[1]-bgc[1]) + (fab[2]-bgc[2])*(fab[2]-bgc[2]);
-      return d2(o, fab) > 0.09 * sep; };
-    for (let y = 0; y < H; y++){ const my = Math.min(N-1, (y*sy)|0);
-      for (let x = 0; x < W; x++){
-        const mx = Math.min(N-1, (x*sx)|0), m = my*N + mx, o = (y*W+x)*4, dm = dist[m];
-        let keep;
-        if (dm === 0) keep = false;          // hors du vêtement
-        else if (dm >= BAND) keep = true;    // tissu franc
-        else keep = !isBgPx(o, m);           // bande de contour : pixel par pixel
-        if (keep){ d[o+3] = 255; continue; }
-        const s = src[m]; if (s < 0) continue;
-        // tissu en miroir par rapport au bloc source, s'il est franc et n'est pas du fond
-        const cxs = ((s % N) + 0.5) / sx, cys = (((s - s % N) / N) + 0.5) / sy;
-        const px = Math.round(2*cxs - x), py = Math.round(2*cys - y);
-        if (px >= 0 && py >= 0 && px < W && py < H){
-          const m2 = Math.min(N-1, (py*sy)|0) * N + Math.min(N-1, (px*sx)|0), o2 = (py*W+px)*4;
-          if (dist[m2] >= 2 && (dist[m2] >= BAND || !isBgPx(o2, m2))){ d[o] = orig[o2]; d[o+1] = orig[o2+1]; d[o+2] = orig[o2+2]; d[o+3] = 255; continue; }
+    // la case du masque de chaque colonne et de chaque rangée de la photo
+    const colM = new Int32Array(W), rangM = new Int32Array(H);
+    for (let x = 0; x < W; x++) colM[x] = Math.min(N-1, (x*sx)|0);
+    for (let y = 0; y < H; y++) rangM[y] = Math.min(N-1, (y*sy)|0) * N;
+    yield;
+    /* Pixel à remplacer : tout ce qui n'est pas franchement de la couleur locale du
+       tissu (à moins de 30 % de l'écart tissu-fond, d'où le seuil 0,09 sur les
+       carrés). Les pixels de transition anti-crénelés du contour sont ainsi
+       remplacés ; remplacer un vrai pixel de tissu est sans effet visible. Le seuil
+       ne dépend que de la case : calculé une fois par case. */
+    const seuil = new Float64Array(NN);
+    if (!alphaMode) for (let m = 0; m < NN; m++){
+      const f0 = fill[m*3], f1 = fill[m*3+1], f2 = fill[m*3+2];
+      seuil[m] = 0.09 * ((f0-bgc[0])*(f0-bgc[0]) + (f1-bgc[1])*(f1-bgc[1]) + (f2-bgc[2])*(f2-bgc[2]));
+    }
+    const fond = (o, m) => {
+      if (alphaMode) return orig[o+3] < 128;
+      const r = orig[o]-fill[m*3], g = orig[o+1]-fill[m*3+1], b = orig[o+2]-fill[m*3+2];
+      return r*r + g*g + b*b > seuil[m];
+    };
+    // le centre de chaque bloc, en pixels de la photo : l'axe du miroir
+    const cxs = new Float64Array(NN), cys = new Float64Array(NN);
+    for (let s = 0; s < NN; s++){ const x = s % N; cxs[s] = (x + 0.5) / sx; cys[s] = (((s - x) / N) + 0.5) / sy; }
+    /* Les rangs de pixels à partir de y0, jusqu'à l'heure `limite` : une fonction
+       ordinaire, que le moteur compile mieux que le corps d'un générateur, et
+       qui s'arrête à l'HEURE plutôt qu'au nombre de rangs — au premier passage,
+       avant que le moteur n'ait compilé la boucle, un rang coûte cinquante fois
+       plus cher qu'ensuite. Rend le premier rang qui reste à faire. */
+    const rangs = (y0, limite) => {
+      let y = y0;
+      for (let o = y0 * W * 4; y < H; y++){
+        if (y > y0 && performance.now() > limite) break;
+        const rang = rangM[y];
+        for (let x = 0; x < W; x++, o += 4){
+          const m = rang + colM[x], dm = dist[m];
+          // hors du vêtement : remplacé ; tissu franc : gardé ; bande de contour : pixel par pixel
+          if (dm !== 0 && (dm >= BAND || !fond(o, m))){ d[o+3] = 255; continue; }
+          const s = src[m]; if (s < 0) continue;
+          // tissu en miroir par rapport au bloc source, s'il est franc et n'est pas du fond
+          const px = Math.round(2*cxs[s] - x), py = Math.round(2*cys[s] - y);
+          if (px >= 0 && py >= 0 && px < W && py < H){
+            const m2 = rangM[py] + colM[px], o2 = (py*W+px)*4, dm2 = dist[m2];
+            if (dm2 >= 2 && (dm2 >= BAND || !fond(o2, m2))){ d[o] = orig[o2]; d[o+1] = orig[o2+1]; d[o+2] = orig[o2+2]; d[o+3] = 255; continue; }
+          }
+          d[o] = fill[m*3]; d[o+1] = fill[m*3+1]; d[o+2] = fill[m*3+2]; d[o+3] = 255;
         }
-        d[o] = fill[m*3]; d[o+1] = fill[m*3+1]; d[o+2] = fill[m*3+2]; d[o+3] = 255;
-      } }
+      }
+      return y;
+    };
+    for (let y = 0; y < H; ){ y = rangs(y, performance.now() + 3); yield; }
     ctx.putImageData(id, 0, 0);
     return c;
   }
@@ -7540,8 +7608,11 @@ const model3d = (() => {
      et ne le tourne plus ; pour les pièces qui n'existent que là — le vestiaire
      et les rendus portés — le dos n'est jamais vu, et le garder doublait le
      maillage pour rien. La boutique, elle, fait tourner ses articles : eux
-     gardent leurs deux faces. */
-  function buildMesh(mask, backMask, doux, prof, plat){
+     gardent leurs deux faces.
+     `mailler` rend la main entre ses étapes et au fil des rangs de cases (voir
+     la file de préparation) ; `buildMesh` le fait d'un trait. */
+  function buildMesh(mask, backMask, doux, prof, plat){ return finir(mailler(mask, backMask, doux, prof, plat)); }
+  function* mailler(mask, backMask, doux, prof, plat){
     const N = MASK_N, dist = distances(mask);
     /* Carte de profondeur : on la ramène dans [0,1] sur les SEULS pixels du
        sujet. Les valeurs du fond n'ont aucun sens ici (une carte estimée en
@@ -7593,6 +7664,7 @@ const model3d = (() => {
         v[i] = (h[i] + (y > 0 ? h[i-N] : h[i]) + (y < N-1 ? h[i+N] : h[i])) / 3; }
       return v;
     })();
+    yield;
     const valeur = (x, y) => {           // bilinéaire ; hors cadre, c'est du fond
       if (x < 0 || y < 0 || x > N-1 || y > N-1) return 0;
       const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
@@ -7607,10 +7679,16 @@ const model3d = (() => {
       const ix = clampX(x), iy = clampX(y), xl = Math.max(0, ix-1), xr = Math.min(N-1, ix+1), yu = Math.max(0, iy-1), yd = Math.min(N-1, iy+1);
       const gx = dist[iy*N+xr] - dist[iy*N+xl], gy = dist[yd*N+ix] - dist[yu*N+ix], l = Math.hypot(gx, gy);
       return l > 1e-6 ? [gx/l, gy/l] : null; };
-    // sommets partagés entre cellules : coins de grille, traversées d'arêtes, centres
-    const ids = new Map(), vx = [], vy = [], vz = [], vu = [], vv = [];
+    /* Sommets partagés entre cellules : coins de grille, traversées d'arêtes,
+       centres. Rangés par NUMÉRO, un plan de la grille par sorte de sommet —
+       coin (i, j), arête horizontale (i le plus petit, j), arête verticale (i,
+       j le plus petit), centre —, et non plus par un nom composé en texte pour
+       chaque coin de chaque case : c'était des milliers de chaînes et autant de
+       recherches par modèle. */
+    const PLAN = cols * rows, idDe = new Int32Array(4 * PLAN).fill(-1);
+    const vx = [], vy = [], vz = [], vu = [], vv = [];
     const vertex = (key, x, y, seam) => {
-      let id = ids.get(key); if (id !== undefined) return id;
+      let id = idDe[key]; if (id >= 0) return id;
       id = vx.length;
       const d = seam ? 0 : Math.min(distAt(x, y), rInfl);
       let ux = x, uy = y; // près du contour, la texture est prise plus à l'intérieur (dégressif)
@@ -7623,7 +7701,7 @@ const model3d = (() => {
       const bord = profil(d / rInfl);
       const p = relief ? relief(clampX(y) * N + clampX(x)) : 1;
       vx.push(x); vy.push(y); vz.push(THICK * bord * p); vu.push(ux); vv.push(uy);
-      ids.set(key, id); return id; };
+      idDe[key] = id; return id; };
     // a intérieur, b extérieur : la ligne de niveau 0,5, par dichotomie. Douze
     // coupes en deux, soit le quart de millième de la maille — bien en deçà du
     // visible, et l'ancienne recherche en huit pas en avant en coûtait autant.
@@ -7635,31 +7713,45 @@ const model3d = (() => {
       }
       const t = (t0 + t1) / 2; return [ax + (bx-ax)*t, ay + (by-ay)*t]; };
     const tris = []; // triplets d'identifiants
-    for (let j = 0; j < rows-1; j++) for (let i = 0; i < cols-1; i++){
-      const cs = [[i,j],[i+1,j],[i+1,j+1],[i,j+1]]; // coins dans l'ordre du périmètre
-      const pos = cs.map(([a, b]) => [gx0 + a*cell, gy0 + b*cell]);
-      const inb = pos.map(p => inside(p[0], p[1]));
-      const n = inb[0] + inb[1] + inb[2] + inb[3];
+    // chaque coin de la grille lu une fois, et non une fois par case qui le partage
+    const dedans = new Uint8Array(PLAN);
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) dedans[j*cols + i] = inside(gx0 + i*cell, gy0 + j*cell) ? 1 : 0;
+    yield;
+    // la case en cours : ses coins dans l'ordre du périmètre, et son polygone (8 sommets au plus)
+    const ca = new Int32Array(4), cb = new Int32Array(4), px = new Float64Array(4), py = new Float64Array(4), inb = new Uint8Array(4);
+    const poly = new Int32Array(8), corner = new Uint8Array(8);
+    let echeance = performance.now() + 3;   // la main est rendue toutes les 3 ms, entre deux rangs de cases
+    for (let j = 0; j < rows-1; j++){ if (performance.now() > echeance){ yield; echeance = performance.now() + 3; } for (let i = 0; i < cols-1; i++){
+      ca[0] = i; cb[0] = j; ca[1] = i+1; cb[1] = j; ca[2] = i+1; cb[2] = j+1; ca[3] = i; cb[3] = j+1;
+      let n = 0;
+      for (let e = 0; e < 4; e++){ inb[e] = dedans[cb[e]*cols + ca[e]]; n += inb[e]; }
       if (!n) continue;
-      const poly = [], corner = [];
+      for (let e = 0; e < 4; e++){ px[e] = gx0 + ca[e]*cell; py[e] = gy0 + cb[e]*cell; }
+      let np = 0;
       for (let e = 0; e < 4; e++){
         const e2 = (e+1) % 4;
-        if (inb[e]){ poly.push(vertex(`c${cs[e][0]},${cs[e][1]}`, pos[e][0], pos[e][1], false)); corner.push(true); }
+        if (inb[e]){ poly[np] = vertex(cb[e]*cols + ca[e], px[e], py[e], false); corner[np++] = 1; }
         if (inb[e] !== inb[e2]){
-          const [a, b] = inb[e] ? [pos[e], pos[e2]] : [pos[e2], pos[e]];
-          const p = crossing(a[0], a[1], b[0], b[1]);
-          const key = cs[e][1] === cs[e2][1] ? `h${Math.min(cs[e][0], cs[e2][0])},${cs[e][1]}` : `v${cs[e][0]},${Math.min(cs[e][1], cs[e2][1])}`;
-          poly.push(vertex(key, p[0], p[1], true)); corner.push(false);
+          const key = cb[e] === cb[e2] ? PLAN + cb[e]*cols + Math.min(ca[e], ca[e2]) : 2*PLAN + Math.min(cb[e], cb[e2])*cols + ca[e];
+          // un passage déjà trouvé par la case voisine garde sa place : inutile de le chercher encore
+          let id = idDe[key];
+          if (id < 0){
+            const a = inb[e] ? e : e2, b = inb[e] ? e2 : e;   // de l'intérieur vers l'extérieur
+            const p = crossing(px[a], py[a], px[b], py[b]);
+            id = vertex(key, p[0], p[1], true);
+          }
+          poly[np] = id; corner[np++] = 0;
         }
       }
       if (n === 2 && inb[0] === inb[2]){ // coins opposés : sablier (centre intérieur) ou deux triangles séparés
         const mx = gx0 + (i+0.5)*cell, my = gy0 + (j+0.5)*cell;
-        if (inside(mx, my)){ const m = vertex(`m${i},${j}`, mx, my, false); for (let k = 0; k < poly.length; k++) tris.push(m, poly[k], poly[(k+1) % poly.length]); }
-        else for (let k = 0; k < poly.length; k++) if (corner[k]) tris.push(poly[k], poly[(k+1) % poly.length], poly[(k+5) % poly.length]);
+        if (inside(mx, my)){ const m = vertex(3*PLAN + j*cols + i, mx, my, false); for (let k = 0; k < np; k++) tris.push(m, poly[k], poly[(k+1) % np]); }
+        else for (let k = 0; k < np; k++) if (corner[k]) tris.push(poly[k], poly[(k+1) % np], poly[(k+5) % np]);
       } else {
-        for (let k = 1; k < poly.length-1; k++) tris.push(poly[0], poly[k], poly[k+1]); // polygone convexe : éventail
+        for (let k = 1; k < np-1; k++) tris.push(poly[0], poly[k], poly[k+1]); // polygone convexe : éventail
       }
-    }
+    } }
+    yield;
     const nV = vx.length; if (!nV || !tris.length) return null;
     // STRIDE flottants par sommet : position, uv, éclairage ; face avant (0..nV-1) puis arrière (z opposé)
     const nT2 = plat ? nV : nV * 2;
@@ -7670,6 +7762,7 @@ const model3d = (() => {
       data[o] = X; data[o+1] = Y; data[o+2] = vz[k]; data[o+3] = vu[k]/N; data[o+4] = vv[k]/N;
       if (!plat){ data[p] = X; data[p+1] = Y; data[p+2] = -vz[k]; data[p+3] = (back.x0 + bw - fx*bw)/N; data[p+4] = (back.y0 + fy*bh)/N; }
     }
+    yield;
     const front = [], backI = [];
     for (let t = 0; t < tris.length; t += 3){
       const a = tris[t], b = tris[t+1], c = tris[t+2];
@@ -7678,14 +7771,18 @@ const model3d = (() => {
       if (cr < 0){ front.push(a, b, c); if (!plat) backI.push(nV+a, nV+c, nV+b); }
       else { front.push(a, c, b); if (!plat) backI.push(nV+a, nV+b, nV+c); }
     }
+    yield;
     const acc = new Float32Array(nT2*3); // normales : moyenne des faces adjacentes
     const addN = list => { for (let t = 0; t < list.length; t += 3){ const A = list[t], B = list[t+1], C = list[t+2];
       const ax = data[A*STRIDE], ay = data[A*STRIDE+1], az = data[A*STRIDE+2];
       const ux = data[B*STRIDE]-ax, uy = data[B*STRIDE+1]-ay, uz = data[B*STRIDE+2]-az;
       const wx = data[C*STRIDE]-ax, wy = data[C*STRIDE+1]-ay, wz = data[C*STRIDE+2]-az;
       const nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
-      for (const P of [A, B, C]){ acc[P*3] += nx; acc[P*3+1] += ny; acc[P*3+2] += nz; } } };
+      acc[A*3] += nx; acc[A*3+1] += ny; acc[A*3+2] += nz;
+      acc[B*3] += nx; acc[B*3+1] += ny; acc[B*3+2] += nz;
+      acc[C*3] += nx; acc[C*3+1] += ny; acc[C*3+2] += nz; } };
     addN(front); addN(backI);
+    yield;
     // Éclairage figé : calculé ici une fois par sommet, avec la normale prise
     // telle quelle devant et retournée derrière (comme si cette face nous
     // faisait face, donc les deux côtés sont éclairés pareil). Deux nombres
@@ -8798,22 +8895,84 @@ const model3d = (() => {
   const images = new Map(), meshes = new Map(), altSrc = new Map();
   const maskArea = m => { let n = 0; for (let i = 0; i < m.length; i++) n += m[i]; return n; };
   const mirrorMask = m => { const N = MASK_N, o = new Uint8Array(N*N); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) o[y*N+x] = m[y*N+(N-1-x)]; return o; };
+  /* ---- LA FILE DE PRÉPARATION (25 sept. 2026) ----
+     Détourer une photo, étendre sa texture, gonfler son maillage : quelques
+     millisecondes chacun une fois le moteur JavaScript chaud, dix fois plus
+     aux premiers passages, le temps qu'il compile ces boucles. Le démarrage
+     en demande dix-huit, pendant l'écran d'allumage : faites d'un bloc, elles
+     le figeaient (mesuré : 1,6 s sans une image, au moment où la poussière du
+     logo s'envole, et le logo lui-même retardé d'une seconde).
+     Tout ce travail passe donc par une file, qui ne le fait que par TRANCHES
+     de quelques millisecondes, juste après chaque image : l'animation garde
+     sa cadence, et les modèles arrivent un à un, comme ils le faisaient déjà
+     (voir list.warm). Un travail est un générateur qui rend la main (`yield`)
+     entre ses étapes — et toutes les 3 ms dans les longues boucles de
+     `etendre` et de `mailler`. La file les prend l'un après l'autre, en
+     commençant par ce qui est PRESSÉ : l'article de la fiche, celui qu'on
+     regarde (voir show) ;
+     puis les maillages, qui achèvent un article dont les photos sont prêtes —
+     les lignes de la liste apparaissent ainsi une à une, et non toutes à la
+     fin ; puis les photos, dans l'ordre où on les a demandées.
+     Onglet caché : aucune image à ménager, et le navigateur n'en donne plus ;
+     la file travaille alors d'affilée. */
+  const preparation = (() => {
+    const TRANCHE = 6;               // ms de travail par image, sur les ~16 qu'en laisse une image à 60 i/s
+    const file = [];                 // { cle, gen, rang, ok, ko } ; rang 0 : un maillage, 1 : une photo
+    let enCours = null, prevu = false, presses = new Set();
+    function suivant(){
+      let k = file.findIndex(t => presses.has(t.cle));
+      if (k < 0) k = file.findIndex(t => t.rang === 0);
+      return file.splice(k < 0 ? 0 : k, 1)[0];
+    }
+    const canal = new MessageChannel();
+    function planifier(){
+      if (prevu) return;
+      prevu = true;
+      // posté DEPUIS le rAF, le message passe une fois l'image dessinée : la tranche a toute l'image devant elle
+      if (document.hidden) canal.port2.postMessage(0);
+      else requestAnimationFrame(() => canal.port2.postMessage(0));
+    }
+    canal.port1.onmessage = () => {
+      prevu = false;
+      const fin = performance.now() + TRANCHE;
+      do {
+        if (!enCours){
+          if (!file.length) return;
+          enCours = suivant();
+        }
+        let r;
+        try { r = enCours.gen.next(); } catch (e){ enCours.ko(e); enCours = null; continue; }
+        if (r.done){ enCours.ok(r.value); enCours = null; }
+      } while (performance.now() < fin);
+      if (enCours || file.length) planifier();
+    };
+    return {
+      travail: (cle, gen, rang) => new Promise((ok, ko) => { file.push({ cle, gen, rang: rang === 0 ? 0 : 1, ok, ko }); planifier(); }),
+      presser: cles => { presses = new Set(cles); },
+    };
+  })();
   function loadImage(url){
     if (images.has(url)) return images.get(url).promise;
     const img = new Image(), entry = { img, mask:null, canvas:null, blobURL:null };
     // revalidation forcée : une photo remplacée sous le même nom est retéléchargée
     // (réponse 304 sinon), donc redétourée et son modèle régénéré au chargement suivant
-    entry.promise = fetch(url, { cache:'no-cache' })
+    entry.charge = fetch(url, { cache:'no-cache' })
       .then(r => { if (!r.ok) throw new Error(url + ' : ' + r.status); return r.blob(); })
-      .then(blob => new Promise((res, rej) => { entry.blobURL = URL.createObjectURL(blob); img.onload = () => res(); img.onerror = rej; img.src = entry.blobURL; }))
-      .then(() => {
-        const carre = carrer(img);                     // le module travaille en carré (voir carrer)
-        // 'objet' : toute grande poche est un trou (l'anse d'un cadenas).
-        // 'col' : seule celle de l'encolure en est un (voir silhouette).
-        entry.mask = silhouette(carre, TROUS_OK.test(url) ? 'objet' : PORTE.test(url) ? 'col' : ''); // sert au maillage et à l'extension de texture
-        entry.canvas = extendTexture(carre, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
-        return entry;
-      });
+      .then(blob => new Promise((res, rej) => { entry.blobURL = URL.createObjectURL(blob); img.onload = () => res(); img.onerror = rej; img.src = entry.blobURL; }));
+    /* PAS d'img.decode() ici, essayé le 25 sept. 2026 : sa promesse attend que la
+       page soit affichée pour se résoudre (onglet en arrière-plan, panneau caché),
+       et toute la file attendait avec elle. Décoder une photo au premier dessin
+       coûte environ une milliseconde. */
+    entry.promise = entry.charge.then(() => preparation.travail(url, (function* (){
+      const carre = carrer(img);                     // le module travaille en carré (voir carrer)
+      yield;
+      // 'objet' : toute grande poche est un trou (l'anse d'un cadenas).
+      // 'col' : seule celle de l'encolure en est un (voir silhouette).
+      entry.mask = yield* detourer(carre, TROUS_OK.test(url) ? 'objet' : PORTE.test(url) ? 'col' : ''); // sert au maillage et à l'extension de texture
+      yield;
+      entry.canvas = yield* etendre(carre, entry.mask, entry.mask); // source de texture, envoyée à chaque contexte
+      return entry;
+    })()));
     images.set(url, entry);
     return entry.promise;
   }
@@ -8827,7 +8986,7 @@ const model3d = (() => {
   //      élément en cours de transition oblige le navigateur à rapatrier
   //      l'animation sur le fil principal (Firefox), ce qui hachait le
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
-  let current = null, active = false, raf = 0, last = 0, token = 0;
+  let current = null, active = false, raf = 0, last = 0, token = 0, amorce = 0;
   let angle = 0, rows = [], fading = [], listDrawn = false;
   const TOUR_MS = 10000; // un tour complet au repos, pour la tête de la page Info
   let backFrom = 0, backT = 0;
@@ -9595,21 +9754,23 @@ const model3d = (() => {
     if (item.accessoire) return prepareAccessoire(item, key);
     if (item.perso) return preparePerso(item, key);
     const front = encodeURI(item.img), back = encodeURI(item.img2 || item.img);
-    const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => {
+    // les deux photos prêtes, le maillage passe lui aussi par la file de préparation
+    const p = Promise.all([loadImage(front), loadImage(back), item.depth ? loadDepth(encodeURI(item.depth)) : null]).then(([f, b, prof]) => preparation.travail(key, (function* (){
       let bMask = back === front ? null : b.mask, texB = b.canvas;
       if (bMask && maskArea(bMask) < 0.7 * maskArea(f.mask)){
         bMask = mirrorMask(f.mask);
         const k2 = back + '|miroir:' + front;
-        if (!altSrc.has(k2)) altSrc.set(k2, extendTexture(b.img, bMask, b.mask));
+        if (!altSrc.has(k2)) altSrc.set(k2, yield* etendre(b.img, bMask, b.mask));
         texB = altSrc.get(k2);
+        yield;
       }
       let mesh = meshes.get(key);
-      if (!mesh){ mesh = buildMesh(f.mask, bMask, COUSSIN_DOUX.test(front), prof, PORTE.test(front)); meshes.set(key, mesh); }
+      if (!mesh){ mesh = yield* mailler(f.mask, bMask, COUSSIN_DOUX.test(front), prof, PORTE.test(front)); meshes.set(key, mesh); }
       const a = mesh ? { mesh, texF: f.canvas, texB } : null;
       ready.set(key, a);
       if (list) list.warm(a); // la ligne s'affiche dès que possible, sans à-coup
       return a;
-    }).catch(() => { ready.set(key, null); return null; });
+    })(), 0)).catch(() => { ready.set(key, null); return null; });
     assets.set(key, p); return p;
   }
   /* TROIS éclats, et chacun son rythme : les deux boules du barbell de
@@ -10156,6 +10317,19 @@ const model3d = (() => {
     raf = 0;
     if (list && listDrawn && !rows.length && !fading.length){ list.clear(); listDrawn = false; } // plus rien en liste : on efface
     if ((!active && !rows.length && !fading.length) || document.hidden){ last = 0; return; }
+    /* RIEN À PEINDRE QUE PERSONNE NE VOIT (25 sept. 2026). Pendant l'allumage,
+       l'interface est là mais transparente (body.booting) ; un mini-jeu ou
+       l'atelier la couvrent d'un noir plein (voir siteCouvert). La liste et la
+       fiche y étaient pourtant redessinées à chaque image — une soixantaine de
+       rendus 3D, pris sur l'animation qu'on regarde. La boucle tourne alors à
+       vide et reprend le dessin d'elle-même dès que l'interface se montre.
+       Pendant l'allumage seulement, une image tous les quarts de seconde : les
+       programmes du GPU se compilent et les modèles y montent AVANT le lever
+       de rideau, qui n'a plus rien à préparer au moment où l'on regarde. */
+    if (startupActive || siteCouvert()){
+      if (!startupActive || t - amorce < 250){ last = 0; raf = requestAnimationFrame(frame); return; }
+      amorce = t;
+    }
     const dt = last ? Math.min(60, t - last) : 16; last = t;
     const sway = swayDe(0, t); // balancement ±18° en 3,8 s ; les lignes le décalent par leur rang
     /* Un vêtement se balance, une tête fait le TOUR : elle a de la texture sur
@@ -10211,6 +10385,8 @@ const model3d = (() => {
     active = true; canvas.hidden = false; resize();
     const my = ++token;
     current = null;
+    // l'article de la fiche passe avant les lignes de la liste (voir la file de préparation)
+    preparation.presser(item.img ? [cle, encodeURI(item.img), encodeURI(item.img2 || item.img)] : [cle]);
     // une autre fiche a pu être affichée entre-temps ; et la photo peut manquer
     // (fichier pas encore déposé) : le panneau reste alors vide, sans erreur
     prepare(item).then(a => { if (my === token){ panel.warm(a); current = a; } }).catch(() => {});
@@ -10387,7 +10563,14 @@ const model3d = (() => {
   const debugSnapshot = () => { draw(); return canvas.toDataURL('image/png'); }; // contrôle : image du rendu courant
   const debugAngle = a => { angle = a; draw(); }; // contrôle : rendu immédiat à un angle donné (radians)
   const debugOnly = side => { debugSide = side || ''; draw(); }; // contrôle : ne dessiner qu'une face ('front' | 'back' | '')
-  const photoURL = url => loadImage(url).then(e => e.blobURL); // copie fraîche de la photo, pour les vues 2D du diaporama
+  /* Copie fraîche de la photo, pour les vues 2D du diaporama : elle n'attend
+     que son téléchargement, pas le détourage qui suit dans la file de
+     préparation (le modèle, lui, se prépare comme d'habitude). */
+  const photoURL = url => {
+    loadImage(url).catch(() => {});
+    const e = images.get(url);
+    return e.charge.then(() => e.blobURL);
+  };
   const debugRows = () => { // contrôle : boîte animée par le module vs boîte réelle de la ligne dans le DOM (pixels CSS)
     if (!list) return [];
     const now = performance.now();
@@ -13536,7 +13719,7 @@ const profil = (() => {
   const PAS_PERSO = 1000 / 40;
   function boucle(t){
     raf = requestAnimationFrame(boucle);
-    if (t - ipsPerso < PAS_PERSO - 0.5 || document.hidden) return;
+    if (t - ipsPerso < PAS_PERSO - 0.5 || document.hidden || siteCouvert()) return;   // l'atelier ouvert par-dessus : il est caché
     ipsPerso = t;
     const r = cvScene.getBoundingClientRect();
     if (!r.width || !r.height) return;
@@ -18653,6 +18836,10 @@ function drawSparkles(now){
    sauter une image ralentit le dessin, jamais le mouvement. C'est la raison
    pour laquelle on peut se permettre de plafonner sans rien re-régler. */
 const IPS_MAX = 100, IPS_PAS = 1000 / IPS_MAX;
+/* Un mini-jeu ou l'atelier est ouvert : ils couvrent tout l'écran d'un noir
+   plein, et rien de ce qu'il y a dessous ne se voit — le fond, la liste et la
+   fiche 3D, le personnage du profil. Tous se mettent en pause là-dessus. */
+function siteCouvert(){ return arena.isOpen() || jumper.isOpen() || seum.isOpen() || dressup.isOpen(); }
 const DIAG = location.search.indexOf('diag') >= 0;
 let bgFrames = 0, bgFps = 0, bgT = 0, bgLast = 0, bgWorst = 0, bgWorstShown = 0;
 function drawFrame(ts){
@@ -18688,8 +18875,7 @@ function drawFrame(ts){
   /* Les mini-jeux et l'atelier couvrent tout l'écran d'un noir plein (voir
      .arena-overlay.open) : rien du fond ne se voit, inutile de le peindre — et
      le jeu a besoin de tout le temps disponible. */
-  const couvert = arena.isOpen() || jumper.isOpen() || seum.isOpen() || dressup.isOpen();
-  if (!couvert && fondGL){
+  if (!siteCouvert() && fondGL){
     if (now2 - wavesAt >= 28){ wavesAt = now2; paintWaves(); }
     drawSparkles(now2);        // les étincelles bougent…
     fondGL.composer(now2);     // … et le fond est recomposé, en un seul calque
