@@ -1242,8 +1242,12 @@
     /* la boîte de la fiche, bordure comprise : ses ombres s'y posent à l'identique.
        --co-bord : la bordure telle que le navigateur l'a arrondie aux pixels de
        l'écran (0,8 px pour 1 px à 125 %) ; 1 px de trop laissait un fil de
-       scène nue, sombre, entre le verre et la lueur du bord. */
+       scène nue, sombre, entre le verre et la lueur du bord. Et cette même
+       bordure, invisible : les ombres intérieures partent du dedans de la
+       bordure, comme sur la fiche. Sans elle, dès qu'une pointe sortait, tout
+       le liseré intérieur glissait d'un pixel vers l'extérieur. */
     inset:calc(-1 * var(--co-bord, 1px));
+    border:var(--co-bord, 1px) solid transparent;
     border-radius:inherit;
     box-shadow:var(--peau);
     z-index:-1;                 /* sous le contenu, comme les ombres d'un cadre */
@@ -1306,13 +1310,27 @@
     -webkit-backdrop-filter:blur(28px) saturate(1.7) brightness(1.06);
   }
   .coulure-verre.sortie{visibility:visible;}
-  /* sous la souris, la lueur du bord (.slide-edge) déborde dans la pointe ;
+  /* Sous la souris, la lueur du bord (.slide-edge) déborde dans la pointe.
+     DANS LA FICHE, et coupée net à sa marge intérieure, là où commence celle
+     du bord (26 sept. 2026 : « on voit encore un trait quand ça s'allume »).
+     Posée dans le verre, elle mordait de 2 px sur la fiche : les deux lueurs
+     s'y additionnaient, un trait clair au pied de la pointe. Arrêtée juste à
+     la marge, elle risquait encore un fil : le verre est calé au dixième de
+     pixel, la fiche arrondie aux pixels de l'écran (sur la capture, le
+     second pixel du trait n'était allumé qu'aux trois quarts). Dans la
+     fiche, les deux bords sont au même point de la mise en page, que le
+     navigateur arrondit une seule fois.
+     Pour le reste, elle fait comme la lueur du bord : par-dessus le liseré,
+     sans toucher au fil de verre nu qui borde la fiche, allumée comme éteinte
+     (le script la découpe à la pointe rétrécie de la bordure), et fondue vers
+     le bas avec elle quand la fiche est dépliée.
      --co-x : la place d'une pointe à côté de la fiche, --co-y : la demi-hauteur de son pied */
-  .coulure-lueur{position:absolute;top:calc(50% - var(--co-y));height:calc(2 * var(--co-y));width:calc(var(--co-x) + 2px);
-    opacity:0;transition:opacity 0.22s ease;pointer-events:none;}
-  .coulure-lueur.prev{left:0;background:linear-gradient(to left, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
-  .coulure-lueur.next{right:0;background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
-  .coulure-lueur.allumee{opacity:1;}
+  .coulure-lueur{position:absolute;z-index:0;top:calc(50% - var(--co-y));height:calc(2 * var(--co-y));
+    width:calc(var(--co-x) + var(--co-bord, 1px));pointer-events:none;
+    opacity:0;visibility:hidden;transition:opacity 0.22s ease, visibility 0s linear 0.22s;}
+  .coulure-lueur.prev{right:100%;background:linear-gradient(to left, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
+  .coulure-lueur.next{left:100%;background:linear-gradient(to right, rgba(var(--accent-rgb),0.30), rgba(var(--accent-rgb),0.10));}
+  .coulure-lueur.allumee{opacity:1;visibility:visible;transition:opacity 0.22s ease, visibility 0s;}
   .preview.lueur-g .slide-edge.prev::before,
   .preview.lueur-d .slide-edge.next::before{opacity:1;visibility:visible;transition:opacity 0.22s ease, visibility 0s;}
   /* Fiche au repos : seule la galerie est visible. C'est la sélection de
@@ -4224,16 +4242,19 @@
 <!-- Le verre des coulures, JUSTE AVANT la fiche : un flou posé dedans ne
      verrait que la fiche, pas la scène. Le temps qu'une pointe sort, il
      porte le verre de la fiche ET de ses pointes (voir « LES COULURES »). -->
-<div class="coulure-verre" aria-hidden="true"><div class="coulure-lueur prev"></div><div class="coulure-lueur next"></div></div>
+<div class="coulure-verre" aria-hidden="true"></div>
 <div class="preview glass" id="preview">
   <!-- La peau : les ombres du cadre, percées autour des coulures pendant
        qu'elles sortent ; le reste du temps, c'est la fiche qui les porte.
        Puis, dans ces trous, le liseré de la forme entière (voir « LES
-       COULURES »), et ses filtres, faits par le script. -->
+       COULURES »), et ses filtres, faits par le script. Enfin la lueur de
+       chaque pointe, dans la fiche, au ras de celle du bord. -->
   <div class="peau" aria-hidden="true"></div>
   <svg class="peau-coulure prev" aria-hidden="true"><g class="forme"><path class="cadre"/><path class="bosse"/></g></svg>
   <svg class="peau-coulure next" aria-hidden="true"><g class="forme"><path class="cadre"/><path class="bosse"/></g></svg>
   <svg class="peau-filtres" aria-hidden="true" focusable="false"></svg>
+  <div class="coulure-lueur prev" aria-hidden="true"></div>
+  <div class="coulure-lueur next" aria-hidden="true"></div>
   <!-- Les icônes de la barre qui passent SOUS la fiche, redessinées dans son
        verre, floues et pâles : le flou du verre (28 px) les effaçait
        complètement. Sous le contenu, rognées par l'arrondi. Voir majIconesCachees. -->
@@ -12269,7 +12290,8 @@ const slider = (() => {
    comme celles du navigateur : la forme y est d'abord rétrécie d'autant.
    À chaque image où une pointe est dehors, la fiche est relue — sa place,
    sa taille, son opacité —, le verre (celui de la fiche et de ses pointes,
-   d'un seul tenant) calé et découpé, le liseré retracé.
+   d'un seul tenant) calé et découpé, le liseré retracé, et la lueur de
+   chaque pointe découpée à sa forme et fondue comme celle du bord.
    La boucle ne tourne que le temps d'un mouvement ou d'une pointe sortie ;
    sans souris, elle ne tourne jamais. */
 const coulures = (() => {
@@ -12281,14 +12303,15 @@ const coulures = (() => {
   const SVG = 'http://www.w3.org/2000/svg';
   // points par moitié de profil ; px de la bande intérieure ; px autour de la pointe où ses ombres portent encore
   const N = 36, BANDE = 20, PORTEE = 80;
-  // H : la base du triangle, E : sa sortie complète, Y : la demi-hauteur de son pied, congés compris
-  let H = 104, E = 44, Y = 62, HX = 0, HY = 0;
+  // H : la base du triangle, E : sa sortie complète, Y : la demi-hauteur de son pied, congés compris ;
+  // bord : la bordure de la fiche, en px CSS, telle que l'écran l'affiche
+  let H = 104, E = 44, Y = 62, HX = 0, HY = 0, bord = 1;
   const verre = document.querySelector('.coulure-verre');
-  const lueurs = [...verre.querySelectorAll('.coulure-lueur')];
   let XM = 0;   // la place d'une pointe, de chaque côté de la fiche, dans la boîte du verre
   const cotes = ['prev', 'next'].map((nom, i) => {
     const liseret = previewEl.querySelector('.peau-coulure.' + nom);
     return { i, liseret, cadre: liseret.querySelector('.cadre'), bosse: liseret.querySelector('.bosse'),
+      lueur: previewEl.querySelector('.coulure-lueur.' + nom), fondu: '',
       g: 0, v: 0, coup: 0, trace: -1, pts: null, sortie: false, allumee: false };
   });
   const lisse = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -12297,6 +12320,7 @@ const coulures = (() => {
   const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + h * h * k / 4; };
   // la sortie à la hauteur y (≥ 0) du milieu, pour une pointe sortie de a sur une demi-base b ; nulle au-delà de 1,2 b
   function profil(y, a, b){
+    if (a <= 0) return 0;   // rentrée (et les raccords, de largeur nulle, n'ont plus de sens)
     const triangle = smin(a * (1 + y / b), a * (1 - y / b), a * 0.3);   // la pointe arrondie
     return smax(0, triangle, a * 0.2);                                    // les congés du pied
   }
@@ -12362,7 +12386,7 @@ const coulures = (() => {
     st.setProperty('--co-hx', HX + 'px'); st.setProperty('--co-hy', HY + 'px');
     st.setProperty('--co-bx', BANDE + 'px'); st.setProperty('--co-by', Math.ceil(Y + BANDE) + 'px');
     // la bordure exacte, arrondie aux pixels de l'écran (clientLeft l'arrondit, lui, au pixel CSS)
-    const bord = parseFloat(getComputedStyle(previewEl).borderLeftWidth) || 0;
+    bord = parseFloat(getComputedStyle(previewEl).borderLeftWidth) || 0;
     st.setProperty('--co-bord', bord + 'px');
     filtres.forEach(f => {
       f.setAttribute('x', -BANDE - 120); f.setAttribute('y', -HY - 120);
@@ -12384,8 +12408,8 @@ const coulures = (() => {
     const D = +((XM + 2 * bord) * Math.SQRT1_2).toFixed(3);
     verre.style.background = `linear-gradient(135deg, rgba(255,255,255,0.07) ${D}px, `
       + `rgba(255,255,255,0.015) calc(${D}px + 0.45 * (100% - ${2 * D}px)), rgba(255,255,255,0.03) calc(100% - ${D}px)), rgba(8,20,30,0.20)`;
-    verre.style.setProperty('--co-x', XM + 'px');
-    verre.style.setProperty('--co-y', Y + 'px');
+    st.setProperty('--co-x', XM + 'px');
+    st.setProperty('--co-y', Y + 'px');
     boite = calage = decoupe = '';
     reveiller();
   }
@@ -12415,6 +12439,16 @@ const coulures = (() => {
     for (let k = 1; k <= N; k++){ const y = Y * Math.pow(k / N, 1.3); pts.push([profil(y, a, b), y]); }
     c.pts = pts;
     c.bosse.setAttribute('d', `M-1,${(-Y).toFixed(2)}L` + pts.map(q => q[0].toFixed(2) + ',' + q[1].toFixed(2)).join('L') + `L-1,${Y.toFixed(2)}Z`);
+    /* La lueur : la pointe rétrécie de la bordure, comme le filtre du liseré
+       la rétrécit (un carré de 2 × bord de côté, qui doit tenir dedans : à la
+       hauteur y, la sortie en |y| + bord, moins bord). Sa boîte part de la
+       marge intérieure de la fiche vers le dehors, sur L ; x est compté depuis
+       la fiche (0) à droite, depuis le dehors à gauche. */
+    const L = XM + bord, n = v => v.toFixed(2);
+    const rive = pts.map(q => [profil(Math.abs(q[1]) + bord, a, b), q[1] + Y]);
+    const x = c.i ? (u => u) : (u => L - u), dedans = c.i ? -2 : L + 2;
+    c.lueur.style.clipPath = `polygon(${n(dedans)}px 0px, ` + rive.map(([u, y]) => n(x(u)) + 'px ' + n(y) + 'px').join(', ')
+      + `, ${n(dedans)}px ${n(2 * Y)}px)`;
   }
   /* Le verre, d'un seul tenant : le cadre de la fiche, puis chaque pointe
      dehors, parcourus dans le même sens — leur réunion. Chaque pointe part
@@ -12423,6 +12457,9 @@ const coulures = (() => {
   function peindre(f, op, R){
     const dehors = !!f && cotes.some(c => c.sortie);
     verre.classList.toggle('sortie', dehors);
+    // la lueur de la pointe s'allume avec celle du bord : la souris sur la pointe, ou sur la bande du bord
+    cotes.forEach((c, i) => c.lueur.classList.toggle('allumee',
+      c.sortie && (c.allumee || bandes[i].matches(':hover') || bandes[i].matches(':focus-visible'))));
     if (!dehors) return;
     const W = f.width, Hf = f.height, x0 = XM, x1 = XM + W, cy = Hf / 2;
     const b = (W + 2 * XM).toFixed(3) + ' ' + Hf.toFixed(3);
@@ -12437,8 +12474,17 @@ const coulures = (() => {
     if (g.sortie) d += `M${n(x0 + 1)},${n(cy + Y)}` + g.pts.slice().reverse().map(q => `L${n(x0 - q[0])},${n(cy + q[1])}`).join('') + `L${n(x0 + 1)},${n(cy - Y)}Z`;
     if (dr.sortie) d += `M${n(x1 - 1)},${n(cy - Y)}` + dr.pts.map(q => `L${n(x1 + q[0])},${n(cy + q[1])}`).join('') + `L${n(x1 - 1)},${n(cy + Y)}Z`;
     if (d !== decoupe){ decoupe = d; verre.style.clipPath = `path("${d}")`; }
-    cotes.forEach((c, i) => lueurs[i].classList.toggle('allumee',
-      c.sortie && (c.allumee || bandes[i].matches(':hover') || bandes[i].matches(':focus-visible'))));
+    /* Dépliée, la lueur du bord se fond vers le bas (voir .preview:not(.gallery)
+       .slide-edge::before) : celle de la pointe, à sa hauteur, se fond pareil —
+       le même dégradé, mesuré sur la galerie, depuis le haut de la lueur. */
+    let fondu = 'none';
+    if (!previewEl.classList.contains('gallery')){
+      const z = zone.getBoundingClientRect(), haut = f.top + Hf / 2 - Y;
+      fondu = `linear-gradient(to bottom, #000 ${n(z.top + 0.66 * z.height - haut)}px, transparent ${n(z.bottom - haut)}px)`;
+    }
+    cotes.forEach(c => {
+      if (c.sortie && fondu !== c.fondu){ c.fondu = fondu; c.lueur.style.webkitMaskImage = fondu; c.lueur.style.maskImage = fondu; }
+    });
   }
 
   const actif = () => souris.matches && previewEl.classList.contains('show') && zone.classList.contains('has-slides')
