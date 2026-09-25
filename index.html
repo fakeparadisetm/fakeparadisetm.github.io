@@ -3,6 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* LE TÉLÉPHONE COUCHÉ MONTRE LE SITE DE L'ORDINATEUR, EN PETIT (demande du
+   25 sept. 2026 : « la même chose que sur l'ordi, en plus petit », « avec les
+   volumes du web »).
+   `width=device-width` donne au site une fenêtre de la taille du téléphone :
+   couché, environ 750 × 320 pixels CSS. La mise en page de l'ordinateur,
+   faite pour une fenêtre de 1 500 à 1 900 de large, n'y tenait pas — icônes,
+   fiche et textes ont leurs tailles en pixels —, et un gabarit à part la
+   remplaçait (voir « LE GABARIT DU PAYSAGE ») : ce n'était plus le même site.
+   Couché, le téléphone reçoit maintenant une fenêtre d'ORDINATEUR, haute de
+   740 pixels CSS comme celle d'un portable, large de ce que la forme de son
+   écran demande, et le navigateur la réduit pour qu'elle tienne : la même
+   page, les mêmes proportions. Debout, rien ne change : on n'y voit que le
+   voile qui demande de tourner le téléphone, et il doit rester lisible.
+   Une tablette (plus de 500 px sur son petit côté) garde sa propre fenêtre,
+   déjà assez grande pour la mise en page de l'ordinateur. */
+(function(){
+  var mq = window.matchMedia;
+  if (!mq || !mq('(hover: none) and (pointer: coarse)').matches) return;   // une souris : un ordinateur
+  if (Math.min(screen.width, screen.height) > 500) return;                  // une tablette
+  var meta = document.querySelector('meta[name="viewport"]');
+  var DEBOUT = 'width=device-width, initial-scale=1.0', HAUTEUR = 740;
+  var couche = mq('(orientation: landscape)');
+  var pose = DEBOUT, large = 0, ideal = 0;   // ideal : la largeur du téléphone couché, à l'échelle 1
+  function regler(){
+    if (!couche.matches){
+      large = 0;
+      if (pose !== DEBOUT){ pose = DEBOUT; meta.setAttribute('content', pose); }
+      return;
+    }
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!w || !h || w < h) return;                // la fenêtre n'a pas encore tourné : le redimensionnement rappellera
+    if (pose === DEBOUT) ideal = w;               // encore à l'échelle 1
+    var voulu = Math.max(1280, Math.min(2400, Math.round(HAUTEUR * w / h)));
+    if (large && Math.abs(voulu - large) <= 8) return;   // les arrondis de la fenêtre ne font pas osciller
+    large = voulu;
+    pose = 'width=' + large + (ideal ? ', initial-scale=' + (ideal / large).toFixed(4) : '');
+    meta.setAttribute('content', pose);
+  }
+  regler();
+  if (couche.addEventListener) couche.addEventListener('change', regler); else couche.addListener(regler);
+  window.addEventListener('resize', regler);
+})();
+</script>
 <!-- LE TITRE DIT CE QU'ON VEND. « FakeParadise™ » seul ne parle qu'à ceux qui
      connaissent déjà la marque ; dans un onglet, un favori ou un résultat de
      recherche, il faut la marque ET ce qu'elle fait. -->
@@ -99,6 +143,12 @@
     overflow:hidden;
     user-select:none;
   }
+  /* Le téléphone couché affiche la page d'ordinateur réduite (voir le script
+     du <head>). Sur une page ainsi réduite, les navigateurs mobiles
+     grossissent d'eux-mêmes les textes qu'ils jugent trop petits — Chrome
+     sur Android surtout —, et casseraient la mise en page : ici, un texte
+     garde sa taille. */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 
   /* ---------- wave background ----------
      UN SEUL CALQUE, OPAQUE, SANS FILTRE NI MODE DE FUSION. Le ruban, son halo,
@@ -1629,6 +1679,10 @@
      caler la fiche produit. Invisible, elle reçoit toujours la souris — c'est
      sa bande qu'on survole pour la rappeler. */
   .hintbar.effacee{opacity:0;filter:blur(6px);transition:opacity 1.2s ease, filter 1.2s ease;}
+  /* Un écran tactile n'a pas de clavier : les touches qu'elle décrit n'y
+     existent pas. Cachée sans être retirée — sa place reste mesurée, la fiche
+     se cale sur elle comme à l'ordinateur. */
+  @media (hover:none) and (pointer:coarse){ .hintbar{visibility:hidden;} }
 
   /* ---------- la livraison : le camion (demande du 25 sept. 2026) ----------
      En arrivant sur « Livraison », l'icône du camion démarre en rebondissant et
@@ -3404,7 +3458,12 @@
      Placé après le gabarit étroit : un téléphone de moins de 820 px de large
      en garde les réductions, et ce bloc rend la fiche que ce gabarit cachait.
      Une fenêtre d'ordinateur très basse le reçoit aussi : c'est le même
-     problème, la même réponse. */
+     problème, la même réponse.
+     DEPUIS LE 25 SEPT. 2026 (soir), UN TÉLÉPHONE NE LE REÇOIT PLUS : couché,
+     il affiche la page de l'ordinateur, réduite (voir le script du <head>),
+     et sa fenêtre n'est plus « basse ». Le gabarit reste pour les fenêtres
+     d'ordinateur très basses, et pour un navigateur de téléphone qui
+     ignorerait le changement de fenêtre. */
   @media (orientation:landscape) and (max-height:500px){
     :root{--xmb-bar:40vh;}
     .brand{top:12px;left:18px;font-size:11px;letter-spacing:2px;}
@@ -12496,9 +12555,10 @@ function majInfoH(){
    connues : le cadre, le visuel selon sa propre formule CSS, le bloc de texte
    (infoBase, tailles comprises) et le descriptif s'il est déplié. */
 const MARGE_BARRE = 10;   // entre la fiche et chacune des deux barres (la même qu'appliquerDesc)
-/* Le téléphone couché (voir le gabarit « paysage » du CSS, même requête) : la
-   fiche y est en deux colonnes, le visuel à côté du texte et non au-dessus —
-   rien de ce qui suit ne s'y applique. */
+/* Le gabarit « paysage » du CSS (même requête) : la fiche y est en deux
+   colonnes, le visuel à côté du texte et non au-dessus — rien de ce qui suit
+   ne s'y applique. Il ne sert plus qu'aux fenêtres d'ordinateur très basses :
+   un téléphone couché affiche la page de l'ordinateur (voir le <head>). */
 const TELEPHONE_COUCHE = window.matchMedia('(orientation:landscape) and (max-height:500px)');
 function reserverTailles(){
   const cat = DATA[activeCat];
