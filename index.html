@@ -31,10 +31,8 @@
 <link rel="canonical" href="https://shopfakeparadise.com/">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/favicon-180.png">
-<link rel="preload" as="image" href="icons/startup%20icon%20web.png">
-<link rel="preload" as="image" href="icons/startup%20icon2%20base.png">
-<link rel="preload" as="image" href="icons/startup%20icon2%20palm%20left.png">
-<link rel="preload" as="image" href="icons/startup%20icon2%20palm%20right.png">
+<!-- l'écran de démarrage n'a plus d'images (voir demarrage) : c'est la police du sous-titre FakeStation qui est préchargée -->
+<link rel="preload" as="font" type="font/woff2" href="fonts/InterVariable.woff2" crossorigin>
 <style>
   :root{
     --bg-0:#04080c;
@@ -202,51 +200,35 @@
     z-index:20;
     transition:opacity 1.6s ease;
   }
+  /* LE LOGO, DESSINÉ PAR LE SCRIPT (refait le 25 sept. 2026 ; voir demarrage).
+     Plus d'images : un seul SVG, dans le repère de l'ancien emblème (1200 ×
+     1565), qui porte tour à tour le logo FS3, les lettres Impact qu'il
+     devient, puis l'île et ses deux palmiers. La base de l'île (y = 978, soit
+     62,5 % de la hauteur) est posée sur le ruban, comme sur l'eau ; la ligne
+     est calculée par runStartup. Le halo reprend celui de l'ancien logo, et
+     s'intensifie le temps de l'éclosion (--eclat, de 0 à 1). */
+  /* À DROITE, comme le logo de la console sur son écran d'allumage, et un peu
+     moins grand (demande du 25 sept. 2026 : « centré tout à droite, pas trop
+     gros ; le FS3 est bien, le palmier légèrement trop gros ») : le cadre
+     passe de 60 à 52 % de la hauteur, et le FS3 grossit d'autant dans le
+     dessin (FS3_K) pour garder exactement sa taille à l'écran. */
   .startup-logo{
+    --h:min(52vh, 520px, 104vw);
+    --eclat:0;
     position:absolute;
-    width:min(28vw,380px);
-    transform:translate(-50%,-50%) scale(0.98);
-    opacity:0;
-    filter:drop-shadow(0 0 14px rgba(255,255,255,0.28)) drop-shadow(0 0 40px rgba(var(--accent-rgb),0.25));
-    transition:opacity 0.9s ease, transform 0.9s ease;
+    left:75%;
+    height:var(--h);
+    width:calc(var(--h) * 1200 / 1565);
+    transform:translate(-50%, -62.5%);
+    overflow:visible;
+    pointer-events:none;
+    filter:
+      drop-shadow(0 0 calc(14px + 22px * var(--eclat)) rgba(255,255,255,calc(0.28 + 0.34 * var(--eclat))))
+      drop-shadow(0 0 40px rgba(var(--accent-rgb),calc(0.25 + 0.3 * var(--eclat))));
   }
-  .startup.show .startup-logo{opacity:0.94;transform:translate(-50%,-50%) scale(1);}
-  /* Emblème FakeParadise au centre, à la place du logo PS : trois calques
-     issus de « startup icon2.png » (monticule + texte, palmier gauche,
-     palmier droit) empilés à la même taille ; chaque palmier pivote autour
-     de la base de son tronc. */
-  .startup-mark{
-    position:absolute;
-    /* calé sur le logo FS3 comme le symbole PS sur la console : même hauteur
-       à 15 % près (le logo mesure 0,411 × sa largeur), juste à sa gauche avec
-       un écart de 3,5 % de la largeur d'écran, centres alignés */
-    height:calc(min(28vw,380px) * 0.47);
-    aspect-ratio:1200/1565;
-    left:calc(75% - min(14vw,190px) - 3.5vw - min(28vw,380px) * 0.18);
-    transform:translate(-50%,-50%) scale(0.98);
-    opacity:0;
-    filter:drop-shadow(0 0 14px rgba(255,255,255,0.28)) drop-shadow(0 0 40px rgba(var(--accent-rgb),0.25));
-    transition:opacity 0.9s ease, transform 0.9s ease; /* mêmes effets que le logo */
-  }
-  .startup.show .startup-mark{opacity:0.94;transform:translate(-50%,-50%) scale(1);}
-  .startup-mark img{
-    position:absolute;inset:0;
-    width:100%;height:100%;
-  }
-  .startup-mark .palm-left{transform-origin:41.4% 53.4%;}
-  .startup-mark .palm-right{transform-origin:49.2% 53.4%;}
-  /* balancement doux, achevé (retour au repos) juste avant le fondu vers le
-     site, qui démarre 4 s après l'apparition du logo (STARTUP.hold) */
-  .startup.show .palm-left{animation:palmSwayL 3.5s ease-in-out 0.35s 1 both;}
-  .startup.show .palm-right{animation:palmSwayR 3.4s ease-in-out 0.45s 1 both;}
-  @keyframes palmSwayL{
-    0%{transform:rotate(0deg);} 35%{transform:rotate(-3.2deg);}
-    70%{transform:rotate(2.2deg);} 100%{transform:rotate(0deg);}
-  }
-  @keyframes palmSwayR{
-    0%{transform:rotate(0deg);} 30%{transform:rotate(2.6deg);}
-    65%{transform:rotate(-2.4deg);} 100%{transform:rotate(0deg);}
-  }
+  /* la poussière de la métamorphose et les étincelles de l'éclosion : toute
+     la fenêtre, pour qu'elles puissent sortir du cadre du logo */
+  .startup-poussiere{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
   .startup-hint{ /* même halo que les libellés sous les icônes */
     position:absolute;
     left:0;right:0;
@@ -257,14 +239,23 @@
     color:var(--white);
     text-shadow:0 0 8px rgba(var(--accent-rgb),0.6), 0 0 18px rgba(var(--accent-rgb),0.3);
     opacity:0;
-    transition:opacity 0.9s ease 0.3s;
+    transition:opacity 0.6s ease 0.2s;
   }
   .startup.show .startup-hint{opacity:1;}
+  /* L'AIDE S'EN VA PLUS TÔT (demande du 25 sept. 2026) : lue pendant que le
+     logo FS3 se montre, elle s'efface quand il se transforme, et laisse la
+     fin de la séquence au seul logo (voir demarrage, HINT_FIN). */
+  .startup.show.aide-partie .startup-hint{opacity:0;transition:opacity 0.7s ease;}
   .startup.fade,.startup-tint.fade{opacity:0;pointer-events:none;}
+  /* Pendant l'allumage, l'interface est là mais invisible. Le bouton des
+     Réglages et les bords de l'écran en font partie (demande du 25 sept.
+     2026 : la roue dentée se voyait sur l'écran de démarrage, et un bord
+     s'allumait au passage de la souris). */
   body.booting .brand,body.booting .topbar,body.booting .stage,body.booting .pager,
-  body.booting .preview,body.booting .hintbar,body.booting .legalbar{opacity:0;}
+  body.booting .preview,body.booting .hintbar,body.booting .legalbar,body.booting .reglages-bouton{opacity:0;pointer-events:none;}
+  body.booting .bord-nav{display:none;}
   body.boot-fade .brand,body.boot-fade .topbar,body.boot-fade .stage,body.boot-fade .pager,
-  body.boot-fade .preview,body.boot-fade .hintbar,body.boot-fade .legalbar{transition:opacity 1.6s ease;}
+  body.boot-fade .preview,body.boot-fade .hintbar,body.boot-fade .legalbar,body.boot-fade .reglages-bouton{transition:opacity 1.6s ease;}
 
   /* ---------- top bar ---------- */
   /* Pas de marge à droite : l'encadré du statut (.statut) va jusqu'au bord de
@@ -669,7 +660,10 @@
        courbure à l'œil. Un seul nombre à changer, --radius : les deux
        suivent. */
     --radius-img:calc(var(--radius) * 0.9);
-    --reserve:436px; /* hauteur hors visuel : contenu fixe ≈ 240 px + barres haut/bas 160 px + marges 2×18 px */
+    /* hauteur hors visuel : contenu fixe ≈ 204 px + barres haut/bas 160 px + marges 2×18 px.
+       436 jusqu'au 25 sept. 2026 : les tailles, passées à côté du bouton, ont
+       rendu une rangée entière au visuel (voir .preview-bas). */
+    --reserve:400px;
     position:fixed;
     /* La fiche a grandi d'environ 17 % (demande utilisateur), et elle grandit
        VERS LA DROITE : son bord gauche reste exactement là où il était — 88vw
@@ -683,7 +677,9 @@
        comprises, entre les deux barres (voir reserverTailles) ; nul sur les
        écrans où la place existe déjà */
     transform:translateY(calc(-50% - var(--lift,0px)));
-    width:min(34vw,610px);   /* 610 = 520 + 17 % ; 34vw ménage la barre d'icônes sous 1530 px */
+    /* 610 = 520 + 17 % ; puis légèrement élargie le 25 sept. 2026 pour loger
+       les tailles à côté du bouton (36vw, 650 px), toujours vers la droite */
+    width:min(36vw,650px);
     z-index:6;
     opacity:0;
     transition:opacity 0.4s ease; /* la taille change pendant la baisse d'opacité, sans animation */
@@ -917,6 +913,46 @@
   .size-picker .settings-label{margin-bottom:9px;transition:color 0.2s ease;}
   .size-picker .pills{justify-content:center;gap:8px;}
   .size-picker .pill{min-width:54px;padding:10px 12px;font-size:14px;font-weight:550;letter-spacing:0.5px;}
+  /* ---- LE BAS DE LA FICHE D'ACHAT (demande du 25 sept. 2026) ----
+     Les tailles et le bouton CÔTE À CÔTE : deux rangées de trois pastilles
+     compactes à gauche, sous le lien « Size guide » — le libellé « Size » est
+     devenu ce lien, et le bouton « Guide des tailles » a quitté la rangée —,
+     le bouton bleu à droite, aligné sur la rangée du bas. Une rangée de
+     boutons en moins : autant de hauteur rendue au visuel (voir --reserve).
+     La fiche s'est un peu élargie pour les loger (voir .preview).
+     Ailleurs la boîte n'existe pas (display:contents) : ses enfants restent
+     ceux du bloc, et les gabarits Contact, Jeux, pièce verrouillée ne voient
+     aucune différence. */
+  .preview-bas{display:contents;}
+  .preview-bas.achat{display:flex;align-items:flex-end;gap:16px;margin-top:14px;}
+  .preview-bas.achat .size-picker{margin-top:0;flex:0 1 auto;min-width:0;}
+  .preview-bas.achat .size-picker + .preview-actions{margin-top:0;}
+  .preview-bas.achat .preview-actions{margin:0 0 0 auto;flex:0 0 auto;flex-wrap:nowrap;}
+  .preview-bas.achat .size-picker .settings-label{margin-bottom:7px;}
+  .preview-bas.achat .size-picker .pills{display:grid;grid-template-columns:repeat(3, auto);justify-content:start;gap:6px;}
+  .preview-bas.achat .size-picker .pill{min-width:52px;padding:6px 9px;font-size:12.5px;}
+  /* « Size guide » : le libellé des tailles, devenu le lien du guide. Sans
+     guide pour l'article (pas de mesures), il reste le simple libellé « Size ». */
+  .taille-guide{display:block;padding:0;border:0;background:none;font:inherit;font-size:12px;letter-spacing:0.4px;
+    color:var(--white-60);text-align:left;cursor:default;}
+  .taille-guide.lien{cursor:pointer;color:rgba(255,255,255,0.78);}
+  .taille-guide.lien::after{content:' \203A';}
+  .taille-guide.lien:hover,.taille-guide.lien:focus-visible,.taille-guide.lien.focus{
+    color:var(--white);text-decoration:underline;text-underline-offset:3px;outline:none;
+    text-shadow:0 0 8px rgba(var(--accent-rgb),0.6);}
+  /* ---- le prix dans le bouton (même demande) ----
+     Le bouton bleu porte le PRIX ; sous la souris — ou au clavier, quand il a
+     la surbrillance —, le prix cède la place à « + Add to cart ». Les deux
+     libellés sont superposés dans la même case d'une grille : le bouton prend
+     la largeur du plus long et ne bouge pas d'un pixel au survol. */
+  #addBtn .cta-lib{display:inline-grid;place-items:center;}
+  #addBtn .cta-lib > span{grid-area:1 / 1;white-space:nowrap;transition:opacity 0.18s ease, transform 0.18s ease;}
+  #addBtn .cta-prix{font-size:16px;font-weight:650;letter-spacing:0.3px;}
+  #addBtn .cta-prix s{font-size:12px;font-weight:450;opacity:0.7;margin-right:6px;}
+  #addBtn .cta-ajout{opacity:0;transform:translateY(5px);}
+  #addBtn:hover .cta-prix,#addBtn:focus-visible .cta-prix,#addBtn.focus .cta-prix{opacity:0;transform:translateY(-5px);}
+  #addBtn:hover .cta-ajout,#addBtn:focus-visible .cta-ajout,#addBtn.focus .cta-ajout{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){ #addBtn .cta-lib > span{transition:none;transform:none;} }
   /* « Ajouter » sans taille choisie : le libellé le dit (voir reclamerTaille)
      et la rangée tressaille, une fois. La couleur est celle des champs à
      compléter : c'en est un. */
@@ -973,8 +1009,21 @@
      perdu — tous les gestes du visuel (prendre la tête, balayer au doigt,
      déplier la fiche) sont écoutés sur le CADRE, .preview-swatch, qui est
      juste dessous. */
-  .slide{position:absolute;inset:0;display:none;z-index:1;pointer-events:none;}
+  .slide{position:absolute;inset:0;display:none;z-index:1;pointer-events:none;
+    transform:scale(var(--zoom,1));transition:transform 0.14s ease-out;}
   .slide.active{display:block;}
+  /* ---- LA MOLETTE ZOOME LE PRODUIT (demande du 25 sept. 2026) ----
+     Le curseur sur la fiche d'un produit, la molette ne parcourt plus la
+     liste : elle rapproche ou éloigne le produit — le modèle 3D comme les
+     photos (voir `loupe`). Le zoom est porté par les VUES (--zoom), pas par le
+     cadre : les pastilles du haut ne bougent pas, et la prise en main garde sa
+     vitesse. Le produit grandit SOUS le reste — le nom, les tailles, les
+     boutons restent devant (.preview-info passe au-dessus) — et peut couvrir
+     toute la fiche. Zoomé, plus rien ne le rogne à son carré ni à la galerie :
+     c'est la fiche, à son arrondi, qui coupe. */
+  .preview-info{position:relative;z-index:2;}
+  .preview.zoome{overflow:hidden;}
+  .preview.zoome .gallery-zone,.preview.zoome .preview-swatch{overflow:visible;}
   .slide.flat{width:100%;height:100%;object-fit:cover;}
   .preview-swatch canvas{position:absolute;inset:0;width:100%;height:100%;}
   /* Rendu « console » : le tampon fait 256 pixels de côté et le navigateur
@@ -2523,7 +2572,7 @@
      bascule, seuls les textes changent. --reserve monte d'autant que le bloc de
      texte, puisque c'est lui qui borne le visuel (voir .preview-swatch). */
   @media (min-height:1180px){
-    .preview{--pad:36px;--reserve:462px;} /* contenu fixe ≈ 267 px + 160 px + 2×18 px */
+    .preview{--pad:36px;--reserve:424px;} /* contenu fixe ≈ 229 px + 160 px + 2×18 px (462 avant les tailles côte à côte) */
     .preview-head{margin-top:22px;}
     .preview-name,.preview-price{font-size:27px;}   /* le nom et le prix gardent le MÊME corps */
     .preview-price .was{font-size:17px;}
@@ -2543,7 +2592,7 @@
     /* fenêtres basses (portable 1080p à 125 %, 1440×900…) : tailles d'origine
        pour que la fiche tienne entre l'horloge et la barre d'aide ; la largeur
        et la position gardent les valeurs des grands écrans */
-    .preview{--pad:26px;--reserve:400px;} /* contenu fixe ≈ 205 px + 160 px + 2×17 px */
+    .preview{--pad:26px;--reserve:368px;} /* contenu fixe ≈ 173 px + 160 px + 2×17 px (400 avant les tailles côte à côte) */
     .preview-head{margin-top:15px;}
     .preview-name,.preview-price{font-size:20px;}
     .preview.desc-open .preview-desc{margin-top:12px;}
@@ -2560,25 +2609,35 @@
     /* écrans moyens : panneau plus près du bord pour laisser de la place à la barre.
        left:auto rend la main à right — sans quoi le left des grands écrans
        l'emporterait et cette règle ne ferait plus rien. */
-    .preview{left:auto;right:7vw;width:min(36vw,480px);}
+    .preview{left:auto;right:7vw;width:min(38vw,510px);}   /* 36vw / 480 avant le 25 sept. 2026 */
     .preview.info-panel{width:min(36vw,460px);}
   }
 
-  /* Aperçu fixe du mini-jeu, dans le panneau « Versus ». Trois calques comme
-     dans l'arène : décor, vêtements, attaque. Peint une seule fois. */
-  .arena-teaser{
+  /* ---- L'AFFICHE DU MINI-JEU (demande du 25 sept. 2026) ----
+     « Remplace les miniatures et fonds des mini-jeux par de vraies
+     compositions en SVG, animées en boucle, avec le titre dedans — et donc
+     l'image plus grande. » L'aperçu d'avant était un bandeau en 16:7, une
+     vue du décor du jeu, et le nom du jeu dessous en texte. L'affiche est en
+     4:3 et porte son titre : le nom s'efface (`.preview.jeu`), l'image
+     reprend sa place et gagne près de moitié de hauteur.
+     Chaque affiche est un SVG autonome — ses animations sont dedans — posé
+     dans une simple balise <img> : le navigateur la met en cache, et elle ne
+     s'anime que tant qu'elle est à l'écran. */
+  .jeu-affiche{
     position:relative;
     width:100%;
-    aspect-ratio:16/7;
-    border-radius:4px;
+    aspect-ratio:4/3;
+    border-radius:6px;
     overflow:hidden;
-    border:1px solid rgba(255,255,255,0.10);
-    box-shadow:inset 0 0 30px rgba(0,0,0,0.45);
+    background:#0d0b12;
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 12px 32px rgba(0,0,0,0.38), 0 0 0 1px rgba(0,0,0,0.3);
   }
-  .arena-teaser[hidden]{display:none;}
-  .arena-teaser canvas{position:absolute;inset:0;width:100%;height:100%;}
-  #teaserGL{z-index:1;}
-  #teaserFx{z-index:2;}
+  .jeu-affiche[hidden]{display:none;}
+  .jeu-affiche img{display:block;width:100%;height:100%;user-select:none;-webkit-user-select:none;}
+  /* le titre est dans l'affiche : le nom au-dessus du bouton ferait doublon */
+  .preview.jeu .preview-head{display:none;}
+  .preview.info-panel.jeu .preview-actions{margin-top:22px;}
   /* ---------- mini-jeu « Versus » (provisoire) ----------
      Même grammaire que les autres fenêtres du site : voile sombre, panneau de
      verre, fondu par visibility pour ne rien peindre quand c'est fermé. */
@@ -3523,6 +3582,139 @@
     .info-header{padding:18px 18px 10px;}
     .info-body{padding:0 18px 18px;}
   }
+
+  /* ---------- TÉLÉPHONE : LE PAYSAGE, ET SEULEMENT LUI (demande du 25 sept. 2026) ----------
+     « Le site en téléphone ne doit être consultable et utilisable qu'en
+     paysage. » Tenu debout, le téléphone ne montre que le voile .tourner ;
+     couché, il reçoit le gabarit ci-dessous.
+     Aucun navigateur ne laisse un site tourner l'écran de lui-même : Android
+     le permet en plein écran, après un geste (voir `paysage`) ; iOS jamais.
+     D'où le voile, qui vaut pour tous. */
+  .tourner{display:none;}
+  @media (orientation:portrait) and (max-width:600px) and (hover:none) and (pointer:coarse){
+    .tourner{
+      position:fixed;inset:0;z-index:1000;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+      padding:32px;text-align:center;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(var(--accent2-rgb),0.28), rgba(0,0,0,0) 62%),
+        #05080c;
+      color:var(--white);
+    }
+  }
+  /* le téléphone dessiné se couche, reste couché, se relève : le geste à faire */
+  .tourner-tel{
+    position:relative;width:44px;height:76px;margin-bottom:10px;
+    border:3px solid #fff;border-radius:9px;
+    box-shadow:0 0 18px rgba(var(--accent-rgb),0.55);
+    animation:tournerTel 2.6s cubic-bezier(.45,0,.2,1) infinite;
+  }
+  .tourner-tel::after{content:'';position:absolute;left:50%;bottom:5px;width:14px;height:3px;margin-left:-7px;border-radius:2px;background:#fff;opacity:0.7;}
+  @keyframes tournerTel{0%,12%{transform:rotate(0);} 42%,72%{transform:rotate(-90deg);} 100%{transform:rotate(0);}}
+  @media (prefers-reduced-motion:reduce){ .tourner-tel{animation:none;transform:rotate(-90deg);} }
+  .tourner-titre{font-size:19px;font-weight:600;letter-spacing:0.6px;text-shadow:0 0 12px rgba(var(--accent-rgb),0.6);}
+  .tourner-texte{max-width:270px;font-size:13.5px;line-height:1.5;color:var(--white-60);}
+  .tourner-bouton{
+    margin-top:8px;padding:12px 24px;
+    border-radius:999px;border:1px solid rgba(160,200,255,0.55);
+    background-color:var(--achat);
+    background-image:linear-gradient(to bottom, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%);
+    color:#fff;font-size:14px;font-weight:600;letter-spacing:0.4px;
+    box-shadow:0 0 16px rgba(var(--achat-rgb),0.45);
+  }
+
+  /* LE GABARIT DU PAYSAGE : un écran bas, de 360 à 430 px. Tout se resserre en
+     hauteur — l'encadré du statut et le panier sur une seule ligne, pas de
+     barre d'aide (pas de clavier), la banderole légale réduite — et la fiche
+     passe en DEUX COLONNES : le visuel à gauche, aussi grand que la hauteur
+     le permet, et à droite le nom, les tailles et le bouton, toujours montrés
+     (sur un téléphone, déplier la fiche coûterait un geste de plus pour rien).
+     Placé après le gabarit étroit : un téléphone de moins de 820 px de large
+     en garde les réductions, et ce bloc rend la fiche que ce gabarit cachait.
+     Une fenêtre d'ordinateur très basse le reçoit aussi : c'est le même
+     problème, la même réponse. */
+  @media (orientation:landscape) and (max-height:500px){
+    :root{--xmb-bar:40vh;}
+    .brand{top:12px;left:18px;font-size:11px;letter-spacing:2px;}
+    .topbar{flex-direction:row;align-items:center;justify-content:flex-end;gap:14px;padding:8px 0 0 18px;}
+    .topbar .cart{order:-1;margin-right:0;font-size:11.5px;}      /* le panier à gauche de l'encadré, sur sa ligne */
+    .statut{height:28px;gap:10px;padding:0 16px 0 10px;font-size:11.5px;}
+    .statut .topbar-gt:not([hidden]){padding-right:10px;}
+    #topbarGtNom{display:none;}
+    .pager{top:14px;}
+    .hintbar{display:none;}
+    .legalbar{padding:2px 10px;gap:2px 10px;font-size:9px;min-height:0;}
+    .legalbar-copy{display:none;}
+    .legalbar-links button{padding:3px 7px;}
+    /* la roue passe en bas à GAUCHE : à droite, elle mordait sur le coin de la fiche */
+    .reglages-bouton{--coin:6px;right:auto;left:calc(var(--coin) - 10px);}
+    .categories{padding-left:4vw;}
+    .category{width:96px;margin-right:52px;}
+    .cat-icon{width:76px;height:76px;}
+    .cat-icon img,.cat-glow{width:44px;height:44px;}
+    .cat-label{margin-top:6px;font-size:11.5px;}
+
+    /* la fiche : à droite, entre l'encadré et la banderole */
+    .preview{
+      display:block;
+      --pad:12px;--radius:14px;
+      --reserve:108px;                     /* l'encadré, la banderole, leurs marges et le rembourrage de la fiche */
+      left:auto;right:12px;
+      top:calc(50% + 7px);
+      width:auto;max-width:calc(100vw - 24px);
+    }
+    .preview:not(.info-panel):not(.profil) #previewProduct{display:flex;align-items:stretch;gap:14px;}
+    .preview:not(.info-panel) .gallery-zone,
+    .preview.gallery:not(.info-panel) .gallery-zone{
+      flex:0 0 auto;
+      margin:calc(-1 * var(--pad)) 0 calc(-1 * var(--pad)) calc(-1 * var(--pad));
+      padding:var(--pad) 0 var(--pad) var(--pad);
+    }
+    .preview:not(.info-panel) .preview-swatch{
+      width:min(36vw, calc(100vh - var(--reserve)));
+      width:min(36vw, calc(100dvh - var(--reserve)));
+    }
+    .preview:not(.info-panel) .preview-info,
+    .preview.gallery:not(.info-panel) .preview-info{
+      flex:0 0 180px;min-width:0;
+      display:flex;flex-direction:column;justify-content:flex-end;
+      max-height:none;opacity:1;overflow:visible;
+    }
+    .preview-head{margin-top:0;}
+    .preview:not(.info-panel) .preview-name{font-size:16px;white-space:normal;height:auto;line-height:1.25;}
+    .preview:not(.info-panel) .preview-price{font-size:16px;}
+    .preview-desc{max-height:30vh;}
+    .preview.info:not(.info-panel) .preview-desc:not(.preview-desc-probe){max-height:calc(100dvh - 190px);}
+    .preview-bas.achat{flex-direction:column;align-items:stretch;gap:10px;margin-top:10px;}
+    .preview-bas.achat .preview-actions{margin:0;}
+    .preview-bas.achat .cta-duo.achat{margin-left:0;}
+    .preview-bas.achat .size-picker .pill{min-width:48px;padding:5px 6px;font-size:12px;}
+
+    /* les panneaux texte (Contact, jeux) et le profil : plus larges, pas plus hauts que l'écran */
+    .preview.info-panel{
+      width:min(62vw, 520px);min-height:0;
+      max-height:calc(100vh - 70px);max-height:calc(100dvh - 70px);
+      overflow:auto;
+    }
+    .preview.info-panel .preview-name{font-size:22px;}
+    .preview.info-panel.contact{height:calc(100vh - 70px);height:calc(100dvh - 70px);}
+    .insta-page .insta-card{padding:10px 14px 6px;gap:14px;}
+    .insta-page .insta-avatar{width:56px;height:56px;}
+    .insta-page .insta-handle{font-size:17px;}
+    .insta-page .insta-stats{margin-top:3px;font-size:12.5px;}
+    .insta-page .insta-name{margin-top:5px;font-size:12.5px;}
+    .insta-page .insta-bio{font-size:12px;}
+    .insta-direct{padding:6px 14px 10px;}
+    .insta-charger{padding:7px 16px;font-size:12.5px;}
+    .insta-note{margin-top:4px;font-size:10px;}  /* gardée, même petite : on doit savoir à quoi mène le clic avant de le faire */
+    .preview.info-panel.contact .preview-actions{margin-top:10px;}
+    .preview.info-panel .preview-cta{font-size:13px;padding:10px 20px;}
+    /* l'affiche d'un mini-jeu : c'est la HAUTEUR qui manque, elle la règle, et la largeur suit le 4:3 */
+    .jeu-affiche{width:auto;height:calc(100vh - 150px);height:calc(100dvh - 150px);max-width:100%;margin:0 auto;}
+    .preview.info-panel.jeu .preview-actions{margin-top:12px;}
+    .preview.profil{left:12px;right:12px;width:auto;max-height:calc(100dvh - 60px);overflow:auto;}
+    .size-panel,.reglages-panel,.cart-panel{max-height:calc(100dvh - 16px);overflow:auto;}
+  }
 </style>
 </head>
 <body class="booting">
@@ -3709,22 +3901,22 @@
         <div class="slide-dots" id="slideDots"></div>
         <span id="previewInitial">F</span>
         <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
-        <!-- teteFx : le calque 2D de l'éclat du piercing, posé SUR le rendu ; il
-             vient après dans le document, donc au-dessus, sans z-index à régler -->
-        <div class="slide slide-3d" data-slide="0"><canvas id="previewGL" hidden></canvas><canvas id="teteFx" hidden></canvas></div>
+        <!-- teteFx : le calque 2D de l'éclat du piercing et de la fumée, posé SUR
+             le rendu ; il vient après dans le document, donc au-dessus, sans
+             z-index à régler. teteFxFond, avant, passe donc DESSOUS : la fumée
+             qui part derrière la tête. -->
+        <div class="slide slide-3d" data-slide="0"><canvas id="teteFxFond" hidden></canvas><canvas id="previewGL" hidden></canvas><canvas id="teteFx" hidden></canvas></div>
         <img id="previewPhoto" class="slide flat" data-slide="1" alt="">
         <img id="previewPhoto2" class="slide flat" data-slide="2" alt="">
       </div>
       <button type="button" class="slide-edge prev" id="slidePrev" data-i18n-aria="prevPhoto" aria-label="Previous view"></button>
       <button type="button" class="slide-edge next" id="slideNext" data-i18n-aria="nextPhoto" aria-label="Next view"></button>
     </div>
-    <!-- Aperçu fixe du mini-jeu, dans le panneau « Versus » : un décor, deux
-         vêtements et une attaque en vol. Voir arena.apercu(). -->
-    <div class="arena-teaser" id="arenaTeaser" hidden>
-      <canvas id="teaserBg"></canvas>
-      <canvas id="teaserGL"></canvas>
-      <canvas id="teaserFx"></canvas>
-    </div>
+    <!-- L'AFFICHE du mini-jeu choisi (25 sept. 2026) : un tableau au pixel,
+         animé en boucle, titre compris, fabriqué par outils/affiches.py dans
+         affiches/. Elle remplace l'aperçu que chaque jeu peignait lui-même, et
+         le nom du jeu au-dessus du bouton. -->
+    <div class="jeu-affiche" id="jeuAffiche" hidden><img id="jeuAfficheImg" alt="" draggable="false" decoding="async"></div>
     <!-- Tout ce qui n'est pas la galerie tient dans ce bloc : au repos la fiche
          ne montre QUE le visuel, et c'est la sélection de l'article (clic ou
          Entrée) qui la déplie. --info-h, mesuré au remplissage, donne sa
@@ -3767,26 +3959,30 @@
         </div>
       </div>
       <div class="preview-desc" id="previewDesc"></div>
-      <!-- Tailles : dans le bloc qui se déplie, AU-DESSUS des boutons, et
-           ouvertes dès que la fiche l'est (demande du 25 sept. 2026). Une
-           pastille choisit, le bouton bleu ajoute. Voir .size-picker. -->
-      <div class="size-picker" id="sizePicker" hidden>
-        <div class="settings-label" data-i18n="sizeLabel">Size</div>
-        <div class="pills" id="sizePills"></div>
-      </div>
-      <!-- Le guide des tailles à gauche, l'achat à droite (.cta-duo.achat) :
-           dans cet ordre aussi pour le clavier et les lecteurs d'écran. -->
-      <div class="preview-actions">
-        <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
-        <!-- UN GALET, DEUX MOITIÉS. « Ajouter » ne bouge pas d'un pixel ; au
-             survol, une languette sort de son flanc droit et mène au panier.
-             Deux éléments et non un seul, parce qu'un bouton ne peut pas en
-             contenir un autre — et qu'il en faut bien deux pour deux gestes.
-             Voir `.cta-panier` pour le dessin, `majOngletPanier` pour le quand. -->
-        <span class="cta-duo" id="addDuo">
-          <button class="preview-cta" id="addBtn">+ Add to cart</button>
-          <button type="button" class="cta-panier" id="addCart" hidden></button>
-        </span>
+      <!-- LE BAS DE LA FICHE D'ACHAT (refait le 25 sept. 2026) : à gauche les
+           tailles, deux rangées de trois sous le lien « Size guide » qui a pris
+           la place du libellé « Size » ; à droite le bouton bleu, qui porte le
+           prix. Une pastille choisit, le bouton ajoute. Ailleurs (panneaux
+           texte, jeux, pièce verrouillée), la boîte s'efface (display:contents)
+           et la rangée des boutons reste ce qu'elle était. Voir .preview-bas. -->
+      <div class="preview-bas" id="previewBas">
+        <div class="size-picker" id="sizePicker" hidden>
+          <button type="button" class="settings-label taille-guide" id="sizeGuideLien">Size</button>
+          <div class="pills" id="sizePills"></div>
+        </div>
+        <div class="preview-actions">
+          <button class="preview-cta preview-cta--secondary" id="infoBtn" hidden>More info</button>
+          <!-- UN GALET, DEUX MOITIÉS. À gauche le prix, qui devient « + Add to
+               cart » sous la souris ; à droite, derrière un refend, le petit
+               panier, qui mène au panier. Deux éléments et non un seul, parce
+               qu'un bouton ne peut pas en contenir un autre — et qu'il en faut
+               bien deux pour deux gestes. Voir `.cta-panier` pour le dessin,
+               `majOngletPanier` pour le quand, `libelleAchat` pour le prix. -->
+          <span class="cta-duo" id="addDuo">
+            <button class="preview-cta" id="addBtn">+ Add to cart</button>
+            <button type="button" class="cta-panier" id="addCart" hidden></button>
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -4162,14 +4358,24 @@
   </div>
 </div>
 
-<!-- Écran de démarrage : logo posé sur le ruban (position calculée par runStartup) -->
+<!-- TÉLÉPHONE EN PORTRAIT (demande du 25 sept. 2026 : « le site en téléphone
+     ne doit être consultable et utilisable qu'en paysage ») : ce voile couvre
+     tout tant que le téléphone est tenu debout. Il ne paraît que par le CSS
+     (voir .tourner) ; le bouton, qui passe en plein écran et verrouille le
+     paysage, n'est montré que là où le navigateur le permet (voir paysage). -->
+<div class="tourner" id="tourner" role="dialog" aria-labelledby="tournerTitre">
+  <div class="tourner-tel" aria-hidden="true"></div>
+  <p class="tourner-titre" id="tournerTitre" data-i18n="rotateTitle">Turn your phone</p>
+  <p class="tourner-texte" data-i18n="rotateText">FakeParadise is played in landscape, like a console.</p>
+  <button type="button" class="tourner-bouton" id="tournerBouton" data-i18n="rotateButton" hidden>Switch to landscape</button>
+</div>
+
+<!-- Écran de démarrage : logo posé sur le ruban (position calculée par runStartup).
+     Plus d'images depuis le 25 sept. 2026 : le SVG et la toile sont remplis
+     et animés par le script (voir demarrage). -->
 <div class="startup" id="startup" aria-hidden="true">
-  <div class="startup-mark" id="startupMark">
-    <img src="icons/startup%20icon2%20base.png" alt="">
-    <img class="palm-left" src="icons/startup%20icon2%20palm%20left.png" alt="">
-    <img class="palm-right" src="icons/startup%20icon2%20palm%20right.png" alt="">
-  </div>
-  <img class="startup-logo" id="startupLogo" src="icons/startup%20icon%20web.png" alt="">
+  <canvas class="startup-poussiere" id="startupPoussiere"></canvas>
+  <svg class="startup-logo" id="startupLogo" viewBox="0 0 1200 1565" aria-hidden="true"></svg>
   <div class="startup-hint">Navigate with arrow keys and enter</div>
 </div>
 
@@ -4677,6 +4883,7 @@ const STRINGS = {
     instaLiveNote:"Loaded from instagram.com only when you click: Instagram (Meta) then receives your visit and may set its own cookies.",
     moreInfo:"More info", sizeGuide:"Size guide", sizeNote:"Garment measured flat, in centimetres, inches underneath.", hintInfo:"more info",
     sizeLabel:"Size", sizeFirst:"Choose a size", sound:"Sound", hintSize:"choose size", oneLess:"One less", oneMore:"One more",
+    rotateTitle:"Turn your phone", rotateText:"FakeParadise is played in landscape, like a console.", rotateButton:"Switch to landscape",
     photo:"Photo", prevPhoto:"Previous view", nextPhoto:"Next view",
     language:"Language", currency:"Currency", music:"Music", effects:"Sound effects", soundOn:"On", soundOff:"Off",
     settings:"Settings", settingsSub:"Saved on this device, for your next visits",
@@ -4769,6 +4976,7 @@ const STRINGS = {
     instaLiveNote:"Chargée depuis instagram.com seulement si vous cliquez : Instagram (Meta) reçoit alors votre visite et peut déposer ses propres cookies.",
     moreInfo:"Plus d'infos", sizeGuide:"Guide des tailles", sizeNote:"Vêtement mesuré à plat, en centimètres, pouces en dessous.", hintInfo:"plus d'infos",
     sizeLabel:"Taille", sizeFirst:"Choisissez une taille", sound:"Son", hintSize:"choisir la taille", oneLess:"Un de moins", oneMore:"Un de plus",
+    rotateTitle:"Tourne ton téléphone", rotateText:"FakeParadise se visite en paysage, comme une console.", rotateButton:"Passer en paysage",
     photo:"Photo", prevPhoto:"Vue précédente", nextPhoto:"Vue suivante",
     language:"Langue", currency:"Devise", music:"Musique", effects:"Bruitages", soundOn:"Activé", soundOff:"Coupé",
     settings:"Réglages", settingsSub:"Retenus sur cet appareil, pour vos prochaines visites",
@@ -5003,7 +5211,7 @@ const DATA = [
      liste et chaque ligne est un jeu — Versus départage deux articles,
      Jumper est un parcours de plateforme dont la récompense est la pièce
      unique ci-dessus, Age of Seum est un Age of War de contrebande. Le
-     panneau affiche l'aperçu du jeu SÉLECTIONNÉ. */
+     panneau affiche l'affiche du jeu SÉLECTIONNÉ (voir .jeu-affiche). */
   { id:"arcade", name:{en:"Minigames", fr:"Mini-jeux"}, icon:"gamepad icon.svg", kind:"game", items:[
     /* Sans descriptif : le nom et l'aperçu disent déjà de quoi il s'agit, et
        un jeu s'essaie, il ne se lit pas. Le panneau s'adapte tout seul — le
@@ -5016,14 +5224,17 @@ const DATA = [
        rapportaient. Sans lui, la ligne montre le nom, comme une pièce sans
        photo. */
     /* Ordre demandé le 18 sept. 2026 : Item Versus EN DERNIER. Rien dans le
-       code ne compte sur la position — l'aperçu du panneau et le raccourci du
-       salon cherchent le jeu par son nom (`jeu`), pas par son rang. */
+       code ne compte sur la position — l'affiche du panneau et le raccourci du
+       salon suivent l'article ou cherchent le jeu par son nom (`jeu`), pas
+       par son rang. */
     /* Age of Seum (25 sept. 2026) en tête : c'est la nouveauté, et les
        nouveautés vont en haut de la liste, comme en boutique. Son icône est
        le sanglier endormi sur son matelas, dessiné pour l'occasion. */
-    { n:"Age of Seum", jeu:"seum", img:"icons/seum icon.png" },
-    { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png" },
-    { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png" },
+    /* `affiche` : le tableau du panneau, titre compris (voir .jeu-affiche et
+       outils/affiches.py). `img` reste l'icône de la LIGNE, en 3D. */
+    { n:"Age of Seum", jeu:"seum", img:"icons/seum icon.png", affiche:"affiches/age-of-seum.svg" },
+    { n:"Jumper", jeu:"jumper", img:"icons/jumper icon.png", affiche:"affiches/jumper.svg" },
+    { n:"Item Versus", jeu:"versus", img:"icons/itemversus icon.png", affiche:"affiches/item-versus.svg" },
   ]},
   // Contact et Shipping Info : pas de sous-menu, le contenu de `panel`
   // s'affiche dès que l'icône est sélectionnée.
@@ -5044,7 +5255,10 @@ const DATA = [
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
     /* Une tête low poly qui fait le tour en dix secondes, et que le visiteur
        peut retourner à la souris : le modèle de `3Dmodels/`, figé dans le
-       module (voir TETE_XYZ).
+       module (voir TETE_XYZ). Depuis le 25 sept. 2026 elle est posée sur un
+       buste en hoodie noir, une cigarette au coin des lèvres : un clic, il
+       tire une bouffée ; tenue d'un trait jusqu'au filtre, elle ouvre la
+       pièce secrète (voir « il fume » dans le module 3D).
        `atlas` : la texture de la tête, en coordonnées ÉQUIRECTANGULAIRES — un
        tour complet en largeur, la hauteur de la tête en hauteur. Elle est
        livrée DÉJÀ réduite et quantifiée : le visage est celui de
@@ -5400,21 +5614,30 @@ function majOngletPanier(){
   addDuo.hidden = addBtn.hidden;
   const cat = DATA[activeCat];
   const it = cat && cat.kind === 'shop' ? cat.items[activeItem] : null;
-  let utile = !!it && !verrouille(it) && !addBtn.hidden && cart.length > 0;
-  /* ET SEULEMENT SI LA RANGÉE A LA PLACE. En français les deux boutons sont
-     bien plus longs qu'en anglais ; sur une fiche étroite, les quarante pixels
-     de la languette faisaient passer le « Guide des tailles » à la ligne, où
-     il venait s'asseoir sur la liste des tailles. Plutôt qu'un seuil en
+  /* TOUJOURS SUR LE BOUTON D'ACHAT depuis le 25 sept. 2026 : le prix, le
+     refend et le petit panier forment ensemble le bouton demandé. Avant, la
+     languette n'existait que si le panier avait quelque chose à montrer. */
+  let utile = !!it && !verrouille(it) && !addBtn.hidden;
+  /* ET SEULEMENT SI LA RANGÉE A LA PLACE. En français les boutons sont bien
+     plus longs qu'en anglais ; sur une fiche étroite, les quarante pixels de
+     la languette faisaient passer un voisin à la ligne. Plutôt qu'un seuil en
      pixels, qui aurait vieilli au premier mot changé, on demande à la rangée
-     ce qu'elle a. Pas de place, pas de languette : le panier reste à sa
-     place habituelle, en haut à droite. */
+     ce qu'elle a. Sur la fiche d'achat, la rangée est tout le bas de la fiche,
+     et le voisin est la grille des tailles (voir .preview-bas). Pas de place,
+     pas de languette : le panier reste à sa place habituelle, en haut à droite. */
   if (utile){
-    const rangee = addBtn.parentElement.parentElement;      // .preview-actions
+    const achat = previewBas.classList.contains('achat');
+    const rangee = achat ? previewBas : addBtn.parentElement.parentElement;      // .preview-bas, ou .preview-actions
     const guide = document.getElementById('infoBtn');
     const large = rangee.clientWidth;
     if (large > 0){
-      const tenu = addBtn.offsetWidth + ONGLET_LARGEUR + (guide.hidden ? 0 : guide.offsetWidth) + 20;
-      if (tenu > large) utile = false;
+      /* L'écart de la rangée d'achat (16 px) est déjà compté : quelques pixels
+         de jeu suffisent. Sur un téléphone couché, les tailles sont AU-DESSUS
+         du bouton (colonne) : le bouton a toute la largeur pour lui. */
+      const colonne = achat && getComputedStyle(previewBas).flexDirection === 'column';
+      const voisin = achat ? sizePicker.offsetWidth + 16 : (guide.hidden ? 0 : guide.offsetWidth);
+      const tenu = addBtn.offsetWidth + ONGLET_LARGEUR + voisin + (achat ? 4 : 20);
+      if (!colonne && tenu > large) utile = false;
     }
   }
   addCart.hidden = !utile;
@@ -6256,6 +6479,59 @@ const sfx = (() => {
       note(t + d, f * 2, f * 2, 0.012, 0.10, 'sine', 0.004);
     });
   };
+  /* ---- la cigarette du buste (page Info, 25 sept. 2026) ----
+     Du bruit filtré seulement, aucune note : on n'entend pas la hauteur d'une
+     cigarette. L'ASPIRATION est le seul son du site qui n'a pas de durée
+     connue d'avance — elle dure ce que dure l'appui — d'où un souffle en
+     boucle qu'on coupe au relâché : `aspiration()` rend la fonction qui
+     l'arrête. Elle regarde elle-même l'interrupteur Bruitages, n'ayant pas
+     d'autre chemin que `burst` pour le faire. */
+  api.aspiration = () => {
+    if (!bruitages) return () => {};
+    const c = audio(); if (!c) return () => {};
+    const t = at();
+    const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.55;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3400; lp.Q.value = 0.7;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.018, t + 0.28);
+    src.connect(bp); bp.connect(lp); lp.connect(g); g.connect(master);
+    src.start(t);
+    let fini = false;
+    return () => {
+      if (fini) return; fini = true;
+      const t1 = ctx.currentTime;
+      g.gain.cancelScheduledValues(t1); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t1);
+      g.gain.linearRampToValueAtTime(0.0001, t1 + 0.12);
+      src.stop(t1 + 0.16);
+    };
+  };
+  // le papier qui crépite sous la braise : un grain très court, plus fort quand elle est vive
+  api.crepite = (k) => {
+    const c = audio(); if (!c) return; const t = at();
+    burst(t, { freq: 2600 + Math.random() * 2600, q: 3, peak: 0.010 + 0.022 * (k || 0), attack: 0.0005, decay: 0.006 + Math.random() * 0.012, lp: 9000 });
+  };
+  // l'expiration : un souffle en cloche, d'autant plus long qu'on a tiré longtemps
+  api.souffle = (f) => {
+    const c = audio(); if (!c) return; const t = at();
+    const k = Math.min(1.6, f || 0.4);
+    burst(t, { freq: 850, q: 0.5, peak: 0.028 + 0.018 * Math.min(1, k), attack: 0.05, decay: 0.45 + 0.8 * k, lp: 2300, bell: 0.22 });
+  };
+  // une cigarette entière d'un trait : trois quintes, de plus en plus faibles
+  api.toux = () => {
+    const c = audio(); if (!c) return; const t = at();
+    [0, 0.22, 0.38].forEach((d, i) => {
+      burst(t + d, { freq: 560, q: 0.8, peak: 0.075 - i * 0.015, attack: 0.004, decay: 0.13, sweep: 240, lp: 1900 });
+      note(t + d, 200 - i * 14, 118, 0.03 - i * 0.006, 0.11, 'triangle', 0.003);
+    });
+  };
+  // le briquet : la pierre (deux claquements clairs), puis la flamme qui prend
+  api.briquet = () => {
+    const c = audio(); if (!c) return; const t = at();
+    burst(t, { freq: 4300, q: 2.6, peak: 0.055, attack: 0.0005, decay: 0.012, lp: 10000 });
+    burst(t + 0.012, { freq: 2500, q: 1.3, peak: 0.028, attack: 0.001, decay: 0.03, lp: 8000 });
+    burst(t + 0.05, { freq: 650, q: 0.6, peak: 0.03, attack: 0.03, decay: 0.34, lp: 1700, bell: 0.3 });
+  };
   /* ---- Age of Seum : les bruits d'une guerre de mèmes ----
      Tous courts, et tous plafonnés par le jeu lui-même (voir `son` dans le
      module seum) : une mêlée de dix unités ferait sinon un mur de bruit. Ils
@@ -6386,10 +6662,35 @@ const SIZES = ['XS','S','M','L','XL','2XL']; // repli pour les produits sans gui
 const ALL_SIZES = ['XXS','XS','S','M','L','XL','2XL','3XL']; // ordre de référence (gestionnaire de produits)
 const sizePicker = document.getElementById('sizePicker');
 const sizePills = document.getElementById('sizePills');
+const previewBas = document.getElementById('previewBas');
 let currentSizes = [];      // tailles des pastilles affichées
 let sizeIndex = 0;          // pastille en surbrillance (clavier)
 let tailleChoisie = null;   // la taille retenue pour l'ajout, ou rien
 let addedTimer = null, manqueTimer = null;
+/* LE LIBELLÉ DES TAILLES EST LE LIEN DU GUIDE (demande du 25 sept. 2026 :
+   « le Size devient Size guide ») quand l'article a ses mesures ; sans guide,
+   il reste le simple libellé « Size ». Écrit ici et non par data-i18n : la
+   réclamation (reclamerTaille) le remplace un moment, et c'est ici qu'il
+   revient. `tailleGuide` est posé par fillPreview. */
+const sizeGuideLien = document.getElementById('sizeGuideLien');
+let tailleGuide = false;
+function libelleTailles(){
+  sizeGuideLien.classList.toggle('lien', tailleGuide);
+  sizeGuideLien.tabIndex = tailleGuide ? 0 : -1;
+  sizeGuideLien.textContent = tailleGuide ? T('sizeGuide') : T('sizeLabel');
+}
+sizeGuideLien.addEventListener('click', () => { if (tailleGuide) openInfo(); });
+sizeGuideLien.addEventListener('mousedown', (e) => e.preventDefault());   // pas de focus : Entrée reste à la barre
+/* LE BOUTON D'ACHAT PORTE LE PRIX (même demande), et « + Add to cart » paraît
+   à sa place sous la souris (voir #addBtn .cta-lib). Refait à chaque fiche, et
+   après le « Ajouté ✓ » d'un ajout. Le prix barré d'une promotion le précède. */
+function libelleAchat(){
+  const cat = DATA[activeCat], item = cat && cat.kind === 'shop' ? cat.items[activeItem] : null;
+  if (!item || verrouille(item)) return;
+  const prix = item.was ? `<s>${formatPrice(item.was)}</s>${formatPrice(item.p)}` : formatPrice(item.p);
+  addBtn.innerHTML = `<span class="cta-lib"><span class="cta-prix">${prix}</span><span class="cta-ajout">${esc(T('add'))}</span></span>`;
+  addBtn.setAttribute('aria-label', T('add') + ' · ' + formatPrice(item.p));
+}
 
 // Tailles proposées : celles cochées pour le produit dans le gestionnaire
 // (item.sizes) ; sinon toutes celles de son guide (SIZE_CHARTS : tees et
@@ -6444,7 +6745,7 @@ function reclamerTaille(){
   sizePicker.classList.remove('manque');
   void sizePicker.offsetWidth;               // relance le tressaillement si l'on reclique aussitôt
   sizePicker.classList.add('manque');
-  sizePicker.querySelector('.settings-label').textContent = T('sizeFirst');
+  sizeGuideLien.textContent = T('sizeFirst');
   clearTimeout(manqueTimer);
   manqueTimer = setTimeout(finManque, 1800);
   if (panelMode) allerAuxTailles();
@@ -6453,7 +6754,7 @@ function finManque(){
   clearTimeout(manqueTimer);
   if (!sizePicker.classList.contains('manque')) return;
   sizePicker.classList.remove('manque');
-  sizePicker.querySelector('.settings-label').textContent = T('sizeLabel');
+  libelleTailles();                          // « Size guide », ou « Size » sans guide
 }
 /* Clavier : la surbrillance passe aux pastilles — sur la taille choisie s'il
    y en a une, sinon sur M, sinon sur celle du milieu. */
@@ -6494,6 +6795,14 @@ function recalerIcones(){ requestAnimationFrame(majIconesCachees); }
    propre boîte animée ; elles sont dans celle-ci depuis le 25 sept. 2026. */
 // (par getElementById et non par la const previewInfo : elle est déclarée plus
 // bas dans le fichier, et une const n'existe pas avant sa ligne)
+/* `libreSiImmobile` : appelée par appliquerFiche, qui retire la classe à
+   chaque passage. Quand la hauteur ne change pas — un autre article, fiche
+   déjà dépliée, bloc de même hauteur —, aucune transition ne part, donc
+   aucun `transitionend` ne la rend : le bloc restait rogné pour de bon, et
+   la lueur du bouton d'achat, posée en bas à droite, était coupée net sur
+   ces deux bords (relevé le 25 sept. 2026). On regarde donc, un instant
+   après, si le bloc bouge ; s'il ne bouge pas, il n'y a rien à rogner. */
+let libreSiImmobile = () => {};
 [document.getElementById('previewInfo')].forEach(el => {
   let filet = 0;
   const poser = () => el.classList.toggle('libre', !previewEl.classList.contains('gallery'));
@@ -6510,6 +6819,16 @@ function recalerIcones(){ requestAnimationFrame(majIconesCachees); }
     if (e.target !== el || e.propertyName !== 'max-height') return;
     clearTimeout(filet); filet = setTimeout(poser, 520);
   });
+  /* 80 ms : la nouvelle hauteur (--info-h) est posée à l'image qui suit le
+     remplissage, et une transition qui part annule ce rendez-vous par le
+     même `filet` (voir transitionstart). */
+  libreSiImmobile = () => {
+    clearTimeout(filet);
+    filet = setTimeout(() => {
+      const bouge = !el.getAnimations || el.getAnimations().some(a => a.transitionProperty === 'max-height');
+      if (bouge) filet = setTimeout(poser, 520); else poser();
+    }, 80);
+  };
 });
 /* Vol vers le panier : c'est le MODÈLE 3D qui part, pas la photo. Il tourne sur
    lui-même pendant tout le trajet et rétrécit jusqu'à l'icône du panier.
@@ -6573,7 +6892,7 @@ function addToCart(size){
   if (panelMode) exitPanel();   // ajout au clavier : retour à la barre ; la taille choisie reste allumée
   addBtn.textContent = `${T('added')} · ${size}`;
   clearTimeout(addedTimer);
-  addedTimer = setTimeout(() => { if (DATA[activeCat].kind === 'shop') addBtn.textContent = T('add'); }, 1100);
+  addedTimer = setTimeout(() => { if (DATA[activeCat].kind === 'shop') libelleAchat(); }, 1100);   // le prix revient
 }
 window.addEventListener('resize', majOngletPanier);   // la place disponible a changé
 
@@ -6609,7 +6928,7 @@ const model3d = (() => {
   // pixels des photos (canvas « souillé ») et bloque fetch → pas de détourage possible.
   // Le site doit être servi en http:// (start-site.bat en local, ou l'hébergeur).
   const fileMode = location.protocol === 'file:';
-  const stub = { show(){}, hide(){}, setRows(){}, spin(){}, rows3d:false, photoURL: url => Promise.resolve(url), makeScene: () => null };
+  const stub = { show(){}, hide(){}, setRows(){}, spin(){}, loupe(){}, surClope(){}, rows3d:false, photoURL: url => Promise.resolve(url), makeScene: () => null };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const MASK_N = 192;    // résolution du masque de silhouette (pixels)
   const GRID = 56;       // mailles sur la plus grande dimension du vêtement
@@ -6747,8 +7066,9 @@ const model3d = (() => {
      rendent exactement comme avant. La teinte REMPLACE la texture AVANT
      l'éclairage cuit, pas après : à pleine force on obtient le vêtement en
      couleur pleine mais toujours modelé par sa lumière — c'est ce qui sert à
-     l'éclair rouge du coup encaissé comme à l'aperçu du mini-jeu, où le modèle
-     est réutilisé sans sa photo. L'ajout, lui, ne monte qu'au carré : il fait
+     l'éclair rouge du coup encaissé (et servait à l'aperçu du mini-jeu, que
+     son affiche a remplacé), et depuis le 25 sept. 2026 au visage qui rougit
+     sur le buste de la page Info. L'ajout, lui, ne monte qu'au carré : il fait
      rayonner la teinte quand elle domine, sans éclaircir un simple reflet. */
   /* La TRAME DE SORTIE, troisième signature, allumée par le même uPS1.z. La
      console ne savait afficher que 32 niveaux par voie : ses dégradés se
@@ -6868,11 +7188,18 @@ const model3d = (() => {
       else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filtre);
       textures.set(src, t); return t;
     }
+    /* `mesh.v` : la version d'un maillage qui change (la cigarette du buste,
+       voir batirClope). Ses sommets repartent au GPU dans le MÊME tampon quand
+       elle avance ; un maillage fixe n'en a pas, et ne repart jamais. */
     function bufs(mesh){
-      let b = buffers.get(mesh); if (b) return b;
-      const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, mesh.data, gl.STATIC_DRAW);
+      let b = buffers.get(mesh);
+      if (b){
+        if (b.v !== mesh.v){ gl.bindBuffer(gl.ARRAY_BUFFER, b.vbo); gl.bufferData(gl.ARRAY_BUFFER, mesh.data, gl.DYNAMIC_DRAW); b.v = mesh.v; }
+        return b;
+      }
+      const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo); gl.bufferData(gl.ARRAY_BUFFER, mesh.data, mesh.v === undefined ? gl.STATIC_DRAW : gl.DYNAMIC_DRAW);
       const ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.index, gl.STATIC_DRAW);
-      b = { vbo, ibo }; buffers.set(mesh, b); return b;
+      b = { vbo, ibo, v: mesh.v }; buffers.set(mesh, b); return b;
     }
     const warm = a => { if (a && !perdu){ texture(a.texF); texture(a.texB); bufs(a.mesh); } }; // envoi anticipé : pas d'à-coup au premier rendu
     function clear(){ if (perdu) return; gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); }
@@ -6898,7 +7225,10 @@ const model3d = (() => {
        haut ni bas — voir « prise à la main ». */
     function render(a, ang, pv, alpha, box, side, tint, libre){
       if (perdu) return;   // contexte repris par le navigateur : on attend sa restauration
-      const M = mul(rotX(BASCULE), libre || rotY(ang));
+      /* `a.cadre` : une mise en place du modèle AVANT son orientation — la tête
+         et son buste, réduits et remontés d'un bloc (voir CADRE_BUSTE). Les
+         autres modèles n'en ont pas et rendent exactement comme avant. */
+      const M = a.cadre ? mul(mul(rotX(BASCULE), libre || rotY(ang)), a.cadre) : mul(rotX(BASCULE), libre || rotY(ang));
       let MVP = mul(pv, M);
       if (box){
         /* `box.h` : la boîte peut être un RECTANGLE, et pas seulement le carré
@@ -7554,6 +7884,284 @@ const model3d = (() => {
     let zmin = 9, zmax = -9;
     for (let i = 0; i < nV; i++){ const z = data[i*STRIDE+2]; if (z < zmin) zmin = z; if (z > zmax) zmax = z; }
     return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
+  }
+  /* Le point de la surface de la tête à un angle et une hauteur donnés
+     (repère du fichier, avant réduction), et sa normale : un rayon HORIZONTAL
+     parti de l'axe, Möller–Trumbore sur chaque triangle, le plus lointain
+     l'emporte. Sert aux éclats du piercing et à la bouche du buste. */
+  function impactTete(th, oy){
+    const dx = Math.sin(th), dz = Math.cos(th);
+    let best = null;
+    for (let k = 0; k < TETE_TRI.length; k += 6){
+      const A = TETE_TRI[k]*3, B = TETE_TRI[k+2]*3, C = TETE_TRI[k+4]*3;
+      const ax = TETE_XYZ[A], ay = TETE_XYZ[A+1], az = TETE_XYZ[A+2];
+      const ex1 = TETE_XYZ[B]-ax, ey1 = TETE_XYZ[B+1]-ay, ez1 = TETE_XYZ[B+2]-az;
+      const ex2 = TETE_XYZ[C]-ax, ey2 = TETE_XYZ[C+1]-ay, ez2 = TETE_XYZ[C+2]-az;
+      const px = -dz*ey2, py = dz*ex2 - dx*ez2, pz = dx*ey2;
+      const det = ex1*px + ey1*py + ez1*pz;
+      if (Math.abs(det) < 1e-9) continue;
+      const inv = 1/det, tx = -ax, ty = oy-ay, tz = -az;
+      const u = (tx*px + ty*py + tz*pz) * inv;
+      if (u < 0 || u > 1) continue;
+      const qx = ty*ez1 - tz*ey1, qy = tz*ex1 - tx*ez1, qz = tx*ey1 - ty*ex1;
+      const v = (dx*qx + dz*qz) * inv;
+      if (v < 0 || u + v > 1) continue;
+      const t = (ex2*qx + ey2*qy + ez2*qz) * inv;
+      if (t <= 0) continue;
+      if (!best || t > best.t){
+        let nx = ey1*ez2 - ez1*ey2, ny = ez1*ex2 - ex1*ez2, nz = ex1*ey2 - ey1*ex2;
+        const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+        if (nx*dx + nz*dz < 0){ nx = -nx; ny = -ny; nz = -nz; }   // vers l'extérieur
+        best = { t, p:[dx*t, oy, dz*t], n:[nx, ny, nz] };
+      }
+    }
+    return best && { p: best.p.map(v => v * HAUTEUR_TETE / 1.05), n: best.n };
+  }
+
+  /* ---- 3 bis, suite : le buste en hoodie noir, et sa cigarette ----
+     (demande du 25 sept. 2026 : « mets la tête sur un haut de buste en hoodie
+     noir avec une cigarette ; quand on clique il fume, et si on reste appuyé
+     et qu'il fume toute une cigarette d'un coup, ça débloque le secret ».)
+     Le buste n'est pas un fichier : il est bâti ici, dans la grammaire de la
+     tête — des anneaux de seize côtés empilés du milieu de la poitrine
+     jusqu'au col, des facettes plates, une texture de 64 × 32 lue au plus
+     proche. À la définition du rendu (160 pixels de côté), seize côtés en
+     superellipse font un torse de 1995 : les épaules, les bras tombants, le
+     col et la capuche se lisent à la silhouette, la lumière cuite fait le
+     reste.
+     Repère : celui de la tête une fois réduite (sortie de buildTete) — bas du
+     cou vers y = −0,38, cou reculé vers z = −0,12. L'ensemble est ensuite
+     réduit et remonté D'UN BLOC par CADRE_BUSTE pour tenir dans le cadre ;
+     l'origine du cadre tombe ainsi au bas du cou, et c'est là que le buste
+     pivote quand on le prend en main. */
+  const CADRE_S = 0.80, CADRE_Y = 0.21;       // relevés à l'écran : la tête en haut, le buste coupé par le bas du cadre
+  const BUSTE_BAS = -1.0;                     // la coupe, au milieu de la poitrine, juste sous le cadre au repos
+  const BUSTE_N = 16;
+  const superE = (t, n) => Math.sign(t) * Math.pow(Math.abs(t), 2 / n);   // 2 : ellipse ; au-delà, plus carré
+  const ANNEAUX = [
+    // y (null : le bord du col, voir colY), demi-largeur, demi-profondeur, centre en z, exposant
+    [BUSTE_BAS, 0.555, 0.21,  -0.10,  3.4],   // la coupe, bras compris
+    [-0.70,     0.585, 0.22,  -0.10,  3.4],   // le haut des bras, le plus large : un hoodie ample
+    [-0.56,     0.565, 0.21,  -0.105, 3.0],   // l'arrondi de l'épaule
+    [-0.47,     0.49,  0.19,  -0.11,  2.6],
+    [-0.405,    0.32,  0.165, -0.115, 2.2],   // le trapèze
+    [-0.35,     0.195, 0.15,  -0.115, 2.0],   // le pied du col
+    [null,      0.168, 0.14,  -0.115, 2.0],   // le bord du col : la capuche rabattue, épaisse autour du cou
+    [null,      0.132, 0.110, -0.12,  2.0],   // sa lèvre intérieure, qui rentre vers le cou
+  ];
+  /* Le bord du col monte vers la nuque, où la capuche rabattue le relève, et
+     plonge en V devant, là où ses deux pans se croisent — c'est ce V, et les
+     cordons qui en sortent, qui font lire un hoodie de face et non un col
+     roulé. */
+  const colY = phi => -0.295 + 0.075 * (1 - Math.cos(phi)) / 2 - 0.05 * Math.pow(Math.max(0, Math.cos(phi)), 6);
+  function pointAnneau(r, i){
+    const phi = (i % BUSTE_N) / BUSTE_N * 2 * Math.PI;
+    const [y0, a, b, cz, n] = ANNEAUX[r];
+    const y = r === 6 ? colY(phi) : r === 7 ? colY(phi) - 0.035 : y0;
+    return [a * superE(Math.sin(phi), n), y, cz + b * superE(Math.cos(phi), n)];
+  }
+  /* Les couleurs pleines, à droite de la texture du buste : un carré de 8
+     texels chacune, visé en son centre (lecture au plus proche, rien ne bave). */
+  const BUSTE_PAL = { cordon: [36/64, 0.5], ferret: [44/64, 0.5], dedans: [52/64, 0.5], fond: [60/64, 0.5] };
+  function texBuste(){
+    const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+    const g = c.getContext('2d');
+    /* Le molleton : un noir délavé plutôt qu'un noir pur — un vrai noir sur le
+       verre sombre du panneau ne serait plus qu'une découpe. Un grain à graine
+       FIXE, pour que la trame soit la même à chaque visite, et le bas un rien
+       plus sombre. */
+    const im = g.createImageData(32, 32), d = im.data;
+    let s = 20260925;
+    const alea = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++){
+      const v = 36 + (alea() - 0.5) * 7 - y * 0.18, o = (y * 32 + x) * 4;
+      d[o] = v; d[o+1] = v; d[o+2] = v + 4; d[o+3] = 255;
+    }
+    g.putImageData(im, 0, 0);
+    [['#e6e2d8', 32], ['#a7acb4', 40], ['#0a0a0c', 48], ['#121215', 56]].forEach(([col, x]) => { g.fillStyle = col; g.fillRect(x, 0, 8, 32); });
+    c.brut = true;
+    return c;
+  }
+  /* Des facettes plates, éclairées comme la tête (une normale par triangle,
+     lumière cuite). `dehors` dit où est l'extérieur : le sens des sommets est
+     remis d'après lui, ce qui dispense de le tenir à la main pour chaque
+     anneau. `lis` : le liseré ; `emet` et `ajout` : une surface qui ÉMET (la
+     braise), dont la lumière ne dépend plus de l'orientation. `cible` : un
+     maillage existant, réécrit sur place — la cigarette, qui change à chaque
+     image, garde ainsi ses tampons (voir bufs). */
+  function facettes(liste, cible){
+    const nV = liste.length * 3;
+    const data = cible ? cible.data : new Float32Array(nV * STRIDE), index = cible ? cible.index : new Uint16Array(nV);
+    let k = 0, zmin = 9, zmax = -9;
+    for (const f of liste){
+      let [a, b, c] = f.p, [ua, ub, uc] = f.uv;
+      const ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
+      const wx = c[0]-a[0], wy = c[1]-a[1], wz = c[2]-a[2];
+      let nx = uy*wz-uz*wy, ny = uz*wx-ux*wz, nz = ux*wy-uy*wx;
+      if (f.dehors && nx*f.dehors[0] + ny*f.dehors[1] + nz*f.dehors[2] < 0){
+        [b, c] = [c, b]; [ub, uc] = [uc, ub]; nx = -nx; ny = -ny; nz = -nz;
+      }
+      const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+      /* Le liseré ne va qu'aux flancs (|nz| petit). Celui de la tête, en
+         (1 − nz)³, allume aussi tout ce qui tourne le dos : sur un buste, c'était
+         le dos du hoodie tout entier, plus clair que le devant éclairé. */
+      const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.abs(nz), 3);
+      const fac = f.emet != null ? f.emet : 0.72 + 0.36 * dif;
+      const ajout = f.emet != null ? (f.ajout || 0) : rim * (f.lis == null ? 0.075 : f.lis);
+      [[a, ua], [b, ub], [c, uc]].forEach(([p, uv]) => {
+        const o = k * STRIDE;
+        data[o] = p[0]; data[o+1] = p[1]; data[o+2] = p[2];
+        data[o+3] = uv[0]; data[o+4] = uv[1];
+        data[o+5] = fac; data[o+6] = ajout;
+        index[k] = k; k++;
+        if (p[2] < zmin) zmin = p[2]; if (p[2] > zmax) zmax = p[2];
+      });
+    }
+    if (cible){ cible.v = (cible.v || 0) + 1; return cible; }
+    return { data, index, nFront: nV, nBack: 0, tris: liste.length, verts: nV, zmin, zmax, relief: true };
+  }
+  const quad = (F, a, b, c, d, ua, ub, uc, ud, f) => {
+    F.push(Object.assign({ p: [a, b, c], uv: [ua, ub, uc] }, f));
+    F.push(Object.assign({ p: [a, c, d], uv: [ua, uc, ud] }, f));
+  };
+  const v3 = {
+    sub: (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]],
+    add: (a, b, k) => [a[0]+b[0]*k, a[1]+b[1]*k, a[2]+b[2]*k],
+    cross: (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]],
+    norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; },
+  };
+  // un tube le long d'une ligne brisée : section carrée (les cordons) ou de `cotes` côtés (la cigarette)
+  function tube(F, pts, rayon, uv, f, cotes, bouche){
+    const n = cotes || 4;
+    let tPrec = [0, 0, 1];
+    for (let k = 0; k < pts.length - 1; k++){
+      const A = pts[k], B = pts[k + 1], AB = v3.sub(B, A);
+      // un morceau de longueur nulle garde la direction du précédent : ses côtés sont plats, mais son bouchon reste un bouchon
+      const t = Math.hypot(AB[0], AB[1], AB[2]) > 1e-7 ? v3.norm(AB) : tPrec;
+      tPrec = t;
+      const e1 = v3.norm(v3.cross(t, Math.abs(t[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0])), e2 = v3.cross(e1, t);
+      const ra = Array.isArray(rayon) ? rayon[k] : rayon, rb = Array.isArray(rayon) ? rayon[k + 1] : rayon;
+      const coin = (P, r, j) => { const a = (j + 0.5) / n * 2 * Math.PI, c = Math.cos(a) * r, s = Math.sin(a) * r;
+        return [P[0] + c*e1[0] + s*e2[0], P[1] + c*e1[1] + s*e2[1], P[2] + c*e1[2] + s*e2[2]]; };
+      const uvk = Array.isArray(uv[0]) ? uv[k] : uv;
+      for (let j = 0; j < n; j++){
+        const a = coin(A, ra, j), b = coin(A, ra, j + 1), c = coin(B, rb, j + 1), d = coin(B, rb, j);
+        const m = [(a[0]+b[0])/2 - A[0], (a[1]+b[1])/2 - A[1], (a[2]+b[2])/2 - A[2]];
+        quad(F, a, b, c, d, uvk, uvk, uvk, uvk, Object.assign({ dehors: m }, f && (Array.isArray(f) ? f[k] : f)));
+      }
+      if (bouche && k === pts.length - 2){
+        const fb = Object.assign({ dehors: t }, bouche.f);
+        for (let j = 0; j < n; j++) F.push(Object.assign({ p: [B, coin(B, rb, j), coin(B, rb, j + 1)], uv: [bouche.uv, bouche.uv, bouche.uv] }, fb));
+      }
+    }
+  }
+  function buildBuste(){
+    const F = [];
+    // le molleton : u fait le tour (moitié gauche de la texture), v descend du col à la coupe
+    const tissuUV = (i, y) => [0.004 + 0.488 * i / BUSTE_N, Math.min(0.98, Math.max(0.02, (-0.24 - y) / 0.76))];
+    // 1. le corps et le col, anneau par anneau
+    for (let r = 0; r < 6; r++){
+      const cz = ANNEAUX[r][3];
+      for (let i = 0; i < BUSTE_N; i++){
+        const a = pointAnneau(r, i), b = pointAnneau(r, i + 1), c = pointAnneau(r + 1, i + 1), d = pointAnneau(r + 1, i);
+        const dehors = [(a[0] + b[0] + c[0] + d[0]) / 4, 0, (a[2] + b[2] + c[2] + d[2]) / 4 - cz];
+        quad(F, a, b, c, d, tissuUV(i, a[1]), tissuUV(i + 1, b[1]), tissuUV(i + 1, c[1]), tissuUV(i, d[1]), { dehors, lis: 0.12 });
+      }
+    }
+    // 2. la lèvre du col : elle regarde vers le haut et vers le cou — l'envers du tissu, plus sombre
+    for (let i = 0; i < BUSTE_N; i++){
+      const a = pointAnneau(6, i), b = pointAnneau(6, i + 1), c = pointAnneau(7, i + 1), d = pointAnneau(7, i);
+      const dehors = [-(a[0] + b[0]) / 2, 0.6, -((a[2] + b[2]) / 2 + 0.115)];
+      quad(F, a, b, c, d, BUSTE_PAL.dedans, BUSTE_PAL.dedans, BUSTE_PAL.dedans, BUSTE_PAL.dedans, { dehors, lis: 0 });
+    }
+    // 3. le dessous, fermé : on peut retourner le buste dans la main
+    const fond = [0, BUSTE_BAS, ANNEAUX[0][3]];
+    for (let i = 0; i < BUSTE_N; i++)
+      F.push({ p: [fond, pointAnneau(0, i), pointAnneau(0, i + 1)], uv: [BUSTE_PAL.fond, BUSTE_PAL.fond, BUSTE_PAL.fond], dehors: [0, -1, 0], lis: 0 });
+    /* 4. la capuche, rabattue dans le dos : un ellipsoïde écrasé posé contre la
+       nuque, dont la moitié avant se perd dans le col et le haut du dos. */
+    const HC = [0, -0.315, -0.255], HR = [0.25, 0.165, 0.12], LAT = 5, LON = 12;
+    const pH = (la, lo) => { const th = -Math.PI / 2 + la / LAT * Math.PI, ph = lo / LON * 2 * Math.PI;
+      return [HC[0] + HR[0] * Math.cos(th) * Math.sin(ph), HC[1] + HR[1] * Math.sin(th), HC[2] + HR[2] * Math.cos(th) * Math.cos(ph)]; };
+    const hUV = (la, lo) => [0.26 + 0.2 * lo / LON, 0.08 + 0.3 * la / LAT];
+    for (let la = 0; la < LAT; la++) for (let lo = 0; lo < LON; lo++){
+      const a = pH(la, lo), b = pH(la, lo + 1), c = pH(la + 1, lo + 1), d = pH(la + 1, lo);
+      const m = [(a[0] + c[0]) / 2 - HC[0], (a[1] + c[1]) / 2 - HC[1], (a[2] + c[2]) / 2 - HC[2]];
+      quad(F, a, b, c, d, hUV(la, lo), hUV(la, lo + 1), hUV(la + 1, lo + 1), hUV(la + 1, lo), { dehors: m, lis: 0.12 });
+    }
+    /* 5. les cordons, blancs cassé, et leurs ferrets : c'est à eux qu'on
+       reconnaît un hoodie à cette taille, plus qu'à la capuche. Ils tombent du
+       col en suivant le bombé de la poitrine, à un souffle devant elle. */
+    const CORDON = [[0.062, -0.332, 0.018], [0.066, -0.41, 0.072], [0.070, -0.50, 0.102], [0.072, -0.61, 0.12]];
+    const FERRET = [[0.072, -0.61, 0.12], [0.073, -0.655, 0.123]];
+    [1, -1].forEach(sx => {
+      const m = pts => pts.map(p => [p[0] * sx, p[1], p[2]]);
+      tube(F, m(CORDON), 0.0065, BUSTE_PAL.cordon, { lis: 0.05 });
+      tube(F, m(FERRET), 0.0085, BUSTE_PAL.ferret, { lis: 0.05 }, 4, { uv: BUSTE_PAL.ferret, f: { lis: 0.05 } });
+    });
+    return facettes(F);
+  }
+  /* ---- la cigarette ----
+     Bâtie à chaque changement (elle se consume, sa cendre pousse puis tombe,
+     elle part d'une pichenette), toujours avec LE MÊME NOMBRE de triangles :
+     un morceau de longueur nulle en devient plat et ne se dessine pas, et le
+     tampon garde sa taille (voir bufs). Six côtés : à trois pixels de large,
+     un cylindre plus fin ne se verrait pas.
+     Longueurs en fraction de L : le filtre, puis le papier qui reste, la
+     braise, et la cendre qui la prolonge. */
+  const CLOPE = { L: 0.23, R: 0.0125, FILTRE: 0.27, BRAISE: 0.045, COTES: 6 };
+  // filtre, papier, cendre, puis la braise, de la plus sombre à la plus vive
+  const CLOPE_COUL = ['#c8964e', '#ece7dd', '#8f8a85', '#5a1608', '#94230a', '#d23e0c', '#ff761c', '#ffc05a', '#b77a3c'];
+  const clopeUV = i => [(i + 0.5) / CLOPE_COUL.length, 0.5];
+  /* La bouche : le coin droit des lèvres (pour qui regarde), relevé sur
+     l'atlas — les lèvres à la ligne 39,5 sur 64, leurs coins à ±9,5 texels du
+     milieu. On la prend un peu en dedans du coin, là où une cigarette tient. */
+  const BOUCHE_Y = 0.525 - 1.05 * 39.5 / 64;
+  let bouche = null;
+  function lesLevres(){
+    if (bouche) return bouche;
+    const coin = impactTete(0.34, BOUCHE_Y), milieu = impactTete(0, BOUCHE_Y);
+    /* `nm` : la direction du souffle. Droit devant, un rien vers le bas — et
+       non la normale de la facette sous la bouche, penchée d'un côté : de
+       face, toute la fumée partait à droite. */
+    bouche = { coin: coin ? coin.p : [0.08, -0.09, 0.25], n: coin ? coin.n : [0, 0, 1],
+               milieu: milieu ? milieu.p : [0, -0.09, 0.26], nm: v3.norm([0, -0.2, 1]) };
+    return bouche;
+  }
+  /* `etat` : { papier (1 → 0), cendre (en fraction de L), chaleur (0 → 1),
+     leve (0 → 1 : les lèvres qui serrent pendant qu'il tire relèvent le
+     bout), jet (null, ou { t : 0 → 1 } pendant la pichenette) }. Rend aussi
+     les points que le calque 2D projette : le bout, la braise, la bouche. */
+  function poseClope(etat){
+    const B = lesLevres();
+    // vers l'avant, le dehors et le bas : de face, elle se voit de profil au lieu de pointer vers nous
+    const D = v3.norm([0.5, -0.44 + 0.22 * (etat.leve || 0), 1.0]);
+    let A = v3.add(v3.add(B.coin, B.n, 0.004), D, -0.035);
+    const L = CLOPE.L, P = CLOPE.FILTRE + etat.papier * (1 - CLOPE.FILTRE - CLOPE.BRAISE);
+    const s = [-0.06, CLOPE.FILTRE, P, P + CLOPE.BRAISE, P + CLOPE.BRAISE + etat.cendre];
+    let pts = s.map(k => v3.add(A, D, k * L));
+    // la pichenette : elle tourne sur elle-même en s'envolant, puis retombe
+    if (etat.jet){
+      const u = etat.jet.t, cx = pts[2];
+      const ang = u * 7.5, ax = v3.norm(v3.cross(D, [0, 1, 0]));
+      const c = Math.cos(ang), sn = Math.sin(ang);
+      const rot = p => { const q = v3.sub(p, cx), d = q[0]*ax[0] + q[1]*ax[1] + q[2]*ax[2], cr = v3.cross(ax, q);
+        return [cx[0] + q[0]*c + cr[0]*sn + ax[0]*d*(1-c), cx[1] + q[1]*c + cr[1]*sn + ax[1]*d*(1-c), cx[2] + q[2]*c + cr[2]*sn + ax[2]*d*(1-c)]; };
+      const dep = [0.34 * u, 0.30 * u - 1.45 * u * u, 0.22 * u];
+      pts = pts.map(p => { const r = rot(p); return [r[0] + dep[0], r[1] + dep[1], r[2] + dep[2]]; });
+    }
+    const niveau = 3 + Math.min(4, Math.floor((etat.chaleur || 0) * 5));
+    return { pts, D, niveau, bout: pts[4], braise: v3.add(pts[2], v3.sub(pts[3], pts[2]), 0.5), levres: pts[0] };
+  }
+  function batirClope(etat, cible){
+    const F = [], p = poseClope(etat), R = CLOPE.R;
+    const ch = etat.chaleur || 0;
+    const braise = { emet: 1.0 + 0.22 * ch, ajout: 0.03 + 0.09 * ch };
+    tube(F, p.pts, [R, R, R, R * 0.96, R * 0.9],
+      [clopeUV(0), clopeUV(1), clopeUV(p.niveau), clopeUV(2)],
+      [{ lis: 0.08 }, { lis: 0.08 }, braise, { lis: 0.05 }], CLOPE.COTES,
+      { uv: clopeUV(etat.cendre > 0.004 ? 2 : p.niveau), f: etat.cendre > 0.004 ? { lis: 0.05 } : braise });
+    return facettes(F, cible);
   }
 
   /* ---- 3 ter. le mannequin du salon d'essayage ----
@@ -8239,11 +8847,12 @@ const model3d = (() => {
   let orient = ident();
   let vX = 0, vY = 0;                 // radians par milliseconde, axes de l'écran
   /* Total de rotation VOULUE depuis le chargement, en radians. Le tour de repos
-     n'y entre pas — sinon le compteur monterait tout seul et ce qui en dépend
-     s'ouvrirait sans que personne n'ait touché à rien. Ne comptent donc que ce
-     que la main commande et l'élan qu'elle a donné, c'est-à-dire la part de la
-     vitesse qui DÉPASSE le repos. */
-  let cumul = 0, surTour = null;
+     n'y entre pas. Ne comptent que ce que la main commande et l'élan qu'elle a
+     donné, c'est-à-dire la part de la vitesse qui DÉPASSE le repos. Il ouvrait
+     la pièce secrète jusqu'au 25 sept. 2026 (vingt tours de tête) ; c'est la
+     cigarette qui l'ouvre depuis (voir « il fume »), et il ne sert plus qu'au
+     contrôle (model3d.debug). */
+  let cumul = 0;
   const AMORTI_MS = 700;              // l'élan s'éteint en deux à trois secondes, comme un cube qu'on pousse
   const SUIVI_MS = 120;               // tenir sans bouger, c'est s'arrêter : l'élan retombe vite sous la main
   const V_MAX = 0.010;                // plafond : environ un tour et demi par seconde, au-delà on ne voit plus rien
@@ -8255,7 +8864,6 @@ const model3d = (() => {
   function compter(r){
     if (!(r > 0)) return;
     cumul += r;
-    if (surTour) surTour(cumul);
   }
   /* ---- retour à la verticale ----
      Pendant le geste et tant que l'élan dure, la tête part où on l'a poussée,
@@ -8386,11 +8994,16 @@ const model3d = (() => {
   const PS1_ECRAN = 256;   // plafond : la définition d'un mode de la machine
   const PS1_GROS = 2;      // un texel de console pour deux pixels d'écran
   let pixel = false, teteAffichee = false;
+  /* La loupe de la fiche (voir `loupe`) agrandit la vue par CSS : le tampon
+     grandit avec elle, pour que le modèle reste net de près. Plafonné : au-delà
+     de 2 400 pixels de côté, la carte graphique paierait cher un détail que
+     l'œil ne voit plus. */
+  let loupeZ = 1;
   function resize(){
     if (!swatchW) swatchW = swatch.clientWidth; // mesuré au premier affichage et à chaque redimensionnement
     const s = pixel
       ? Math.min(PS1_ECRAN, Math.max(128, Math.round(swatchW / PS1_GROS / 16) * 16))
-      : Math.max(64, Math.round(swatchW * Math.min(2, (window.devicePixelRatio || 1) * SUR)));
+      : Math.min(2400, Math.max(64, Math.round(swatchW * Math.min(2, (window.devicePixelRatio || 1) * SUR) * loupeZ)));
     if (canvas.width !== s){ canvas.width = s; canvas.height = s; }
     canvas.classList.toggle('pixel', pixel);
   }
@@ -8476,6 +9089,15 @@ const model3d = (() => {
       // aucun retour à une pose (voir « l'orientation libre de la tête ») ; ps1 :
       // grille de sommets et placage affine (voir uPS1)
       const a = { mesh, texF: tex, texB: tex, saisir: true, ps1: true, eclat3d: true };
+      /* Le buste et la cigarette : deux modèles de plus, dessinés à la suite de
+         la tête avec la même orientation et la même mise en place (`cadre`,
+         partagé et remis à jour à chaque image — voir fumeur.cadre). */
+      let corps = meshes.get('buste|hoodie');
+      if (!corps){ corps = buildBuste(); meshes.set('buste|hoodie', corps); }
+      const tb = texBuste(), tc = palette(CLOPE_COUL);
+      a.cadre = cadreBuste;
+      a.buste = { corps: { mesh: corps, texF: tb, texB: tb, ps1: true, cadre: cadreBuste },
+                  clope: { mesh: fumeur.maillage(), texF: tc, texB: tc, ps1: true, cadre: cadreBuste } };
       ready.set(key, a);
       if (list) list.warm(a);
       return a;
@@ -8977,46 +9599,45 @@ const model3d = (() => {
   // point et normale de la surface à un endroit donné, calculés une fois par maillage
   function pointsEclat(mesh){
     if (mesh.eclats !== undefined) return mesh.eclats;
-    mesh.eclats = ECLATS.map(E => {
-      const oy = E.y, dx = Math.sin(E.th), dz = Math.cos(E.th);
-      let best = null;
-      for (let k = 0; k < TETE_TRI.length; k += 6){
-        const A = TETE_TRI[k]*3, B = TETE_TRI[k+2]*3, C = TETE_TRI[k+4]*3;
-        const ax = TETE_XYZ[A], ay = TETE_XYZ[A+1], az = TETE_XYZ[A+2];
-        const ex1 = TETE_XYZ[B]-ax, ey1 = TETE_XYZ[B+1]-ay, ez1 = TETE_XYZ[B+2]-az;
-        const ex2 = TETE_XYZ[C]-ax, ey2 = TETE_XYZ[C+1]-ay, ez2 = TETE_XYZ[C+2]-az;
-        // Möller–Trumbore, avec un rayon horizontal (dy = 0) parti de l'axe
-        const px = -dz*ey2, py = dz*ex2 - dx*ez2, pz = dx*ey2;
-        const det = ex1*px + ey1*py + ez1*pz;
-        if (Math.abs(det) < 1e-9) continue;
-        const inv = 1/det, tx = -ax, ty = oy-ay, tz = -az;
-        const u = (tx*px + ty*py + tz*pz) * inv;
-        if (u < 0 || u > 1) continue;
-        const qx = ty*ez1 - tz*ey1, qy = tz*ex1 - tx*ez1, qz = tx*ey1 - ty*ex1;
-        const v = (dx*qx + dz*qz) * inv;
-        if (v < 0 || u + v > 1) continue;
-        const t = (ex2*qx + ey2*qy + ez2*qz) * inv;
-        if (t <= 0) continue;
-        if (!best || t > best.t){
-          let nx = ey1*ez2 - ez1*ey2, ny = ez1*ex2 - ex1*ez2, nz = ex1*ey2 - ey1*ex2;
-          const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-          if (nx*dx + nz*dz < 0){ nx = -nx; ny = -ny; nz = -nz; }   // vers l'extérieur
-          best = { t, p:[dx*t, oy, dz*t], n:[nx, ny, nz] };
-        }
-      }
-      return best && { E, p: best.p.map(v => v * HAUTEUR_TETE / 1.05), n: best.n };
-    }).filter(Boolean);
+    // le point de la surface à cet angle et cette hauteur (voir impactTete)
+    mesh.eclats = ECLATS.map(E => { const h = impactTete(E.th, E.y); return h && { E, p: h.p, n: h.n }; }).filter(Boolean);
     return mesh.eclats;
   }
   /* Le calque : un canvas 2D posé sur celui du rendu, dans la même case. Il est
-     effacé à chaque image et ne porte jamais que les éclats — rien d'autre du
-     modèle n'a de raison d'y monter. */
+     effacé à chaque image et ne porte que ce que la 3D ne sait pas faire : les
+     éclats du piercing, et depuis le 25 sept. 2026 la fumée, la lueur de la
+     braise et la flamme du briquet (voir `fumeur`). La fumée qui part DERRIÈRE
+     la tête va sur un second calque, posé sous le rendu (`teteFxFond`) : la
+     tête la cache alors d'elle-même. */
   const fx = document.getElementById('teteFx');
   const fxg = fx ? fx.getContext('2d') : null;
+  const fxFond = document.getElementById('teteFxFond');
+  const fxFondG = fxFond ? fxFond.getContext('2d') : null;
   let grains = [];
-  function peindreEclat(a, ang, libre){
+  /* L'orientation du modèle et sa mise en place, et de quoi projeter un point
+     du modèle sur le calque (pixels CSS de la case) : `z` est sa profondeur
+     vers le spectateur, `derriere` dit s'il passe derrière le milieu de la
+     tête — la fumée qui en sort ira sous le rendu. */
+  const ptM = (m, x, y, z, wp) => [m[0]*x + m[4]*y + m[8]*z + m[12]*wp,
+                                   m[1]*x + m[5]*y + m[9]*z + m[13]*wp,
+                                   m[2]*x + m[6]*y + m[10]*z + m[14]*wp,
+                                   m[3]*x + m[7]*y + m[11]*z + m[15]*wp];
+  function projecteur(a, ang, libre){
+    const R0 = mul(rotX(BASCULE), libre || rotY(ang));
+    const M = a && a.cadre ? mul(R0, a.cadre) : R0, MVP = mul(PV, M);
+    const w = swatchW || swatch.clientWidth || 1, zc = M[14];
+    const f = p => {
+      const c = ptM(MVP, p[0], p[1], p[2], 1), vz = ptM(M, p[0], p[1], p[2], 1)[2];
+      const cw = c[3] > 1e-6 ? c[3] : 1e-6;
+      return { x: (c[0]/cw * 0.5 + 0.5) * w, y: (0.5 - c[1]/cw * 0.5) * w, z: vz, derriere: vz < zc - 0.02 };
+    };
+    f.R0 = R0; f.M = M; f.MVP = MVP; f.w = w;
+    return f;
+  }
+  function peindreCalques(a, ang, libre, t){
     if (!fxg) return;
     const liste = (a && a.eclat3d && a.mesh) ? pointsEclat(a.mesh) : null;
+    const fume = !!(a && a.buste);
     /* On dessine toujours en pixels CSS, le tampon suivant la densité de
        l'écran — sauf en mode console, où l'éclat prend la MÊME définition que
        le rendu (le tampon du canvas, voir resize) et le même agrandissement au
@@ -9028,24 +9649,28 @@ const model3d = (() => {
     const w = swatchW || swatch.clientWidth;
     if (!w) return;
     const k = pixel ? canvas.width / w : dprCap(), px = pixel ? canvas.width : Math.round(w * k);
-    if (fx.width !== px){ fx.width = fx.height = px; }
-    fx.classList.toggle('pixel', pixel);
-    fxg.setTransform(k, 0, 0, k, 0, 0);
-    fxg.clearRect(0, 0, w, w);
-    if (!liste || !liste.length){ fx.hidden = true; grains.length = 0; return; }
+    [[fx, fxg], [fxFond, fxFondG]].forEach(([c, g]) => {
+      if (!c) return;
+      if (c.width !== px){ c.width = c.height = px; }
+      c.classList.toggle('pixel', pixel);
+      g.setTransform(k, 0, 0, k, 0, 0);
+      g.clearRect(0, 0, w, w);
+    });
+    if (fxFond) fxFond.hidden = !fume;
+    if ((!liste || !liste.length) && !fume){ fx.hidden = true; grains.length = 0; return; }
     fx.hidden = false;
-    const M = mul(rotX(BASCULE), libre || rotY(ang)), MVP = mul(PV, M);
-    const pt = (m, x, y, z, wp) => [m[0]*x + m[4]*y + m[8]*z + m[12]*wp,
-                                    m[1]*x + m[5]*y + m[9]*z + m[13]*wp,
-                                    m[2]*x + m[6]*y + m[10]*z + m[14]*wp,
-                                    m[3]*x + m[7]*y + m[11]*z + m[15]*wp];
-    const t = performance.now(), R = Math.max(3, w * 0.013);
+    const P = projecteur(a, ang, libre), M = P.R0, MVP = P.MVP;
+    const pt = ptM;
+    t = t || performance.now();
+    const R = Math.max(3, w * 0.013);
+    if (fume) fumeur.peindre(fxg, fxFondG, P, t);
+    if (!liste || !liste.length) return;
     fxg.save();
     fxg.globalCompositeOperation = 'lighter';
     liste.forEach((e, idx) => {
       const c = pt(MVP, e.p[0], e.p[1], e.p[2], 1);
       if (c[3] <= 0) return;
-      const nx = pt(M, e.n[0], e.n[1], e.n[2], 0);
+      const nx = pt(M, e.n[0], e.n[1], e.n[2], 0);   // la normale : l'orientation seule, sans la réduction du cadre
       // la facette regarde-t-elle le spectateur ? l'éclat s'éteint en s'en allant
       const face = Math.max(0, Math.min(1, (nx[2] - 0.10) / 0.45));
       if (face <= 0.001) return;
@@ -9092,11 +9717,292 @@ const model3d = (() => {
     });
     fxg.restore();
   }
+  /* ---- IL FUME (25 sept. 2026) ----
+     Le buste de la page Info a une cigarette au coin des lèvres. Un CLIC, et
+     il tire une bouffée : la braise s'avive, le papier recule, et il recrache
+     la fumée. S'il reste APPUYÉ, il continue de tirer — la braise remonte vers
+     le filtre, la cendre s'allonge, le visage rougit, les mains tremblent — et
+     s'il finit la cigarette D'UN SEUL TRAIT, il tousse, la tête lui tourne, et
+     la pièce secrète s'ouvre (voir surClope, et côté boutique l'œuf de la
+     tête). C'est ce geste qui l'ouvre désormais, et non plus vingt tours de
+     tête à la main.
+     « D'un coup » se tient tout seul : une cigarette entamée sous les trois
+     quarts est jetée d'une pichenette après la bouffée, et il en rallume une
+     neuve. Un appui part donc toujours d'au moins les trois quarts d'une
+     cigarette, et des clics répétés ne la finissent jamais — ils la font
+     seulement remplacer.
+     Tout vit ici, dans le module 3D, parce que tout se DESSINE ici : la
+     cigarette est un maillage (voir batirClope), la fumée un calque 2D
+     projeté depuis les points du modèle. La boutique n'apprend qu'une chose,
+     qu'une cigarette a été fumée d'un trait. */
+  const cadreBuste = new Float32Array(16);
+  const fumeur = (() => {
+    const BRULE_MS = 5000;        // une cigarette entière, tirée d'un seul trait
+    const MIN_TIRE = 380;         // un clic tire au moins cela
+    const RALLUMER = 0.75;        // sous les trois quarts, la suivante est neuve
+    const JET_MS = 650, ALLUME_MS = 1050, VERTIGE_MS = 3600;
+    const etat = { papier: 1, cendre: 0, chaleur: 0.22, leve: 0, jet: null };
+    let phase = 'repos', t0 = 0, relache = false, debut = 1, poumons = 0;
+    let souffleT = 0, souffleF = 0, souffleD = 0, jetT = 0, allumeT = 0, vertigeT = 0;
+    let rouge = 0, tremble = 0, arret = null, brin = 0, crepT = 0, rafales = [];
+    let surFin = null, mesh = null, signe = '';
+    const parts = [];   // fumée, volutes, cendre, étincelles
+    const vers = (cle, cible, dt, tau) => { etat[cle] += (cible - etat[cle]) * (1 - Math.exp(-dt / tau)); };
+    // la braise au repos : elle couve, et respire lentement
+    const couve = t => 0.2 + 0.06 * Math.sin(t / 900) + 0.03 * Math.sin(t / 370);
+    function maillage(){ if (!mesh){ mesh = batirClope(etat); mesh.v = 0; } return mesh; }
+    function couper(){ if (arret){ arret(); arret = null; } }
+    function appuyer(t){
+      if (phase === 'jet' || phase === 'allume') return;   // rien aux lèvres : on attend la suivante
+      phase = 'aspire'; t0 = t; relache = false; debut = etat.papier; poumons = 0;
+      couper(); arret = sfx.aspiration();
+    }
+    function souffler(t, force){
+      couper();
+      phase = 'souffle'; souffleT = t;
+      souffleF = force != null ? force : poumons;
+      souffleD = 320 + 900 * Math.min(1.7, souffleF);
+      poumons = 0;
+      if (souffleF > 0.04) sfx.souffle(souffleF);
+    }
+    function relacher(t){ if (phase === 'aspire'){ relache = true; if (t - t0 >= MIN_TIRE) souffler(t); } }
+    // la main a pris le buste pour le tourner : il recrache ce qu'il a tiré
+    function annuler(t){ if (phase === 'aspire') souffler(t); }
+    function finir(t, P){
+      etat.papier = 0;
+      const entiere = debut >= RALLUMER - 0.01;
+      souffler(t, 1.7);
+      for (let i = 0; i < 24; i++) bouffee(P, t, 1.7, 0, 1.3);   // le gros nuage d'un coup, avant la suite du souffle
+      sfx.toux();
+      rafales = [t + 260, t + 480, t + 640];   // la fumée des quintes
+      vertigeT = t;
+      if (entiere && surFin) setTimeout(() => { if (surFin) surFin(); }, 950);
+    }
+    /* Le temps de la cigarette est le temps RÉEL entre deux images, et non le
+       pas plafonné du reste du module (60 ms) : sur une machine qui rame, le
+       plafond ralentirait la combustion, et « cinq secondes d'appui »
+       deviendraient huit. Borné quand même, pour qu'un retour d'onglet ne la
+       consume pas d'un coup. */
+    let derniere = 0;
+    function vivre(t, dt, P){
+      if (derniere && t > derniere) dt = Math.min(250, t - derniere);
+      derniere = t;
+      const s = Math.min(0.25, dt / 1000);
+      if (phase === 'aspire'){
+        const dure = t - t0, k = Math.min(1, 0.35 + dure / 700);   // le tirage monte en puissance
+        const avant = etat.papier;
+        etat.papier = Math.max(0, etat.papier - s * 1000 / BRULE_MS * k);
+        etat.cendre += (avant - etat.papier) * (1 - CLOPE.FILTRE - CLOPE.BRAISE) * 0.85;   // la cendre se tasse un peu
+        poumons = Math.min(1.6, poumons + s / 1.8);
+        vers('chaleur', Math.min(1, 0.72 + dure / 2600), dt, 110);
+        vers('leve', 1, dt, 160);
+        rouge = Math.max(rouge, Math.min(1, (dure - 1800) / 2800));
+        tremble = Math.max(0, Math.min(1, (dure - 3000) / 1500));
+        if (t >= crepT){ sfx.crepite(etat.chaleur); crepT = t + 40 + Math.random() * (170 - 100 * etat.chaleur); }
+        if (etat.chaleur > 0.7 && Math.random() < s * 10) etincelle(P, t);
+        if (etat.cendre > 0.24) tombeCendre(P, t);   // trop longue, elle casse
+        if (etat.papier <= 0) finir(t, P);
+        else if (relache && dure >= MIN_TIRE) souffler(t);
+      } else {
+        const uA = t - allumeT;
+        const cible = phase === 'jet' ? 0 : phase === 'allume' ? (uA > 220 && uA < 700 ? 0.9 : couve(t)) : couve(t);
+        vers('chaleur', cible, dt, phase === 'allume' ? 140 : 450);
+        vers('leve', phase === 'allume' && uA > 200 && uA < 700 ? 0.8 : 0, dt, 220);
+        rouge = Math.max(0, rouge - s / 1.4);
+        tremble = 0;
+        if (phase === 'souffle' && t - souffleT > souffleD + 420){
+          phase = 'repos';
+          if (etat.papier < RALLUMER){ phase = 'jet'; jetT = t; etat.jet = { t: 0 }; couper(); }
+        }
+        if (phase === 'jet'){
+          etat.jet.t = Math.min(1, (t - jetT) / JET_MS);
+          if (etat.jet.t >= 1){
+            etat.jet = null; etat.papier = 1; etat.cendre = 0; etat.chaleur = 0;
+            phase = 'allume'; allumeT = t; sfx.briquet();
+          }
+        } else if (phase === 'allume' && uA > ALLUME_MS){
+          souffler(t, 0.3);    // la première bouffée, celle qui l'allume
+        }
+        if (etat.cendre > 0.1 && phase !== 'jet' && Math.random() < s * 0.45) tombeCendre(P, t);
+      }
+      // le maillage ne repart au GPU que s'il a changé à l'œil
+      const sig = [etat.papier.toFixed(4), etat.cendre.toFixed(4), Math.floor(etat.chaleur * 5), etat.leve.toFixed(3), etat.jet ? etat.jet.t.toFixed(3) : '-'].join('|');
+      if (sig !== signe){ signe = sig; batirClope(etat, maillage()); }
+      emettre(t, dt, P);
+    }
+    // ---- ce qui sort de la cigarette et de la bouche ----
+    const hasard = (a, b) => a + Math.random() * (b - a);
+    function etincelle(P, t){
+      const b = P(poseClope(etat).braise);
+      parts.push({ g: 'etincelle', x: b.x, y: b.y, vx: hasard(-26, 26), vy: hasard(-40, -8), r: 0.7, dr: 0, a: 1, t0: t, vie: hasard(180, 340), fond: b.derriere });
+    }
+    function tombeCendre(P, t){
+      const p = poseClope(etat), b = P(v3.add(p.braise, v3.sub(p.bout, p.braise), 0.6));
+      const long = etat.cendre;
+      etat.cendre = 0;
+      parts.push({ g: 'cendre', x: b.x, y: b.y, vx: hasard(-6, 6), vy: hasard(-4, 6), r: Math.max(1, P.w * 0.004 + long * P.w * 0.03), dr: 0, a: 0.9, t0: t, vie: 900, fond: b.derriere });
+    }
+    // `jet` : un souffle plus sec (la toux, le nuage d'une cigarette finie)
+    function bouffee(P, t, f, u, jet){
+      const B = lesLevres(), m = P(B.milieu), av = P(v3.add(B.milieu, B.nm, 0.2));
+      let dx = av.x - m.x, dy = av.y - m.y;
+      const l = Math.hypot(dx, dy), w = P.w;
+      /* Face au spectateur, le « devant » de la bouche se projette sur un
+         point : la fumée vient VERS nous. Elle ne file alors nulle part, elle
+         s'étale sur place et grossit plus vite. */
+      const face = Math.max(0, 1 - l / (w * 0.05));
+      const v0 = (34 + 46 * Math.min(1, f)) * (1 - u * 0.55) * (1 - face * 0.8) * hasard(0.55, 1.25) * (jet || 1);
+      const a = Math.atan2(dy, dx) + hasard(-0.55, 0.55);
+      const e = 10 * (1 + 2.2 * face);
+      parts.push({ g: 'fumee', x: m.x + hasard(-1.5, 1.5), y: m.y + hasard(-1, 1), vx: Math.cos(a) * v0 + hasard(-e, e), vy: Math.sin(a) * v0 - 3 + hasard(-e, e),
+        // de face, les bouffées s'empilent au même endroit : chacune y est plus pâle, sans quoi le nuage tourne à la boule de coton
+        r: hasard(1.6, 3), dr: hasard(9, 20) * (1 + 0.8 * face), a: (hasard(0.1, 0.17) + 0.07 * Math.min(1, f)) * (1 - 0.4 * face), t0: t, vie: hasard(1600, 2900), fond: m.derriere, ph: Math.random() * 6 });
+    }
+    function emettre(t, dt, P){
+      // la volute du bout : un fil bleuté qui monte en ondulant, tant qu'il y a une cigarette allumée
+      if (phase !== 'jet' && !reduced && t >= brin){
+        const b = P(poseClope(etat).bout);
+        parts.push({ g: 'volute', x: b.x, y: b.y, vx: hasard(-2, 2), vy: hasard(-15, -10), r: 0.8, dr: hasard(2.6, 4.2), a: 0.13 + 0.08 * etat.chaleur, t0: t, vie: hasard(1700, 2600), fond: b.derriere, ph: Math.random() * 6 });
+        brin = t + hasard(85, 150);
+      }
+      // l'expiration, par la bouche
+      if (phase === 'souffle' && t - souffleT < souffleD){
+        const u = (t - souffleT) / souffleD;
+        let n = (20 + 26 * Math.min(1.7, souffleF)) * (1 - u * 0.6) * dt / 1000;
+        for (; n > 0; n--) if (n >= 1 || Math.random() < n) bouffee(P, t, souffleF, u);
+      }
+      // les quintes de toux : trois bouffées sèches
+      while (rafales.length && rafales[0] <= t){ rafales.shift(); for (let i = 0; i < 10; i++) bouffee(P, t, 1, 0, 1.35); }
+      // le vieillissement de tout ce qui est sorti : la fumée freine, monte, et ondule
+      const s = dt / 1000, frein = Math.exp(-dt / 850);
+      for (let i = parts.length - 1; i >= 0; i--){
+        const q = parts[i];
+        if (t - q.t0 >= q.vie){ parts.splice(i, 1); continue; }
+        if (q.g === 'fumee'){ q.vx = q.vx * frein + Math.sin((t - q.t0) / 330 + q.ph) * 7 * s; q.vy = q.vy * frein - 12 * s; }
+        else if (q.g === 'volute'){ q.vx = Math.sin((t - q.t0) / 380 + q.ph) * 5; }
+        else { q.vy += (q.g === 'cendre' ? 300 : 170) * s; }
+        q.x += q.vx * s; q.y += q.vy * s; q.r += q.dr * s;
+      }
+      if (parts.length > 260) parts.splice(0, parts.length - 260);
+    }
+    // ---- la peinture : fumée, lueur de la braise, flamme du briquet ----
+    function peindre(devant, fond, P, t){
+      for (const q of parts){
+        const g = q.fond ? fond : devant;
+        if (!g) continue;
+        const p = (t - q.t0) / q.vie;
+        if (q.g === 'fumee' || q.g === 'volute'){
+          const al = q.a * Math.pow(1 - p, 1.4) * Math.min(1, p / 0.08);
+          if (al < 0.004) continue;
+          const col = q.g === 'fumee' ? '226,226,230' : '190,204,232';   // la fumée du bout est plus bleue que celle qu'on recrache
+          const h = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r);
+          h.addColorStop(0, `rgba(${col},${al})`); h.addColorStop(0.55, `rgba(${col},${al * 0.55})`); h.addColorStop(1, `rgba(${col},0)`);
+          g.fillStyle = h; g.beginPath(); g.arc(q.x, q.y, q.r, 0, 7); g.fill();
+        } else if (q.g === 'cendre'){
+          g.fillStyle = `rgba(150,146,140,${q.a * (1 - p)})`;
+          g.fillRect(q.x - q.r / 2, q.y - q.r / 2, q.r, q.r * 0.8);
+        } else {
+          g.save(); g.globalCompositeOperation = 'lighter';
+          g.fillStyle = `rgba(255,${Math.round(200 - 110 * p)},60,${1 - p})`;
+          g.fillRect(q.x - 0.6, q.y - 0.6, 1.3, 1.3);
+          g.restore();
+        }
+      }
+      if (phase === 'jet' && etat.jet && etat.jet.t > 0.9) return;
+      // la lueur de la braise : elle dit la chaleur bien mieux que trois pixels orange
+      const pose = poseClope(etat), b = P(pose.braise), gb = b.derriere ? fond : devant;
+      if (gb){
+        const ch = etat.chaleur, R = P.w * (0.012 + 0.03 * ch);
+        gb.save(); gb.globalCompositeOperation = 'lighter';
+        const h = gb.createRadialGradient(b.x, b.y, 0, b.x, b.y, R);
+        h.addColorStop(0, `rgba(255,170,80,${0.18 + 0.5 * ch})`);
+        h.addColorStop(0.4, `rgba(255,90,30,${0.08 + 0.22 * ch})`);
+        h.addColorStop(1, 'rgba(255,60,20,0)');
+        gb.fillStyle = h; gb.beginPath(); gb.arc(b.x, b.y, R, 0, 7); gb.fill();
+        gb.restore();
+      }
+      // la flamme du briquet, tenue sous le bout le temps qu'elle prenne
+      const uA = t - allumeT;
+      if (phase === 'allume' && uA > 40 && uA < 700){
+        const tp = P(pose.bout), gf = tp.derriere ? fond : devant;
+        if (gf){
+          const H = P.w * 0.085 * (0.85 + 0.3 * Math.random()), W = H * 0.42;
+          const x = tp.x + hasard(-0.4, 0.4), y0 = tp.y + H * 0.38;
+          gf.save(); gf.globalCompositeOperation = 'lighter';
+          const flamme = (h, l, col) => {
+            gf.fillStyle = col; gf.beginPath();
+            gf.moveTo(x, y0 - h);
+            gf.bezierCurveTo(x + l * 0.9, y0 - h * 0.45, x + l * 0.7, y0, x, y0);
+            gf.bezierCurveTo(x - l * 0.7, y0, x - l * 0.9, y0 - h * 0.45, x, y0 - h);
+            gf.fill();
+          };
+          flamme(H, W, 'rgba(255,140,40,0.55)');
+          flamme(H * 0.72, W * 0.62, 'rgba(255,214,120,0.8)');
+          flamme(H * 0.3, W * 0.5, 'rgba(120,160,255,0.55)');   // le pied bleu
+          gf.restore();
+        }
+      }
+    }
+    // ---- ce que le rendu lui demande ----
+    // le visage qui rougit : une teinte sur la tête seule, avant l'éclairage (voir uTint)
+    const teinte = () => rouge > 0.01 ? [0.78, 0.16, 0.12, 0.17 * rouge] : null;
+    // la cigarette apparaît au briquet, et s'efface en tombant hors du cadre
+    const alpha = t => phase === 'allume' ? Math.min(1, (t - allumeT) / 120) : etat.jet ? Math.min(1, (1 - etat.jet.t) / 0.35) : 1;
+    /* La mise en place du buste, et ce qui la dérange : le tremblement de la
+       fin d'un long tirage, et le VERTIGE d'une cigarette finie d'un trait — le
+       buste oscille autour de sa coupe, comme on tangue quand la tête tourne. */
+    const T = (x, y, z) => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]);
+    const S = new Float32Array([CADRE_S,0,0,0, 0,CADRE_S,0,0, 0,0,CADRE_S,0, 0,0,0,1]);
+    function cadre(t){
+      let jx = 0, jy = 0;
+      if (tremble > 0 && !reduced){ jx = (Math.random() - 0.5) * 0.007 * tremble; jy = (Math.random() - 0.5) * 0.005 * tremble; }
+      let m = mul(T(jx, CADRE_Y + jy, 0), S);
+      if (vertigeT){
+        const u = (t - vertigeT) / VERTIGE_MS;
+        if (u >= 1 || reduced) vertigeT = 0;
+        else {
+          const amp = 0.10 * (1 - u) * (1 - u), e = t - vertigeT;
+          const R = mul(rotAxe(0, 0, 1, amp * Math.sin(e / 210)), rotX(amp * 0.55 * Math.sin(e / 290 + 1.3)));
+          m = mul(m, mul(T(0, BUSTE_BAS, 0), mul(R, T(0, -BUSTE_BAS, 0))));
+        }
+      }
+      cadreBuste.set(m);
+      return cadreBuste;
+    }
+    function remettre(){
+      couper();
+      phase = 'repos'; relache = false; rafales = []; vertigeT = 0; rouge = 0; tremble = 0;
+      etat.jet = null; etat.leve = 0;
+      if (etat.papier < RALLUMER){ etat.papier = 1; etat.cendre = 0; }
+      parts.length = 0;
+    }
+    return {
+      appuyer, relacher, annuler, vivre, peindre, teinte, alpha, cadre, remettre, couper, maillage,
+      tire: () => phase === 'aspire', depuis: () => t0,
+      surFin: fn => { surFin = fn; },
+      debug: () => ({ phase, papier: +etat.papier.toFixed(3), cendre: +etat.cendre.toFixed(3), chaleur: +etat.chaleur.toFixed(2), parts: parts.length }),
+    };
+  })();
+  cadreBuste.set(fumeur.cadre(0));
   let debugSide = ''; // contrôle : ne dessiner qu'une face ('front' | 'back' | '')
-  function draw(){
+  function draw(t, dt){
     const libre = (current && (current.saisir || enMain)) ? orient : null;   // la tête, ou un vêtement en main : l'orientation libre
-    panel.clear(); if (current) panel.render(current, angle, PV, 1, null, debugSide, null, libre);
-    peindreEclat(current, angle, libre);
+    t = t || performance.now();
+    panel.clear();
+    if (current){
+      const b = current.buste;
+      if (b){
+        fumeur.cadre(t);                                   // la mise en place du moment (vertige, tremblement)
+        fumeur.vivre(t, dt || 16, projecteur(current, angle, libre));
+      }
+      panel.render(current, angle, PV, 1, null, debugSide, b ? fumeur.teinte() : null, libre);
+      if (b){
+        panel.render(b.corps, angle, PV, 1, null, '', null, libre);
+        const al = fumeur.alpha(t);
+        if (al > 0.01) panel.render(b.clope, angle, PV, al, null, '', null, libre);
+      }
+    }
+    peindreCalques(current, angle, libre, t);
   }
 
   // courbes des transitions CSS des lignes, résolues par bissection
@@ -9230,7 +10136,7 @@ const model3d = (() => {
       angle = p >= 1 ? repos : backFrom + shortest(repos - backFrom) * (p * p * (3 - 2 * p));
     }
     if (list && (rows.length || fading.length)) drawRows(t);
-    if (active) draw();
+    if (active) draw(t, dt);
     frames++; if (t - fpsT >= 1000){ fps = Math.round(frames * 1000 / (t - fpsT)); frames = 0; fpsT = t; }
     raf = requestAnimationFrame(frame);
   }
@@ -9272,6 +10178,8 @@ const model3d = (() => {
     active = false; current = null; canvas.hidden = true;
     saisi = false; swatch.classList.remove('prise', 'tenu');   // une prise ne survit pas au modèle qu'elle tient
     if (fx){ fx.hidden = true; grains.length = 0; }   // les éclats ne survivent pas au visuel qu'ils décorent
+    if (fxFond) fxFond.hidden = true;
+    fumeur.remettre();                                // ni la fumée, ni une bouffée en cours (son compris)
     if (!rows.length && !fading.length && raf){ cancelAnimationFrame(raf); raf = 0; }
   }
   // Lignes de la liste ouverte, décrites par render() en pixels CSS dans le
@@ -9347,6 +10255,8 @@ const model3d = (() => {
     if (!aSaisir() || e.button > 0) return;
     if (e.target.closest('.slide-dots')) return;     // les pastilles changent de vue, elles ne prennent rien
     saisi = true; prise = e.pointerId; prisX = e.clientX; prisY = e.clientY; prisT = e.timeStamp; parcouru = 0;
+    // le buste de la page Info : appuyer, c'est tirer sur la cigarette (voir « il fume »)
+    if (current.buste) fumeur.appuyer(performance.now());
     /* Un vêtement déjà en main — encore lancé, ou en plein retour — est
        RATTRAPÉ là où il est : la main l'arrête (voir manipuler). Un vêtement
        qui se balance, lui, n'est pris qu'au premier mouvement (pointermove) :
@@ -9368,6 +10278,15 @@ const model3d = (() => {
     const dx = e.clientX - prisX, dy = e.clientY - prisY;
     prisX = e.clientX; prisY = e.clientY;
     parcouru += Math.abs(dx) + Math.abs(dy);
+    /* Pendant qu'il tire, la main qui tient le bouton bouge toujours un peu :
+       ce bougé ne tourne rien, sans quoi une cigarette tenue quatre secondes
+       finirait en rotation. Il faut un vrai geste pour prendre le buste — vite
+       au début (c'était une prise, pas un clic), plus ample ensuite — et il
+       recrache alors ce qu'il a tiré. */
+    if (current && current.buste && fumeur.tire()){
+      if (parcouru <= (performance.now() - fumeur.depuis() < 250 ? 8 : 40)) return;
+      fumeur.annuler(performance.now());
+    }
     const w = swatchBox.width || 1, h = swatchBox.height || w;   // même vitesse angulaire sur les deux axes
     const ax = dy / h * Math.PI * 2, ay = dx / w * Math.PI * 2;  // traverser le cadre = un tour
     /* Un vêtement quitte son balancement pour l'orientation libre LÀ OÙ IL EN
@@ -9389,6 +10308,7 @@ const model3d = (() => {
   const lacher = (e) => {
     if (!saisi || (e && e.pointerId !== prise)) return;
     saisi = false; swatch.classList.remove('tenu');   // l'élan relevé pendant le geste prend le relais
+    fumeur.relacher(performance.now());               // il cesse de tirer, et recrache
     lacheT = performance.now();                       // le vêtement compte d'ici son attente avant de revenir (voir manipuler)
     if (parcouru > 6) avaleClic = true;   // un geste n'est pas un clic : la fiche ne doit pas s'ouvrir derrière
     try { if (e) swatch.releasePointerCapture(e.pointerId); } catch (err) {}
@@ -9406,6 +10326,8 @@ const model3d = (() => {
   resizeList();
   window.addEventListener('resize', () => { swatchW = 0; resizeList(); if (active) resize(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && (active || rows.length) && !raf) raf = requestAnimationFrame(frame); });
+  // onglet quitté en pleine bouffée : l'image s'arrête, le souffle en boucle doit s'arrêter avec elle
+  document.addEventListener('visibilitychange', () => { if (document.hidden) fumeur.annuler(performance.now()); });
   const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, saisi, enMain, dedans, retour: !!retourT, canvas: canvas.width,
     /* vX, vY : l'élan de la tête en radians par seconde ; `haut` est la
        composante verticale de son axe vertical — +1 à l'endroit, −1 à l'envers. */
@@ -10412,27 +11334,61 @@ const model3d = (() => {
       },
     };
   }
-  /* `surRotation` : on PRÉVIENT, on ne décide pas. Le module sait combien la
-     main a fait tourner la tête ; ce qu'on en tire — un seuil, une pièce qui
-     s'ouvre — est une affaire de boutique, et n'a rien à faire dans un moteur
-     de rendu. Une seule fonction écoute, elle reçoit le total en radians. */
-  const surRotation = fn => { surTour = fn; };
-  return { show, hide, setRows, spin, rows3d: !!list, photoURL, makeScene, surRotation, debug, debugMask, debugPerso, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
+  /* `surClope` : on PRÉVIENT, on ne décide pas. Le module sait qu'une
+     cigarette vient d'être fumée d'un seul trait ; ce qu'on en tire — une
+     pièce qui s'ouvre — est une affaire de boutique, et n'a rien à faire dans
+     un moteur de rendu. Une seule fonction écoute. (Elle remplace
+     `surRotation`, qui comptait les tours de tête : ce n'est plus le geste
+     qui ouvre la pièce depuis le 25 sept. 2026.) */
+  const surClope = fn => fumeur.surFin(fn);
+  /* Contrôle : une séance jouée d'un trait sur une horloge SIMULÉE, pas de
+     16 ms — les gestes sont [['appuyer', ms], ['relacher', ms]] — et la suite
+     des phases traversées. Indépendant de la cadence réelle des images (un
+     onglet en arrière-plan n'en donne presque plus). Bruitages coupés le temps
+     de la séance : ses sons partiraient tous au même instant. */
+  const debugFumer = (gestes, duree, photos, lacet) => {
+    if (lacet != null){ orient = rotY(lacet); vX = 0; vY = 0; }   // de face (0), de profil (±π/2)…
+    const P = projecteur(current, angle, orient), t0 = performance.now(), trace = [], images = [];
+    const son = sfx.bruitages; sfx.bruitages = false;
+    let k = 0, avant = '';
+    for (let u = 0; u <= duree; u += 16){
+      while (k < gestes.length && gestes[k][1] <= u){ fumeur[gestes[k][0]](t0 + u); k++; }
+      fumeur.vivre(t0 + u, 16, P);
+      const d = fumeur.debug();
+      if (d.phase !== avant){ trace.push(u + ' ms : ' + d.phase + ' (papier ' + d.papier + ', cendre ' + d.cendre + ')'); avant = d.phase; }
+      // `photos` : les instants à relever, rendus sur place (image 3D et calques)
+      if (photos && photos.some(p => p >= u && p < u + 16)){
+        draw(t0 + u, 0.001);
+        images.push({ u, gl: canvas.toDataURL('image/png'), fond: fxFond && !fxFond.hidden ? fxFond.toDataURL('image/png') : null, devant: fx && !fx.hidden ? fx.toDataURL('image/png') : null });
+      }
+    }
+    sfx.bruitages = son;
+    fumeur.remettre();
+    return photos ? { trace, images } : trace;
+  };
+  // la loupe de la fiche : le tampon suit le grossissement (par paliers, pour ne pas le refaire à chaque cran)
+  const loupe = z => {
+    const k = Math.round(Math.max(1, z) * 4) / 4;
+    if (k === loupeZ) return;
+    loupeZ = k;
+    if (active) resize();
+  };
+  return { show, hide, setRows, spin, loupe, rows3d: !!list, photoURL, makeScene, surClope, debug, debugFumeur: () => fumeur.debug(), debugFumer, debugMask, debugPerso, debugAtlas, debugEclat, debugTexture, debugSnapshot, debugAngle, debugOnly, debugRows };
 })();
 
 /* ---------------- l'œuf de Pâques de la tête ----------------
-   Faire tourner la tête de la page Info assez longtemps ouvre une pièce
-   unique. SEPT MILLE DEGRÉS, soit une vingtaine de tours pleins : assez pour
-   qu'on ne tombe pas dessus en passant, assez peu pour que quelqu'un qui joue
-   avec la tête finisse par y arriver sans le chercher — c'est là tout
-   l'intérêt d'un œuf de Pâques, il doit se trouver, pas se mériter.
-   Le compte est tenu par le module 3D, qui ne connaît que des radians ; le
-   seuil et la récompense sont ici, du côté de la boutique. Seule la rotation
-   VOULUE compte (voir `cumul`) : le tour de repos, lui, tournerait tout seul.
-   Ce n'est pas un secret gardé : on peut lire le seuil dans le code de la
-   page, et c'est très bien — il n'y a rien à protéger, seulement un plaisir à
-   ménager pour qui ne lit pas le code. */
-const TOURNE_DEBLOQUE = 7000 * Math.PI / 180;
+   Le buste de la page Info fume. Un clic, une bouffée ; mais qui reste
+   appuyé jusqu'à ce qu'il ait fumé TOUTE la cigarette d'un seul trait ouvre
+   une pièce unique (demande du 25 sept. 2026, « au lieu du hold actuel » :
+   jusque-là c'étaient sept mille degrés de tête tournée à la main). Cinq
+   secondes d'appui : assez pour qu'on ne tombe pas dessus d'un clic, assez
+   peu pour que quelqu'un qui joue avec la cigarette finisse par y arriver —
+   un œuf de Pâques doit se trouver, pas se mériter. Et ça porte bien son nom
+   de « vertige ».
+   Le geste est suivi par le module 3D (voir « il fume ») ; la récompense est
+   ici, du côté de la boutique. Ce n'est pas un secret gardé : on peut lire la
+   règle dans le code de la page, et c'est très bien — il n'y a rien à
+   protéger, seulement un plaisir à ménager pour qui ne lit pas le code. */
 const eggNote = document.getElementById('eggNote');
 let eggFin = 0;
 function annoncer(titre, detail){
@@ -10449,8 +11405,8 @@ function annoncer(titre, detail){
     setTimeout(() => { if (!eggNote.classList.contains('show')) eggNote.hidden = true; }, 600);
   }, 5200);
 }
-model3d.surRotation((total) => {
-  if (total < TOURNE_DEBLOQUE || DEBLOQUE.a('vertige')) return;
+model3d.surClope(() => {
+  if (DEBLOQUE.a('vertige')) return;
   DEBLOQUE.ajouter('vertige');        // la liste se refait, le nom masqué tombe
   sfx.win();
   annoncer(T('eggUnlocked'), T('dressCatAcc'));   // la récompense est au salon, rayon accessoires
@@ -10528,6 +11484,36 @@ const slider = (() => {
   // les flèches non plus ne gardent pas le focus après un clic (Entrée = mode panneau, pas « vue suivante »)
   ['slidePrev', 'slideNext'].forEach(id => document.getElementById(id).addEventListener('mousedown', (e) => e.preventDefault()));
   return { setup, go, next: () => go(index + 1), prev: () => go(index - 1), atFirst: () => index === 0, current: () => (avail.length ? avail[index] : -1), count: () => avail.length };
+})();
+
+/* ---------------- la loupe de la fiche (demande du 25 sept. 2026) ----------------
+   Le curseur sur la fiche d'un produit, la molette zoome le produit au lieu
+   de parcourir la liste : un cran rapproche, un cran éloigne, un pavé
+   tactile glisse en continu. Le grossissement va de 70 % — assez pour voir le
+   vêtement entier avec de l'air autour, pas au point qu'il se perde — à 220 %,
+   où il couvre toute la fiche, sous le texte (voir .preview.zoome). Il vaut
+   pour l'article : un autre article repart à 100 % (voir fillPreview).
+   Le descriptif déplié, lui, garde son défilement. */
+const loupe = (() => {
+  const MIN = 0.7, MAX = 2.2;
+  const swatch = document.getElementById('previewSwatch');
+  let z = 1;
+  function poser(v){
+    z = Math.max(MIN, Math.min(MAX, v));
+    swatch.style.setProperty('--zoom', z.toFixed(3));
+    previewEl.classList.toggle('zoome', z > 1.001);
+    model3d.loupe(z);
+  }
+  previewEl.addEventListener('wheel', (e) => {
+    if (DATA[activeCat].kind !== 'shop' || !previewEl.classList.contains('show')) return;
+    const desc = e.target.closest('.preview-desc');
+    if (desc && desc.scrollHeight > desc.clientHeight) return;
+    e.preventDefault();
+    e.stopPropagation();                 // la molette de la page (la liste) n'en saura rien
+    const d = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    poser(z * Math.exp(-d * 0.0022));    // un cran de molette (≈100) : ×1,25 ou ÷1,25
+  }, { passive: false });
+  return { remettre: () => { if (z !== 1) poser(1); }, valeur: () => z };
 })();
 
 const ROW_H = 96; // pas vertical d'une ligne à l'échelle 1 : aperçu 3D de 88 px (ITEM_CSS) + 8 px (voir .xmb-item.has-3d)
@@ -10779,19 +11765,24 @@ function updateHints(){
   }
 }
 
-/* La barre d'aide s'efface (voir .hintbar.effacee) après AIDE_VISIBLE ms
-   pleinement visible, et revient dès que la souris survole sa bande — au
-   doigt, un toucher. Le décompte part à la fin de l'allumage (voir
-   runStartup), puis chaque fois que la souris quitte la bande ; tant qu'elle
-   y reste, rien ne s'efface. */
-const AIDE_VISIBLE = 8000;
+/* La barre d'aide s'efface (voir .hintbar.effacee) après un temps pleinement
+   visible, et revient dès que la souris survole sa bande — au doigt, un
+   toucher. Le décompte part à la fin de l'allumage (voir runStartup), puis
+   chaque fois que la souris quitte la bande ; tant qu'elle y reste, rien ne
+   s'efface.
+   6 s LA PREMIÈRE FOIS, 3 s ENSUITE (demande du 25 sept. 2026) : à l'arrivée
+   on découvre les touches et on a le temps de les lire ; ensuite on vient
+   seulement de les revoir, un coup d'œil suffit. */
+const AIDE_PREMIERE = 6000, AIDE_ENSUITE = 3000;
 const aideBarre = document.getElementById('hintbar');
-let aideMinuteur = 0, aideSurvolee = false;
+let aideMinuteur = 0, aideSurvolee = false, aidePremiere = true;
 function effacerAideBientot(){
   clearTimeout(aideMinuteur);
+  const delai = aidePremiere ? AIDE_PREMIERE : AIDE_ENSUITE;
+  aidePremiere = false;
   aideMinuteur = setTimeout(() => {
     if (!aideSurvolee) aideBarre.classList.add('effacee');
-  }, AIDE_VISIBLE);
+  }, delai);
 }
 aideBarre.addEventListener('pointerenter', () => {
   aideSurvolee = true;
@@ -10995,13 +11986,14 @@ infoOverlay.addEventListener('click', (e) => { if (e.target === infoOverlay) clo
 
 /* ---------------- mode panneau ----------------
    Entrée « entre » dans le panneau, sans autre effet. Shipping Info : ↑/↓ font
-   défiler le texte. Fiche produit, trois étages de haut en bas : le visuel,
-   les tailles, puis la rangée « Guide des tailles » / « Ajouter au panier ».
+   défiler le texte. Fiche produit, de haut en bas : le visuel, le lien
+   « Size guide », les tailles, et à leur droite le bouton d'achat (depuis le
+   25 sept. 2026 ; avant, une rangée « Guide des tailles » / « Ajouter »).
    ↑/↓ passent d'un étage à l'autre. Sur le visuel, → (et Entrée) passe à la
    vue suivante en boucle (3D / face / dos), ← à la précédente, seul moyen
-   clavier d'en changer. Sur les tailles, ←/→ vont d'une pastille à l'autre
-   et Entrée retient la taille puis descend sur « Ajouter ». Sur la rangée du
-   bas, ←/→ vont d'un bouton à l'autre, Entrée ouvre le guide ou ajoute.
+   clavier d'en changer. Sur les tailles, ←/→ vont d'une pastille à l'autre,
+   → au bout passe au bouton, et Entrée retient la taille puis passe au
+   bouton. Sur le lien, Entrée ouvre le guide ; sur le bouton, elle ajoute.
    Échap, ← sur la vue 3D ou ← sur ce qui est le plus à gauche d'un étage
    reviennent à la barre. On entre sur les tailles : c'est ce qu'il faut
    choisir d'abord. */
@@ -11011,7 +12003,7 @@ function setProductPart(part){
   productPart = part;
   document.getElementById('previewSwatch').classList.toggle('focus', part === 'visual');
   addBtn.classList.toggle('focus', part === 'add');
-  document.getElementById('infoBtn').classList.toggle('focus', part === 'info');
+  sizeGuideLien.classList.toggle('focus', part === 'info');   // le guide des tailles : le lien au-dessus des pastilles
   if (part !== 'sizes') sizePills.querySelectorAll('.pill.focus').forEach(p => p.classList.remove('focus'));
 }
 
@@ -11037,7 +12029,10 @@ function panelKey(e){
   const cat = DATA[activeCat];
   if (e.key === 'Escape'){ exitPanel(); return; }
   if (cat.kind === 'shop'){
-    const hasInfo = !document.getElementById('infoBtn').hidden;
+    /* Depuis le 25 sept. 2026, le guide des tailles est le lien au-dessus des
+       pastilles, et le bouton d'achat est à leur droite : ↑ depuis les
+       tailles monte au lien, → au bout des tailles passe au bouton. */
+    const hasInfo = tailleGuide && !sizePicker.hidden;
     const hasSizes = !sizePicker.hidden;
     if (productPart === 'visual'){
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
@@ -11050,30 +12045,39 @@ function panelKey(e){
       if (e.key === 'ArrowDown'){ if (hasSizes) return allerAuxTailles(); setProductPart('add'); }
       if (e.key === 'Enter'){ e.preventDefault(); slider.next(); }   // vue suivante (3D → face → dos)
     } else if (productPart === 'sizes'){
-      if (e.key === 'ArrowRight'){ sizeIndex += 1; updateSizeFocus(); }
+      if (e.key === 'ArrowRight'){
+        if (sizeIndex < currentSizes.length - 1){ sizeIndex += 1; updateSizeFocus(); }
+        else setProductPart('add');                      // → au bout des tailles : le bouton, à leur droite
+      }
       if (e.key === 'ArrowLeft'){
         if (sizeIndex > 0){ sizeIndex -= 1; updateSizeFocus(); }
         else { exitPanel(); return; }                    // ← sur la première taille : retour à la barre
       }
-      if (e.key === 'ArrowUp') setProductPart('visual');
+      if (e.key === 'ArrowUp') setProductPart(hasInfo ? 'info' : 'visual');
       if (e.key === 'ArrowDown') setProductPart('add');
       if (e.key === 'Enter'){
         e.preventDefault(); // sinon une pastille qui aurait le focus (clic précédent) recevrait aussi son clic natif
         choisirTaille(currentSizes[sizeIndex]);
         setProductPart('add');                           // la taille est retenue : il ne reste qu'à ajouter
       }
+    } else if (productPart === 'info'){
+      // le lien « Size guide », au-dessus des pastilles
+      if (e.key === 'ArrowUp') setProductPart('visual');
+      if (e.key === 'ArrowDown'){ if (hasSizes) return allerAuxTailles(); setProductPart('add'); }
+      if (e.key === 'ArrowRight') setProductPart('add');
+      if (e.key === 'ArrowLeft'){ exitPanel(); return; }
+      if (e.key === 'Enter'){ e.preventDefault(); openInfo(); }
     } else {
-      // la rangée du bas : « Guide des tailles » à gauche, « Ajouter au panier » à droite
-      if (e.key === 'ArrowUp'){ if (hasSizes) return allerAuxTailles(); setProductPart('visual'); }
-      if (e.key === 'ArrowRight' && productPart === 'info') setProductPart('add');
+      // le bouton d'achat, à droite des tailles
+      if (e.key === 'ArrowUp'){ if (hasSizes) return allerAuxTailles(); setProductPart(hasInfo ? 'info' : 'visual'); }
       if (e.key === 'ArrowLeft'){
-        if (productPart === 'add' && hasInfo) setProductPart('info');
-        else { exitPanel(); return; }                    // ← sur le bouton le plus à gauche : retour à la barre
+        if (hasSizes){ allerAuxTailles(); sizeIndex = currentSizes.length - 1; updateSizeFocus(); }
+        else if (hasInfo) setProductPart('info');
+        else { exitPanel(); return; }                    // ← sans rien à gauche : retour à la barre
       }
       if (e.key === 'Enter'){
         e.preventDefault();
-        if (productPart === 'info') openInfo();
-        else addBtn.click();   // comme à la souris : ajout dans la taille choisie (ou réclamation), le jeu d'une pièce verrouillée
+        addBtn.click();   // comme à la souris : ajout dans la taille choisie (ou réclamation), le jeu d'une pièce verrouillée
       }
     }
     updateHints();
@@ -11590,7 +12594,7 @@ document.addEventListener('click', (e) => {
   if (performance.now() - glisseFin < 250){ e.stopPropagation(); e.preventDefault(); }
 }, true);
 
-let lastPreviewCat = -1, previewSwapTimer = null, teaserJeu = '';
+let lastPreviewCat = -1, previewSwapTimer = null, affichesChargees = false;
 // Changement de catégorie : le panneau perd son opacité, puis le nouveau
 // contenu apparaît en la regagnant. Dans une même catégorie, mise à jour directe.
 function updatePreview(){
@@ -11655,6 +12659,10 @@ function majInfoH(){
    connues : le cadre, le visuel selon sa propre formule CSS, le bloc de texte
    (infoBase, tailles comprises) et le descriptif s'il est déplié. */
 const MARGE_BARRE = 10;   // entre la fiche et chacune des deux barres (la même qu'appliquerDesc)
+/* Le téléphone couché (voir le gabarit « paysage » du CSS, même requête) : la
+   fiche y est en deux colonnes, le visuel à côté du texte et non au-dessus —
+   rien de ce qui suit ne s'y applique. */
+const TELEPHONE_COUCHE = window.matchMedia('(orientation:landscape) and (max-height:500px)');
 function reserverTailles(){
   const cat = DATA[activeCat];
   const item = cat.kind === 'shop' ? cat.items[activeItem] : null;
@@ -11662,9 +12670,9 @@ function reserverTailles(){
     previewEl.style.setProperty('--sq-size', sq + 'px');
     previewEl.style.setProperty('--lift', lift + 'px');
   };
-  // galerie seule, panneau texte, ou pas de fiche du tout (gabarit mobile,
-  // display:none) : rien ne se déplie, rien à caser
-  if (!item || !ficheOuverte || !previewEl.clientWidth) return poser(0, 0);
+  // galerie seule, panneau texte, pas de fiche du tout (gabarit mobile,
+  // display:none), ou fiche en deux colonnes (téléphone couché) : rien à caser
+  if (!item || !ficheOuverte || !previewEl.clientWidth || TELEPHONE_COUCHE.matches) return poser(0, 0);
   const cs = getComputedStyle(previewEl);
   const pad = parseFloat(cs.getPropertyValue('--pad'));
   const reserve = parseFloat(cs.getPropertyValue('--reserve'));
@@ -11699,6 +12707,7 @@ window.addEventListener('resize', reserverTailles);  // après measureDescHeight
 function appliquerFiche(){
   previewEl.classList.remove('libre');   // le bloc va bouger : il rogne de nouveau
   previewInfo.classList.remove('libre');
+  libreSiImmobile();                     // ... et s'il ne bouge pas, il se libère tout de suite
   const choisi = DATA[activeCat].kind === 'shop' && ficheOuverte;
   previewEl.classList.toggle('gallery', !choisi && DATA[activeCat].kind === 'shop');
   previewEl.classList.toggle('choisi', choisi);  // même cadre d'accent qu'en mode panneau
@@ -11825,25 +12834,20 @@ function fillPreview(){
   // .info : le texte s'affiche en entier, sans accordéon (Contact, Livraison… et Info)
   previewEl.classList.toggle('info', isInfo || estAbout);
   swatchEl.hidden = isInfo;
-  // Versus : l'aperçu du jeu prend la place du visuel produit. Peint à l'image
-  // suivante, quand la boîte a enfin une taille.
-  const teaserEl = document.getElementById('arenaTeaser');
-  teaserEl.hidden = cat.kind !== 'game';
-  if (cat.kind === 'game'){
-    /* Les jeux se partagent la même boîte d'aperçu. Versus se sert des
-       trois calques (décor au gros pixel, vêtements en 3D, effets), Jumper
-       et Age of Seum d'un seul : on efface donc le calque 3D pour eux, et on force le
-       repeint quand on passe d'un jeu à l'autre — chacun garde par ailleurs
-       son cache de taille, sinon on repeindrait à chaque pas de la liste. */
-    const jeu = item.jeu || 'versus';
-    const change = teaserJeu !== jeu;
-    teaserJeu = jeu;
-    document.getElementById('teaserGL').style.opacity = jeu === 'versus' ? '1' : '0';
-    requestAnimationFrame(() => {
-      if (jeu === 'versus') arena.apercu(change);
-      else if (jeu === 'seum') seum.apercu(change);
-      else jumper.apercu(change);
-    });
+  /* Mini-jeux : L'AFFICHE du jeu choisi prend la place du visuel produit
+     (25 sept. 2026, voir .jeu-affiche). Un tableau au pixel, animé, titre
+     compris ; le nom au-dessus du bouton s'efface donc (classe `jeu`), et
+     c'est l'attribut `alt` qui le porte. Jusque-là chaque jeu peignait
+     lui-même un aperçu dans trois calques de canvas, dont un WebGL. */
+  const afficheEl = document.getElementById('jeuAffiche'), afficheImg = document.getElementById('jeuAfficheImg');
+  afficheEl.hidden = cat.kind !== 'game';
+  previewEl.classList.toggle('jeu', cat.kind === 'game');
+  if (cat.kind === 'game' && item.affiche){
+    const src = encodeURI(item.affiche);
+    if (afficheImg.getAttribute('src') !== src) afficheImg.src = src;
+    afficheImg.alt = L(item.n);
+    // les affiches voisines, chargées d'avance : passer d'un jeu à l'autre ne montre pas un cadre vide
+    if (!affichesChargees){ affichesChargees = true; cat.items.forEach(it => { if (it.affiche) new Image().src = encodeURI(it.affiche); }); }
   }
   if (isInfo) model3d.hide();
   // photo produit si le produit en a une (item.img), sinon l'initiale ;
@@ -11854,7 +12858,7 @@ function fillPreview(){
   // verrouillé : c'est le cadenas qu'on montre, avec son modèle et ses vues
   const vu = visuelDe(item);
   if (cat.kind === 'game'){
-    /* Un mini-jeu montre l'aperçu de son jeu, pas un visuel de produit — le
+    /* Un mini-jeu montre son affiche, pas un visuel de produit — le
        visuel est masqué plus haut. Son `img` ne sert qu'à la LIGNE de la
        liste ; monter le diaporama ici ferait tourner un modèle pour personne. */
     slider.setup(null);
@@ -11899,7 +12903,8 @@ function fillPreview(){
      réclamé, et sauter la hauteur de la fiche d'un article à l'autre. */
   if (cat !== derniereCat){ derniereCat = cat; ficheOuverte = false; }
   // la taille choisie retombe elle aussi : elle valait pour l'article d'avant (voir tailleChoisie)
-  if (item !== dernierItem){ dernierItem = item; descOuvert = false; appliquerDesc(); tailleChoisie = null; finManque(); }
+  // … et la loupe : un autre article repart à 100 % (voir loupe)
+  if (item !== dernierItem){ dernierItem = item; descOuvert = false; appliquerDesc(); tailleChoisie = null; finManque(); loupe.remettre(); }
   /* Les tailles, au-dessus des boutons, pour une pièce qu'on peut acheter ; le
      bouton d'achat bleu avec elles (voir .cta-duo.achat). Construites ici,
      avant la mesure du bloc (mesurerInfo, à l'image suivante) : leur hauteur
@@ -11907,7 +12912,10 @@ function fillPreview(){
   const achat = cat.kind === 'shop' && !verrou;
   sizePicker.hidden = !achat;
   addDuo.classList.toggle('achat', achat);
+  previewBas.classList.toggle('achat', achat);   // les tailles à côté du bouton (voir .preview-bas)
   if (achat) buildSizePills(sizesFor(item)); else quitterTailles();
+  tailleGuide = achat && !!item.sz;               // le libellé des tailles est-il le lien du guide ?
+  libelleTailles();
   appliquerFiche();
   requestAnimationFrame(mesurerInfo);   // après la mise en page du nouveau contenu
   recalerIcones();                      // la largeur du panneau vient peut-etre de changer
@@ -11915,6 +12923,7 @@ function fillPreview(){
 
   const infoBtn = document.getElementById('infoBtn');
   infoBtn.hidden = true;
+  addBtn.removeAttribute('aria-label');   // seul le bouton d'achat en porte un (voir libelleAchat)
   /* Contact : la carte du profil (demande du 22 sept. 2026) porte déjà
      l'identifiant, le nom et la bio ; la ligne « @fakeparadisetm » en accent
      qui la précédait ferait doublon, elle s'efface. Reste le titre, la carte,
@@ -11931,7 +12940,10 @@ function fillPreview(){
     addBtn.hidden = cat.kind !== 'game'; // les mini-jeux ont un bouton, les panneaux texte tiennent dans leur texte
     if (cat.kind === 'game') addBtn.textContent = T('play');
   } else {
-    priceEl.hidden = false;
+    /* LE PRIX EST DANS LE BOUTON BLEU (demande du 25 sept. 2026) : à côté du
+       nom, il ne reste que pour une pièce verrouillée, dont le bouton mène au
+       jeu — on doit savoir ce qu'on joue. */
+    priceEl.hidden = achat;
     priceEl.innerHTML = item.was
       ? `<span class="was">${formatPrice(item.was)}</span>${formatPrice(item.p)}`
       : formatPrice(item.p);
@@ -11944,12 +12956,10 @@ function fillPreview(){
        laisse croire qu'elle viendra ; ici il n'y a rien à faire sur cette
        fiche, seulement un prix à voir et une énigme à lire. */
     const jeuIci = verrou ? jeuDuVerrou(item) : null;
-    addBtn.textContent = verrou ? T('lockedPlay') : T('add');
+    if (verrou) addBtn.textContent = T('lockedPlay'); else libelleAchat();
     addBtn.hidden = !!(verrou && !jeuIci);
-    infoBtn.hidden = !item.sz || verrou;
-    // le bouton dit ce qu'il ouvre : un guide des tailles, et rien d'autre.
-    // « Plus d'infos » promettait n'importe quoi et ne tenait que les mesures.
-    infoBtn.textContent = T('sizeGuide');
+    /* Le guide des tailles n'a plus de bouton : c'est le libellé des tailles
+       qui y mène (voir libelleTailles). Le bouton reste dans la page, caché. */
   }
   /* LA LANGUETTE EN DERNIER, ET POUR TOUTES LES FICHES. En dernier parce
      qu'elle se décide sur la place qui reste, et que le « Guide des tailles »
@@ -13096,27 +14106,6 @@ const arena = (() => {
   const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); };
   const bandes = (g, w, y0, liste) => liste.forEach(b => R(g, 0, y0 + b[0], w, b[1], b[2]));
 
-  /* Éclair : une ligne brisée du haut vers le bas, autour du milieu. Sert à
-     couper l'aperçu en deux et à montrer d'emblée que le décor change d'un
-     duel à l'autre. Les écarts sont ÉCRITS, pas tirés au sort : l'aperçu est
-     une image fixe, elle doit être la même à chaque fois qu'on revient sur la
-     catégorie. */
-  const ECARTS = [0, 0.055, -0.042, 0.061, -0.030, 0.048, -0.055, 0.026, -0.038, 0.030, 0];
-  function pointsEclair(w, h){
-    return ECARTS.map((e, i) => {
-      const t = i / (ECARTS.length - 1);
-      return { x: w * 0.5 + e * w + Math.sin(t * 7) * w * 0.03, y: t * h };
-    });
-  }
-  function traitEclair(g, pts, ep, c){
-    for (let i = 1; i < pts.length; i++){
-      const a = pts[i - 1], b = pts[i], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
-      for (let k = 0; k <= n; k++){
-        const u = k / n;
-        R(g, a.x + (b.x - a.x) * u - ep / 2, a.y + (b.y - a.y) * u, ep, 2, c);
-      }
-    }
-  }
   /* Palmier en ombre chinoise : un tronc qui s'incline et s'affine, une
      couronne de palmes qui retombent, deux noix. Dessiné par une fonction pour
      pouvoir en semer plusieurs de tailles et de penchants différents — quatre
@@ -13800,89 +14789,6 @@ const arena = (() => {
   }
 
 
-  /* ---- aperçu fixe du panneau ----
-     Le panneau « Versus » montre une image du jeu avant d'y entrer : un décor
-     tiré au sort, deux vêtements et une attaque en vol. Les deux vêtements
-     réutilisent le MAILLAGE de deux articles du catalogue mais PAS leur photo :
-     ils sont peints en bleu et en rouge pleins (uTint à fond, la teinte
-     remplace la texture avant l'éclairage cuit, donc ils restent modelés). Et
-     ce sont les PREMIERS articles de la boutique, pas des références figées :
-     si ceux-ci disparaissent un jour, l'aperçu prendra simplement les suivants
-     au lieu de montrer un produit mort. */
-  const teaser = { scene: null, taille: '', decor: null, fente: null };
-  function apercu(force){
-    const box = document.getElementById('arenaTeaser');
-    if (!box) return;
-    const bouts = DATA.filter(c => c.kind === 'shop' && c.items.length);
-    if (!bouts.length) return;
-    const gauche = bouts[0].items[0];                       // un t-shirt
-    const droite = (bouts[1] || bouts[0]).items[0];         // un pull, ou à défaut le suivant
-    const bc = document.getElementById('teaserBg'), gc = document.getElementById('teaserGL'), fc = document.getElementById('teaserFx');
-    const r = box.getBoundingClientRect();
-    if (!r.width) return;
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
-    if (!force && teaser.taille === cle && teaser.scene) return;   // déjà peint à cette taille
-    teaser.taille = cle;
-    [bc, gc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
-    if (!teaser.scene) teaser.scene = model3d.makeScene(gc);
-    // Décors ÉCRITS, pas tirés au sort : l'aperçu est une image fixe, elle doit
-    // être la même à chaque retour sur la catégorie. La ruelle à gauche, la
-    // plage à droite — les deux qui contrastent le plus.
-    if (!teaser.decor) teaser.decor = [DECORS[0], DECORS[1]];
-    const w = r.width, h = r.height, pw = 320, ph = Math.max(80, Math.round(pw * h / w));
-    // 1. décor, au gros pixel comme dans l'arène — mais DEUX décors, fendus par
-    //    un éclair : l'aperçu annonce ainsi que le lieu change d'un duel à
-    //    l'autre. La moitié droite est peinte sous découpe, le long de la même
-    //    ligne brisée que l'éclair, sinon la fente et la lumière ne
-    //    coïncideraient pas.
-    const tampon = document.createElement('canvas'); tampon.width = pw; tampon.height = ph;
-    const gp = tampon.getContext('2d');
-    if (!teaser.fente) teaser.fente = pointsEclair(pw, ph);
-    const fente = teaser.fente;
-    teaser.decor[0].fixe(gp, pw, ph);
-    if (teaser.decor[0].vif) teaser.decor[0].vif(gp, pw, ph, 1200);
-    gp.save();
-    gp.beginPath();
-    gp.moveTo(fente[0].x, 0);
-    fente.forEach(p => gp.lineTo(p.x, p.y));
-    gp.lineTo(pw, ph); gp.lineTo(pw, 0);
-    gp.closePath(); gp.clip();
-    teaser.decor[1].fixe(gp, pw, ph);
-    if (teaser.decor[1].vif) teaser.decor[1].vif(gp, pw, ph, 3400);
-    gp.restore();
-    traitEclair(gp, fente, 7, 'rgba(255,240,190,0.22)');   // halo
-    traitEclair(gp, fente, 3, '#ffe9a8');
-    traitEclair(gp, fente, 1, '#ffffff');                  // cœur
-    const gb = bc.getContext('2d');
-    gb.imageSmoothingEnabled = false;
-    gb.clearRect(0, 0, bc.width, bc.height);
-    gb.drawImage(tampon, 0, 0, bc.width, bc.height);
-    // 2. armes et projectile, dans le même tampon, par-dessus les vêtements
-    const S = h * 0.50, gx = w * 0.24, dx = w * 0.76, cy = h * SOL - S * 0.31;
-    const px = p => ({ x: p.x * pw / w, y: p.y * ph / h });
-    // 2. une arme dans chaque main, mais AUCUNE attaque en vol : l'aperçu
-    //    présente les combattants, il ne raconte pas un coup en cours. L'arc à
-    //    gauche (corde tendue), le pistolet à droite (au repos : son éclair de
-    //    bouche ne sort qu'au-delà de 0,9).
-    gp.clearRect(0, 0, pw, ph);
-    const mainG = px({ x: gx + S * 0.26, y: cy }), mainD = px({ x: dx - S * 0.26, y: cy });
-    ATTAQUES[0].main(gp, mainG.x, mainG.y, 1, 0.8);
-    ATTAQUES[1].main(gp, mainD.x, mainD.y, -1, 0.5);
-    const gf = fc.getContext('2d');
-    gf.imageSmoothingEnabled = false;
-    gf.clearRect(0, 0, fc.width, fc.height);
-    gf.drawImage(tampon, 0, 0, fc.width, fc.height);
-    // 3. les deux vêtements, en couleur pleine : le modèle sans la photo
-    if (!teaser.scene) return;
-    Promise.all([teaser.scene.load(gauche), teaser.scene.load(droite)]).then(() => {
-      teaser.scene.clear();
-      [[gauche, gx, FACE, [0.26, 0.48, 0.98]], [droite, dx, -FACE, [0.95, 0.24, 0.24]]].forEach(v => {
-        teaser.scene.draw(v[0], v[2], { x: (v[1] - S / 2) * k, y: (cy - S / 2) * k, s: S * k }, 1,
-          [v[3][0], v[3][1], v[3][2], 1]);
-      });
-    });
-  }
   document.getElementById('arenaClose').addEventListener('click', fermer);
   document.getElementById('arenaClear').addEventListener('click', () => { picks = [null, null]; majChoix(); });
   fightBtn.addEventListener('click', lancer);
@@ -13936,7 +14842,7 @@ const arena = (() => {
     return false;
   }
 
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, apercu: apercu };
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche };
 })();
 
 /* ============================================================================
@@ -14611,81 +15517,6 @@ const jumper = (() => {
   document.getElementById('jumpClose').addEventListener('click', fermer);
   overlay.addEventListener('click', e => { if (e.target === overlay) fermer(); });
 
-  /* ---- aperçu du panneau : une image fixe, même palette que le jeu ---- */
-  const vig = { taille: '' };
-  function apercu(force){
-    const box = document.getElementById('arenaTeaser');
-    const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
-    if (!box || !bc) return;
-    const r = box.getBoundingClientRect();
-    if (!r.width) return;
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
-    if (!force && vig.taille === cle) return;
-    vig.taille = cle;
-    [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
-    const g = bc.getContext('2d');
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, bc.width, bc.height);
-    fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
-    const W = bc.width, H = bc.height, s = H / 300;
-    g.fillStyle = PAL.ciel; g.fillRect(0, 0, W, H);
-    const nuage = (x, y, e) => {
-      g.fillStyle = PAL.nuage;
-      g.beginPath();
-      g.arc(x, y, 9 * e, Math.PI, 0); g.arc(x + 11 * e, y, 12 * e, Math.PI, 0); g.arc(x + 23 * e, y, 8 * e, Math.PI, 0);
-      g.fill();
-      g.fillRect(x - 9 * e, y, 40 * e, 6 * e);
-      g.fillStyle = PAL.nuageBas; g.fillRect(x - 9 * e, y + 4 * e, 40 * e, 2 * e);
-    };
-    nuage(W * 0.14, H * 0.20, s * 1.5); nuage(W * 0.66, H * 0.13, s * 1.1);
-    const colline = (col, ray, base, tache) => {
-      for (let x = -ray; x < W + ray; x += ray * 1.7){
-        g.fillStyle = PAL.collineTrait; g.beginPath(); g.arc(x, base + 2 * s, ray + 2 * s, Math.PI, 0); g.fill();
-        g.fillStyle = col; g.beginPath(); g.arc(x, base, ray, Math.PI, 0); g.fill();
-        g.fillStyle = tache;
-        g.fillRect(x - ray * 0.3, base - ray * 0.32, 3 * s, 5 * s);
-        g.fillRect(x + ray * 0.28, base - ray * 0.18, 3 * s, 5 * s);
-      }
-      g.fillStyle = PAL.collineTrait; g.fillRect(0, base, W, 2 * s);
-      g.fillStyle = col; g.fillRect(0, base + 2 * s, W, H);
-    };
-    colline(PAL.collineOmbre, 64 * s, H * 0.80, '#004c1c');
-    colline(PAL.colline, 44 * s, H * 0.92, PAL.collineOmbre);
-    // plateformes de briques, mêmes couleurs et même cerne que dans le jeu
-    const pl = (x, y, w, h) => {
-      g.fillStyle = PAL.brique; g.fillRect(x, y, w, h);
-      g.fillStyle = PAL.joint;
-      for (let bx = x + 14 * s; bx < x + w; bx += 14 * s) g.fillRect(bx, y, 1.5 * s, h);
-      g.fillStyle = PAL.briqueHaut; g.fillRect(x, y, w, 1.5 * s);
-      g.fillStyle = PAL.trait;
-      g.fillRect(x, y, w, 1.5 * s); g.fillRect(x, y + h - 1.5 * s, w, 1.5 * s);
-      g.fillRect(x, y, 1.5 * s, h); g.fillRect(x + w - 1.5 * s, y, 1.5 * s, h);
-    };
-    pl(W * 0.06, H * 0.74, W * 0.22, 11 * s);
-    pl(W * 0.40, H * 0.60, W * 0.17, 11 * s);
-    pl(W * 0.72, H * 0.46, W * 0.22, 11 * s);
-    // le personnage, en plein saut entre deux plateformes
-    const px = W * 0.345, py = H * 0.50, pw = 17 * s, ph = 21 * s;
-    const bx0 = px - pw / 2, by0 = py - ph / 2;
-    g.fillStyle = PAL.trait;
-    g.beginPath(); g.moveTo(bx0 + 1 * s, by0 + 5 * s); g.lineTo(bx0 + 3 * s, by0 - 6 * s); g.lineTo(bx0 + 9 * s, by0 + 3 * s); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(bx0 + pw - 1 * s, by0 + 5 * s); g.lineTo(bx0 + pw - 3 * s, by0 - 6 * s); g.lineTo(bx0 + pw - 9 * s, by0 + 3 * s); g.closePath(); g.fill();
-    g.fillRect(bx0, by0, pw, ph);
-    g.fillStyle = PAL.corps; g.fillRect(bx0 + 1.5 * s, by0 + 1.5 * s, pw - 3 * s, ph - 3 * s);
-    g.fillStyle = PAL.trait;
-    g.fillRect(bx0 + 4 * s, by0 + 7 * s, 2.5 * s, 4 * s); g.fillRect(bx0 + 10 * s, by0 + 7 * s, 2.5 * s, 4 * s);
-    g.fillRect(bx0 + 6 * s, by0 + 14 * s, 5 * s, 1.5 * s);
-    // le mât d'arrivée, tout à droite
-    const fx2 = W * 0.88, fy2 = H * 0.46;
-    g.fillStyle = PAL.trait; g.fillRect(fx2 - 2.5 * s, fy2 - 44 * s, 5 * s, 44 * s);
-    g.fillStyle = PAL.metal; g.fillRect(fx2 - 1.5 * s, fy2 - 43 * s, 2.5 * s, 42 * s);
-    g.fillStyle = PAL.trait;
-    g.beginPath(); g.moveTo(fx2 + 1 * s, fy2 - 44 * s); g.lineTo(fx2 + 28 * s, fy2 - 34 * s); g.lineTo(fx2 + 1 * s, fy2 - 24 * s); g.closePath(); g.fill();
-    g.fillStyle = PAL.fanion;
-    g.beginPath(); g.moveTo(fx2 + 3 * s, fy2 - 41 * s); g.lineTo(fx2 + 23 * s, fy2 - 34 * s); g.lineTo(fx2 + 3 * s, fy2 - 27 * s); g.closePath(); g.fill();
-  }
-
   /* Contrôle, dans l'esprit de model3d.debug() : l'état courant, et la
      possibilité de se poser à une abscisse donnée pour vérifier une section
      sans la rejouer depuis le début. Rien n'est protégé ici — un verrou tenu
@@ -14701,7 +15532,7 @@ const jumper = (() => {
              check, chutes, ms: Math.round(tempsMs) };
   };
 
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu: apercu, debug: debug };
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, debug: debug };
 })();
 
 /* ============================================================================
@@ -14958,8 +15789,9 @@ const seum = (() => {
   }
 
   /* ---- le pinceau ----
-     `g` est le contexte où l'on peint : le jeu, une vignette du menu ou
-     l'aperçu du panneau — les mêmes fonctions servent aux trois. Tout est
+     `g` est le contexte où l'on peint : le jeu ou une vignette du menu — les
+     mêmes fonctions servent aux deux (et servaient à l'aperçu du panneau,
+     remplacé par l'affiche du jeu le 25 sept. 2026). Tout est
      tracé en rectangles entiers : une courbe du navigateur serait lissée, et
      ses bords flous jureraient avec le gros pixel. `miroir` est vrai pendant
      qu'on dessine le camp d'en face, retourné : le texte, lui, se remet à
@@ -16436,41 +17268,6 @@ const seum = (() => {
   cv.addEventListener('pointerleave', () => { souris = null; });
   cv.addEventListener('pointercancel', () => { glisse = null; });
 
-  /* ---- l'aperçu du panneau : la rue, le sanglier, et une échauffourée ---- */
-  const vig = { taille: '' };
-  function apercu(force){
-    const box = document.getElementById('arenaTeaser');
-    const bc = document.getElementById('teaserBg'), fc = document.getElementById('teaserFx');
-    if (!box || !bc) return;
-    const r = box.getBoundingClientRect();
-    if (!r.width) return;
-    const k = Math.min(2, window.devicePixelRatio || 1);
-    const cle = Math.round(r.width) + 'x' + Math.round(r.height);
-    if (!force && vig.taille === cle) return;
-    vig.taille = cle;
-    [bc, fc].forEach(c => { c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); });
-    fc.getContext('2d').clearRect(0, 0, fc.width, fc.height);
-    /* La scène est peinte à sa taille de jeu puis agrandie d'un facteur
-       ENTIER : réduite, ou agrandie de 1,3, elle perdrait un pixel sur trois
-       et les enseignes deviendraient illisibles. */
-    const s = Math.max(1, Math.round(bc.height / 150));
-    const H = Math.max(1, Math.round(bc.height / s)), W = Math.max(1, Math.round(bc.width / s));
-    const S = { J: camp(0), E: camp(1), tirs: [], obus: [], effets: [], textes: [], morts: [], secousse: 0, livraison: null };
-    S.J.adv = S.E; S.E.adv = S.J;
-    const pose = (C, id, x, extra) => C.unites.push(Object.assign({ id, camp: C, x, pv: 1, pvMax: 1, marche: false, anim: 0, frappe: 0, tire: 0, touche: 0, cri: 0 }, extra));
-    // les deux camps de part et d'autre du matelas, et un « wow » qui passe au-dessus du sanglier
-    pose(S.J, 0, 418, {}); pose(S.J, 1, 384, { tire: 0.1 }); pose(S.J, 3, 346, {});
-    pose(S.E, 2, 506, {}); pose(S.E, 4, 604, { tire: 0.1 });
-    S.tirs.push({ x0: 384, h0: 28, x1: 520, h1: 24, t: 0.19, dur: 0.35, T: TIRS[1], mot: 'WOW', col: '#4dfcff' });
-    const tmp = document.createElement('canvas');
-    tmp.width = W; tmp.height = H;
-    peindre(tmp.getContext('2d'), W, H, Math.round(470 - W / 2), 0, S);
-    const b = bc.getContext('2d');
-    b.setTransform(1, 0, 0, 1, 0, 0);
-    b.imageSmoothingEnabled = false;
-    b.drawImage(tmp, 0, 0, bc.width, bc.height);
-  }
-
   /* Contrôle, dans l'esprit de jumper.debug() : l'état de la partie, et de
      quoi la pousser pour vérifier un âge sans le jouer en entier — poser une
      unité (`creer: [id, 1]` pour le camp d'en face), une tourelle
@@ -16496,7 +17293,7 @@ const seum = (() => {
              : { etat };
   };
 
-  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, apercu, debug };
+  return { open: ouvrir, close: fermer, isOpen: () => ouvert, key: touche, up: relache, debug };
 })();
 
 /* ---------------- mini-jeu « Dress Up » ----------------
@@ -16686,8 +17483,9 @@ const dressup = (() => {
     /* LES ACCESSOIRES SE GAGNENT (22 sept. 2026, à la demande). Ils étaient
        posés là, gratuits, à côté des vêtements ; ce sont maintenant les
        récompenses des épreuves du site, et les seules. Chacun va avec la
-       sienne : les lunettes à l'œuf de la tête — on a fait tourner un visage
-       vingt fois, on gagne de quoi lui couvrir les yeux — et la cigarette au
+       sienne : les lunettes à l'œuf de la tête — on a fumé une cigarette
+       entière d'un trait (vingt tours de tête avant le 25 sept. 2026), la
+       tête tourne, on gagne de quoi lui couvrir les yeux — et la cigarette au
        parcours de Jumper, qu'on allume en arrivant. Le nom de l'épreuve est
        celui de `fp.debloque` ; tant qu'elle n'est pas passée, la case montre
        le cadenas et refuse. */
@@ -18311,60 +19109,486 @@ drawFrame();
 
 /* ---------------- écran de démarrage ----------------
    Séquence calquée sur l'allumage de la PS3 : le ruban ondule sur un fond
-   assombri, le logo se révèle posé dessus à droite du centre, tient
-   STARTUP.hold ms, puis le voile sombre et le logo s'effacent pendant que
-   l'interface (déjà construite, invisible jusque-là) apparaît en fondu. */
-const STARTUP = { hold: 4000, fade: 1600 }; // hold = fondu d'entrée du logo (0,9 s) + logo plein
+   assombri, le logo se révèle posé dessus, tient, puis le voile sombre et le
+   logo s'effacent pendant que l'interface (déjà construite, invisible
+   jusque-là) apparaît en fondu.
+   REFAITE LE 25 SEPT. 2026, à la demande : plus d'images, tout est dessiné
+   ici (SVG et script), et la séquence raconte une MÉTAMORPHOSE —
+   1. le logo FS3 apparaît en fondu, posé sur le ruban ;
+   2. il se défait en poussière, qui vole se reposer en lettres Impact :
+      FAKE / PARADISE ;
+   3. au-dessus, l'île et les deux palmiers ÉCLOSENT d'un éclat de lumière :
+      l'île monte, les troncs poussent, les palmes s'ouvrent comme une fleur ;
+   4. les palmiers bougent un peu, comme dans le vent, jusqu'au fondu.
+   Les instants sont ici, en millisecondes depuis la première image. */
+const STARTUP = {
+  morph: 1300,   // le FS3, apparu en 0,9 s et tenu, se défait en poussière
+  build: 2350,   // les lettres sont posées : l'éclosion commence
+  aide: 2300,    // l'aide « Navigate… » s'efface (demande : « plus tôt »)
+  hold: 4700,    // le logo est entier depuis ~1 s : le rideau se lève sur le XMB
+  fade: 1600,
+};
+const demarrage = (() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('startupLogo');
+  const toile = document.getElementById('startupPoussiere');
+  const ctx = toile.getContext('2d');
+  const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const OPA = 0.94;   // l'éclat du logo : celui de l'ancien, un blanc à peine retenu
+
+  /* 1. LE LOGO FS3, dans le repère de l'ancienne image (1200 × 493) :
+     jambages de 52, barres de 31, arrondis extérieurs de 50, petits congés
+     intérieurs, et l'encoche du 3 entre ses deux boucles. Posé sur le
+     ruban : le centre de son bloc (599,5 ; 244) sur la base de l'île
+     (600 ; 978), à 101,5 % — un peu plus large que les lettres qu'il devient.
+     (88 % quand le cadre faisait 60 % de l'écran : le cadre a rapetissé, le
+     FS3 a grossi d'autant, sa taille à l'écran n'a pas bougé.) */
+  const FS3 = [
+    'M61 280L61 108A50 50 0 0 1 111 58L382 58L382 89L122 89A10 10 0 0 0 112 99L112 140A10 10 0 0 0 122 150L382 150L382 180L122 180A10 10 0 0 0 112 190L112 280Z',
+    'M425 280L425 250L558 250A15 15 0 0 0 573 235L573 108A50 50 0 0 1 623 58L773 58L773 88L637 88A12 12 0 0 0 625 100L625 230A50 50 0 0 1 575 280Z',
+    'M817 58L1088 58A50 50 0 0 1 1138 108L1138 140Q1138 165 1124 165Q1138 165 1138 190L1138 230A50 50 0 0 1 1088 280L817 280L817 250L1075 250A10 10 0 0 0 1085 240L1085 191A10 10 0 0 0 1075 181L817 181L817 150L1075 150A10 10 0 0 0 1085 140L1085 99A10 10 0 0 0 1075 89L817 89Z',
+  ];
+  const FS3_K = 0.88 * 60 / 52, FS3_X = 600 - 599.5 * FS3_K, FS3_Y = 978 - 244 * FS3_K;
+
+  /* 2. LES LETTRES : les contours de la police Impact, relevés dans son
+     fichier (usage « éditable » permis par son drapeau fsType), en unités de
+     la police — 2048 par cadratin, capitales de 1619, y vers le bas depuis la
+     ligne de base. `x` : le bord gauche du dessin de la lettre. Des tracés et
+     non du texte : Impact manque sur les téléphones, et le logo doit être le
+     même partout. */
+  const IMPACT = {
+    F: { x: 84, d: 'M84 -1619L797 -1619L797 -1295L505 -1295L505 -988L765 -988L765 -680L505 -680L505 0L84 0L84 -1619Z' },
+    A: { x: -12, d: 'M811 -1619L1052 0L621 0L600 -291L449 -291L424 0L-12 0L202 -1619L811 -1619ZM588 -578Q556 -853 524 -1257Q460 -793 444 -578L588 -578Z' },
+    K: { x: 84, d: 'M1087 -1619L846 -888L1110 0L675 0L505 -694L505 0L84 0L84 -1619L505 -1619L505 -990L692 -1619L1087 -1619Z' },
+    E: { x: 84, d: 'M84 -1619L786 -1619L786 -1295L505 -1295L505 -988L768 -988L768 -680L505 -680L505 -324L814 -324L814 0L84 0L84 -1619Z' },
+    P: { x: 84, d: 'M84 -1619L508 -1619Q680 -1619 772.5 -1592Q865 -1565 911.5 -1514Q958 -1463 974.5 -1390.5Q991 -1318 991 -1166L991 -1025Q991 -870 959 -799Q927 -728 841.5 -690Q756 -652 618 -652L505 -652L505 0L84 0L84 -1619ZM505 -1342L505 -930Q523 -929 536 -929Q594 -929 616.5 -957.5Q639 -986 639 -1076L639 -1209Q639 -1292 613 -1317Q587 -1342 505 -1342Z' },
+    R: { x: 84, d: 'M84 -1619L382 -1619Q680 -1619 785.5 -1596Q891 -1573 957.5 -1478.5Q1024 -1384 1024 -1177Q1024 -988 977 -923Q930 -858 792 -845Q917 -814 960 -762Q1003 -710 1013.5 -666.5Q1024 -623 1024 -427L1024 0L633 0L633 -538Q633 -668 612.5 -699Q592 -730 505 -730L505 0L84 0L84 -1619ZM505 -1342L505 -982Q576 -982 604.5 -1001.5Q633 -1021 633 -1128L633 -1217Q633 -1294 605.5 -1318Q578 -1342 505 -1342Z' },
+    D: { x: 84, d: 'M84 -1619L399 -1619Q704 -1619 811.5 -1591Q919 -1563 975 -1499Q1031 -1435 1045 -1356.5Q1059 -1278 1059 -1048L1059 -481Q1059 -263 1038.5 -189.5Q1018 -116 967 -74.5Q916 -33 841 -16.5Q766 0 615 0L84 0L84 -1619ZM505 -1342L505 -277Q596 -277 617 -313.5Q638 -350 638 -512L638 -1141Q638 -1251 631 -1282Q624 -1313 599 -1327.5Q574 -1342 505 -1342Z' },
+    I: { x: 84, d: 'M505 -1619L505 0L84 0L84 -1619L505 -1619Z' },
+    S: { x: 49, d: 'M976 -1129L585 -1129L585 -1249Q585 -1333 570 -1356Q555 -1379 520 -1379Q482 -1379 462.5 -1348Q443 -1317 443 -1254Q443 -1173 465 -1132Q486 -1091 584 -1033Q865 -866 938 -759Q1011 -652 1011 -414Q1011 -241 970.5 -159Q930 -77 814 -21.5Q698 34 544 34Q375 34 255.5 -30Q136 -94 99 -193Q62 -292 62 -474L62 -580L453 -580L453 -383Q453 -292 469.5 -266Q486 -240 528 -240Q570 -240 590.5 -273Q611 -306 611 -371Q611 -514 572 -558Q532 -602 375 -705Q218 -809 167 -856Q116 -903 82.5 -986Q49 -1069 49 -1198Q49 -1384 96.5 -1470Q144 -1556 250 -1604.5Q356 -1653 506 -1653Q670 -1653 785.5 -1600Q901 -1547 938.5 -1466.5Q976 -1386 976 -1193L976 -1129Z' },
+  };
+  /* placées comme sur l'ancien emblème, chaque lettre à son bord gauche
+     mesuré : FAKE en capitales de 355, PARADISE de 175, un peu serré (95 %) */
+  const MOTS = [
+    { lettres: 'FAKE', x: [171, 331, 591, 843], base: 1346, sx: 355 / 1619, sy: 355 / 1619 },
+    { lettres: 'PARADISE', x: [171, 268, 391, 501, 624, 746, 809, 928], base: 1537, sx: 0.1027, sy: 175 / 1619 },
+  ];
+  const lettres = [];   // [chemin, a, d, e, f] : de quoi dessiner chaque lettre, ici et dans la toile
+  MOTS.forEach(m => [...m.lettres].forEach((ch, i) => lettres.push([IMPACT[ch].d, m.sx, m.sy, m.x[i] - IMPACT[ch].x * m.sx, m.base])));
+
+  /* 3. L'ÎLE : l'arc de cercle relevé sur l'emblème — centre (585 ; 1542,5),
+     rayon 706,5 —, coupé à y = 978. */
+  const ILE = 'M160.2 978A706.5 706.5 0 0 1 1009.8 978Z', ILE_BASE = 978;
+
+  /* 4. LES PALMIERS. Le tronc : une courbe (base B, contrôle K, cœur C) qui
+     s'épaissit de w0 à w1 en montant ; sa base plonge dans l'île, sans jour.
+     Les palmes, relevées une à une sur le dessin : [angle en degrés, longueur,
+     côté bombé]. Une palme a UN BORD DROIT, du cœur à la pointe (un peu en
+     retrait de cette ligne, de E), et UN BORD BOMBÉ de largeur W au plus
+     large, vers le milieu ; le côté bombé est donné par rapport à la normale
+     (−sin, cos) de la palme. `bouton` : la direction du tronc à son sommet,
+     d'où les palmes partent en éclosant. `vent` : de combien le cœur
+     s'écarte sous la rafale. */
+  const PALMIERS = [
+    { B: [495.5, 852], K: [452.5, 607.6], C: [285, 425], w0: 65, w1: 72, W: 52, E: 7, moyeu: 30, bouton: -132, vent: 16, phase: 0,
+      palmes: [[-94.3, 239, -1], [-57.3, 250, -1], [2.7, 215, -1], [-177.6, 240, 1], [143.6, 245, 1], [84.9, 224, 1]] },
+    { B: [588.5, 852], K: [653.7, 509.9], C: [860, 320], w0: 65, w1: 76, W: 60, E: 9, moyeu: 34, bouton: -43, vent: 20, phase: 1.7,
+      palmes: [[-124.2, 306, 1], [-87.6, 290, 1], [176.8, 270, 1], [-1.4, 290, -1], [37.5, 297, -1], [97.3, 278, -1]] },
+  ];
+
+  // ---- le SVG ----
+  const el = (nom, attrs, parent) => {
+    const e = document.createElementNS(NS, nom);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    (parent || svg).appendChild(e);
+    return e;
+  };
+  const defs = el('defs', {});
+  const grad = el('radialGradient', { id: 'suHalo' }, defs);
+  el('stop', { offset: '0', style: 'stop-color:#fff;stop-opacity:1' }, grad);
+  el('stop', { offset: '0.3', style: 'stop-color:rgb(var(--accent-rgb));stop-opacity:0.55' }, grad);
+  el('stop', { offset: '1', style: 'stop-color:rgb(var(--accent-rgb));stop-opacity:0' }, grad);
+  // l'éclat de l'éclosion : derrière l'île, et un par cœur de palmier
+  const gEclat = el('g', { style: 'mix-blend-mode:screen' });
+  const eclat = el('circle', { cx: 585, cy: 880, r: 0, fill: 'url(#suHalo)', opacity: 0 }, gEclat);
+  const eclatsCoeur = PALMIERS.map(p => el('circle', { cx: p.C[0], cy: p.C[1], r: 0, fill: 'url(#suHalo)', opacity: 0 }, gEclat));
+  const gPalm = el('g', { fill: '#fff', opacity: OPA });
+  const traces = PALMIERS.map(p => ({
+    tronc: el('path', {}, gPalm),
+    moyeu: el('circle', { cx: p.C[0], cy: p.C[1], r: 0 }, gPalm),
+    palmes: p.palmes.map(() => el('path', {}, gPalm)),
+  }));
+  const gIle = el('g', { fill: '#fff', opacity: 0 });
+  el('path', { d: ILE }, gIle);
+  const gMot = el('g', { fill: '#fff', opacity: 0 });
+  lettres.forEach(([d, a, dd, e, f]) => el('path', { d, transform: `matrix(${a} 0 0 ${dd} ${e} ${f})` }, gMot));
+  const gFs3 = el('g', { fill: '#fff', opacity: 0 });
+  const gFs3In = el('g', { transform: `translate(${FS3_X} ${FS3_Y}) scale(${FS3_K})` }, gFs3);
+  FS3.forEach(d => el('path', { d }, gFs3In));
+  /* le sous-titre « FakeStation ⓕ 3 », dans la police du site : sa marque
+     déposée pour rire, un rond et « fk », entre le nom et le chiffre */
+  const police = { 'font-family': 'Inter, system-ui, sans-serif', 'font-weight': 380 };
+  const tNom = el('text', { y: 428, 'font-size': 70, ...police }, gFs3In);
+  tNom.textContent = 'FakeStation';
+  const rond = el('circle', { cy: 416, r: 11, fill: 'none', stroke: '#fff', 'stroke-width': 2.2 }, gFs3In);
+  const tFk = el('text', { y: 420, 'font-size': 11, 'text-anchor': 'middle', ...police, 'font-weight': 600 }, gFs3In);
+  tFk.textContent = 'fk';
+  const t3 = el('text', { y: 428, 'font-size': 70, ...police }, gFs3In);
+  t3.textContent = '3';
+  let sousTitre = null;   // positions retenues, reprises par la toile pour la poussière
+  function placerSousTitre(){
+    const wN = tNom.getComputedTextLength(), w3 = t3.getComputedTextLength();
+    const x0 = 599.5 - (wN + 6 + 22 + 12 + w3) / 2, xr = x0 + wN + 6 + 11, x3 = xr + 11 + 12;
+    tNom.setAttribute('x', x0); rond.setAttribute('cx', xr); tFk.setAttribute('x', xr); t3.setAttribute('x', x3);
+    sousTitre = { x0, xr, x3 };
+  }
+
+  // ---- courbes et dessin ----
+  const clamp01 = v => Math.max(0, Math.min(1, v));
+  const doux = u => u * u * (3 - 2 * u);
+  const sortie = u => 1 - Math.pow(1 - u, 3);
+  const rebond = (u, k) => { const c = k || 1.5; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
+  const f1 = v => Math.round(v * 10) / 10;
+  const pt = p => f1(p[0]) + ' ' + f1(p[1]);
+  // la suite d'un bord lissé, du premier point (déjà atteint) au dernier : on passe par les milieux
+  function bord(pts){
+    let d = '';
+    for (let i = 1; i < pts.length - 1; i++)
+      d += 'Q' + pt(pts[i]) + ' ' + pt([(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2]);
+    return d + 'L' + pt(pts[pts.length - 1]);
+  }
+  // le tronc jusqu'à la fraction g de sa hauteur ; rend aussi son sommet, où s'attachent les palmes
+  function tronc(p, K, C, g){
+    const N = 14, gg = Math.max(0.002, g), gauche = [], droite = [], B = p.B;
+    let som = B;
+    for (let i = 0; i <= N; i++){
+      const s = gg * i / N, m = 1 - s;
+      const x = m * m * B[0] + 2 * m * s * K[0] + s * s * C[0], y = m * m * B[1] + 2 * m * s * K[1] + s * s * C[1];
+      const tx = 2 * m * (K[0] - B[0]) + 2 * s * (C[0] - K[0]), ty = 2 * m * (K[1] - B[1]) + 2 * s * (C[1] - K[1]);
+      const l = Math.hypot(tx, ty) || 1, nx = -ty / l, ny = tx / l, h = (p.w0 + (p.w1 - p.w0) * s) / 2;
+      gauche.push([x + nx * h, y + ny * h]); droite.push([x - nx * h, y - ny * h]);
+      som = [x, y];
+    }
+    droite.reverse();
+    return { d: 'M' + pt(gauche[0]) + bord(gauche) + 'L' + pt(droite[0]) + bord(droite) + 'Z', som };
+  }
+  /* une palme : le bord droit du cœur à la pointe, puis le bord bombé, de la
+     pointe au cœur. `pli` la courbe un peu tout entière (le vent), sans
+     toucher à sa forme. */
+  function palme(c, ang, L, W, E, cote, pli){
+    const ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy * cote, ny = ux * cote, N = 10, droit = [], bombe = [];
+    for (let i = 0; i <= N; i++){
+      const f = i / N, px = c[0] + ux * L * f, py = c[1] + uy * L * f;
+      const k = pli * L * 4 * f * (1 - f), a = k - E * (1 - f), b = k + W * Math.pow(Math.sin(Math.PI * f), 0.8);
+      droit.push([px + nx * a, py + ny * a]); bombe.push([px + nx * b, py + ny * b]);
+    }
+    bombe.reverse();
+    return 'M' + pt(droit[0]) + bord(droit) + bord(bombe) + 'Z';
+  }
+  const rad = Math.PI / 180;
+  const ecart = d => Math.atan2(Math.sin(d), Math.cos(d));   // le plus court chemin d'un angle à l'autre
+  // le vent : trois houles superposées, jamais en phase ; entre −1 et 1
+  const vent = t => 0.55 * Math.sin(t / 1300) + 0.3 * Math.sin(t / 610 + 1.3) + 0.15 * Math.sin(t / 290 + 0.4);
+
+  /* L'île, les troncs, les palmes, à l'instant t (ms depuis la première
+     image). `b` = t − STARTUP.build : négatif, rien n'a encore éclos. */
+  function dessinerPalmiers(t){
+    const b = t - STARTUP.build;
+    // l'île monte de sa base, avec un léger rebond
+    const ki = clamp01((b - 80) / 520);
+    gIle.setAttribute('opacity', (OPA * clamp01(ki * 3)).toFixed(3));
+    gIle.setAttribute('transform', `translate(0 ${ILE_BASE}) scale(1 ${Math.max(0.001, rebond(ki, 1.3)).toFixed(4)}) translate(0 ${-ILE_BASE})`);
+    // le vent ne souffle qu'une fois les palmiers éclos, et se lève doucement
+    const force = reduit ? 0 : doux(clamp01((b - 1100) / 1400));
+    PALMIERS.forEach((p, pi) => {
+      const tr = traces[pi], v = vent(t + p.phase * 1000) * force;
+      const C = [p.C[0] + p.vent * v, p.C[1] + Math.abs(p.vent * v) * 0.12];
+      const K = [p.K[0] + p.vent * v * 0.45, p.K[1]];
+      const g = sortie(clamp01((b - 280 - 70 * pi) / 600));
+      const T = tronc(p, K, C, g);
+      tr.tronc.setAttribute('d', T.d);
+      tr.tronc.style.display = g > 0.002 ? '' : 'none';
+      // le moyeu : le cœur plein d'où partent les palmes
+      const km = clamp01((b - 700 - 70 * pi) / 300);
+      tr.moyeu.setAttribute('cx', f1(T.som[0])); tr.moyeu.setAttribute('cy', f1(T.som[1]));
+      tr.moyeu.setAttribute('r', f1(p.moyeu * Math.max(0, rebond(km, 1.2)) * (km > 0 ? 1 : 0)));
+      p.palmes.forEach(([deg, L, cote], j) => {
+        const u = clamp01((b - 760 - 70 * pi - 45 * j) / 560);
+        const path = tr.palmes[j];
+        if (u <= 0){ path.style.display = 'none'; return; }
+        path.style.display = '';
+        /* L'ÉCLOSION : toutes les palmes partent du bouton — la direction du
+           tronc — et s'ouvrent jusqu'à leur place, d'un geste qui dépasse un
+           peu et revient (rebond). Longueur et largeur les suivent. */
+        const o = rebond(u, 1.6), ang = (p.bouton + ecart((deg - p.bouton) * rad) / rad * o) * rad;
+        // la rafale les couche un peu, chacune avec son retard ; le frémissement, plus vif, est à chacune le sien
+        const flotte = force * (3.6 * vent(t - 140 * j + p.phase * 700) + 1.6 * Math.sin(t / 190 + j * 1.7 + p.phase)) * rad;
+        const pli = force * 0.035 * vent(t - 90 * j + p.phase * 500);
+        const larg = p.W * sortie(u) * (1 + force * 0.05 * Math.sin(t / 230 + j + p.phase));
+        path.setAttribute('d', palme(T.som, ang + flotte, L * (0.25 + 0.75 * sortie(u)), larg, p.E * sortie(u), cote, pli));
+      });
+    });
+    // l'éclat : il grandit et s'éteint ; celui des cœurs part quand les palmes s'ouvrent
+    const ke = clamp01(b / 1300), pic = Math.pow(Math.sin(Math.PI * Math.min(1, ke * 1.15)), 1.2);
+    eclat.setAttribute('r', f1(80 + 520 * sortie(ke)));
+    eclat.setAttribute('opacity', (b > 0 && ke < 1 ? 0.85 * pic : 0).toFixed(3));
+    PALMIERS.forEach((p, pi) => {
+      const kc = clamp01((b - 740 - 70 * pi) / 800), pc = Math.pow(Math.sin(Math.PI * kc), 1.5);
+      eclatsCoeur[pi].setAttribute('r', f1(40 + 240 * sortie(kc)));
+      eclatsCoeur[pi].setAttribute('opacity', (kc > 0 && kc < 1 ? 0.7 * pc : 0).toFixed(3));
+    });
+    svg.style.setProperty('--eclat', (b > 0 && ke < 1 ? pic : 0).toFixed(3));
+  }
+
+  /* ---- la poussière (métamorphose) et les étincelles (éclosion) ----
+     Une toile sur toute la fenêtre, en pixels d'écran. La poussière : les
+     pixels du FS3 à l'écran, relevés d'un pas régulier, et ceux des lettres ;
+     autant de grains que de points, rangés de gauche à droite des deux côtés
+     — un grain du F va vers le début des mots, un grain du 3 vers leur fin.
+     Chacun part avec un léger retard qui court de gauche à droite, et fait
+     un petit arc en chemin. Ils laissent une traînée, effacée image par image. */
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  function tailleToile(){ toile.width = Math.round(innerWidth * dpr); toile.height = Math.round(innerHeight * dpr); }
+  const grain = document.createElement('canvas');
+  grain.width = grain.height = 12;
+  (() => {
+    const g = grain.getContext('2d'), r = g.createRadialGradient(6, 6, 0, 6, 6, 6);
+    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.35, 'rgba(255,255,255,0.75)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 12, 12);
+  })();
+  // les pixels d'une forme telle qu'elle est à l'écran
+  function releve(dessiner){
+    const r = svg.getBoundingClientRect(), q = r.width / 1200;
+    const w = Math.max(1, Math.ceil(r.width)), h = Math.max(1, Math.ceil(r.height));
+    const oc = document.createElement('canvas'); oc.width = w; oc.height = h;
+    const g = oc.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#fff';
+    dessiner(g, q);
+    const px = g.getImageData(0, 0, w, h).data, pts = [];
+    for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (px[(y * w + x) * 4 + 3] > 127) pts.push([r.left + x, r.top + y]);
+    return pts;
+  }
+  const dessinerFs3 = (g, q) => {
+    g.setTransform(q * FS3_K, 0, 0, q * FS3_K, q * FS3_X, q * FS3_Y);
+    FS3.forEach(d => g.fill(new Path2D(d)));
+    if (sousTitre){
+      g.font = '380 70px Inter, system-ui, sans-serif';
+      g.fillText('FakeStation', sousTitre.x0, 428);
+      g.fillText('3', sousTitre.x3, 428);
+      g.lineWidth = 2.2; g.strokeStyle = '#fff';
+      g.beginPath(); g.arc(sousTitre.xr, 416, 11, 0, 7); g.stroke();
+    }
+  };
+  const dessinerMots = (g, q) => lettres.forEach(([d, a, dd, e, f]) => {
+    g.setTransform(q * a, 0, 0, q * dd, q * e, q * f);
+    g.fill(new Path2D(d));
+  });
+  const GRAINS = 2600, VOL = 760, DECALAGE = 300;
+  let grains = null;
+  function preparerPoussiere(){
+    const tirer = (pts, n) => {
+      if (!pts.length) return [];
+      const out = pts.slice();
+      for (let i = out.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+      while (out.length < n) out.push(pts[Math.floor(Math.random() * pts.length)]);
+      return out.slice(0, n);
+    };
+    let a = releve(dessinerFs3), b = releve(dessinerMots);
+    /* Un grain pour 10 px² de lettres environ (un point relevé en vaut 4) :
+       la densité reste la même quelle que soit la taille du logo. À nombre
+       fixe, un petit écran recevait tous ses grains sur un FS3 de 180 px, et
+       la poussière n'était plus qu'une tache blanche. */
+    const n = Math.min(GRAINS, Math.max(300, Math.round(b.length / 2.5)));
+    a = tirer(a, n); b = tirer(b, n);
+    const cle = p => p[0] + p[1] * 0.25;
+    a.sort((p, q) => cle(p) - cle(q)); b.sort((p, q) => cle(p) - cle(q));
+    if (!n) return [];
+    const xa = a[0][0], xb = a[n - 1][0] - xa || 1;
+    return a.map((p, i) => ({ x0: p[0], y0: p[1], x1: b[i][0], y1: b[i][1],
+      d: (p[0] - xa) / xb * DECALAGE + Math.random() * 90,        // la vague, de gauche à droite
+      arc: (Math.random() - 0.5) * 2 * (18 + Math.random() * 40),  // l'écart en chemin, d'un côté ou de l'autre
+      e: 0.55 + Math.random() * 0.45 }));                           // l'éclat propre du grain
+  }
+  const etincelles = [];
+  // des étincelles qui jaillissent d'un point du logo (repère 1200 × 1565), dans un éventail d'angles
+  function jaillir(xm, ym, n, a0, a1, v0, v1){
+    const r = svg.getBoundingClientRect(), q = r.width / 1200;
+    for (let i = 0; i < n; i++){
+      const a = (a0 + Math.random() * (a1 - a0)) * rad, v = (v0 + Math.random() * (v1 - v0)) * q / 0.36;
+      etincelles.push({ x: r.left + xm * q, y: r.top + ym * q, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+        vie: 650 + Math.random() * 650, age: 0, taille: 0.6 + Math.random() * 0.9 });
+    }
+  }
+  let toileSale = false;
+  function dessinerToile(t, dt){
+    const m = t - STARTUP.morph, actifs = grains && m > -50 && m < VOL + DECALAGE + 400;
+    if (!actifs && !etincelles.length){
+      if (toileSale){ ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, toile.width, toile.height); toileSale = false; }
+      return;
+    }
+    toileSale = true;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // la traînée : chaque image efface une part de la précédente, la même quel que soit l'écran (60 ou 144 Hz)
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = `rgba(0,0,0,${(1 - Math.pow(0.6, dt / 16.7)).toFixed(3)})`;
+    ctx.fillRect(0, 0, toile.width, toile.height);
+    ctx.globalCompositeOperation = 'lighter';
+    if (actifs && m >= 0){
+      // les grains s'éteignent pendant que les lettres nettes apparaissent
+      const fin = 1 - clamp01((m - (VOL + DECALAGE - 150)) / 330);
+      for (const g of grains){
+        const u = clamp01((m - g.d) / VOL), e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+        const dx = g.x1 - g.x0, dy = g.y1 - g.y0, l = Math.hypot(dx, dy) || 1, s = Math.sin(Math.PI * e);
+        const x = g.x0 + dx * e - dy / l * g.arc * s, y = g.y0 + dy * e + dx / l * g.arc * s - s * 12;
+        ctx.globalAlpha = g.e * fin * 0.85;
+        const z = (1.5 + s * 1.3) * dpr;   // un grain fin, qui enfle un peu en vol
+        ctx.drawImage(grain, x * dpr - z, y * dpr - z, z * 2, z * 2);
+      }
+    }
+    for (let i = etincelles.length - 1; i >= 0; i--){
+      const e = etincelles[i];
+      e.age += dt;
+      if (e.age >= e.vie){ etincelles.splice(i, 1); continue; }
+      const fr = Math.pow(0.986, dt / 16.7);
+      e.vx *= fr; e.vy = e.vy * fr + 0.00018 * dt;   // l'air les freine, un rien les fait retomber
+      e.x += e.vx * dt; e.y += e.vy * dt;
+      ctx.globalAlpha = Math.pow(1 - e.age / e.vie, 1.5);
+      const z = (2 + 3 * e.taille) * dpr;
+      ctx.drawImage(grain, e.x * dpr - z, e.y * dpr - z, z * 2, z * 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---- la séquence ---- */
+  let t0 = 0, dernier = 0, raf = 0, fini = false, crans = null;
+  function image(now){
+    if (fini) return;
+    raf = requestAnimationFrame(image);
+    if (!t0) t0 = now;
+    const t = reduit ? Math.max(now - t0, STARTUP.build + 3000) : now - t0;   // mouvement réduit : l'état final, tout de suite
+    const dt = dernier ? Math.min(50, now - dernier) : 16.7; dernier = now;
+    // le FS3 : fondu d'entrée en 0,9 s, puis il se défait
+    const kIn = sortie(clamp01((now - t0) / 900)), kOut = clamp01((t - STARTUP.morph) / 200);
+    gFs3.setAttribute('opacity', (reduit ? 0 : OPA * kIn * (1 - kOut)).toFixed(3));
+    const s = 0.98 + 0.02 * kIn;
+    gFs3.setAttribute('transform', `translate(600 ${ILE_BASE}) scale(${s.toFixed(4)}) translate(-600 ${-ILE_BASE})`);
+    // les lettres nettes, quand la poussière s'est posée
+    const kMot = clamp01((t - STARTUP.morph - (VOL + DECALAGE - 150)) / 330);
+    gMot.setAttribute('opacity', (OPA * (reduit ? 1 : kMot)).toFixed(3));
+    if (!grains && !reduit && t > STARTUP.morph - 400) grains = preparerPoussiere();   // un peu avant : le relevé coûte quelques ms
+    dessinerPalmiers(t);
+    // les étincelles aux instants de l'éclosion
+    if (!reduit){
+      const b = t - STARTUP.build;
+      if (!crans) crans = { ile: false, coeurs: [false, false] };
+      if (!crans.ile && b >= 0){ crans.ile = true; jaillir(585, 900, 38, -165, -15, 0.10, 0.34); }
+      PALMIERS.forEach((p, pi) => {
+        if (!crans.coeurs[pi] && b >= 760 + 70 * pi){ crans.coeurs[pi] = true; jaillir(p.C[0], p.C[1], 24, -180, 180, 0.06, 0.26); }
+      });
+    }
+    dessinerToile(t, dt);
+    // mouvement réduit : le logo entier apparaît en fondu
+    if (reduit) svg.style.opacity = kIn.toFixed(3);
+  }
+  // `crans` : les instants à ne jouer qu'une fois (aide, rideau, fin), rendus par rAF pour suivre la séquence même si l'onglet dormait
+  function jouer(etapes){
+    tailleToile();
+    window.addEventListener('resize', tailleToile);
+    placerSousTitre();
+    const faits = {};
+    const guet = now => {
+      if (fini) return;
+      requestAnimationFrame(guet);
+      const t = t0 ? now - t0 : 0;
+      [['aide', STARTUP.aide], ['fondu', STARTUP.hold], ['fin', STARTUP.hold + STARTUP.fade]].forEach(([nom, quand]) => {
+        if (!faits[nom] && t0 && t >= quand){ faits[nom] = true; etapes[nom](); }
+      });
+    };
+    raf = requestAnimationFrame(image);
+    requestAnimationFrame(guet);
+  }
+  function arreter(){
+    fini = true;
+    cancelAnimationFrame(raf);
+    window.removeEventListener('resize', tailleToile);
+  }
+  return { jouer, arreter };
+})();
+/* ---------------- téléphone : le paysage (demande du 25 sept. 2026) ----------------
+   Le voile .tourner couvre tout tant que le téléphone est debout — le CSS
+   seul s'en charge, avec la même requête que ci-dessous. Ici, le bouton qui
+   passe en plein écran et verrouille le paysage : Android le permet, mais
+   seulement en plein écran et après un geste ; iOS ne le permet pas, le bouton
+   y reste caché et le voile demande de tourner. Toucher n'importe où sur le
+   voile vaut le bouton — sur un écran qui ne montre que cela, c'est ce que
+   le doigt cherche. */
+const TELEPHONE_DEBOUT = window.matchMedia('(orientation:portrait) and (max-width:600px) and (hover:none) and (pointer:coarse)');
+const paysage = (() => {
+  const voile = document.getElementById('tourner');
+  const bouton = document.getElementById('tournerBouton');
+  const racine = document.documentElement;
+  const peut = !!(racine.requestFullscreen && window.screen && screen.orientation && screen.orientation.lock);
+  bouton.hidden = !peut;
+  function basculer(){
+    if (!peut) return;
+    const plein = document.fullscreenElement ? Promise.resolve() : racine.requestFullscreen({ navigationUI: 'hide' });
+    plein.then(() => screen.orientation.lock('landscape')).catch(() => {});   // refusé : le voile reste, on tourne à la main
+  }
+  voile.addEventListener('click', basculer);
+  return { basculer };
+})();
 function runStartup(){
   const layer = document.getElementById('startup');
   const tint = document.getElementById('startupTint');
-  const logo = document.getElementById('startupLogo');
-  const mark = document.getElementById('startupMark');
-  // en pourcentages : la position suit un éventuel redimensionnement pendant
-  // le démarrage. Emblème au centre, logo FS3 à sa droite, tous deux posés
-  // sur le ruban comme le logo PS et le mot PS3 sur la console.
-  // Même ligne pour les deux (hauteur du ruban à mi-chemin), sinon la pente
-  // du ruban les décale l'un par rapport à l'autre.
-  const lineY = ((spineY(W * 0.66) / H) * 100 + 3) + '%';
-  mark.style.top = lineY;       // sa position horizontale est calée sur le logo en CSS
-  logo.style.left = '75%';
-  logo.style.top = lineY;
-  const images = [logo, ...mark.querySelectorAll('img')];
-
-  let started = false;
+  let started = false, attente = false;
   const start = () => {
     if (started) return;
+    /* TENU DEBOUT, le téléphone ne voit que le voile : l'allumage attend qu'on
+       le couche, pour qu'on le voie en entier (demande du 25 sept. 2026). */
+    if (TELEPHONE_DEBOUT.matches){
+      if (!attente){
+        attente = true;
+        const couche = () => { if (TELEPHONE_DEBOUT.matches) return; TELEPHONE_DEBOUT.removeEventListener('change', couche); requestAnimationFrame(start); };
+        TELEPHONE_DEBOUT.addEventListener('change', couche);
+      }
+      return;
+    }
     started = true;
+    /* La base de l'île sur le ruban, là où le logo se tient — aux trois quarts
+       de la largeur (en pourcentage : la position suit un éventuel
+       redimensionnement pendant le démarrage). Mesurée ICI, au départ, et sur
+       la fenêtre elle-même : un téléphone qu'on vient de coucher n'a pas
+       forcément encore redimensionné le ruban. */
+    const lw = window.innerWidth, lh = window.innerHeight;
+    document.getElementById('startupLogo').style.top = ((spineIn(lw * 0.75, lw, lh) / lh) * 100 + 2) + '%';
     requestAnimationFrame(() => layer.classList.add('show'));
-    setTimeout(() => {
-      document.body.classList.add('boot-fade');
-      document.body.classList.remove('booting');
-      layer.classList.add('fade');
-      tint.classList.add('fade');
-      /* La console est allumée : le menu apparaît, les touches répondent, et
-         un souffle accompagne le rideau. startupActive tombe ICI et non à la
-         fin du fondu — c'est ce drapeau qui tient aussi bien le clavier que le
-         son (voir sfx.audio), et le son doit partir avec l'image. */
-      startupActive = false;
-      sfx.boot();
-      setTimeout(() => {
+    demarrage.jouer({
+      aide: () => layer.classList.add('aide-partie'),
+      fondu: () => {
+        document.body.classList.add('boot-fade');
+        document.body.classList.remove('booting');
+        layer.classList.add('fade');
+        tint.classList.add('fade');
+        /* La console est allumée : le menu apparaît, les touches répondent, et
+           un souffle accompagne le rideau. startupActive tombe ICI et non à la
+           fin du fondu — c'est ce drapeau qui tient aussi bien le clavier que le
+           son (voir sfx.audio), et le son doit partir avec l'image. */
+        startupActive = false;
+        sfx.boot();
+      },
+      fin: () => {
+        demarrage.arreter();
         layer.remove();
         tint.remove();
         document.body.classList.remove('boot-fade');
         effacerAideBientot();   // l'interface est pleinement là : la barre d'aide entame son décompte
-      }, STARTUP.fade);
-    }, STARTUP.hold);
-  };
-  // on attend les images (préchargées), sans jamais bloquer plus de 1,2 s
-  const ready = () => images.every(i => i.complete);
-  if (ready()) start();
-  else {
-    images.forEach(i => {
-      i.addEventListener('load', () => { if (ready()) start(); }, { once:true });
-      i.addEventListener('error', () => { if (ready()) start(); }, { once:true });
+      },
     });
-    setTimeout(start, 1200);
-  }
+  };
+  // la police du sous-titre (préchargée), sans jamais attendre plus de 0,9 s
+  if (document.fonts && document.fonts.load) document.fonts.load('380 70px Inter').then(start, start);
+  else start();
+  setTimeout(start, 900);
 }
 // L'allumage se joue à chaque chargement de cette page (les futures pages
 // annexes, fichiers séparés, n'embarquent pas cette séquence).
