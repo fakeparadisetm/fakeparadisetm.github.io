@@ -4899,11 +4899,11 @@ const SIZE_CHARTS = {
 
    ELLE SUIT LE CATALOGUE : mêmes articles, même ordre, mêmes photos (sans
    `v`, qui ne sert qu'au catalogue) — réalignée le 25 sept. 2026. Ses photos
-   sont demandées même quand catalogue.json est là : celles du premier
-   article dès l'ouverture (la fiche se remplit avant que le fichier
-   n'arrive), toutes s'il tarde plus d'une seconde et demie. Une photo
-   supprimée par le gestionnaire mais encore citée ici, c'est une erreur 404
-   à chaque visite : quand il retire un article, le retirer ici aussi. */
+   ne sont demandées que si catalogue.json manque ou tarde plus d'une seconde
+   et demie : la fiche ne se remplit plus avant le premier build() (voir
+   render). Une photo supprimée par le gestionnaire mais encore citée ici,
+   c'est alors une erreur 404 : quand il retire un article, le retirer ici
+   aussi. */
 // Descriptifs bilingues partagés par les tees aux caractéristiques identiques.
 const DESC = {
   teeBlack: { en:"280 GSM (100% cotton)\nBoxy fit\nBlack\nCustom neck print", fr:"280 g/m² (100 % coton)\nCoupe boxy\nNoir\nImpression au col personnalisée" },
@@ -12038,7 +12038,8 @@ window.addEventListener('resize', () => { // une seule reprise par image pendant
     poserBarre(camShift);
   });
 });
-// la largeur des lignes texte (repli sans WebGL) change quand la police arrive
+// la largeur des lignes texte (repli sans WebGL) change quand la police arrive ;
+// arrivée avant le premier build(), il n'y a rien à remesurer (voir render)
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
   categoriesEl.querySelectorAll('.xmb-item').forEach(r => { delete r._w; });
   geom.ready = false; render();
@@ -12046,6 +12047,15 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
 
 function render(){
   const cats = [...categoriesEl.querySelectorAll('.category')];
+  /* RIEN À RENDRE AVANT LE PREMIER build(). Tant que la barre n'est pas
+     construite — elle attend catalogue.json, voir withCatalogue —, render()
+     n'a rien à placer, et il remplissait quand même la fiche avec le premier
+     article INTÉGRÉ : ses photos téléchargées sans le `?v=` du catalogue
+     (donc deux fois, et en 404 si elles n'existent plus), son modèle 3D
+     préparé pour rien. L'arrivée de la police (document.fonts.ready) le
+     déclenchait souvent, avant le catalogue ; un redimensionnement aussi.
+     build() fait lui-même la mesure et le premier rendu. */
+  if (!cats.length) return;
   if (!geom.ready || geom.cats.length !== cats.length) measureGeometry();
   let activeColW = 0, rowBoxes = [], rowDur = 450;
   cats.forEach((el, ci) => {
