@@ -2375,7 +2375,12 @@
     border:none;
     font-family:inherit;
     padding:0;
+    display:inline-flex;
+    align-items:center;
+    gap:0.45em;
   }
+  /* le petit panier devant le compte : il suit la couleur du mot, et sa lueur (une ombre de texte ne prend pas sur un dessin) */
+  .topbar .cart svg{width:1.25em;height:1.25em;flex:none;filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),0.55));}
   .topbar .cart:hover{color:var(--white);}
 
   /* ---------- cart panel ---------- */
@@ -4160,7 +4165,8 @@
     <span class="clock" id="clock"></span>
     <svg class="statut-horloge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.4 2.2"/></svg>
   </div>
-  <button class="cart" id="cartCount">CART · 0</button>
+  <!-- le petit panier (PANIER_ICONE) se pose devant le compte au démarrage -->
+  <button class="cart" id="cartCount"><span id="cartTexte">CART · 0</span></button>
 </div>
 <!-- Les pastilles des sections, en haut au centre (voir .pager) : remplies par build. -->
 <nav class="pager" id="pager"></nav>
@@ -6107,6 +6113,10 @@ const addDuo = document.getElementById('addDuo');
 const PANIER_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L20 7H6"/>'
   + '<circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>';
+/* Le même petit panier devant le compte, en haut à droite (demande du 26
+   sept. 2026 : « un logo de cart à côté de CART · 0, pour qu'on comprenne
+   mieux ») : le mot seul, en capitales fines, se lisait comme une étiquette. */
+document.getElementById('cartCount').insertAdjacentHTML('afterbegin', PANIER_ICONE);
 const ONGLET_LARGEUR = 44;      // le même que le max-width de .cta-panier
 function majOngletPanier(){
   // le contenant porte le galet : il disparaît avec le bouton qu'il entoure
@@ -7403,7 +7413,7 @@ let libreSiImmobile = () => {};
 let volCanvas = null, volScene = null, volRaf = 0;
 function volVersPanier(item){
   const swatch = document.querySelector('.preview-swatch');
-  const cible = document.getElementById('cartCount');
+  const cible = document.querySelector('#cartCount svg') || document.getElementById('cartCount');   // le petit panier, devant le compte
   if (!swatch || !cible || !item || !item.img) return;
   const a = swatch.getBoundingClientRect(), b = cible.getBoundingClientRect();
   if (!a.width) return;
@@ -8412,6 +8422,7 @@ const model3d = (() => {
      `3Dmodels/head v3 Final.fbx`, figé ici en deux tableaux. Trente-deux
      sommets, soixante triangles — les proportions d'un personnage de 1995, où
      le volume ne porte presque rien et où TOUT le visage est dans la texture.
+     Seules les oreilles ont été ajoutées ici, par-dessus (voir `oreilles`).
 
      Pourquoi figé plutôt que lu à l'exécution : un FBX est un format binaire à
      nœuds, avec des tableaux compressés en deflate ; le lire coûterait deux
@@ -8566,6 +8577,7 @@ const model3d = (() => {
       const uv = p.map((v, i) => [uDe(th[i] === null ? moyen : th[i]), vDe(v[1])]);
       faces.push({ p, uv });
     }
+    const lobe = oreilles(faces);
     const nV = faces.length * 3;
     const data = new Float32Array(nV * STRIDE), index = new Uint16Array(nV);
     let k = 0;
@@ -8593,7 +8605,63 @@ const model3d = (() => {
     }
     let zmin = 9, zmax = -9;
     for (let i = 0; i < nV; i++){ const z = data[i*STRIDE+2]; if (z < zmin) zmin = z; if (z > zmax) zmax = z; }
-    return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true };
+    return { data, index, nFront: nV, nBack: 0, tris: faces.length, verts: nV, zmin, zmax, relief: true, lobe };
+  }
+  /* LES OREILLES (demande du 26 sept. 2026 : « essayer de faire une forme pour
+     sortir ces oreilles »). Le modèle n'en avait pas : elles n'étaient que
+     peintes sur l'atlas, à plat sur le flanc du crâne, et de face la tête
+     finissait en savon. Chacune est maintenant une coquille de neuf facettes
+     posée SUR sa peinture : un tour de neuf points, du haut de l'hélix au lobe,
+     et la conque au milieu, en retrait du bord — c'est ce creux qui, à la
+     lumière, fait une oreille et non une plaque. Le bord avant reste collé à
+     la tête, l'arrière s'en écarte (l'oreille s'ouvre vers l'avant), et
+     chaque point garde l'angle et la hauteur de l'endroit de l'atlas qu'il
+     recouvre : la peinture passe telle quelle sur la coquille. Le revers est
+     de la peau, prise dans le cou, juste en dessous. `[angle, hauteur,
+     saillie]` : degrés du côté +x (l'autre oreille est son miroir), repère du
+     fichier ; la saillie se compte depuis la surface, vers l'extérieur. La
+     peinture couvre 84° à 110°, et de −0,06 à 0,19 en hauteur. */
+  const OREILLE = {
+    tour: [[85, 0.155, 0], [92, 0.19, 0.032], [101, 0.192, 0.06], [108, 0.14, 0.08], [110, 0.055, 0.08],
+           [106, -0.025, 0.06], [97, -0.065, 0.034], [89, -0.05, 0.004], [85, 0.05, 0]],
+    conque: [97, 0.065, 0.02],
+    revers: vDe(-0.2),            // la peau du revers : le cou, sous l'oreille
+  };
+  // ajoute les deux oreilles aux facettes de la tête ; rend le lobe du côté +x, celui de la boucle (voir ECLATS)
+  function oreilles(faces){
+    const D = Math.PI / 180, K = 1.05 / HAUTEUR_TETE;
+    const sous = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+    const normale = (a, b, c) => v3.norm(v3.cross(sous(b, a), sous(c, a)));
+    // un triangle, remis dans le sens qui regarde `d`
+    const poser = (p, uv, d) => {
+      const n = normale(p[0], p[1], p[2]);
+      if (n[0]*d[0] + n[1]*d[1] + n[2]*d[2] < 0){ p = [p[0], p[2], p[1]]; uv = [uv[0], uv[2], uv[1]]; }
+      faces.push({ p, uv });
+    };
+    let lobe = null;
+    for (const cote of [1, -1]){
+      const pt = ([a, y, s]) => {
+        const th = cote * a * D, h = impactTete(th, y);
+        const q = h ? h.p.map(v => v * K) : [Math.sin(th) * 0.27, y, Math.cos(th) * 0.27];
+        return { p: [q[0] + Math.sin(th) * s, q[1], q[2] + Math.cos(th) * s], uv: [uDe(th), vDe(y)], peau: [uDe(th), OREILLE.revers] };
+      };
+      const tour = OREILLE.tour.map(pt), c = pt(OREILLE.conque);
+      const dehors = [cote * Math.sin(75 * D), 0, Math.cos(75 * D)], dedans = dehors.map(v => -v);
+      for (let k = 0; k < tour.length; k++){
+        const A = tour[k], B = tour[(k + 1) % tour.length];
+        poser([c.p, A.p, B.p], [c.uv, A.uv, B.uv], dehors);
+        poser([c.p, B.p, A.p], [c.peau, B.peau, A.peau], dedans);
+      }
+      if (cote === 1){
+        // la boucle : dans le lobe, entre son bas et son attache, un peu vers la conque
+        const a = tour[6].p, b = tour[7].p;
+        const p = [0, 1, 2].map(i => (a[i] * 0.4 + b[i] * 0.4 + c.p[i] * 0.2) / K);
+        let n = normale(c.p, a, b);
+        if (n[0]*dehors[0] + n[2]*dehors[2] < 0) n = n.map(v => -v);
+        lobe = { p, n };
+      }
+    }
+    return lobe;
   }
   /* Le point de la surface de la tête à un angle et une hauteur donnés
      (repère du fichier, avant réduction), et sa normale : un rayon HORIZONTAL
@@ -8678,6 +8746,62 @@ const model3d = (() => {
     const y = r === 6 ? colY(phi) : r === 7 ? colY(phi) - 0.035 : y0;
     return [a * superE(Math.sin(phi), n), y, cz + b * superE(Math.cos(phi), n)];
   }
+  /* Le corps entre deux anneaux, à l'angle φ (0 devant, π dans le dos) et à la
+     hauteur y : les anneaux interpolés — et au-dessus du pied du col, son
+     mur, jusqu'au bord qui monte vers la nuque. `cz` : le centre de la
+     section, d'où l'on compte « dehors ». */
+  function surCorps(phi, y){
+    let A, B, u;
+    if (y >= ANNEAUX[5][0]){ A = ANNEAUX[5]; B = ANNEAUX[6]; u = Math.min(1, (y - A[0]) / (colY(phi) - A[0])); }
+    else {
+      let r = 0;
+      while (r < 4 && ANNEAUX[r + 1][0] < y) r++;
+      A = ANNEAUX[r]; B = ANNEAUX[r + 1]; u = Math.max(0, (y - A[0]) / (B[0] - A[0]));
+    }
+    const L = k => A[k] + (B[k] - A[k]) * u, cz = L(3), n = L(4);
+    return { p: [L(1) * superE(Math.sin(phi), n), y, cz + L(2) * superE(Math.cos(phi), n)], cz };
+  }
+  // le dos à l'abscisse x (du côté du dos), et la direction qui en sort, à plat
+  function dosEn(x, y){
+    let lo = Math.PI / 2, hi = Math.PI;
+    for (let k = 0; k < 32; k++){ const m = (lo + hi) / 2; if (surCorps(m, y).p[0] > Math.abs(x)) lo = m; else hi = m; }
+    const { p, cz } = surCorps((lo + hi) / 2, y);
+    p[0] = Math.abs(x) < 1e-6 ? 0 : Math.sign(x) * p[0];
+    const d = Math.hypot(p[0], p[2] - cz) || 1;
+    return { p, d: [p[0] / d, 0, (p[2] - cz) / d] };
+  }
+  /* LA CAPUCHE, RABATTUE (refaite le 26 sept. 2026 : « faire une capuche un
+     peu plus réaliste quand même »). Jusque-là, un ellipsoïde écrasé collé à
+     la nuque : de profil une boule, de dos une bosse, rien qui dise du tissu.
+     Une capuche baissée, c'est un sac couché sur le haut du dos : son
+     ouverture fait le tour du cou, et le sac retombe derrière, en écusson,
+     jusqu'entre les omoplates. Trois morceaux :
+     - L'OUVERTURE, derrière la nuque : du bord du col (l'anneau 6, ses
+       sommets 5 à 11, de 112,5° à 247,5°) elle plonge dans un creux, puis
+       remonte au PLI, où le tissu se retourne pour devenir le dos du sac.
+       C'est l'envers, sombre : de dos, un croissant noir entre la nuque et
+       la capuche — le signe le plus sûr d'une capuche baissée. Aux deux
+       bouts, le pli rejoint le bord du col et l'ouverture se referme.
+     - LA COQUE : du pli jusqu'à la pointe, six rangées de sept points posées
+       sur le dos, bombées au milieu (`ep`, l'épaisseur sous la rangée), qui
+       s'élargissent sur les trapèzes puis se referment en pointe ronde. La
+       COUTURE du milieu la relève d'un rien : l'arête sépare les deux pans,
+       et la lumière ne tombe pas pareil de chaque côté.
+     - LA TRANCHE : le bord de la coque est à deux épaisseurs de molleton du
+       dos (`bord`) ; une bande le rejoint au dos tout le long, qui dessine
+       la capuche d'un trait d'ombre.
+     Rangées : [hauteur au milieu, hauteur aux bords, demi-largeur, épaisseur
+     au milieu], en unités du buste. */
+  const CAPUCHE = {
+    i0: 5,                                        // le premier sommet du bord du col pris dans l'ouverture (112,5°)
+    pli: { a: 0.05, b: 0.10, y: -0.03 },          // le pli, au milieu : son écart au bord du col (demi-largeur, demi-profondeur) et sa hauteur
+    creux: 0.06,                                  // le fond de l'ouverture, sous le bord du col, au milieu
+    rangs: [[-0.31, -0.335, 0.175, 0.115], [-0.385, -0.415, 0.235, 0.11], [-0.46, -0.49, 0.265, 0.095],
+            [-0.54, -0.56, 0.25, 0.072], [-0.615, -0.625, 0.19, 0.045], [-0.675, -0.68, 0.095, 0.022]],
+    pointe: -0.70,
+    couture: 0.012,
+    bord: 0.02,
+  };
   /* La texture du buste, lue au plus proche (voir `brut`), en trois parts :
      - à gauche (u < 0,5), le MOLLETON de tout le tour : u fait le tour du
        buste, v descend du col à la coupe. Un noir délavé plutôt qu'un noir
@@ -8693,12 +8817,22 @@ const model3d = (() => {
        milieu et écrasé sur les côtés. À plat, il se pose comme une
        sérigraphie. Aux bords du plastron le grain change de trame, ce qui ne
        se voit pas dans un grain ;
+     - sous le plastron (26 sept. 2026), la COQUE DE LA CAPUCHE, dépliée : u
+       la traverse, v descend du pli à la pointe. Le même grain, et ce que la
+       lumière cuite ne sait pas faire, peint comme on le peignait sur la
+       console : la couture du milieu (un sillon sombre bordé de deux fils
+       clairs), l'ombre qui gagne vers les bords et vers la pointe, là où la
+       coque se couche sur le dos, et le pli plus clair, là où le tissu se
+       retourne ;
      - à droite, deux couleurs pleines, visées en leur centre (lecture au plus
        proche, rien ne bave) : l'envers du col, et le dessous.
      Les texels du plastron ont à peu près la taille des pixels du rendu, pour
      que le logo n'y perde ni n'y gagne de détail. */
   const TEX_BUSTE = [512, 256];
   const BUSTE_PAL = { dedans: [52/64, 0.5], fond: [60/64, 0.5] };
+  // la coque de la capuche : s de 1 (x > 0) à −1 en travers, t de 0 (le pli) à 1 (la pointe)
+  const CAPUCHE_TEX = { u0: 0.504, u1: 0.746, v0: 0.47, v1: 0.996 };
+  const capucheUV = (s, t) => [CAPUCHE_TEX.u0 + (1 - s) / 2 * (CAPUCHE_TEX.u1 - CAPUCHE_TEX.u0), CAPUCHE_TEX.v0 + t * (CAPUCHE_TEX.v1 - CAPUCHE_TEX.v0)];
   const TISSU_H = -0.24;                      // le haut du molleton dans la texture (v = 0), juste au-dessus du col
   const tissuV = y => Math.min(0.998, Math.max(0.002, (TISSU_H - y) / (TISSU_H - BUSTE_BAS)));
   // le plastron : |x| ≤ x, de la coupe au pied du trapèze (y ≤ haut), en unités du buste ; u0 → u1, 0 → v1 dans la texture
@@ -8748,6 +8882,27 @@ const model3d = (() => {
       tg.fillStyle = L.teinte; tg.fillRect(0, 0, t.width, t.height);
       g.drawImage(t, x0, y0);
     }
+    // 3 bis. la coque de la capuche : le grain, puis ses ombres, son pli et sa couture
+    {
+      const T = CAPUCHE_TEX, x0 = Math.round(T.u0 * W), x1 = Math.round(T.u1 * W), y0 = Math.round(T.v0 * H), y1 = Math.round(T.v1 * H);
+      const lm = 20, hm = 6;                                   // une maille : environ 0,1 de large, la hauteur de celles du dos
+      for (let y = y0, j = 0; y < y1; y += hm, j++)
+        for (let x = x0 - (j % 2) * lm / 2; x < x1; x += lm) maille(Math.max(x0, x), y, Math.min(x1, x + lm), Math.min(y1, y + hm), j * 1.4);
+      const lg = x1 - x0, ht = y1 - y0, mx = (x0 + x1) / 2;
+      const degrade = (xa, ya, xb, yb, arrets) => {
+        const d = g.createLinearGradient(xa, ya, xb, yb);
+        arrets.forEach(([k, col]) => d.addColorStop(k, col));
+        g.fillStyle = d; g.fillRect(x0, y0, lg, ht);
+      };
+      // l'ombre des bords, où la coque se couche sur le dos, et celle de la pointe
+      degrade(x0, 0, x1, 0, [[0, 'rgba(0,0,0,0.42)'], [0.22, 'rgba(0,0,0,0.08)'], [0.5, 'rgba(0,0,0,0)'], [0.78, 'rgba(0,0,0,0.08)'], [1, 'rgba(0,0,0,0.42)']]);
+      degrade(0, y0, 0, y1, [[0, 'rgba(0,0,0,0)'], [0.55, 'rgba(0,0,0,0.05)'], [1, 'rgba(0,0,0,0.38)']]);
+      // le pli : le tissu qui se retourne prend le jour
+      degrade(0, y0, 0, y1, [[0, 'rgba(255,255,255,0.09)'], [0.1, 'rgba(255,255,255,0.03)'], [0.18, 'rgba(255,255,255,0)']]);
+      // la couture : un sillon, et le fil de chaque côté
+      g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(Math.round(mx) - 1, y0, 2, ht);
+      g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(Math.round(mx) - 3, y0, 2, ht); g.fillRect(Math.round(mx) + 1, y0, 2, ht);
+    }
     // 4. les couleurs pleines
     [['#0a0a0c', 48], ['#121215', 56]].forEach(([col, x]) => { g.fillStyle = col; g.fillRect(x * W / 64, 0, 8 * W / 64, H); });
     c.brut = true;
@@ -8759,7 +8914,17 @@ const model3d = (() => {
      anneau. `lis` : le liseré ; `emet` et `ajout` : une surface qui ÉMET (la
      braise), dont la lumière ne dépend plus de l'orientation. `cible` : un
      maillage existant, réécrit sur place — la cigarette, qui change à chaque
-     image, garde ainsi ses tampons (voir bufs). */
+     image, garde ainsi ses tampons (voir bufs).
+     `ciel` : le jour d'en haut, sur le DOS seulement (26 sept. 2026, avec la
+     capuche). La lumière vient de devant : tout ce qui tourne le dos avait la
+     même clarté, et de dos une capuche n'était qu'une tache noire sur un dos
+     noir. Ce second jour tombe d'au-dessus, un peu de derrière : le haut de la
+     capuche le prend, son bas qui plonge vers le dos reste dans l'ombre, et
+     le dos lui-même en reçoit un peu. Il ne touche que les faces tournées vers
+     l'arrière (nz < 0) — de face, le buste ne change pas d'un pixel — et
+     reste sous la clarté du devant éclairé (voir le liseré, plus bas). */
+  const CIEL = (() => { const l = Math.hypot(0.3, 1, 0.35); return [0.3 / l, 1 / l, -0.35 / l]; })();   // un peu du côté de la lumière : les deux pans de la capuche diffèrent
+  const CIEL_K = 0.3;
   function facettes(liste, cible){
     const nV = liste.length * 3;
     const data = cible ? cible.data : new Float32Array(nV * STRIDE), index = cible ? cible.index : new Uint16Array(nV);
@@ -8777,7 +8942,8 @@ const model3d = (() => {
          (1 − nz)³, allume aussi tout ce qui tourne le dos : sur un buste, c'était
          le dos du hoodie tout entier, plus clair que le devant éclairé. */
       const dif = Math.max(nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2], 0), rim = Math.pow(1 - Math.abs(nz), 3);
-      const fac = f.emet != null ? f.emet : 0.72 + 0.36 * dif;
+      const ciel = f.ciel ? f.ciel * Math.max(0, -nz) * Math.max(0, nx*CIEL[0] + ny*CIEL[1] + nz*CIEL[2]) : 0;
+      const fac = f.emet != null ? f.emet : 0.72 + 0.36 * dif + ciel;
       const ajout = f.emet != null ? (f.ajout || 0) : rim * (f.lis == null ? 0.075 : f.lis);
       [[a, ua], [b, ub], [c, uc]].forEach(([p, uv]) => {
         const o = k * STRIDE;
@@ -8840,7 +9006,7 @@ const model3d = (() => {
         const dehors = [(a[0] + b[0] + c[0] + d[0]) / 4, 0, (a[2] + b[2] + c[2] + d[2]) / 4 - cz];
         const uv = r < 4 && (i >= BUSTE_N - 2 || i < 2) ? [a, b, c, d].map(plastronUV)
           : [tissuUV(i, a[1]), tissuUV(i + 1, b[1]), tissuUV(i + 1, c[1]), tissuUV(i, d[1])];
-        quad(F, a, b, c, d, ...uv, { dehors, lis: 0.12 });
+        quad(F, a, b, c, d, ...uv, { dehors, lis: 0.12, ciel: CIEL_K });
       }
     }
     // 2. la lèvre du col : elle regarde vers le haut et vers le cou — l'envers du tissu, plus sombre
@@ -8853,18 +9019,61 @@ const model3d = (() => {
     const fond = [0, BUSTE_BAS, ANNEAUX[0][3]];
     for (let i = 0; i < BUSTE_N; i++)
       F.push({ p: [fond, pointAnneau(0, i), pointAnneau(0, i + 1)], uv: [BUSTE_PAL.fond, BUSTE_PAL.fond, BUSTE_PAL.fond], dehors: [0, -1, 0], lis: 0 });
-    /* 4. la capuche, rabattue dans le dos : un ellipsoïde écrasé posé contre la
-       nuque, dont la moitié avant se perd dans le col et le haut du dos. */
-    const HC = [0, -0.315, -0.255], HR = [0.25, 0.165, 0.12], LAT = 5, LON = 12;
-    const pH = (la, lo) => { const th = -Math.PI / 2 + la / LAT * Math.PI, ph = lo / LON * 2 * Math.PI;
-      return [HC[0] + HR[0] * Math.cos(th) * Math.sin(ph), HC[1] + HR[1] * Math.sin(th), HC[2] + HR[2] * Math.cos(th) * Math.cos(ph)]; };
-    const hUV = (la, lo) => [0.26 + 0.2 * lo / LON, 0.08 + 0.3 * la / LAT];
-    for (let la = 0; la < LAT; la++) for (let lo = 0; lo < LON; lo++){
-      const a = pH(la, lo), b = pH(la, lo + 1), c = pH(la + 1, lo + 1), d = pH(la + 1, lo);
-      const m = [(a[0] + c[0]) / 2 - HC[0], (a[1] + c[1]) / 2 - HC[1], (a[2] + c[2]) / 2 - HC[2]];
-      quad(F, a, b, c, d, hUV(la, lo), hUV(la, lo + 1), hUV(la + 1, lo + 1), hUV(la + 1, lo), { dehors: m, lis: 0.12 });
-    }
+    // 4. la capuche, rabattue (voir CAPUCHE)
+    capuche(F);
     return facettes(F);
+  }
+  function capuche(F){
+    const C = CAPUCHE, NC = 6;                                 // sept colonnes, de droite (x > 0) à gauche
+    const s = c => 1 - 2 * c / NC;                             // 1 → −1
+    const w = c => Math.cos(s(c) * Math.PI / 2);               // 0 aux bouts de l'ouverture, 1 au milieu
+    const phi = c => (C.i0 + c) / BUSTE_N * 2 * Math.PI;
+    const NR = C.rangs.length + 1;                             // du pli (0) à la pointe (NR)
+    const envers = BUSTE_PAL.dedans;
+    // l'ouverture : le bord du col, le creux, le pli
+    const bordCol = [], creux = [], pli = [];
+    for (let c = 0; c <= NC; c++){
+      const f = phi(c), k = w(c), r = pointAnneau(6, C.i0 + c);
+      const a = 0.168 + C.pli.a * k, b = 0.14 + C.pli.b * k;
+      const q = [a * Math.sin(f), colY(f) + C.pli.y * k, -0.115 + b * Math.cos(f)];
+      bordCol.push(r); pli.push(q);
+      creux.push([(r[0] + q[0]) / 2, colY(f) - C.creux * k, (r[2] + q[2]) / 2]);
+    }
+    for (let c = 0; c < NC; c++){
+      const f = (phi(c) + phi(c + 1)) / 2, dos = [Math.sin(f), 0, Math.cos(f)];
+      // le bord du col descend vers le dos, le pli remonte vers la nuque : l'un regarde derrière, l'autre devant
+      quad(F, bordCol[c], bordCol[c + 1], creux[c + 1], creux[c], envers, envers, envers, envers, { dehors: [dos[0] * 0.6, 1, dos[2] * 0.6], lis: 0 });
+      quad(F, creux[c], creux[c + 1], pli[c + 1], pli[c], envers, envers, envers, envers, { dehors: [-dos[0] * 0.6, 1, -dos[2] * 0.6], lis: 0 });
+    }
+    // la coque : le pli, puis les rangées ; chaque point sur le dos, bombé vers l'extérieur
+    const prof = t => Math.pow(Math.max(0, 1 - Math.pow(Math.abs(t), 2.4)), 0.6);
+    const rangs = [pli.map((p, c) => ({ p, pied: p, uv: capucheUV(s(c), 0) }))];
+    C.rangs.forEach(([yc, ye, l, ep], r) => {
+      rangs.push(Array.from({ length: NC + 1 }, (_, c) => {
+        const t = s(c), y = yc + (ye - yc) * t * t, D = dosEn(t * l, y);
+        const h = ep * prof(t) + C.bord + (c === NC / 2 ? C.couture : 0);
+        return { p: v3.add(D.p, D.d, h), pied: v3.add(D.p, D.d, 0.002), uv: capucheUV(t, (r + 1) / NR) };
+      }));
+    });
+    const D = dosEn(0, C.pointe);
+    const pointe = { p: v3.add(D.p, D.d, C.bord), pied: v3.add(D.p, D.d, 0.002), uv: capucheUV(0, 1) };
+    // « dehors » : depuis l'axe du corps à cette hauteur, vers la face
+    const dehors = (...P) => { const m = [0, 1, 2].map(i => P.reduce((t, p) => t + p[i], 0) / P.length); return [m[0], 0, m[2] + 0.11]; };
+    for (let r = 0; r < rangs.length - 1; r++) for (let c = 0; c < NC; c++){
+      const a = rangs[r][c], b = rangs[r][c + 1], d = rangs[r + 1][c], e = rangs[r + 1][c + 1];
+      quad(F, a.p, b.p, e.p, d.p, a.uv, b.uv, e.uv, d.uv, { dehors: dehors(a.p, b.p, e.p, d.p), lis: 0.12, ciel: CIEL_K });
+    }
+    const der = rangs[rangs.length - 1];
+    for (let c = 0; c < NC; c++)
+      F.push({ p: [der[c].p, der[c + 1].p, pointe.p], uv: [der[c].uv, der[c + 1].uv, pointe.uv], dehors: dehors(der[c].p, der[c + 1].p, pointe.p), lis: 0.12, ciel: CIEL_K });
+    // la tranche, dans l'ombre de la coque : du bout droit du pli, le long du bord, par la pointe, jusqu'au bout gauche
+    const tour = rangs.map(R => R[0]).concat([pointe], rangs.map(R => R[NC]).reverse());
+    const centre = [0, -0.45, -0.25], ombre = BUSTE_PAL.fond;
+    for (let k = 0; k < tour.length - 1; k++){
+      const a = tour[k], b = tour[k + 1];
+      const m = [(a.p[0] + b.p[0]) / 2 - centre[0], (a.p[1] + b.p[1]) / 2 - centre[1], (a.p[2] + b.p[2]) / 2 - centre[2]];
+      quad(F, a.p, b.p, b.pied, a.pied, ombre, ombre, ombre, ombre, { dehors: m, lis: 0 });
+    }
   }
   /* ---- la cigarette ----
      Bâtie à chaque changement (elle se consume, sa cendre pousse puis tombe,
@@ -10405,18 +10614,20 @@ const model3d = (() => {
      Les hauteurs viennent des repères relevés sur les planches d'origine — le
      barbell à v 0,370 et 0,415 pour u 0,655 sur celle du visage, le lobe à
      v 0,595 pour u 0,635 sur celle de l'arrière, soit très exactement le côté
-     de la tête (θ = π/2). */
+     de la tête (θ = π/2). Depuis que l'oreille a du relief (26 sept. 2026),
+     la boucle est sur son lobe à elle et non plus sur le crâne, qu'elle
+     cache désormais (voir `oreilles`). */
   const ECLATS = [
     { th: 0.600, y: 0.178, lent: 430, vif: 173, phase: 0.0 },   // arcade, la boule du haut
     { th: 0.600, y: 0.124, lent: 610, vif: 241, phase: 2.3 },   // arcade, celle du bas
-    { th: 1.570, y: -0.055, lent: 790, vif: 311, phase: 4.1 },  // le lobe de l'oreille gauche
+    { th: 1.570, y: -0.055, lent: 790, vif: 311, phase: 4.1, lobe: true },  // le lobe de l'oreille gauche
   ];
   const ECLAT_FORCE = 0.5;   // moitié moins visible qu'au premier jet
   // point et normale de la surface à un endroit donné, calculés une fois par maillage
   function pointsEclat(mesh){
     if (mesh.eclats !== undefined) return mesh.eclats;
-    // le point de la surface à cet angle et cette hauteur (voir impactTete)
-    mesh.eclats = ECLATS.map(E => { const h = impactTete(E.th, E.y); return h && { E, p: h.p, n: h.n }; }).filter(Boolean);
+    // le point de la surface à cet angle et cette hauteur (voir impactTete), ou celui du lobe
+    mesh.eclats = ECLATS.map(E => { const h = E.lobe && mesh.lobe ? mesh.lobe : impactTete(E.th, E.y); return h && { E, p: h.p, n: h.n }; }).filter(Boolean);
     return mesh.eclats;
   }
   /* Le calque : un canvas 2D posé sur celui du rendu, dans la même case. Il est
@@ -15729,7 +15940,7 @@ function selectCategory(ci){
 
 function updateCartCount(){
   const n = cart.reduce((s, l) => s + l.qty, 0); // nombre d'articles, quantités comprises
-  document.getElementById('cartCount').textContent = `${T('cart')} · ${n}`;
+  document.getElementById('cartTexte').textContent = `${T('cart')} · ${n}`;
   majOngletPanier();            // le compte a changé, la languette aussi
 }
 
