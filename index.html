@@ -992,13 +992,6 @@
     position:relative;
     transition:width 0.3s cubic-bezier(.2,.8,.2,1);
   }
-  .preview-swatch span{
-    font-size:68px;
-    opacity:0.18;
-    font-weight:350;
-    letter-spacing:2px;
-    text-shadow:0 0 26px rgba(var(--accent-rgb),0.6);
-  }
   /* ---------- visuel produit : diaporama vue 3D + photos ----------
      Vue 0 : maillage généré depuis la photo de face, rendu WebGL dans le
      canvas (fond = couleur d'accent assombrie du cadre). Vues 1 et 2 : les
@@ -1937,21 +1930,74 @@
     scrollbar-width:thin;
     scrollbar-color:rgba(0,0,0,0.25) transparent;
     pointer-events:auto;           /* la molette le fait défiler s'il déborde */
-    color:#2c3640;
+    color:#1c232c;
     text-align:left;
+    /* ÉCRIT À LA BOMBE (26 sept. 2026 : « des jeunes viennent taguer […]
+       avec une fonte légèrement plus organique, sans abus de fonte
+       graffiti ») : une écriture de feutre, celle du système — Ink Free ou
+       Segoe Print sous Windows, Marker Felt sur Mac et iPhone. Rien à
+       télécharger, donc rien de demandé à un tiers. */
+    font-family:"Ink Free", "Marker Felt", "Segoe Print", "Bradley Hand", casual, cursive;
   }
+  /* Le titre, le tag : la couleur de l'ambiance cernée de noir, comme une
+     lettre peinte, et une ombre décalée de bombe. `inline-block` : la
+     largeur du mot, où se posent ses coulures. */
   .camion-texte h2{
-    font-size:clamp(15px, 2.7vh, 30px);
-    font-weight:650;
-    letter-spacing:0.3px;
+    position:relative;
+    display:inline-block;
+    font-size:clamp(21px, 4vh, 44px);
+    font-weight:700;
+    line-height:1.15;
+    letter-spacing:0.5px;
     color:rgb(var(--accent2-rgb));
-    margin-bottom:0.45em;
+    -webkit-text-stroke:0.075em #151a21;
+    paint-order:stroke fill;
+    text-shadow:0.05em 0.07em 0 rgba(21,26,33,0.22);
+    margin-bottom:0.25em;
   }
-  .camion-texte p{
-    font-size:clamp(11px, 1.75vh, 17px);
-    line-height:1.45;
-    white-space:pre-line;          /* les retours à la ligne du texte sont respectés */
+  /* les coulures du tag : la peinture qui descend sous les lettres, une fois écrites */
+  .camion-coulure{
+    position:absolute;top:78%;
+    width:0.085em;height:0;
+    border-radius:0 0 0.1em 0.1em;
+    background:rgb(var(--accent2-rgb));
+    box-shadow:0 0 0 0.02em #151a21;
+    transition:height 1.4s cubic-bezier(.3,.6,.4,1);
   }
+  /* Les deux paragraphes, côte à côte : chacun a son tagueur. Une ligne du
+     texte, un bloc : c'est lui que le script dévoile, rangée après rangée. */
+  .camion-paras{display:grid;grid-template-columns:1fr 1fr;column-gap:1.3em;}
+  .camion-ligne{
+    font-size:clamp(11px, 2.1vh, 19px);
+    line-height:1.3;
+    text-shadow:0 0 0.5px rgba(28,35,44,0.55), 0 0 2.5px rgba(28,35,44,0.16);   /* le flou d'une bombe */
+  }
+  .camion-ligne + .camion-ligne{margin-top:0.18em;}
+  /* Les personnages de la scène garée : un calque dans le repère du camion
+     (voir `camion`), au-dessus de la caisse et de son texte. Hors de la
+     caisse, pour ne pas suivre ses cahots. */
+  .camion-gens{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none;}
+  /* Le petit bonhomme du camion de la barre, et la bulle de l'Info qu'il
+     emporte : des glyphes blancs, comme les icônes, avec la même ombre et le
+     même halo que la copie du camion (.camion-mini). */
+  .camion-bulle,.camion-bonhomme{position:fixed;left:0;top:0;z-index:7;pointer-events:none;}
+  .camion-bulle img{
+    display:block;width:100%;height:100%;object-fit:contain;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,0.55)) drop-shadow(0 0 9px rgba(var(--accent-rgb),0.55));
+  }
+  .camion-bonhomme svg{
+    display:block;width:100%;height:100%;overflow:visible;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,0.6)) drop-shadow(0 0 6px rgba(var(--accent-rgb),0.5));
+  }
+  .camion-bonhomme .bh-jambe,.camion-bonhomme .bh-bras{transform-box:fill-box;transform-origin:50% 8%;}
+  .camion-bonhomme.marche .bh-jambe.g{animation:bhPas 0.24s ease-in-out infinite alternate;}
+  .camion-bonhomme.marche .bh-jambe.d{animation:bhPas 0.24s ease-in-out infinite alternate-reverse;}
+  @keyframes bhPas{from{transform:rotate(-26deg);}to{transform:rotate(26deg);}}
+  .camion-bonhomme .bh-bras{transition:transform 0.14s ease;}
+  .camion-bonhomme.porte .bh-bras.g{transform:rotate(160deg);}
+  .camion-bonhomme.porte .bh-bras.d{transform:rotate(-160deg);}
+  /* la bulle de l'Info, le temps qu'elle voyage dans le camion */
+  body.bulle-partie .category[data-id="about"] .cat-icon{opacity:0;transition:none;}
   /* La petite icône qui part : une copie posée exactement sur elle, pendant
      que l'originale s'efface (voir camion-parti). Au-dessus de tout : elle
      traverse l'écran, fiche comprise. Le basculement se fait au pied des roues. */
@@ -1975,9 +2021,11 @@
       left:calc(50vw - 0.646 * min(150vw, calc(46vh * 1100 / 560)));
     }
     /* en portrait l'écran est haut et étroit : des tailles suivant la hauteur
-       y seraient trop grandes pour la largeur, et le texte déborderait */
-    .camion-texte h2{font-size:16px;}
-    .camion-texte p{font-size:11.5px;line-height:1.4;}
+       y seraient trop grandes pour la largeur, et le texte déborderait — et
+       les deux paragraphes l'un sous l'autre */
+    .camion-texte h2{font-size:18px;}
+    .camion-ligne{font-size:11.5px;line-height:1.35;}
+    .camion-paras{grid-template-columns:1fr;}
   }
   /* ---------- bouton Réglages ----------
      En bas à droite, sur la ligne de la barre d'aide (centré sur ses 58 px),
@@ -4074,8 +4122,9 @@
     /* la livraison : le camion comme à l'ordinateur, à 48 % de la hauteur, sous les libellés */
     .camion-scene{display:flex;}
     .camion-route{position:relative;left:auto;bottom:auto;width:min(94vw, calc(48vh * 1100 / 560));width:min(94vw, calc(48dvh * 1100 / 560));}
-    .camion-texte h2{font-size:clamp(12px, 3.8dvh, 16px);}
-    .camion-texte p{font-size:clamp(10px, 3dvh, 12.5px);line-height:1.4;}
+    .camion-texte h2{font-size:clamp(14px, 4.4dvh, 19px);}
+    .camion-ligne{font-size:clamp(10px, 3dvh, 12.5px);line-height:1.35;}
+    .camion-paras{grid-template-columns:1fr;}
 
     /* l'annonce : sous la ligne du haut, et sur deux lignes s'il le faut */
     .egg-note{top:44px;max-width:min(92vw, 560px);flex-direction:column;align-items:center;gap:3px;padding:9px 18px;border-radius:18px;text-align:center;}
@@ -4224,15 +4273,12 @@
         <rect x="278" y="318" width="30" height="8" rx="4" fill="#8e9aa7"/>
         <path d="M58 384 H322" stroke="#c3ccd5" stroke-width="2"/>
         <path d="M58 387 H322" stroke="#fff" stroke-width="2" opacity="0.9"/>
-        <!-- feux de gabarit sur le déflecteur -->
-        <g fill="#f5a524">
-          <rect x="262" y="78" width="12" height="6" rx="3" transform="rotate(-22 268 81)"/>
-          <rect x="290" y="66" width="12" height="6" rx="3" transform="rotate(-16 296 69)"/>
-        </g>
-        <!-- rétroviseur -->
-        <path d="M152 214 L112 222" stroke="#2f3a45" stroke-width="6" stroke-linecap="round"/>
-        <rect x="84" y="194" width="30" height="60" rx="8" fill="#2f3a45"/>
-        <rect x="89" y="200" width="20" height="48" rx="5" fill="#526477"/>
+        <!-- rétroviseur : fixé au coin bas de la vitre, côté pare-brise (26 sept. 2026 ;
+             il était accroché à mi-hauteur du montant), et le boîtier devant le pare-brise.
+             Plus de feux de gabarit sur le déflecteur, à la demande. -->
+        <path d="M133 291 L104 281" stroke="#2f3a45" stroke-width="6" stroke-linecap="round"/>
+        <rect x="74" y="236" width="30" height="62" rx="8" fill="#2f3a45"/>
+        <rect x="79" y="242" width="20" height="50" rx="5" fill="#526477"/>
         <!-- phare et clignotant -->
         <path d="M41 398 H72 Q79 398 79 405 V430 Q79 437 72 437 H41 Z" fill="url(#cmPhare)"/>
         <rect x="41" y="444" width="24" height="11" rx="3" fill="#f5a524"/>
@@ -4245,9 +4291,22 @@
       </svg>
       <div class="camion-texte" id="camionTexte">
         <h2 id="camionTitre"></h2>
-        <p id="camionCorps"></p>
+        <div class="camion-paras"><div id="camionPara1"></div><div id="camionPara2"></div></div>
       </div>
     </div>
+    <!-- La scène garée (26 sept. 2026) : le chauffeur qui fume appuyé à
+         l'avant, et les deux jeunes qui taguent le flanc. Même repère que le
+         camion, le sol à y = 640, sous le bord de l'écran. Les corps sont
+         bâtis et animés par le script (voir `camion`) ; ici, la seule chose
+         fixe : ce qui cache le chauffeur tant qu'il est derrière le nez du
+         camion — tout ce qui est à gauche de son profil avant. -->
+    <svg class="camion-gens" id="camionGens" viewBox="0 0 1100 560" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="cgDevant" clipPathUnits="userSpaceOnUse">
+          <path d="M-900 -300 H190 V150 L175 166 L82 324 L67 352 L46 394 L41 416 V476 H22 V900 H-900 Z"/>
+        </clipPath>
+      </defs>
+    </svg>
   </div>
 </div>
 
@@ -4283,7 +4342,6 @@
     <div class="gallery-zone" id="galleryZone">
       <div class="preview-swatch" id="previewSwatch">
         <div class="slide-dots" id="slideDots"></div>
-        <span id="previewInitial">F</span>
         <!-- diaporama : vue 3D (maillage généré depuis la photo, rendu WebGL), puis photos 2D -->
         <!-- teteFx : le calque 2D de l'éclat du piercing et de la fumée, posé SUR
              le rendu ; il vient après dans le document, donc au-dessus, sans
@@ -5561,8 +5619,9 @@ const DATA = [
      tourner la tête de la page Info, longtemps — et sa fiche n'a ni bouton ni
      énigme. Ce qui reste se règle tout seul : voir `jeuDuVerrou`, qui regarde
      si un mini-jeu porte le nom du verrou et fait disparaître le bouton sinon.
-     Photo à venir : sans `img`, la fiche montre l'initiale et la ligne de
-     liste son nom, comme n'importe quel produit sans visuel.
+     Photo à venir : sans `img`, la ligne de liste montre son nom, comme
+     n'importe quel produit sans visuel (la fiche montrait aussi son
+     initiale en filigrane, jusqu'au 26 sept. 2026).
      `provisoire` : ces deux-là sont des MARQUE-PLACES. Ils tiennent la
      récompense d'une épreuve tant que le vêtement définitif n'existe pas, et
      s'effacent d'eux-mêmes dès que le catalogue en déclare un qui porte la
@@ -5621,8 +5680,9 @@ const DATA = [
      maillage — et la même texture sert aux deux faces, faute de vue de dos.
      `seule3D` : le modèle seul, pas de diaporama photo. */
   { id:"about", name:{en:"Info", fr:"Infos"}, icon:"info icon.svg", kind:"about", items:[],
-    /* Une tête low poly qui fait le tour en dix secondes, et que le visiteur
-       peut retourner à la souris : le modèle de `3Dmodels/`, figé dans le
+    /* Une tête low poly qui se balance d'un profil à l'autre (elle faisait le
+       tour jusqu'au 26 sept. 2026), et que le visiteur peut retourner à la
+       souris : le modèle de `3Dmodels/`, figé dans le
        module (voir TETE_XYZ). Depuis le 25 sept. 2026 elle est posée sur un
        buste en hoodie noir, une cigarette au coin des lèvres : un clic, il
        tire une bouffée ; tenue d'un trait jusqu'au filtre, elle ouvre la
@@ -7018,6 +7078,19 @@ const sfx = (() => {
         o.connect(lp); o.start(t + d); o.stop(t + d + dur + 0.02);
       });
     });
+  };
+  /* ---- la bombe de peinture des tagueurs (26 sept. 2026) ----
+     On la secoue — la bille qui claque dans la boîte, cinq coups secs —, puis
+     le « pschhh » du jet, un souffle aigu, un par rangée écrite. Du bruit
+     filtré seulement, et plafonné à la longueur du tampon (0,4 s). */
+  api.secoue = () => {
+    const c = audio(); if (!c) return; const t = at();
+    for (let i = 0; i < 5; i++) burst(t + i * 0.09, { freq: 3100 + (i % 2) * 900, q: 5, peak: 0.028, attack: 0.001, decay: 0.028, lp: 9000 });
+  };
+  api.bombe = (ms) => {
+    const c = audio(); if (!c) return; const t = at();
+    const d = Math.min(0.36, Math.max(0.12, (ms || 300) / 1000));
+    burst(t, { freq: 6000, q: 0.6, peak: 0.02, attack: 0.02, decay: d, type: 'highpass', lp: 12000, bell: 0.12 });
   };
   /* ---- Age of Seum : les bruits d'une guerre de mèmes ----
      Tous courts, et tous plafonnés par le jeu lui-même (voir `son` dans le
@@ -12926,85 +12999,840 @@ aideBarre.addEventListener('pointerleave', () => {
 
 /* ---------------- la livraison : le camion (demande du 25 sept. 2026) ----------------
    Arriver sur « Livraison » — flèches, clic, bord de l'écran, pastille :
-   1. l'icône démarre : elle s'accroupit, bondit, puis file à droite en
-      accélérant et en cahotant, jusqu'à sortir de l'écran ;
+   1. l'icône démarre : elle s'accroupit, bondit, et roule jusqu'à la bulle de
+      l'Info, sa voisine de droite. Un petit bonhomme descend de la cabine,
+      soulève la bulle, la charge à l'arrière et remonte ; le camion file à
+      droite en accélérant et en cahotant, jusqu'à sortir de l'écran — la case
+      de l'Info reste vide (26 sept. 2026) ;
    2. le camion revient par la droite, en grand et au premier plan, freine —
       le nez plonge, la caisse revient — et s'arrête, coupé par le bas ;
-   3. le texte de la livraison se pose sur le flanc de sa caisse (fillPreview
-      l'y écrit, et la fiche de verre s'efface).
-   Quitter la rubrique : il repart vers l'avant, par la gauche, l'arrière
-   accroupi au démarrage, et l'icône revient dans sa case d'un petit bond.
-   Tout passe par les Web Animations : chaque étape attend la fin de la
-   précédente, et un jeton abandonne ce qui traîne quand on repasse avant la
-   fin — une flèche maintenue traverse la rubrique en une fraction de seconde.
-   Moins d'animation demandé : le camion est là ou n'y est pas, sans trajet. */
+   3. LA SCÈNE GARÉE (26 sept. 2026) : le chauffeur fait le tour du nez, s'y
+      adosse et allume une cigarette ; deux jeunes arrivent et taguent la
+      livraison sur le flanc — le titre à la courte échelle, puis chacun son
+      paragraphe — et repartent en courant. Le texte n'est plus posé : il est
+      écrit, rangée après rangée, sous la bombe.
+   Quitter la rubrique : les jeunes filent, le chauffeur jette sa cigarette et
+   remonte ; le camion repart vers l'avant, par la gauche, l'arrière accroupi
+   au démarrage. Et au lieu de réapparaître d'un bond dans sa case, la petite
+   icône fait LE TOUR (26 sept. 2026) : elle revient par la gauche de l'écran
+   en slalomant devant et derrière les icônes de la barre, se gare dans sa
+   case, et le bonhomme redescend reposer la bulle dans la sienne.
+   Chaque étape attend la fin de la précédente, et un jeton abandonne ce qui
+   traîne quand on repasse avant la fin — une flèche maintenue traverse la
+   rubrique en une fraction de seconde.
+   Moins d'animation demandé : le camion est là ou n'y est pas, sans trajet ;
+   la livraison est écrite d'avance, le chauffeur adossé, et la bulle ne
+   quitte pas sa case. */
 const camion = (() => {
   const scene = document.getElementById('camionScene');
   const route = document.getElementById('camionRoute');
   const caisse = document.getElementById('camionCaisse');
   const texte = document.getElementById('camionTexte');
+  const titreEl = document.getElementById('camionTitre');
+  const paras = [document.getElementById('camionPara1'), document.getElementById('camionPara2')];
+  const gens = document.getElementById('camionGens');
   const moins = window.matchMedia('(prefers-reduced-motion: reduce)');
   let etat = 'absent';          // 'absent' | 'arrivee' | 'la' | 'depart'
   let jeton = 0, anims = [], mini = null, enScene = false;
-  const pause = ms => new Promise(r => setTimeout(r, ms));
-  const joue = (el, kf, opt) => { const a = el.animate(kf, opt); anims.push(a); return a; };
+  let lent = 1;                 // contrôle : tout ralentir d'autant (voir debug)
+  const pause = ms => new Promise(r => setTimeout(r, ms * lent));
+  const joue = (el, kf, opt) => {
+    const a = el.animate(kf, Object.assign({}, opt, { duration: opt.duration * lent, delay: (opt.delay || 0) * lent }));
+    anims.push(a); return a;
+  };
   const fin = a => a.finished.then(() => true, () => false);   // faux : l'animation a été annulée
+  // un mouvement image par image, abandonné dès que le jeton change : `f` reçoit l'avancement, de 0 à 1
+  const tween = (j, ms, f) => new Promise(ok => {
+    const t0 = performance.now();
+    const pas = now => {
+      if (j !== jeton){ ok(false); return; }
+      const u = Math.min(1, (now - t0) / (ms * lent));
+      f(u);
+      if (u < 1) requestAnimationFrame(pas); else ok(true);
+    };
+    requestAnimationFrame(pas);
+  });
+  const borne = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const seg = (t, a, b) => borne((t - a) / (b - a));
+  const doux = u => u * u * (3 - 2 * u);
+  const entre = (a, b, u) => a + (b - a) * u;
+  const r2 = v => Math.round(v * 10) / 10;
+  const hasard = (a, b) => a + Math.random() * (b - a);
+
+  /* ---------- les personnages de la scène garée ----------
+     Des corps simples, dans le repère du camion (unités du viewBox 1100 ×
+     560, le sol à y = 640, sous le bord de l'écran) : un haut, une tête, deux
+     bras et deux jambes de deux segments chacun. Les mains et les pieds vont
+     où la scène les envoie — une cinématique inverse à deux os place les
+     coudes et les genoux. Deux vues : de face (le chauffeur), de dos (les
+     tagueurs, tournés vers le camion). */
+  const NS = 'http://www.w3.org/2000/svg';
+  const cree = (nom, attrs, parent) => {
+    const e = document.createElementNS(NS, nom);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const SOL = 640;
+  const CORPS = { cuisse: 92, tibia: 92, hanche: 176, torse: 104, epaule: 39, bras: 76, avant: 70 };
+  // le haut du corps, du bas de la veste (y = 6) aux épaules (−107), autour des hanches
+  const HAUT = 'M-28 6 C-31 -30 -38 -66 -41 -90 Q-42 -104 -28 -107 L28 -107 Q42 -104 41 -90 C38 -66 31 -30 28 6 Z';
+  // deux segments, de l'épaule vers la main (ou de la hanche vers le pied) ; le coude plie du côté `sens`
+  function ik(sx, sy, tx, ty, l1, l2, sens){
+    let dx = tx - sx, dy = ty - sy, d = Math.hypot(dx, dy) || 0.001;
+    const max = l1 + l2 - 0.5, min = Math.abs(l1 - l2) + 0.5;
+    const k = d > max ? max / d : d < min ? min / d : 1;
+    dx *= k; dy *= k; d *= k;
+    const c = (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d);
+    const ang = Math.atan2(dy, dx) + sens * Math.acos(c < -1 ? -1 : c > 1 ? 1 : c);
+    return { ex: sx + l1 * Math.cos(ang), ey: sy + l1 * Math.sin(ang), hx: sx + dx, hy: sy + dy };
+  }
+  const trait = (l, x1, y1, x2, y2) => {
+    l.setAttribute('x1', r2(x1)); l.setAttribute('y1', r2(y1)); l.setAttribute('x2', r2(x2)); l.setAttribute('y2', r2(y2));
+  };
+  function personnage(s){
+    const g = cree('g', {}, gens);
+    if (s.clip) g.setAttribute('clip-path', `url(#${s.clip})`);
+    const ligne = (couleur, largeur) => cree('line', { stroke: couleur, 'stroke-width': largeur, 'stroke-linecap': 'round' }, g);
+    const jambes = [0, 1].map(() => ({ cuisse: ligne(s.bas, 30), tibia: ligne(s.bas, 26) }));
+    const creerBras = () => [0, 1].map(i => {
+      const b = { haut: ligne(s.haut, 21), bas: ligne(s.haut, 18) };
+      if (s.bombe && i === 1){                          // la bombe, dans la main droite ; le diffuseur au bout
+        b.bombe = cree('g', {}, g);
+        cree('rect', { x: -5.5, y: -31, width: 11, height: 27, rx: 2.5, fill: '#cdd3da' }, b.bombe);
+        cree('rect', { x: -5.5, y: -24, width: 11, height: 9, fill: s.bombe }, b.bombe);
+        cree('rect', { x: -3.6, y: -37, width: 7.2, height: 6.5, rx: 1.5, fill: '#2a2f36' }, b.bombe);
+      }
+      if (s.cigarette && i === 0){                      // la cigarette, entre les doigts de la main libre
+        b.cig = cree('g', {}, g);
+        cree('line', { x1: 1, y1: -2, x2: 15, y2: -9, stroke: '#f4f1ea', 'stroke-width': 3.4, 'stroke-linecap': 'round' }, b.cig);
+        b.lueur = cree('circle', { cx: 15.6, cy: -9.3, r: 5.5, fill: '#ff8a3a', opacity: 0.2 }, b.cig);
+        b.braise = cree('circle', { cx: 15.6, cy: -9.3, r: 2.1, fill: '#ff6a2a' }, b.cig);
+      }
+      b.main = cree('circle', { r: 8.5, fill: s.peau }, g);
+      return b;
+    });
+    const creerTorse = () => {
+      const t = cree('g', {}, g);
+      cree('path', { d: HAUT, fill: s.haut }, t);
+      if (s.vue === 'dos'){
+        cree('path', { d: 'M-28 -2 H28 V6 H-28 Z', fill: s.haut2 }, t);                    // le bas côtelé
+        if (s.coiffe !== 'capuche')                                                           // la capuche, baissée
+          cree('path', { d: 'M-24 -106 Q0 -84 24 -106 Q20 -118 0 -118 Q-20 -118 -24 -106 Z', fill: s.haut2 }, t);
+      } else {
+        cree('path', { d: 'M-13 -107 L0 -74 L13 -107 Z', fill: '#f1f1ee' }, t);            // le t-shirt, dans l'encolure
+        cree('path', { d: 'M-13 -107 L0 -74 L13 -107 M0 -74 V6', fill: 'none', stroke: s.haut2, 'stroke-width': 3 }, t);
+        cree('rect', { x: -31, y: -62, width: 17, height: 13, rx: 2, fill: s.haut2 }, t);     // les poches
+        cree('rect', { x: 14, y: -62, width: 17, height: 13, rx: 2, fill: s.haut2 }, t);
+      }
+      return t;
+    };
+    const creerTete = () => {
+      const t = cree('g', {}, g);
+      cree('rect', { x: -7, y: -12, width: 14, height: 15, rx: 3, fill: s.peau2 || s.peau }, t);   // le cou
+      if (s.vue === 'dos'){
+        if (s.coiffe === 'capuche'){                                                          // la capuche, relevée
+          cree('path', { d: 'M-25 -2 Q-32 -40 -17 -51 Q0 -61 17 -51 Q32 -40 25 -2 Q12 4 0 4 Q-12 4 -25 -2 Z', fill: s.haut }, t);
+          cree('path', { d: 'M0 -57 Q2 -30 0 -6', fill: 'none', stroke: s.haut2, 'stroke-width': 2.5 }, t);
+        } else {
+          cree('circle', { cx: -20.5, cy: -25, r: 4.6, fill: s.peau }, t);
+          cree('circle', { cx: 20.5, cy: -25, r: 4.6, fill: s.peau }, t);
+          cree('circle', { cx: 0, cy: -27, r: 21, fill: s.cheveux }, t);
+          if (s.coiffe === 'casquette-dos'){                                                  // la casquette, visière dans le dos
+            cree('path', { d: 'M-21.5 -31 Q-22 -51 0 -52 Q22 -51 21.5 -31 Q0 -36 -21.5 -31 Z', fill: s.coiffe1 }, t);
+            cree('ellipse', { cx: 0, cy: -31, rx: 14, ry: 5.5, fill: s.coiffe2 }, t);
+          }
+        }
+      } else {
+        cree('circle', { cx: -20.5, cy: -25, r: 4.8, fill: s.peau }, t);
+        cree('circle', { cx: 20.5, cy: -25, r: 4.8, fill: s.peau }, t);
+        cree('circle', { cx: 0, cy: -26, r: 20.5, fill: s.peau }, t);
+        cree('path', { d: 'M-20 -34 Q-21 -22 -18 -17 L-15 -30 Z M20 -34 Q21 -22 18 -17 L15 -30 Z', fill: s.cheveux }, t);   // les pattes
+        cree('path', { d: 'M-21 -33 Q-21 -54 0 -55 Q21 -54 21 -33 Z', fill: s.coiffe1 }, t);                              // la casquette de routier
+        cree('path', { d: 'M-12.5 -35 Q-12 -52 0 -53 Q12 -52 12.5 -35 Z', fill: '#f4f4f1' }, t);                             // son devant blanc
+        cree('ellipse', { cx: 0, cy: -33.5, rx: 24, ry: 5.5, fill: s.coiffe2 }, t);                                             // la visière
+        cree('ellipse', { cx: -7.5, cy: -24.5, rx: 2.2, ry: 2.7, fill: '#241b15' }, t);
+        cree('ellipse', { cx: 7.5, cy: -24.5, rx: 2.2, ry: 2.7, fill: '#241b15' }, t);
+        cree('ellipse', { cx: 0, cy: -19, rx: 2.4, ry: 3.2, fill: s.peau2 }, t);                                              // le nez
+        cree('path', { d: 'M-10 -14.5 Q-5 -18.5 0 -16 Q5 -18.5 10 -14.5 Q6 -12 0 -13.5 Q-6 -12 -10 -14.5 Z', fill: s.cheveux }, t);   // la moustache
+      }
+      return t;
+    };
+    /* De dos, les bras passent DERRIÈRE le haut du corps (ils vont vers le
+       camion) et la tête devant eux ; de face, les bras passent devant. */
+    let torse, tete, bras;
+    if (s.vue === 'dos'){ bras = creerBras(); torse = creerTorse(); tete = creerTete(); }
+    else { torse = creerTorse(); tete = creerTete(); bras = creerBras(); }
+    // le repère de la tête pour une pose : un point de la tête (repère du cou) dans celui du camion
+    const repere = p => {
+      const hx = p.x, hy = p.sol - CORPS.hanche + (p.accroupi || 0) - (p.pointe || 0), a = p.penche || 0;
+      const cx = hx - (-CORPS.torse - 3) * Math.sin(a), cy = hy + (-CORPS.torse - 3) * Math.cos(a);
+      const b = a + (p.tete || 0), cb = Math.cos(b), sb = Math.sin(b);
+      return (x, y) => [cx + x * cb - y * sb, cy + x * sb + y * cb];
+    };
+    /* p : { x, sol, accroupi, pointe (sur la pointe des pieds), penche (rad),
+       tete (rad), mainG, mainD ([x, y] ou rien : le bras pend), pas (la
+       phase de la marche, ou rien), pieds ([dxG, dxD]), cig (angle de la
+       cigarette, en degrés) } */
+    function poser(p){
+      const hx = p.x, hy = p.sol - CORPS.hanche + (p.accroupi || 0) - (p.pointe || 0) + (p.pas != null ? Math.abs(Math.sin(p.pas)) * 4 : 0);
+      const a = p.penche || 0, ca = Math.cos(a), sa = Math.sin(a);
+      const rot = (x, y) => [hx + x * ca - y * sa, hy + x * sa + y * ca];
+      jambes.forEach((jb, i) => {
+        const c = i ? 1 : -1;
+        let fx = p.x + c * 13 + (p.pieds ? p.pieds[i] : 0), fy = p.sol;
+        if (p.pas != null){ const ph = p.pas + i * Math.PI; fx += Math.sin(ph) * 22; fy -= Math.max(0, -Math.cos(ph)) * 16; }
+        const k = ik(hx + c * 14, hy, fx, fy, CORPS.cuisse, CORPS.tibia, -c);
+        trait(jb.cuisse, hx + c * 14, hy, k.ex, k.ey); trait(jb.tibia, k.ex, k.ey, k.hx, k.hy);
+      });
+      torse.setAttribute('transform', `translate(${r2(hx)} ${r2(hy)}) rotate(${r2(a * 57.2958)})`);
+      const cou = rot(0, -CORPS.torse - 3);
+      tete.setAttribute('transform', `translate(${r2(cou[0])} ${r2(cou[1])}) rotate(${r2((a + (p.tete || 0)) * 57.2958)})`);
+      bras.forEach((b, i) => {
+        const c = i ? 1 : -1, ep = rot(c * CORPS.epaule, -CORPS.torse + 7);
+        let t = i ? p.mainD : p.mainG;
+        if (!t){                                          // le bras pend, et balance à la marche
+          t = rot(c * 12, -CORPS.torse + 7 + 140);
+          if (p.pas != null) t = [t[0] + Math.sin(p.pas + (i ? 0 : Math.PI)) * 14, t[1]];
+        }
+        const k = ik(ep[0], ep[1], t[0], t[1], CORPS.bras, CORPS.avant, c * (p.coude || 1));
+        trait(b.haut, ep[0], ep[1], k.ex, k.ey); trait(b.bas, k.ex, k.ey, k.hx, k.hy);
+        b.main.setAttribute('cx', r2(k.hx)); b.main.setAttribute('cy', r2(k.hy));
+        const ang = Math.atan2(k.hy - k.ey, k.hx - k.ex);
+        b.pointe = [k.hx + Math.cos(ang) * 36, k.hy + Math.sin(ang) * 36];   // le diffuseur de la bombe
+        b.epaule = ep;
+        if (b.bombe) b.bombe.setAttribute('transform', `translate(${r2(k.hx)} ${r2(k.hy)}) rotate(${r2(ang * 57.2958 + 90)})`);
+        if (b.cig){
+          const ac = (p.cig == null ? -160 : p.cig) * Math.PI / 180;
+          b.cig.setAttribute('transform', `translate(${r2(k.hx)} ${r2(k.hy)}) rotate(${r2(ac * 57.2958)})`);
+          b.bout = [k.hx + 15.6 * Math.cos(ac) + 9.3 * Math.sin(ac), k.hy + 15.6 * Math.sin(ac) - 9.3 * Math.cos(ac)];
+        }
+      });
+      g.style.opacity = p.opacite == null ? '' : p.opacite;
+    }
+    return { g, bras, poser, repere, voir: v => { g.style.display = v ? '' : 'none'; } };
+  }
+
+  /* ---------- la scène garée ---------- */
+  let acteurs = null;                   // bâtis au premier passage
+  function batir(){
+    if (acteurs) return acteurs;
+    // B d'abord : à la courte échelle, il est derrière A
+    const tagB = personnage({ vue: 'dos', haut: '#7b2f3c', haut2: '#62242f', bas: '#232a36', peau: '#8e5b3c', coiffe: 'capuche', bombe: '#e7c14a' });
+    const tagA = personnage({ vue: 'dos', haut: '#30353d', haut2: '#252930', bas: '#3c4454', peau: '#c78c66', cheveux: '#1e1712',
+      coiffe: 'casquette-dos', coiffe1: '#1e7391', coiffe2: '#15566b', bombe: '#e24c4b' });
+    const chauffeur = personnage({ vue: 'face', haut: '#46638d', haut2: '#35507a', bas: '#28334a', peau: '#dca787', peau2: '#c78d6c',
+      cheveux: '#3c2b20', coiffe1: '#c0392b', coiffe2: '#9e2f22', clip: 'cgDevant', cigarette: true });
+    const flamme = cree('path', { d: 'M0 0 Q6 -9 0 -21 Q-6 -9 0 0 Z', fill: '#ffb347', opacity: 0 }, chauffeur.g);
+    const reserve = n => { const g = cree('g', {}, gens); return { libres: Array.from({ length: n }, () => cree('circle', { r: 0, opacity: 0 }, g)), vivants: [] }; };
+    acteurs = { tagA, tagB, chauffeur, flamme, fumee: reserve(40), bruine: reserve(56) };
+    [tagA, tagB, chauffeur].forEach(a => a.voir(false));
+    return acteurs;
+  }
+  // les particules : la fumée de la cigarette, la bruine des bombes
+  function emettre(res, q, couleur){
+    const el = res.libres.pop(); if (!el) return;
+    el.setAttribute('fill', couleur); q.el = el; res.vivants.push(q);
+  }
+  function vieillir(res, t, dt){
+    for (let i = res.vivants.length - 1; i >= 0; i--){
+      const q = res.vivants[i], age = t - q.t0;
+      if (age >= q.vie){ q.el.setAttribute('opacity', 0); res.libres.push(q.el); res.vivants.splice(i, 1); continue; }
+      q.x += (q.vx + (q.houle ? Math.sin(age / 280 + q.ph) * q.houle : 0)) * dt; q.y += q.vy * dt; q.r += q.dr * dt;
+      q.vx *= 0.995; q.vy *= q.frein || 1;
+      const a = q.a * Math.pow(1 - age / q.vie, 1.4) * Math.min(1, age / 90);
+      q.el.setAttribute('cx', r2(q.x)); q.el.setAttribute('cy', r2(q.y)); q.el.setAttribute('r', r2(q.r)); q.el.setAttribute('opacity', a.toFixed(3));
+    }
+  }
+  function viderParticules(){
+    if (!acteurs) return;
+    [acteurs.fumee, acteurs.bruine].forEach(res => { res.vivants.forEach(q => { q.el.setAttribute('opacity', 0); res.libres.push(q.el); }); res.vivants = []; });
+  }
+
+  /* ---------- le texte, écrit à la bombe ----------
+     Chaque bloc — le titre, chaque ligne des deux paragraphes — est dévoilé
+     par un découpage (clip-path) qui avance le long de ses rangées, telles
+     que le navigateur les a composées : les rangées finies en entier, celle
+     en cours jusqu'à la pointe de la bombe. */
+  function rangees(el){
+    const E = el.getBoundingClientRect(), rg = document.createRange();
+    rg.selectNodeContents(el);
+    const out = [];
+    [...rg.getClientRects()].forEach(r => {
+      if (r.width < 1 || r.height < 4) return;          // les coulures du titre, encore vides, ne sont pas une rangée
+      const y0 = r.top - E.top, d = out.find(o => Math.abs(o.y0 - y0) < 3);   // une rangée rendue en morceaux : on la recoud
+      if (d){ d.x0 = Math.min(d.x0, r.left - E.left); d.x1 = Math.max(d.x1, r.right - E.left); }
+      else out.push({ x0: r.left - E.left, x1: r.right - E.left, y0, y1: r.bottom - E.top });
+    });
+    return { E, W: E.width, rs: out.sort((a, b) => a.y0 - b.y0) };
+  }
+  // le bloc dévoilé jusqu'à sa rangée `k`, sur la part `f` de celle-ci ; au-delà de la dernière, en entier
+  function devoiler(b, k, f){
+    if (sc && sc.revele){ if (b.el.style.clipPath) b.el.style.clipPath = ''; return; }
+    const cle = k + ':' + f.toFixed(3);
+    if (b.cle === cle) return; b.cle = cle;
+    if (k >= b.m.rs.length){ b.el.style.clipPath = ''; return; }
+    if (k < 0){ b.el.style.clipPath = 'inset(0 100% 0 0)'; return; }
+    const r = b.m.rs[k], x = r2(r.x0 + (r.x1 - r.x0) * f), W = r2(b.m.W + 30), y = r2(r.y0), bas = r2(r.y1 + 6);
+    b.el.style.clipPath = `polygon(-30px -30px, ${W}px -30px, ${W}px ${y}px, ${x}px ${y}px, ${x}px ${bas}px, -30px ${bas}px)`;
+  }
+  const V_TITRE = 0.5, V_LIGNE = 1;      // unités du camion par ms : le titre se soigne, le texte file
+  const TROT = 1;                          // le petit trot des tagueurs qui arrivent, en unités par ms
+  // les traits d'un tagueur, l'un après l'autre : rangée par rangée, un battement pour revenir à la ligne
+  function horaire(plan, depart, blocs, v){
+    const traits = []; let t = depart;
+    blocs.forEach(b => b.m.rs.forEach((r, k) => {
+      const a = plan.pointe(b, r, 0), z = plan.pointe(b, r, 1), d = Math.max(20, z[0] - a[0]);
+      traits.push({ b, k, t0: t, t1: t + d / v, a, z });
+      t += d / v + 150;
+    }));
+    return { traits, fin: t - 150 };
+  }
+  // où est la bombe d'un tagueur à l'instant t, et si elle peint
+  function bombeA(traits, t){
+    for (let i = 0; i < traits.length; i++){
+      const tr = traits[i];
+      if (t < tr.t0){
+        const pr = traits[i - 1];
+        if (!pr) return { p: tr.a, peint: false, avant: true };
+        const u = doux(seg(t, pr.t1, tr.t0));
+        return { p: [entre(pr.z[0], tr.a[0], u), entre(pr.z[1], tr.a[1], u)], peint: false };
+      }
+      if (t <= tr.t1){ const f = seg(t, tr.t0, tr.t1); return { p: [entre(tr.a[0], tr.z[0], f), entre(tr.a[1], tr.z[1], f)], peint: true, tr }; }
+    }
+    return traits.length ? { p: traits[traits.length - 1].z, peint: false, fini: true } : null;
+  }
+  function devoilerSelon(traits, t){
+    const vu = new Map();
+    traits.forEach(tr => {
+      if (t < tr.t0){ if (!vu.has(tr.b)) vu.set(tr.b, [-1, 0]); return; }
+      vu.set(tr.b, t >= tr.t1 ? [tr.k + 1, 0] : [tr.k, seg(t, tr.t0, tr.t1)]);
+    });
+    vu.forEach(([k, f], b) => devoiler(b, k, f));
+  }
+  function blocsDuTexte(){
+    const m = el => ({ el, m: rangees(el), cle: '' });
+    return { titre: m(titreEl), p1: [...paras[0].children].map(m), p2: [...paras[1].children].map(m) };
+  }
+  const tousLesBlocs = B => [B.titre, ...B.p1, ...B.p2];
+  function coulures(on){
+    titreEl.querySelectorAll('.camion-coulure').forEach(c => { c.style.transition = on ? '' : 'none'; c.style.height = on ? c.dataset.h : '0'; });
+  }
+
+  /* ---------- la scène, image par image ----------
+     Un seul battement pour tout le monde : le chauffeur, les deux tagueurs,
+     le texte qui s'écrit, la fumée et la bruine. Les horaires sont calculés
+     au départ, d'après la place du texte sur la caisse. */
+  let sc = null;
+  const X_NEZ = 70, X_ADOSSE = -30;      // le chauffeur : caché derrière le nez, puis adossé à l'avant
+  function planifier(){
+    const R = route.getBoundingClientRect(), k = 1100 / R.width;
+    const U = (x, y) => [(x - R.left) * k, (y - R.top) * k];
+    const bas = U(0, texte.getBoundingClientRect().bottom)[1] - 8;
+    const B = blocsDuTexte();
+    // la pointe d'un trait, le long de sa rangée, dans le repère du camion — jamais sous le bas visible du texte
+    const pointe = (b, r, f) => { const p = U(b.m.E.left + r.x0 + (r.x1 - r.x0) * f, b.m.E.top + (r.y0 + r.y1) / 2); p[1] = Math.min(p[1], bas); return p; };
+    return { k, U, B, pointe, droite: (innerWidth - R.left) * k + 90 };
+  }
+  function lancerScene(j){
+    const A = batir();
+    viderParticules();
+    if (moins.matches){                  // rien ne bouge : la livraison est écrite, le chauffeur adossé
+      sc = null;
+      [...texte.querySelectorAll('h2, .camion-ligne')].forEach(el => { el.style.clipPath = ''; });
+      coulures(true);
+      A.tagA.voir(false); A.tagB.voir(false); A.chauffeur.voir(true);
+      A.chauffeur.poser(poseChauffeur(null, 99999, 0));
+      A.flamme.setAttribute('opacity', 0);
+      return;
+    }
+    const plan = planifier(), B = plan.B;
+    tousLesBlocs(B).forEach(b => devoiler(b, -1, 0));
+    coulures(false);
+    const t1 = B.titre.m.rs[0] ? plan.pointe(B.titre, B.titre.m.rs[0], 0) : [560, 110];
+    const s = { j, t0: performance.now(), avant: performance.now(), plan, B, A, sortie: null, sons: new Set(), chX: null };
+    // l'arrivée : A devant, B sur ses talons ; B se place au début du titre, A juste à sa gauche
+    s.bX = t1[0] - 30; s.aX = s.bX - 12;
+    s.aDe = plan.droite + 40; s.bDe = plan.droite + 150;
+    s.T_ARR = Math.max(300 + (s.aDe - s.aX) / TROT, 420 + (s.bDe - s.bX) / TROT);
+    s.T_HAUT = s.T_ARR + 560;
+    s.titre = horaire(plan, s.T_HAUT + 60, [B.titre], V_TITRE);
+    s.T_DESC = s.titre.fin + 180; s.T_SOL = s.T_DESC + 380;
+    s.T_COL = s.T_SOL + 440;
+    s.la = horaire(plan, s.T_COL + 60, B.p1, V_LIGNE);
+    s.lb = horaire(plan, s.T_COL + 60, B.p2, V_LIGNE);
+    s.T_FIN = Math.max(s.la.fin, s.lb.fin) + 260;
+    s.T_FUITE = s.T_FIN + 560;
+    s.peinture = getComputedStyle(titreEl).color;
+    s.A_ = { x: s.aDe, pas: 0 }; s.B_ = { x: s.bDe, pas: 0 };
+    sc = s;
+    requestAnimationFrame(image);
+  }
+  function arreterScene(){
+    sc = null;
+    if (!acteurs) return;
+    viderParticules();
+    [acteurs.tagA, acteurs.tagB, acteurs.chauffeur].forEach(a => a.voir(false));
+    acteurs.flamme.setAttribute('opacity', 0);
+  }
+  function image(now){
+    const s = sc;
+    if (!s || s.j !== jeton) return;
+    const t = (now - s.t0) / lent, dt = Math.min(48, now - s.avant) / lent;
+    s.avant = now;
+    jouerChauffeur(s, t);
+    jouerTagueurs(s, t, dt);
+    vieillir(acteurs.fumee, t, dt); vieillir(acteurs.bruine, t, dt);
+    requestAnimationFrame(image);
+  }
+
+  /* Le chauffeur. Il fait le tour du nez et s'y adosse, la hanche contre le
+     pare-chocs, l'épaule contre l'avant de la cabine ; il allume sa cigarette
+     les mains en coupe, puis tire dessus toutes les quatre secondes et
+     recrache la fumée. Une main à la poche, l'autre qui tient la cigarette. */
+  const T_FUME = 2600, CYCLE = 4300;
+  function poseChauffeur(s, t, sortie){
+    const C = acteurs.chauffeur;
+    const uM = seg(t, 260, 1200);
+    let x = entre(X_NEZ, X_ADOSSE, doux(uM));
+    let penche = entre(0, 0.17, doux(seg(t, 1200, 1500))) + (t > 1500 ? Math.sin(t / 900) * 0.008 : 0);
+    const p = { x, sol: SOL, penche, pas: uM > 0 && uM < 1 ? t / 75 : null, pieds: [-8 * doux(seg(t, 1200, 1500)), -4], tete: -0.05, coude: -1 };
+    if (sortie != null && s){                // il se redresse et repart derrière le nez
+      const u = seg(t, sortie, sortie + 420);
+      p.x = entre(s.chX, X_NEZ + 36, doux(u)); p.penche = entre(s.penche || 0, 0, u); p.pas = t / 60; p.pieds = null;
+      return p;
+    }
+    const R = C.repere(p);
+    const bouche = R(-4, -11), poche = [x + 30 * Math.cos(penche) + 6, SOL - CORPS.hanche - 26];
+    const repos = [x - 20 + 40 * Math.sin(penche), SOL - CORPS.hanche - 34];
+    // l'allumage : la cigarette aux lèvres, le briquet dans l'autre main, en coupe devant
+    const uF = doux(seg(t, 1600, 1850)) * (1 - doux(seg(t, 2150, 2450)));
+    let mainG = [entre(repos[0], bouche[0] - 6, uF), entre(repos[1], bouche[1] + 4, uF)];
+    let mainD = uF > 0 ? [entre(poche[0], bouche[0] + 8, uF), entre(poche[1], bouche[1] + 12, uF)] : poche;
+    let cig = entre(-150, 190, uF);
+    // puis il fume : la main à la bouche, un temps, et redescend
+    if (t >= T_FUME){
+      const c = (t - T_FUME) % CYCLE, m = c < 650 ? doux(seg(c, 0, 380)) : 1 - doux(seg(c, 900, 1250));
+      mainG = [entre(repos[0], bouche[0] - 6, m), entre(repos[1], bouche[1] + 4, m)];
+      cig = entre(-150, 190, m);
+    }
+    p.mainG = mainG; p.mainD = mainD; p.cig = cig;
+    return p;
+  }
+  function jouerChauffeur(s, t){
+    const A = acteurs, C = A.chauffeur, b = C.bras[0];
+    if (s.sortie != null && t >= s.sortie){
+      if (s.chX == null){ C.voir(false); return; }   // il n'était pas encore sorti
+      const p = poseChauffeur(s, t, s.sortie);
+      C.voir(t < s.sortie + 420); C.poser(p);
+      b.cig.style.display = 'none'; A.flamme.setAttribute('opacity', 0);
+      return;
+    }
+    if (t < 260){ C.voir(false); return; }
+    C.voir(true);
+    const p = poseChauffeur(s, t, null);
+    s.chX = p.x; s.penche = p.penche;
+    C.poser(p);
+    // la cigarette : sortie du paquet à l'allumage, allumée par la flamme, puis vivante
+    const allumee = t >= 2080;
+    b.cig.style.display = t >= 1550 ? '' : 'none';
+    b.braise.setAttribute('opacity', allumee ? 1 : 0); b.lueur.setAttribute('opacity', allumee ? 0.2 : 0);
+    const fl = t >= 1860 && t < 2160;
+    A.flamme.setAttribute('opacity', fl ? 0.95 : 0);
+    if (fl){
+      const q = b.bout, h = 0.8 + 0.3 * Math.sin(t / 23);
+      A.flamme.setAttribute('transform', `translate(${r2(q[0])} ${r2(q[1] + 6)}) scale(${r2(h)})`);
+      if (!s.sons.has('briquet')){ s.sons.add('briquet'); sfx.briquet(); }
+    }
+    if (!allumee) return;
+    // le bout rougeoie quand il tire
+    const c = t >= T_FUME ? (t - T_FUME) % CYCLE : -1, tire = c > 250 && c < 880;
+    b.braise.setAttribute('r', tire ? 2.7 : 2.1); b.lueur.setAttribute('opacity', tire ? 0.45 : 0.2);
+    // le fil de fumée du bout, et la bouffée qu'il recrache
+    if (!s.brin || t >= s.brin){
+      const q = b.bout;
+      emettre(A.fumee, { x: q[0], y: q[1], vx: hasard(-0.004, 0.004), vy: -0.034, r: 1.6, dr: 0.006, a: 0.2, vie: hasard(1600, 2200), t0: t, houle: 0.012, ph: Math.random() * 6 }, '#dde0e6');
+      s.brin = t + hasard(110, 170);
+    }
+    if (c >= 1150 && (s.bouffee == null || s.bouffee < t - 2000)){
+      s.bouffee = t;
+      const bo = C.repere(poseChauffeur(s, t, null))(-4, -11);
+      for (let i = 0; i < 9; i++) emettre(A.fumee, { x: bo[0] - 4, y: bo[1], vx: hasard(-0.075, -0.03), vy: hasard(-0.035, -0.012), r: hasard(2.5, 4.5), dr: hasard(0.012, 0.024), a: hasard(0.16, 0.28), vie: hasard(1500, 2400), t0: t + i * 30, houle: 0.01, ph: Math.random() * 6, frein: 0.997 }, '#e6e8ee');
+      if (!s.sons.has('souffle')){ s.sons.add('souffle'); sfx.souffle(0.35); }
+    }
+  }
+
+  /* Les tagueurs. A, casquette à l'envers ; B, capuche relevée. Ils arrivent
+     de la droite en secouant leurs bombes ; A fait la courte échelle, B
+     monte sur ses mains et écrit le titre pendant que A le suit à petits pas ;
+     B redescend d'un saut, et chacun prend son paragraphe, rangée après
+     rangée, sur la pointe des pieds pour le haut. Ils reculent d'un pas, B lève
+     sa bombe, et ils filent. */
+  function jouerTagueurs(s, t, dt){
+    const A = acteurs, { tagA, tagB } = A;
+    const peinture = s.peinture, noir = '#1c232c';
+    // la fuite : on quitte la rubrique, ou ils ont fini
+    const fuite = s.sortie != null ? s.sortie : t >= s.T_FUITE ? s.T_FUITE : null;
+    if (t < 300 && fuite == null){ tagA.voir(false); tagB.voir(false); return; }
+    const suivre = (etat, cible, v) => {         // le corps rejoint sa place à son pas, sans jamais la dépasser
+      const d = cible - etat.x, m = Math.min(Math.abs(d), v * dt);
+      etat.x += Math.sign(d) * m; if (m > 0.05) etat.pas += m * 0.075;
+      return m > 0.05;
+    };
+    [[tagA, s.A_, 'A'], [tagB, s.B_, 'B']].forEach(([T, e, nom]) => {
+      T.voir(e.x < s.plan.droite + 200);
+      const p = { x: e.x, sol: SOL, penche: 0 };
+      if (fuite != null && t >= fuite){
+        // ils filent vers la droite ; B saute d'abord de là-haut s'il y est
+        e.x += 1.25 * dt * (t - fuite > 120 ? 1 : 0.4); e.pas += 1.25 * dt * 0.085;
+        p.x = e.x; p.pas = e.pas; p.penche = 0.1;
+        if (nom === 'B' && e.sol != null && e.sol < SOL){ e.sol = Math.min(SOL, e.sol + 0.9 * dt); p.sol = e.sol; }
+        if (nom === 'A') p.accroupi = Math.max(0, (e.acc || 0) - (t - fuite) * 0.2);
+        T.poser(p); if (e.x > s.plan.droite + 150) T.voir(false);
+        return;
+      }
+      // 1. l'arrivée, en marchant
+      const dep = nom === 'A' ? 300 : 420, de = nom === 'A' ? s.aDe : s.bDe, place = nom === 'A' ? s.aX : s.bX;
+      if (t < s.T_ARR){
+        const u = seg(t, dep, dep + (de - place) / TROT);
+        e.x = entre(de, place, u);
+        p.x = e.x; p.pas = u > 0 && u < 1 ? e.x * 0.075 : null; p.penche = u < 1 ? -0.06 : 0;
+        // ils secouent leurs bombes en approchant
+        if (u > 0.55){ p.mainD = [e.x + 36 + Math.sin(t / 45) * 9, SOL - CORPS.hanche - 60 + Math.cos(t / 45) * 6]; if (!s.sons.has('secoue')){ s.sons.add('secoue'); sfx.secoue(); } }
+        T.poser(p);
+        return;
+      }
+      const bb = T.bras[1];
+      // la bombe d'un tagueur : la main un peu en retrait de la pointe, dans l'axe épaule → pointe
+      const viser = (cible) => {
+        const ep = bb.epaule || [p.x + 39, p.sol - CORPS.hanche - CORPS.torse + 7];
+        const dx = cible[0] - ep[0], dy = cible[1] - ep[1], d = Math.hypot(dx, dy) || 1;
+        return [cible[0] - dx / d * 34, cible[1] - dy / d * 34];
+      };
+      const bruine = (q, couleur) => {
+        for (let i = 0; i < 2; i++) emettre(A.bruine, { x: q[0] + hasard(-7, 7), y: q[1] + hasard(-7, 7), vx: hasard(-0.02, 0.02), vy: hasard(-0.02, 0.02), r: hasard(1.5, 3), dr: 0.02, a: 0.3, vie: hasard(180, 300), t0: t }, couleur);
+      };
+      const son = (tr) => { if (tr && !s.sons.has(tr)){ s.sons.add(tr); sfx.bombe(tr.t1 - tr.t0); } };
+      if (nom === 'A'){
+        if (t < s.T_SOL){
+          // 2. la courte échelle : il s'accroupit, les mains jointes devant lui, et suit B à petits pas
+          const u = doux(seg(t, s.T_ARR, s.T_ARR + 250)) * (1 - doux(seg(t, s.T_DESC, s.T_SOL)));
+          const bouge = suivre(e, s.B_.x - 12, 0.5);
+          p.x = e.x; p.accroupi = e.acc = 30 * u; p.pas = bouge ? e.pas : null;
+          const hy = SOL - CORPS.hanche + p.accroupi;
+          if (u > 0.01){ p.mainG = [e.x - 4, hy + 4]; p.mainD = [e.x + 4, hy + 4]; }
+          T.poser(p);
+          return;
+        }
+      } else {
+        if (t < s.T_SOL){
+          // 2. B monte sur les mains de A, écrit le titre, et redescend d'un saut
+          const haut = SOL - CORPS.hanche + 30;            // les mains de A
+          const uH = seg(t, s.T_ARR + 150, s.T_ARR + 520), uD = seg(t, s.T_DESC, s.T_SOL);
+          let sol = uD > 0 ? entre(haut, SOL, uD) - Math.sin(Math.PI * uD) * 40 : entre(SOL, haut, doux(uH)) - Math.sin(Math.PI * uH) * 50;
+          const b = bombeA(s.titre.traits, t);
+          if (uD > 0){ e.x += 0.28 * dt; }                  // le saut part vers la droite
+          else if (b && t >= s.T_HAUT) suivre(e, b.p[0] - 34, 0.55);
+          p.x = e.x; p.sol = sol; e.sol = sol;
+          if (b && t >= s.T_HAUT - 150 && uD === 0){
+            p.mainD = viser(b.p);
+            if (b.peint){ bruine(b.p, peinture); son(b.tr); }
+          }
+          if (t >= s.titre.fin && !s.coule){ s.coule = true; coulures(true); }
+          T.poser(p);
+          devoilerSelon(s.titre.traits, t);
+          return;
+        }
+      }
+      // 3. chacun son paragraphe
+      const traits = nom === 'A' ? s.la.traits : s.lb.traits;
+      const b = bombeA(traits, t);
+      if (!b){ T.poser(p); return; }
+      const cible = b.p, versCol = t < s.T_COL + 60;
+      const bouge = suivre(e, cible[0] - 30, versCol ? 0.62 : 0.55);
+      p.x = e.x; p.pas = bouge ? e.pas : null;
+      if (!b.fini){
+        // sur la pointe des pieds quand la rangée est haute
+        const ep = SOL - CORPS.hanche - CORPS.torse + 7;
+        p.pointe = Math.min(18, Math.max(0, (ep - 176) - cible[1]));
+        if (!versCol) p.mainD = viser(cible);
+        if (b.peint){ bruine(cible, noir); son(b.tr); }
+      } else if (t < s.T_FIN + 320 && nom === 'B' && t >= s.T_FIN){
+        p.mainD = [e.x + 30, SOL - CORPS.hanche - CORPS.torse - 150];   // B lève sa bombe : c'est fini
+      }
+      if (nom === 'A' && t >= s.T_FIN) p.tete = 0.12 * Math.sin(Math.min(1, (t - s.T_FIN) / 300) * Math.PI);   // A hoche la tête
+      T.poser(p);
+    });
+    // le texte suit les deux paragraphes, une fois le titre écrit
+    if (t >= s.T_SOL || s.sortie != null) devoilerSelon(s.la.traits.concat(s.lb.traits), s.sortie != null ? Math.min(t, s.sortie) : t);
+  }
+
+  /* ---------- la barre : la bulle de l'Info, et le tour complet ---------- */
+  let bulle = 'place';                   // la bulle de l'Info : à sa 'place', ou dans le 'camion'
+  let copieBulle = null, bonhomme = null;
+  const iconeImg = () => categoriesEl.querySelector('.category[data-id="shipping"] .cat-icon img');
+  const iconeInfo = () => categoriesEl.querySelector('.category[data-id="about"] .cat-icon img');
+  const majBulle = () => document.body.classList.toggle('bulle-partie', bulle === 'camion');
+  const surEcran = r => r.width > 0 && r.right > 4 && r.left < innerWidth - 4 && r.bottom > 0 && r.top < innerHeight;
+  // une copie posée exactement sur une icône de la barre
+  function copieDe(img, classe){
+    const r = img.getBoundingClientRect(), d = document.createElement('div'), c = document.createElement('img');
+    d.className = classe;
+    d.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
+    c.src = img.src; c.alt = '';
+    d.appendChild(c); document.body.appendChild(d);
+    return { d, c, r };
+  }
+  // les cahots de la route, sur la copie du camion qui roule
+  const cahoter = img => joue(img, [
+    { transform: 'translateY(0) rotate(0deg)' },
+    { transform: 'translateY(-4px) rotate(-2.5deg)' },
+    { transform: 'translateY(0) rotate(0deg)' }
+  ], { duration: 170, iterations: Infinity, easing: 'ease-in-out' });
+  const piler = img => joue(img, [                     // le coup de frein : le nez plonge
+    { transform: 'none' }, { transform: 'rotate(5deg)', offset: 0.35 }, { transform: 'rotate(-1.5deg)', offset: 0.7 }, { transform: 'none' }
+  ], { duration: 380, easing: 'ease-out' });
+  /* Le bonhomme : un glyphe blanc comme les icônes, en casquette, à l'échelle
+     du camion de la barre. Il marche (les jambes), porte (les bras levés),
+     et se retourne selon le sens de sa marche. `x`, `y` : ses pieds. */
+  const BONHOMME = '<svg viewBox="0 0 20 32" aria-hidden="true">'
+    + '<rect class="bh-bras g" x="3" y="10.5" width="2.8" height="9" rx="1.4" fill="#fff"/>'
+    + '<rect class="bh-bras d" x="14.2" y="10.5" width="2.8" height="9" rx="1.4" fill="#fff"/>'
+    + '<rect class="bh-jambe g" x="6.2" y="19" width="3.2" height="12" rx="1.6" fill="#fff"/>'
+    + '<rect class="bh-jambe d" x="10.6" y="19" width="3.2" height="12" rx="1.6" fill="#fff"/>'
+    + '<rect x="5.4" y="9.4" width="9.2" height="11.6" rx="3.2" fill="#fff"/>'
+    + '<circle cx="10" cy="5.2" r="4.3" fill="#fff"/>'
+    + '<path d="M5.5 4.3 Q10 -0.9 14.5 4.3 Z" fill="#fff"/><rect x="12.6" y="3.1" width="5.2" height="1.9" rx="0.95" fill="#fff"/>'
+    + '</svg>';
+  function creerBonhomme(h){
+    const d = document.createElement('div');
+    d.className = 'camion-bonhomme';
+    d.style.width = r2(h * 20 / 32) + 'px'; d.style.height = r2(h) + 'px';
+    d.innerHTML = BONHOMME;
+    document.body.appendChild(d);
+    return { d, h, x: 0, y: 0, sens: 1, op: 1,
+      placer(){ d.style.transform = `translate(${r2(this.x - h * 10 / 32)}px, ${r2(this.y - h)}px) scaleX(${this.sens})`; d.style.opacity = this.op; } };
+  }
+  async function marcher(j, b, x, v, suit){
+    const x0 = b.x, d = x - x0;
+    if (Math.abs(d) < 0.5) return true;
+    b.sens = d > 0 ? 1 : -1; b.d.classList.add('marche');
+    const ok = await tween(j, Math.abs(d) / v, u => { b.x = x0 + d * u; b.placer(); if (suit) suit(); });
+    b.d.classList.remove('marche');
+    return ok;
+  }
+  const sauter = (j, b, x, y, ms, haut) => {
+    const x0 = b.x, y0 = b.y;
+    return tween(j, ms, u => { b.x = entre(x0, x, u); b.y = entre(y0, y, u) - Math.sin(Math.PI * u) * haut; b.placer(); });
+  };
+  // la bulle, portée au-dessus de la tête du bonhomme (sa pointe, en bas, sur ses mains levées)
+  const auDessus = (cb, b) => [b.x - cb.r.left - cb.r.width / 2, b.y - b.h * 1.02 - cb.r.top - 0.87 * cb.r.height];
+  const placerBulle = (cb, x, y, s, op) => {
+    cb.d.style.transform = `translate(${r2(x)}px, ${r2(y)}px)` + (s != null && s !== 1 ? ` scale(${r2(s)})` : '');
+    if (op != null) cb.d.style.opacity = op;
+  };
+  // le bonhomme sort de la cabine (côté droit : le camion regarde à droite) et saute à terre
+  async function descendre(j, r, x0){
+    const H = r.height * 0.36, sol = r.top + 0.83 * r.height;
+    const b = bonhomme = creerBonhomme(H);
+    b.x = x0 + 0.78 * r.width; b.y = sol - H * 0.3; b.op = 0; b.placer();
+    if (!await tween(j, 120, u => { b.op = u; b.placer(); })) return null;
+    if (!await sauter(j, b, x0 + 0.97 * r.width + H * 0.12, sol, 240, H * 0.35)) return null;
+    return b;
+  }
+  async function remonter(j, r, x0, b){
+    const sol = r.top + 0.83 * r.height;
+    if (!await marcher(j, b, x0 + 0.8 * r.width, r.width / 400)) return false;
+    if (!await tween(j, 180, u => { b.y = sol - u * b.h * 0.3; b.op = 1 - u; b.placer(); })) return false;
+    b.d.remove(); bonhomme = null;
+    return true;
+  }
+  /* 1 bis. La bulle chargée : le bonhomme va la prendre dans sa case, la
+     ramène à l'arrière en passant devant le camion, et la lance dans la
+     caisse — elle y file en rapetissant, et le camion ploie sous la charge. */
+  async function charger(j, r, x0, bImg, miniImg){
+    const b = await descendre(j, r, x0); if (!b) return false;
+    const v = r.width / 400, rb = bImg.getBoundingClientRect();
+    if (!await marcher(j, b, rb.left + 0.3 * rb.width, v)) return false;
+    const cb = copieBulle = copieDe(bImg, 'camion-bulle');
+    cb.d.style.transformOrigin = '50% 87%';
+    document.body.classList.add('bulle-partie');        // l'originale s'efface : c'est la copie qu'il emporte
+    b.d.classList.add('porte');
+    const [hx, hy] = auDessus(cb, b);
+    if (!await tween(j, 260, u => placerBulle(cb, hx * doux(u), hy * doux(u)))) return false;
+    if (!await marcher(j, b, x0 + 0.2 * r.width, v, () => { const [x, y] = auDessus(cb, b); placerBulle(cb, x, y); })) return false;
+    b.d.classList.remove('porte');
+    const [ax, ay] = auDessus(cb, b), cx = x0 + 0.33 * r.width - cb.r.left - cb.r.width / 2, cy = r.top + 0.42 * r.height - cb.r.top - 0.87 * cb.r.height;
+    if (!await tween(j, 320, u => placerBulle(cb, entre(ax, cx, u), entre(ay, cy, u) - Math.sin(Math.PI * u) * r.height * 0.5, entre(1, 0.15, u * u), 1 - Math.pow(u, 3)))) return false;
+    cb.d.remove(); copieBulle = null;
+    bulle = 'camion'; majBulle();
+    joue(miniImg, [{ transform: 'none' }, { transform: 'scale(1.04, 0.9)', offset: 0.4 }, { transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    return remonter(j, r, x0, b);
+  }
+  /* 4 bis. La bulle rendue : le camion garé dans sa case, le bonhomme va à
+     l'arrière, sort la bulle de la caisse, la porte jusqu'à SA case en
+     passant devant la cabine, et l'y pose, à la lumière de sa catégorie. */
+  async function decharger(j, img, bImg, miniImg){
+    const r = img.getBoundingClientRect(), x0 = r.left;
+    const b = await descendre(j, r, x0); if (!b) return false;
+    const v = r.width / 400;
+    if (!await marcher(j, b, x0 + 0.2 * r.width, v)) return false;
+    const cb = copieBulle = copieDe(bImg, 'camion-bulle');
+    cb.d.style.transformOrigin = '50% 87%'; cb.d.style.opacity = 0;
+    const cx = x0 + 0.33 * r.width - cb.r.left - cb.r.width / 2, cy = r.top + 0.42 * r.height - cb.r.top - 0.87 * cb.r.height;
+    b.d.classList.add('porte'); b.sens = 1; b.placer();
+    const [hx, hy] = auDessus(cb, b);
+    if (!await tween(j, 300, u => placerBulle(cb, entre(cx, hx, doux(u)), entre(cy, hy, doux(u)) - Math.sin(Math.PI * u) * r.height * 0.3, entre(0.15, 1, doux(u)), Math.min(1, u * 3)))) return false;
+    joue(miniImg, [{ transform: 'none' }, { transform: 'scale(0.97, 1.06)', offset: 0.4 }, { transform: 'none' }], { duration: 240, easing: 'ease-out' });
+    const rb = bImg.getBoundingClientRect();
+    if (!await marcher(j, b, rb.left + 0.28 * rb.width, v, () => { const [x, y] = auDessus(cb, b); placerBulle(cb, x, y); })) return false;
+    b.d.classList.remove('porte');
+    const op = parseFloat(getComputedStyle(bImg.closest('.category')).opacity) || 1;
+    const [px, py] = auDessus(cb, b);
+    if (!await tween(j, 260, u => { const q = bImg.getBoundingClientRect(); placerBulle(cb, entre(px, q.left - cb.r.left, doux(u)), entre(py, q.top - cb.r.top, doux(u)), 1, entre(1, op, u)); })) return false;
+    sansFondu(bImg, () => { bulle = 'place'; majBulle(); });
+    cb.d.remove(); copieBulle = null;
+    return remonter(j, r, x0, b);
+  }
+  /* La copie rend la main à l'icône : celle-ci doit être là à l'instant même,
+     sans le fondu de 0,3 s de .cat-icon — la copie retirée d'un coup, on
+     aurait vu la case se vider puis se rallumer. */
+  function sansFondu(img, f){
+    const ico = img && img.parentElement;
+    if (!ico){ f(); return; }
+    const avant = ico.style.transition;
+    ico.style.transition = 'none'; f(); void ico.offsetWidth; ico.style.transition = avant;
+  }
+  // l'icône de retour dans sa case, d'un petit bond (et la bulle, si elle voyageait encore)
+  function rebondir(){
+    document.body.classList.remove('camion-parti');
+    const rentrees = [iconeImg()];
+    if (bulle === 'camion'){ bulle = 'place'; majBulle(); rentrees.push(iconeInfo()); }
+    if (moins.matches) return;
+    rentrees.forEach(ico => { if (ico) ico.parentElement.animate([
+      { opacity: 0, transform: 'scale(0.4)' },
+      { opacity: 1, transform: 'scale(1.14)', offset: 0.6 },
+      { opacity: 1, transform: 'scale(1)' }
+    ], { duration: 420, easing: 'ease-out' }); });
+  }
+  /* 4. LE TOUR COMPLET. Le camion reparti par la gauche en grand, la petite
+     icône rentre par le bord gauche de l'écran et roule jusqu'à sa case, en
+     slalomant entre les icônes qu'elle croise : devant la première — plus
+     bas, plus grande, au-dessus de la barre —, derrière la suivante — plus
+     haut, plus petite, sous elle —, et ainsi de suite. Elle ne change de
+     plan qu'à mi-chemin entre deux icônes, là où elle n'en recouvre aucune. */
+  async function rentrer(j){
+    const img = iconeImg(), bImg = iconeInfo();
+    const r = img && img.getBoundingClientRect();
+    if (!r || !surEcran(r) || moins.matches){ rebondir(); return; }   // sa case est hors de l'écran : il y est, voilà tout
+    const m = copieDe(img, 'camion-mini'); mini = m.d;
+    mini.style.transformOrigin = '50% 88%';
+    const centres = [...categoriesEl.querySelectorAll('.category .cat-icon img')]
+      .filter(x => x !== img).map(x => x.getBoundingClientRect())
+      .filter(q => q.width > 0 && q.right < r.left && q.right > 0).map(q => q.left + q.width / 2).sort((a, b) => a - b);
+    const demi = i => Math.min(i > 0 ? (centres[i] - centres[i - 1]) / 2 : 999, i < centres.length - 1 ? (centres[i + 1] - centres[i]) / 2 : 999, 110);
+    const x0 = -r.width - 24, dist = r.left - x0;
+    const cah = cahoter(m.c);
+    const ok = await tween(j, 300 + dist / 0.5, u => {
+      const q = img.getBoundingClientRect();              // sa case peut encore glisser avec la barre
+      const x = entre(x0, q.left, 1 - Math.pow(1 - u, 1.7)), c = x + r.width / 2;
+      /* Derrière, il s'estompe aussi, comme les icônes au repos : elles ne
+         sont qu'à moitié opaques, et un camion éclatant se serait lu au
+         travers, comme posé devant elles. */
+      let dy = 0, s = 1, z = 7, op = 1;
+      centres.forEach((ox, i) => {
+        const d = c - ox, w = demi(i);
+        if (Math.abs(d) >= w) return;
+        const k = Math.pow(Math.cos(Math.PI / 2 * d / w), 2), devant = i % 2 === 0;
+        dy = (devant ? 0.22 : -0.3) * r.height * k; s = 1 + (devant ? 0.12 : -0.16) * k; z = devant ? 7 : 3;
+        if (!devant) op = 1 - 0.55 * k;
+      });
+      mini.style.zIndex = z; mini.style.opacity = op;
+      mini.style.transform = `translate(${r2(x - r.left)}px, ${r2(q.top - r.top + dy)}px)` + (s !== 1 ? ` scale(${r2(s)})` : '');
+    });
+    cah.cancel();
+    if (!ok) return;
+    mini.style.zIndex = '';
+    piler(m.c);
+    if (bulle === 'camion' && bImg && surEcran(bImg.getBoundingClientRect())){
+      if (!await decharger(j, img, bImg, m.c)) return;
+    }
+    // l'icône reprend sa place, à la lumière de sa catégorie
+    const op = parseFloat(getComputedStyle(img.closest('.category')).opacity) || 1;
+    if (!await tween(j, 220, u => { mini.style.opacity = entre(1, op, u); })) return;
+    rebondirSansBond();
+    mini.remove(); mini = null;
+  }
+  function rebondirSansBond(){
+    sansFondu(iconeImg(), () => document.body.classList.remove('camion-parti'));
+    if (bulle === 'camion') sansFondu(iconeInfo(), () => { bulle = 'place'; majBulle(); });
+  }
+
   // tout arrêter ; `figer` garde la pose du moment, pour repartir de là sans à-coup
   function arreter(figer){
     anims.forEach(a => { if (figer) try { a.commitStyles(); } catch (e) {} a.cancel(); });
     anims = [];
     if (mini){ mini.remove(); mini = null; }
+    if (bonhomme){ bonhomme.d.remove(); bonhomme = null; }
+    if (copieBulle){ copieBulle.d.remove(); copieBulle = null; }
+    majBulle();
   }
-  const iconeImg = () => categoriesEl.querySelector('.category[data-id="shipping"] .cat-icon img');
   /* Hors champ, à droite ou à gauche, calculé sur la place du camion AU REPOS
      (offsetLeft ne voit pas les transformations) : il est centré sur les
      grands écrans, décalé sur les petits (voir .camion-route). */
   const horsDroite = () => window.innerWidth - route.offsetLeft + 40;
   const horsGauche = () => -(route.offsetLeft + route.offsetWidth + 40);
   async function arriver(){
-    const j = ++jeton; arreter(false); etat = 'arrivee'; enScene = false;
+    const j = ++jeton; arreter(false); arreterScene(); etat = 'arrivee'; enScene = false;
     scene.hidden = false;
-    caisse.style.transform = '';
-    texte.style.opacity = '0';
+    caisse.style.transform = ''; gens.style.transform = '';
     route.style.transform = `translateX(${horsDroite()}px)`;   // il attend son tour hors champ
     if (moins.matches){
-      route.style.transform = ''; texte.style.opacity = '';
+      route.style.transform = '';
       document.body.classList.add('camion-parti'); enScene = true; etat = 'la';
+      lancerScene(j);
       sfx.klaxon();                // pas de trajet, donc pas de freins : il est là, et il le dit
       return;
     }
+    // le texte attend d'être écrit : masqué dès maintenant, avant que la caisse ne se montre
+    tousLesBlocs(blocsDuTexte()).forEach(b => devoiler(b, -1, 0));
+    coulures(false);
     await pause(420);            // la barre finit de glisser (0,4 s) : l'icône est à sa place
     if (j !== jeton) return;
     const img = iconeImg();
     document.body.classList.add('camion-parti');
     if (img){
-      const r = img.getBoundingClientRect();
-      mini = document.createElement('div');
-      mini.className = 'camion-mini';
-      mini.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
-      const copie = document.createElement('img');
-      copie.src = img.src; copie.alt = '';
-      mini.appendChild(copie);
-      document.body.appendChild(mini);
+      const m = copieDe(img, 'camion-mini'), r = m.r, copie = m.c;
+      mini = m.d;
       // 1. il s'accroupit, bondit, retombe…
-      joue(copie, [
+      const bond = joue(copie, [
         { transform: 'none' },
         { transform: 'translate(-5px,3px) rotate(-7deg) scale(1.08,0.88)', offset: 0.3 },
         { transform: 'translate(3px,-16px) rotate(6deg) scale(0.93,1.09)', offset: 0.62 },
         { transform: 'translate(0,0) rotate(0deg) scale(1.05,0.95)', offset: 0.85 },
         { transform: 'none' }
       ], { duration: 500, easing: 'ease-in-out' });
+      if (!await fin(bond) || j !== jeton) return;
+      // … roule jusqu'à la bulle de l'Info, sa voisine, et le bonhomme la charge
+      let dx = 0;
+      const bImg = iconeInfo(), rb = bImg && bulle === 'place' ? bImg.getBoundingClientRect() : null;
+      if (rb && surEcran(rb) && rb.left > r.right){
+        const d = (rb.left + 0.1 * rb.width - 5) - (r.left + 0.97 * r.width);
+        if (d > 2){
+          const cah = cahoter(copie);
+          const ok = await tween(j, 220 + d * 2.4, u => { mini.style.transform = `translateX(${r2(d * (1 - Math.pow(1 - u, 2.4)))}px)`; });
+          cah.cancel();
+          if (!ok) return;
+          dx = d;
+          piler(copie);
+          if (!await charger(j, r, r.left + dx, bImg, copie)) return;
+        }
+      }
       // … et file à droite en accélérant, en cahotant
-      joue(copie, [
-        { transform: 'translateY(0) rotate(0deg)' },
-        { transform: 'translateY(-5px) rotate(-3deg)' },
-        { transform: 'translateY(0) rotate(0deg)' }
-      ], { duration: 170, delay: 500, iterations: 4, easing: 'ease-in-out' });
-      const file = joue(mini, [
-        { transform: 'translateX(0)' },
-        { transform: `translateX(${window.innerWidth - r.left + 40}px)` }
-      ], { duration: 700, delay: 470, easing: 'cubic-bezier(.6,0,.9,.4)', fill: 'forwards' });
-      if (!await fin(file) || j !== jeton) return;
+      const cah = cahoter(copie), loin = window.innerWidth - r.left + 40;
+      const ok = await tween(j, 700, u => { mini.style.transform = `translateX(${r2(entre(dx, loin, u * u))}px)`; });
+      cah.cancel();
+      if (!ok) return;
       mini.remove(); mini = null;
       await pause(160);
       if (j !== jeton) return;
@@ -13035,44 +13863,42 @@ const camion = (() => {
        course ralentit franchement, pour finir sur le plongeon du nez (74 %) ;
        l'air s'échappe ensuite, pendant que la caisse se repose. Un jeton passé
        — on a déjà quitté la rubrique — et rien ne sonne. */
-    setTimeout(() => { if (j === jeton) sfx.freinage(); }, 450);
+    setTimeout(() => { if (j === jeton) sfx.freinage(); }, 450 * lent);
     if (!await fin(roule) || j !== jeton) return;
-    // 3. le texte se pose sur la caisse, et le camion garé klaxonne
-    setTimeout(() => { if (j === jeton) sfx.klaxon(); }, 160);
-    texte.style.opacity = '';
-    joue(texte, [
-      { opacity: 0, transform: 'translateY(10px)' },
-      { opacity: 1, transform: 'none' }
-    ], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    // 3. garé, il klaxonne ; la scène commence
+    setTimeout(() => { if (j === jeton) sfx.klaxon(); }, 160 * lent);
     etat = 'la';
+    lancerScene(j);
   }
   async function partir(){
     const j = ++jeton; etat = 'depart';
-    const aLEcran = enScene;     // le grand camion est-il déjà là, ou seulement la petite icône en route ?
+    const aLEcran = enScene, s = sc;
     arreter(aLEcran);
-    const retour = () => {       // l'icône revient dans sa case, d'un petit bond
-      document.body.classList.remove('camion-parti');
-      const ico = iconeImg();
-      if (ico && !moins.matches) ico.parentElement.animate([
-        { opacity: 0, transform: 'scale(0.4)' },
-        { opacity: 1, transform: 'scale(1.14)', offset: 0.6 },
-        { opacity: 1, transform: 'scale(1)' }
-      ], { duration: 420, easing: 'ease-out' });
-    };
     const ranger = () => {
       scene.hidden = true; enScene = false;
-      route.style.transform = ''; caisse.style.transform = ''; texte.style.opacity = '';
-      etat = 'absent';
+      route.style.transform = ''; caisse.style.transform = ''; gens.style.transform = '';
     };
-    if (moins.matches || !aLEcran){ ranger(); retour(); return; }
+    if (moins.matches || !aLEcran){ arreterScene(); ranger(); rebondir(); etat = 'absent'; return; }
+    // les jeunes filent, le chauffeur jette sa cigarette et remonte — puis le camion part
+    if (s){
+      s.j = j; s.sortie = (performance.now() - s.t0) / lent;   // la boucle qui tourne continue, sous le nouveau jeton
+      await pause(s.chX != null ? 440 : 120);
+      if (j !== jeton) return;
+    }
     joue(caisse, [{ transform: 'rotate(1.8deg)', offset: 0.35 }, { transform: 'rotate(0.5deg)' }],   // il démarre : l'arrière s'accroupit
          { duration: 650, easing: 'ease-out' });
-    const file = joue(route, [{ transform: `translateX(${horsGauche()}px)` }],   // depuis là où il en est
+    const loin = horsGauche();
+    const file = joue(route, [{ transform: `translateX(${loin}px)` }],   // depuis là où il en est
                       { duration: 650, easing: 'cubic-bezier(.55,0,.9,.45)', fill: 'forwards' });
-    setTimeout(() => { if (j === jeton) retour(); }, 260);
+    // les jeunes, qui courent encore, ne partent pas avec lui : leur calque recule d'autant
+    const tf = getComputedStyle(route).transform, cur = tf && tf !== 'none' ? new DOMMatrix(tf).m41 : 0;
+    joue(gens, [{ transform: `translateX(${-cur}px)` }, { transform: `translateX(${-loin}px)` }],
+         { duration: 650, easing: 'cubic-bezier(.55,0,.9,.45)', fill: 'forwards' });
     if (!await fin(file) || j !== jeton) return;
-    arreter(false);
-    ranger();
+    arreter(false); arreterScene(); ranger();
+    // 4. le tour complet
+    await rentrer(j);
+    if (j === jeton) etat = 'absent';
   }
   // à chaque rendu : le camion suit la catégorie active
   function suivre(){
@@ -13080,11 +13906,45 @@ const camion = (() => {
     if (ici && (etat === 'absent' || etat === 'depart')) arriver();
     else if (!ici && (etat === 'arrivee' || etat === 'la')) partir();
   }
+  /* Le texte de la livraison : le titre, et les lignes du texte réparties en
+     deux paragraphes — la première moitié, la seconde. Une ligne, un bloc :
+     c'est ce que la bombe dévoile. Les coulures du titre, posées au hasard
+     sous le mot, attendent qu'il soit écrit. */
   function remplir(titre, corps){
-    document.getElementById('camionTitre').textContent = titre;
-    document.getElementById('camionCorps').textContent = corps;
+    const lignes = String(corps || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const cle = titre + '\u0000' + lignes.join('\n');
+    if (cle === remplir.cle) return;
+    remplir.cle = cle;
+    titreEl.textContent = titre;
+    [0.18, 0.46, 0.8].forEach((x, i) => {
+      const c = document.createElement('span');
+      c.className = 'camion-coulure';
+      c.style.left = (x * 100 + hasard(-4, 4)).toFixed(1) + '%';
+      c.dataset.h = (0.28 + 0.22 * ((i * 7) % 3) / 2).toFixed(2) + 'em';
+      titreEl.appendChild(c);
+    });
+    const n = Math.ceil(lignes.length / 2);
+    [lignes.slice(0, n), lignes.slice(n)].forEach((ls, k) => {
+      paras[k].replaceChildren(...ls.map(l => { const d = document.createElement('div'); d.className = 'camion-ligne'; d.textContent = l; return d; }));
+    });
+    // le texte change en pleine scène (la langue) : il est tout de suite écrit, la bombe n'a plus rien à suivre
+    reveler();
   }
-  return { suivre, remplir, texte };
+  // la fenêtre change de taille en pleine écriture : le texte se recompose, les traits ne tombent plus juste — il s'écrit d'un coup
+  function reveler(){
+    if (!sc) return;
+    sc.revele = true;
+    [...texte.querySelectorAll('h2, .camion-ligne')].forEach(el => { el.style.clipPath = ''; });
+    coulures(true);
+  }
+  window.addEventListener('resize', reveler);
+  const debug = {
+    lent: v => { lent = v || 1; return lent; },
+    scene: () => sc && { t: (performance.now() - sc.t0) / lent, T_ARR: sc.T_ARR, T_HAUT: sc.T_HAUT, T_SOL: sc.T_SOL, T_COL: sc.T_COL, T_FIN: sc.T_FIN, T_FUITE: sc.T_FUITE },
+    bulle: () => bulle,
+    etat: () => etat,
+  };
+  return { suivre, remplir, texte, debug };
 })();
 
 /* ---------------- fiche « More info » (guide des tailles) ----------------
@@ -14107,11 +14967,12 @@ function fillPreview(){
     if (!affichesChargees){ affichesChargees = true; cat.items.forEach(it => { if (it.affiche) new Image().src = encodeURI(it.affiche); }); }
   }
   if (isInfo) model3d.hide();
-  // photo produit si le produit en a une (item.img), sinon l'initiale ;
-  // seconde photo (item.img2) révélée au survol
+  // photo produit (item.img), seconde photo (item.img2) révélée au survol. Plus
+  // d'initiale en filigrane pour ce qui n'a pas de photo (retirée le 26 sept.
+  // 2026 : tous les articles en ont une, et seul le buste de la page Info la
+  // montrait encore, un « F » pâle derrière lui)
   const photo = document.getElementById('previewPhoto');
   const photo2 = document.getElementById('previewPhoto2');
-  const initial = document.getElementById('previewInitial');
   // verrouillé : c'est le cadenas qu'on montre, avec son modèle et ses vues
   const vu = visuelDe(item);
   if (cat.kind === 'game'){
@@ -14138,8 +14999,6 @@ function fillPreview(){
     photo.removeAttribute('src');
     photo2.removeAttribute('src');
   }
-  initial.hidden = !!vu.img; // l'initiale ne sert qu'aux produits sans photo
-  initial.textContent = verrou ? '?' : L(item.n)[0];
   document.getElementById('previewName').textContent = verrou ? T('locked') : L(item.n);
   descEl.textContent = verrou ? T(item.verrouAide || 'lockedHow') : L(item.d);
   descEl.hidden = !item.d && !verrou;
