@@ -1362,6 +1362,18 @@
      — posé hors du bouton par outline-offset — cesse d'être coupé par le bord
      de la boîte (voir le transitionend qui pose cette classe). */
   .preview-info.libre{overflow:visible;}
+  /* LA MARGE DU NOM RESTE DANS LE BLOC, qu'il rogne ou non (26 sept. 2026 :
+     « la lueur derrière le bouton d'achat repart de zéro à chaque produit,
+     on dirait qu'elle saute »). Un bloc qui rogne (overflow:hidden) garde les
+     marges de ses enfants ; libre (overflow:visible), il laissait celle du
+     nom, 15 px, passer au-dessus de lui. Chaque fois qu'il se remettait à
+     rogner, son contenu prenait 15 px, plus haut que sa hauteur mesurée : le
+     bas du bouton était coupé, la fiche raccourcie d'autant puis rallongée en
+     0,34 s, et la lueur du bouton, à ras du bas, coupée puis rendue.
+     `flow-root` garde la marge dedans dans les deux cas — la fiche au repos
+     est au pixel près la même. Pas pour les panneaux de texte, qui ne rognent
+     jamais (ni pour le téléphone couché, où le bloc est une colonne flex). */
+  .preview:not(.info) .preview-info{display:flow-root;}
   /* ... et TANT QUE ça rogne, le liseré ne se montre pas du tout. Le rendre
      visible à la fin ne suffisait pas : pendant la demi-seconde d'ouverture on
      voyait un cadre blanc amputé de son bord bas — mesuré, le bouton est à RAS
@@ -7270,13 +7282,16 @@ function recalerIcones(){ requestAnimationFrame(majIconesCachees); }
    propre boîte animée ; elles sont dans celle-ci depuis le 25 sept. 2026. */
 // (par getElementById et non par la const previewInfo : elle est déclarée plus
 // bas dans le fichier, et une const n'existe pas avant sa ligne)
-/* `libreSiImmobile` : appelée par appliquerFiche, qui retire la classe à
-   chaque passage. Quand la hauteur ne change pas — un autre article, fiche
-   déjà dépliée, bloc de même hauteur —, aucune transition ne part, donc
-   aucun `transitionend` ne la rend : le bloc restait rogné pour de bon, et
-   la lueur du bouton d'achat, posée en bas à droite, était coupée net sur
-   ces deux bords (relevé le 25 sept. 2026). On regarde donc, un instant
-   après, si le bloc bouge ; s'il ne bouge pas, il n'y a rien à rogner. */
+/* `libreSiImmobile` : appelée chaque fois que la classe est retirée — la
+   fiche qui se plie ou se déplie (appliquerFiche), le bloc qui change de
+   hauteur (majInfoH). Si, finalement, aucune transition ne part, aucun
+   `transitionend` ne la rend : le bloc restait rogné pour de bon, et la
+   lueur du bouton d'achat, posée en bas à droite, était coupée net sur ces
+   deux bords (relevé le 25 sept. 2026). On regarde donc, un instant après,
+   si le bloc bouge ; s'il ne bouge pas, il n'y a rien à rogner.
+   Changer d'article, lui, ne la retire plus (26 sept. 2026) : elle tombait à
+   chaque article, et la lueur du bouton était coupée au moins le temps de ce
+   rendez-vous — elle sautait d'un produit à l'autre. */
 let libreSiImmobile = () => {};
 [document.getElementById('previewInfo')].forEach(el => {
   let filet = 0;
@@ -7730,10 +7745,10 @@ const model3d = (() => {
     // dessine un modèle sur tout le canvas, ou dans le carré box = { x, y, s } (pixels du
     // canvas, y vers le bas, fractions permises : la fenêtre de rendu est entière et un
     // peu plus large, le décalage restant passe dans la projection → aucun tremblement)
-    /* `libre` : une ORIENTATION COMPLÈTE, et elle ne sert qu'à la tête de la
-       page Info, la seule chose du site qui se manipule sans butée. Les autres
-       appels ne la passent pas et retrouvent exactement le cadrage d'avant, un
-       simple lacet. Pourquoi une matrice plutôt qu'un couple d'angles : des
+    /* `libre` : une ORIENTATION COMPLÈTE, et elle ne sert qu'au modèle de la
+       fiche pris en main, qui se manipule sans butée. Les autres appels ne la
+       passent pas et retrouvent exactement le cadrage d'avant, un simple
+       lacet. Pourquoi une matrice plutôt qu'un couple d'angles : des
        angles d'Euler ont un haut et un bas, et le jour où le modèle passe
        par-dessus, la main s'inverse à l'écran. Une orientation accumulée n'a ni
        haut ni bas — voir « prise à la main ». */
@@ -8555,9 +8570,16 @@ const model3d = (() => {
      cou vers y = −0,38, cou reculé vers z = −0,12. L'ensemble est ensuite
      réduit et remonté D'UN BLOC par CADRE_BUSTE pour tenir dans le cadre ;
      l'origine du cadre tombe ainsi au bas du cou, et c'est là que le buste
-     pivote quand on le prend en main. */
-  const CADRE_S = 0.80, CADRE_Y = 0.21;       // relevés à l'écran : la tête en haut, le buste coupé par le bas du cadre
-  const BUSTE_BAS = -1.0;                     // la coupe, au milieu de la poitrine, juste sous le cadre au repos
+     pivote quand on le prend en main.
+     PLUS SERRÉ DANS LE CADRE (demande du 26 sept. 2026 : « plus crop dans le
+     modal ») : le buste est plus grand, le cadre le coupe en travers de la
+     poitrine, et on ne voit plus jamais sa coupe. Elle tombait juste sous le
+     bord du cadre : dès que le buste tournait, le bas de son dos ou de ses
+     bras passait au-dessus, un fond plat aux coins ronds. Elle est descendue
+     assez bas pour rester cachée même de profil, basculé vers nous. */
+  const CADRE_S = 0.90, CADRE_Y = 0.174;      // relevés à l'écran : la tête en haut, le cadre qui coupe la poitrine sous le logo
+  const BUSTE_BAS = -1.3;                     // la coupe, bien sous le bord du cadre
+  const TANGAGE_Y = -1.0;                     // le pivot du vertige (voir fumeur.cadre) : là où était la coupe
   const BUSTE_N = 16;
   const superE = (t, n) => Math.sign(t) * Math.pow(Math.abs(t), 2 / n);   // 2 : ellipse ; au-delà, plus carré
   const ANNEAUX = [
@@ -8572,9 +8594,10 @@ const model3d = (() => {
     [null,      0.132, 0.110, -0.12,  2.0],   // sa lèvre intérieure, qui rentre vers le cou
   ];
   /* Le bord du col monte vers la nuque, où la capuche rabattue le relève, et
-     plonge en V devant, là où ses deux pans se croisent — c'est ce V, et les
-     cordons qui en sortent, qui font lire un hoodie de face et non un col
-     roulé. */
+     plonge en V devant, là où ses deux pans se croisent — c'est ce V qui fait
+     lire un hoodie de face et non un col roulé. (Deux cordons en sortaient
+     jusqu'au 26 sept. 2026 ; ils sont partis à la demande, le logo sur la
+     poitrine dit assez le vêtement.) */
   const colY = phi => -0.295 + 0.075 * (1 - Math.cos(phi)) / 2 - 0.05 * Math.pow(Math.max(0, Math.cos(phi)), 6);
   function pointAnneau(r, i){
     const phi = (i % BUSTE_N) / BUSTE_N * 2 * Math.PI;
@@ -8582,25 +8605,78 @@ const model3d = (() => {
     const y = r === 6 ? colY(phi) : r === 7 ? colY(phi) - 0.035 : y0;
     return [a * superE(Math.sin(phi), n), y, cz + b * superE(Math.cos(phi), n)];
   }
-  /* Les couleurs pleines, à droite de la texture du buste : un carré de 8
-     texels chacune, visé en son centre (lecture au plus proche, rien ne bave). */
-  const BUSTE_PAL = { cordon: [36/64, 0.5], ferret: [44/64, 0.5], dedans: [52/64, 0.5], fond: [60/64, 0.5] };
-  function texBuste(){
-    const c = document.createElement('canvas'); c.width = 64; c.height = 32;
+  /* La texture du buste, lue au plus proche (voir `brut`), en trois parts :
+     - à gauche (u < 0,5), le MOLLETON de tout le tour : u fait le tour du
+       buste, v descend du col à la coupe. Un noir délavé plutôt qu'un noir
+       pur — un vrai noir sur le verre sombre du panneau ne serait plus qu'une
+       découpe. Un grain à graine FIXE, pour que la trame soit la même à chaque
+       visite, et le bas un rien plus sombre : trente-deux mailles de tour, et
+       en hauteur la maille d'origine (1/32 de 0,76), sur un buste plus long ;
+     - au milieu (0,5 ≤ u < 0,75), le PLASTRON : le devant de la poitrine, sous
+       le col, projeté à plat tel qu'on le voit de face, avec le même grain et
+       le logo. Le tour du molleton donne à chaque face la même part de
+       texture, quelle que soit sa largeur — celle du milieu de la poitrine est
+       deux fois plus large que ses voisines : un logo y aurait été étiré au
+       milieu et écrasé sur les côtés. À plat, il se pose comme une
+       sérigraphie. Aux bords du plastron le grain change de trame, ce qui ne
+       se voit pas dans un grain ;
+     - à droite, deux couleurs pleines, visées en leur centre (lecture au plus
+       proche, rien ne bave) : l'envers du col, et le dessous.
+     Les texels du plastron ont à peu près la taille des pixels du rendu, pour
+     que le logo n'y perde ni n'y gagne de détail. */
+  const TEX_BUSTE = [512, 256];
+  const BUSTE_PAL = { dedans: [52/64, 0.5], fond: [60/64, 0.5] };
+  const TISSU_H = -0.24;                      // le haut du molleton dans la texture (v = 0), juste au-dessus du col
+  const tissuV = y => Math.min(0.998, Math.max(0.002, (TISSU_H - y) / (TISSU_H - BUSTE_BAS)));
+  // le plastron : |x| ≤ x, de la coupe au pied du trapèze (y ≤ haut), en unités du buste ; u0 → u1, 0 → v1 dans la texture
+  const PLASTRON = { x: 0.48, haut: -0.405, u0: 0.502, u1: 0.748, v1: 0.45 };
+  const plastronUV = p => [PLASTRON.u0 + (p[0] + PLASTRON.x) / (2 * PLASTRON.x) * (PLASTRON.u1 - PLASTRON.u0),
+                           0.002 + (PLASTRON.v1 - 0.004) * (PLASTRON.haut - p[1]) / (PLASTRON.haut - BUSTE_BAS)];
+  /* Le logo (demande du 26 sept. 2026 : un hoodie « sans cordon, avec
+     KETAMINE ») : l'arche de la marque, celle du polo, en travers de la
+     poitrine, sous le col. `l` : sa largeur, `haut` : le haut de l'arche, en
+     unités du buste ; `teinte` : un blanc d'encre, un peu cassé. */
+  const LOGO_BUSTE = { src: 'icons/ketamine-logo.png', l: 0.56, haut: -0.43, teinte: '#e8e5de' };
+  function texBuste(logo){
+    const [W, H] = TEX_BUSTE;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d');
-    /* Le molleton : un noir délavé plutôt qu'un noir pur — un vrai noir sur le
-       verre sombre du panneau ne serait plus qu'une découpe. Un grain à graine
-       FIXE, pour que la trame soit la même à chaque visite, et le bas un rien
-       plus sombre. */
-    const im = g.createImageData(32, 32), d = im.data;
     let s = 20260925;
     const alea = () => (s = (s * 16807) % 2147483647) / 2147483647;
-    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++){
-      const v = 36 + (alea() - 0.5) * 7 - y * 0.18, o = (y * 32 + x) * 4;
-      d[o] = v; d[o+1] = v; d[o+2] = v + 4; d[o+3] = 255;
+    // une maille ; `rang` : sa rangée comptée depuis le col, qui l'assombrit vers le bas
+    const maille = (x0, y0, x1, y1, rang) => {
+      const v = Math.round(36 + (alea() - 0.5) * 7 - rang * 0.18);
+      g.fillStyle = `rgb(${v},${v},${v + 4})`;
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    };
+    const NR = Math.round((TISSU_H - BUSTE_BAS) / (0.76 / 32)), RANG = (TISSU_H - BUSTE_BAS) / NR;
+    // 1. le molleton du tour
+    for (let j = 0; j < NR; j++){
+      const y0 = Math.round(j * H / NR), y1 = Math.round((j + 1) * H / NR);
+      for (let i = 0; i < 32; i++) maille(i * W / 64, y0, (i + 1) * W / 64, y1, j);
     }
-    g.putImageData(im, 0, 0);
-    [['#e6e2d8', 32], ['#a7acb4', 40], ['#0a0a0c', 48], ['#121215', 56]].forEach(([col, x]) => { g.fillStyle = col; g.fillRect(x, 0, 8, 32); });
+    // 2. le plastron : les mêmes rangées, des mailles de 0,12 de large
+    const px = x => (PLASTRON.u0 + (x + PLASTRON.x) / (2 * PLASTRON.x) * (PLASTRON.u1 - PLASTRON.u0)) * W;
+    const py = y => (0.002 + (PLASTRON.v1 - 0.004) * (PLASTRON.haut - y) / (PLASTRON.haut - BUSTE_BAS)) * H;
+    const pas = Math.max(1, Math.round(px(0.12) - px(0))), xa = W / 2, xb = W * 3 / 4, yb = Math.ceil(PLASTRON.v1 * H);
+    for (let j = 0; j < NR; j++){
+      const y0 = Math.max(0, Math.round(py(TISSU_H - j * RANG))), y1 = Math.min(yb, Math.round(py(TISSU_H - (j + 1) * RANG)));
+      if (y1 > y0) for (let x = xa; x < xb; x += pas) maille(x, y0, Math.min(xb, x + pas), y1, j);
+    }
+    // 3. le logo, teint dans un calque à part (son dessin est dans l'opacité), puis posé
+    if (logo && logo.naturalWidth){
+      const L = LOGO_BUSTE, h = L.l * logo.naturalHeight / logo.naturalWidth;
+      const x0 = Math.round(px(-L.l / 2)), x1 = Math.round(px(L.l / 2)), y0 = Math.round(py(L.haut)), y1 = Math.round(py(L.haut - h));
+      const t = document.createElement('canvas'); t.width = x1 - x0; t.height = y1 - y0;
+      const tg = t.getContext('2d');
+      tg.imageSmoothingQuality = 'high';
+      tg.drawImage(logo, 0, 0, t.width, t.height);
+      tg.globalCompositeOperation = 'source-in';
+      tg.fillStyle = L.teinte; tg.fillRect(0, 0, t.width, t.height);
+      g.drawImage(t, x0, y0);
+    }
+    // 4. les couleurs pleines
+    [['#0a0a0c', 48], ['#121215', 56]].forEach(([col, x]) => { g.fillStyle = col; g.fillRect(x * W / 64, 0, 8 * W / 64, H); });
     c.brut = true;
     return c;
   }
@@ -8652,7 +8728,7 @@ const model3d = (() => {
     cross: (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]],
     norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; },
   };
-  // un tube le long d'une ligne brisée : section carrée (les cordons) ou de `cotes` côtés (la cigarette)
+  // un tube le long d'une ligne brisée : section carrée, ou de `cotes` côtés (la cigarette)
   function tube(F, pts, rayon, uv, f, cotes, bouche){
     const n = cotes || 4;
     let tPrec = [0, 0, 1];
@@ -8679,15 +8755,19 @@ const model3d = (() => {
   }
   function buildBuste(){
     const F = [];
-    // le molleton : u fait le tour (moitié gauche de la texture), v descend du col à la coupe
-    const tissuUV = (i, y) => [0.004 + 0.488 * i / BUSTE_N, Math.min(0.98, Math.max(0.02, (-0.24 - y) / 0.76))];
-    // 1. le corps et le col, anneau par anneau
+    // le molleton : u fait le tour (voir texBuste), v descend du col à la coupe
+    const tissuUV = (i, y) => [0.004 + 0.488 * i / BUSTE_N, tissuV(y)];
+    /* 1. le corps et le col, anneau par anneau. Le devant de la poitrine —
+       les quatre faces tournées vers nous, de la coupe au pied du trapèze —
+       prend le plastron, qui porte le logo. */
     for (let r = 0; r < 6; r++){
       const cz = ANNEAUX[r][3];
       for (let i = 0; i < BUSTE_N; i++){
         const a = pointAnneau(r, i), b = pointAnneau(r, i + 1), c = pointAnneau(r + 1, i + 1), d = pointAnneau(r + 1, i);
         const dehors = [(a[0] + b[0] + c[0] + d[0]) / 4, 0, (a[2] + b[2] + c[2] + d[2]) / 4 - cz];
-        quad(F, a, b, c, d, tissuUV(i, a[1]), tissuUV(i + 1, b[1]), tissuUV(i + 1, c[1]), tissuUV(i, d[1]), { dehors, lis: 0.12 });
+        const uv = r < 4 && (i >= BUSTE_N - 2 || i < 2) ? [a, b, c, d].map(plastronUV)
+          : [tissuUV(i, a[1]), tissuUV(i + 1, b[1]), tissuUV(i + 1, c[1]), tissuUV(i, d[1])];
+        quad(F, a, b, c, d, ...uv, { dehors, lis: 0.12 });
       }
     }
     // 2. la lèvre du col : elle regarde vers le haut et vers le cou — l'envers du tissu, plus sombre
@@ -8711,16 +8791,6 @@ const model3d = (() => {
       const m = [(a[0] + c[0]) / 2 - HC[0], (a[1] + c[1]) / 2 - HC[1], (a[2] + c[2]) / 2 - HC[2]];
       quad(F, a, b, c, d, hUV(la, lo), hUV(la, lo + 1), hUV(la + 1, lo + 1), hUV(la + 1, lo), { dehors: m, lis: 0.12 });
     }
-    /* 5. les cordons, blancs cassé, et leurs ferrets : c'est à eux qu'on
-       reconnaît un hoodie à cette taille, plus qu'à la capuche. Ils tombent du
-       col en suivant le bombé de la poitrine, à un souffle devant elle. */
-    const CORDON = [[0.062, -0.332, 0.018], [0.066, -0.41, 0.072], [0.070, -0.50, 0.102], [0.072, -0.61, 0.12]];
-    const FERRET = [[0.072, -0.61, 0.12], [0.073, -0.655, 0.123]];
-    [1, -1].forEach(sx => {
-      const m = pts => pts.map(p => [p[0] * sx, p[1], p[2]]);
-      tube(F, m(CORDON), 0.0065, BUSTE_PAL.cordon, { lis: 0.05 });
-      tube(F, m(FERRET), 0.0085, BUSTE_PAL.ferret, { lis: 0.05 }, 4, { uv: BUSTE_PAL.ferret, f: { lis: 0.05 } });
-    });
     return facettes(F);
   }
   /* ---- la cigarette ----
@@ -9506,18 +9576,28 @@ const model3d = (() => {
   //      défilement. Les lignes d'une colonne qui se referme s'effacent sur place.
   let current = null, active = false, raf = 0, last = 0, token = 0, amorce = 0;
   let angle = 0, rows = [], fading = [], listDrawn = false;
-  const TOUR_MS = 10000; // un tour complet au repos, pour la tête de la page Info
   let backFrom = 0, backT = 0;
   const BACK_MS = 1400; // durée du retour au balancement quand la souris quitte le visuel
-  /* ---- l'orientation libre de la tête ----
-     (Les vêtements de la fiche la partagent depuis le 25 sept. 2026, avec un
-     autre lâcher : voir « les vêtements se prennent aussi en main ».)
-     Tout le reste du site tourne sur un seul axe et revient à sa place. La
-     tête, elle, n'est pas un produit, et la page Info n'est pas une fiche — il
-     faut que la main le sente tout de suite. Elle se comporte donc comme le
-     cube du menu d'une console : on la pousse, elle CONTINUE, elle ralentit.
-     On peut la retourner complètement, et elle ne se relève qu'une fois l'élan
-     retombé (voir « retour à la verticale »).
+  /* ---- le balancement du buste (26 sept. 2026) ----
+     La tête de la page Info faisait le TOUR au repos, un tour en dix secondes.
+     Demande : « qu'il ne tourne pas à 360° au repos, mais seulement de 90°
+     d'un côté puis jusqu'à 90° de l'autre, un peu comme les produits ». Il se
+     balance donc comme eux — un sinus, qui ralentit aux bouts et passe vite
+     devant —, mais d'un profil à l'autre : ±90° en douze secondes l'aller-
+     retour, quand un vêtement fait ±18° en 3,8 s. Il part de face à l'arrivée
+     sur la page (`teteT0`), comme on arrivait jusque-là face au visage.
+     Et il se prend en main comme eux (voir « les vêtements se prennent aussi
+     en main ») : lancé, il ralentit et s'arrête, garde la pose tant que la
+     souris est sur lui, puis rejoint son balancement. Jusque-là, lâché, il
+     repartait dans son tour, redressé si on l'avait laissé à l'envers. */
+  const BALANCE_TETE = Math.PI / 2, BALANCE_TETE_MS = 12000;
+  let teteT0 = 0;
+  const balancementTete = t => Math.sin((t - teteT0) / BALANCE_TETE_MS * 2 * Math.PI) * BALANCE_TETE;
+  /* ---- l'orientation libre ----
+     Pour la tête de la page Info d'abord, les vêtements depuis le 25 sept.
+     2026 : un modèle pris en main se comporte comme le cube du menu d'une
+     console — on le pousse, il CONTINUE, il ralentit. On peut le retourner
+     complètement.
      L'orientation est gardée en MATRICE, accumulée d'un geste à l'autre, et non
      en couple d'angles : des angles d'Euler ont un haut et un bas, et dès que le
      modèle passe par-dessus, tirer vers la droite le fait partir à gauche. Ici
@@ -9525,66 +9605,17 @@ const model3d = (() => {
      l'ÉCRAN — multipliée à gauche —, si bien que la surface suit toujours le
      doigt, quelle que soit la pose.
      L'inertie est une vitesse angulaire à deux composantes (les deux axes de
-     l'écran ; un geste plat ne produit pas de roulis) qui décroît non pas vers
-     zéro mais vers la ROTATION DE REPOS : la tête finit toujours par retrouver
-     son tour tranquille, d'où qu'on l'ait laissée. */
+     l'écran ; un geste plat ne produit pas de roulis) qui s'éteint vers zéro
+     (voir manipuler). */
   let orient = ident();
   let vX = 0, vY = 0;                 // radians par milliseconde, axes de l'écran
-  /* Total de rotation VOULUE depuis le chargement, en radians. Le tour de repos
-     n'y entre pas. Ne comptent que ce que la main commande et l'élan qu'elle a
-     donné, c'est-à-dire la part de la vitesse qui DÉPASSE le repos. Il ouvrait
-     la pièce secrète jusqu'au 25 sept. 2026 (vingt tours de tête) ; c'est la
-     cigarette qui l'ouvre depuis (voir « il fume »), et il ne sert plus qu'au
-     contrôle (model3d.debug). */
-  let cumul = 0;
   const AMORTI_MS = 700;              // l'élan s'éteint en deux à trois secondes, comme un cube qu'on pousse
   const SUIVI_MS = 120;               // tenir sans bouger, c'est s'arrêter : l'élan retombe vite sous la main
   const V_MAX = 0.010;                // plafond : environ un tour et demi par seconde, au-delà on ne voit plus rien
-  const vRepos = () => reduced ? 0 : 2 * Math.PI / TOUR_MS;
+  const CALME = V_MAX * 0.25;         // en dessous, l'élan est retombé (voir manipuler)
   function pivoter(ax, ay){           // rotation appliquée dans le repère de l'écran
     if (!ax && !ay) return;
     orient = redresser(mul(mul(rotX(ax), rotY(ay)), orient));
-  }
-  function compter(r){
-    if (!(r > 0)) return;
-    cumul += r;
-  }
-  /* ---- retour à la verticale ----
-     Pendant le geste et tant que l'élan dure, la tête part où on l'a poussée,
-     à l'envers s'il le faut. Mais quand l'élan retombe et qu'elle reprend son
-     tour tranquille, elle se remet D'APLOMB : le cou en bas, le crâne en haut.
-     C'est ce qui fait la différence entre un objet qu'on manipule et un objet
-     qu'on a cassé — une tête laissée de travers pour toujours ne se lit pas
-     comme un choix, elle se lit comme un bogue.
-     Le redressement n'entre en jeu qu'une fois l'élan calmé (`CALME`), sans
-     quoi il tirerait contre le geste au moment même où celui-ci fait tout
-     l'effet. L'axe qui y ramène est le produit vectoriel de la verticale du
-     MODÈLE par celle de l'ÉCRAN : il est horizontal, mais quelconque dans le
-     plan de l'écran, d'où `rotAxe`. C'est aussi la rotation la plus COURTE, ce
-     qui veut dire que le lacet — la direction du regard — est préservé : la
-     tête se relève sans se retourner. */
-  const REDRESSE_MS = 900;            // le relèvement prend une seconde et demie environ
-  const CALME = V_MAX * 0.25;         // en dessous, l'élan est retombé et le relèvement peut agir
-  function versLaVerticale(dt, elan){
-    const k = 1 - Math.min(1, elan / CALME);
-    if (k <= 0.001) return;
-    const hx = orient[4], hy = orient[5], hz = orient[6];   // la verticale du modèle, vue de l'écran
-    const d = Math.max(-1, Math.min(1, hy));
-    if (d > 0.99999) return;                                // déjà d'aplomb
-    let ax = -hz, az = hx, l = Math.hypot(ax, az);          // (hx,hy,hz) × (0,1,0)
-    if (l < 1e-6){ ax = 1; az = 0; l = 1; }                 // pile à l'envers : n'importe quel axe horizontal ramène
-    const t = Math.acos(d) * k * (1 - Math.exp(-dt / REDRESSE_MS));
-    orient = redresser(mul(rotAxe(ax / l, 0, az / l, t), orient));
-  }
-  function tournerLibre(dt){
-    if (saisi){ const f = Math.exp(-dt / SUIVI_MS); vX *= f; vY *= f; return; } // la main mène
-    const f = 1 - Math.exp(-dt / AMORTI_MS);
-    vX += (0 - vX) * f;
-    vY += (vRepos() - vY) * f;
-    const elan = Math.abs(vX) + Math.abs(vY - vRepos());
-    compter(elan * dt);              // l'élan compte pour l'œuf de Pâques, le tour de repos non
-    pivoter(vX * dt, vY * dt);
-    versLaVerticale(dt, elan);       // ... et le relèvement non plus : il n'est pas de la main
   }
   /* ---- LES VÊTEMENTS SE PRENNENT AUSSI EN MAIN (demande du 25 sept. 2026) ----
      « Des visionneuses 3D, qu'on attrape dans toutes les directions. » Jusque-là
@@ -9603,7 +9634,8 @@ const model3d = (() => {
        exacte, comme au retour d'un survol autrefois.
      Le passage de l'un à l'autre se fait sans saut : prendre le vêtement part
      de son angle de balancement du moment, et le rendre finit sur le sien.
-     Rien de tout cela ne compte pour l'œuf de Pâques, qui est celui de la tête. */
+     Le buste de la page Info fait de même depuis le 26 sept. 2026 (voir « le
+     balancement du buste »). */
   let enMain = false, dedans = false, lacheT = 0, lacheSouris = true, retourT = 0, retourDe = null;
   let vetementVu = '';                // l'article affiché (sa clé) : en changer remet la main à vide (voir show)
   const RETOUR_MS = BACK_MS;          // le retour au balancement : la durée de l'ancien retour après un survol
@@ -9790,20 +9822,20 @@ const model3d = (() => {
      `visage`, ou si le fichier manque, atlasTete peint son argile — le modèle
      reste présentable, seul le visage manque. */
   function prepareTete(item, key){
-    const p = (item.atlas ? loadPhoto(encodeURI(item.atlas)) : Promise.resolve(null)).then(img => {
+    // le logo du hoodie arrive avec l'atlas ; s'il manque, le hoodie reste uni
+    const p = Promise.all([item.atlas ? loadPhoto(encodeURI(item.atlas)) : null, loadPhoto(LOGO_BUSTE.src)]).then(([img, logo]) => {
       let mesh = meshes.get(key);
       if (!mesh){ mesh = buildTete(); meshes.set(key, mesh); }
       const tex = atlasTete(img);
-      // saisir : orientation libre, prise à la main, élan au lâcher, aucune butée et
-      // aucun retour à une pose (voir « l'orientation libre de la tête ») ; ps1 :
-      // grille de sommets et placage affine (voir uPS1)
-      const a = { mesh, texF: tex, texB: tex, saisir: true, ps1: true, eclat3d: true };
+      // ps1 : grille de sommets et placage affine (voir uPS1). Elle se prend en
+      // main et se balance comme un vêtement (voir « le balancement du buste »).
+      const a = { mesh, texF: tex, texB: tex, ps1: true, eclat3d: true };
       /* Le buste et la cigarette : deux modèles de plus, dessinés à la suite de
          la tête avec la même orientation et la même mise en place (`cadre`,
          partagé et remis à jour à chaque image — voir fumeur.cadre). */
       let corps = meshes.get('buste|hoodie');
       if (!corps){ corps = buildBuste(); meshes.set('buste|hoodie', corps); }
-      const tb = texBuste(), tc = palette(CLOPE_COUL);
+      const tb = texBuste(logo), tc = palette(CLOPE_COUL);
       a.cadre = cadreBuste;
       a.buste = { corps: { mesh: corps, texF: tb, texB: tb, ps1: true, cadre: cadreBuste },
                   clope: { mesh: fumeur.maillage(), texF: tc, texB: tc, ps1: true, cadre: cadreBuste } };
@@ -10672,7 +10704,8 @@ const model3d = (() => {
     const alpha = t => phase === 'allume' ? Math.min(1, (t - allumeT) / 120) : etat.jet ? Math.min(1, (1 - etat.jet.t) / 0.35) : 1;
     /* La mise en place du buste, et ce qui la dérange : le tremblement de la
        fin d'un long tirage, et le VERTIGE d'une cigarette finie d'un trait — le
-       buste oscille autour de sa coupe, comme on tangue quand la tête tourne. */
+       buste oscille autour du milieu de sa poitrine (TANGAGE_Y), comme on
+       tangue quand la tête tourne. */
     const T = (x, y, z) => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]);
     const S = new Float32Array([CADRE_S,0,0,0, 0,CADRE_S,0,0, 0,0,CADRE_S,0, 0,0,0,1]);
     function cadre(t){
@@ -10685,7 +10718,7 @@ const model3d = (() => {
         else {
           const amp = 0.10 * (1 - u) * (1 - u), e = t - vertigeT;
           const R = mul(rotAxe(0, 0, 1, amp * Math.sin(e / 210)), rotX(amp * 0.55 * Math.sin(e / 290 + 1.3)));
-          m = mul(m, mul(T(0, BUSTE_BAS, 0), mul(R, T(0, -BUSTE_BAS, 0))));
+          m = mul(m, mul(T(0, TANGAGE_Y, 0), mul(R, T(0, -TANGAGE_Y, 0))));
         }
       }
       cadreBuste.set(m);
@@ -10708,7 +10741,7 @@ const model3d = (() => {
   cadreBuste.set(fumeur.cadre(0));
   let debugSide = ''; // contrôle : ne dessiner qu'une face ('front' | 'back' | '')
   function draw(t, dt){
-    const libre = (current && (current.saisir || enMain)) ? orient : null;   // la tête, ou un vêtement en main : l'orientation libre
+    const libre = enMain ? orient : null;   // un modèle en main : l'orientation libre ; sinon le balancement, un simple lacet
     t = t || performance.now();
     panel.clear();
     if (current){
@@ -10875,15 +10908,14 @@ const model3d = (() => {
     }
     const dt = last ? Math.min(60, t - last) : 16; last = t;
     const sway = swayDe(0, t); // balancement ±18° en 3,8 s ; les lignes le décalent par leur rang
-    /* Un vêtement se balance, une tête fait le TOUR : elle a de la texture sur
-       les quatre faces, il n'y a plus de raison de la retenir. La valeur du
-       tour avance TOUJOURS, même pendant que la souris tient l'angle : au
-       relâché le modèle rejoint la rotation là où elle en est, et non là où il
-       l'avait quittée — sinon il repartirait en arrière. Mouvement réduit :
-       aucun des deux, c'est précisément ce que ce réglage demande. */
-    const repos = reduced ? 0 : sway;
-    if (current && current.saisir){ tournerLibre(dt); }   // la tête : orientation libre, élan, aucun retour à une pose
-    else if (enMain){ manipuler(dt, t, repos); }          // un vêtement pris en main, puis rendu à son balancement
+    /* Le balancement de la fiche : celui d'un vêtement, ou, bien plus large,
+       celui du buste de la page Info (voir « le balancement du buste »). Il
+       avance TOUJOURS, même pendant que la main tient le modèle : au relâché,
+       celui-ci rejoint le balancement là où il en est, et non là où il l'avait
+       quitté — sinon il repartirait en arrière. Mouvement réduit : pas de
+       balancement, c'est précisément ce que ce réglage demande. */
+    const repos = reduced ? 0 : teteAffichee ? balancementTete(t) : sway;
+    if (enMain){ manipuler(dt, t, repos); }   // un modèle pris en main, puis rendu à son balancement
     else {
       // Le balancement, et le retour vers lui quand l'angle en a été écarté :
       // un fondu entre l'angle quitté et le balancement du moment. Un simple
@@ -10906,22 +10938,19 @@ const model3d = (() => {
        aussi. Posé d'après la fiche et non d'après le modèle chargé, pour que
        la main sache à quoi s'attendre avant même que la texture soit arrivée. */
     swatch.classList.add('prise');
-    /* On ARRIVE toujours face au visage : la pose laissée à la visite d'avant
-       ne se reprend pas. Mais seulement en ARRIVANT — `show()` est aussi appelé
-       quand la fiche se redessine sans changer d'article (changement de langue,
-       catalogue appliqué, liste reconstruite après un déverrouillage). Remettre
-       la tête d'aplomb à ces moments-là la ferait sauter sous la main, et lui
-       reprendre la prise en plein geste. */
-    if (item.tete && !teteAffichee){ orient = ident(); vX = 0; vY = vRepos(); }
+    /* On ARRIVE toujours face au visage : le balancement du buste repart de
+       face. Mais seulement en ARRIVANT — `show()` est aussi appelé quand la
+       fiche se redessine sans changer d'article (changement de langue,
+       catalogue appliqué, liste reconstruite après un déverrouillage). Le
+       remettre de face à ces moments-là le ferait sauter sous les yeux. */
+    if (item.tete && !teteAffichee) teteT0 = performance.now();
     /* Même règle pour un vêtement : un AUTRE article arrive de face, à son
        balancement, la main vide ; le même article redessiné garde sa pose.
-       La pose laissée à un vêtement ne passe à rien d'autre — pas même à la
-       tête, dont le retour vers le balancement toucherait sinon l'orientation
-       pendant qu'elle charge. */
+       La pose laissée à un modèle ne passe à rien d'autre. */
     const cle = keyOf(item);
     if (cle !== vetementVu){
       enMain = false; retourT = 0;
-      if (!item.tete){ saisi = false; vX = 0; vY = 0; swatch.classList.remove('tenu'); }
+      saisi = false; vX = 0; vY = 0; swatch.classList.remove('tenu');
     }
     vetementVu = cle;
     teteAffichee = !!item.tete;
@@ -10937,6 +10966,7 @@ const model3d = (() => {
   }
   function hide(){
     active = false; current = null; canvas.hidden = true;
+    teteAffichee = false;   // qui revient à la page Info y arrive de face (voir show)
     saisi = false; swatch.classList.remove('prise', 'tenu');   // une prise ne survit pas au modèle qu'elle tient
     if (fx){ fx.hidden = true; grains.length = 0; }   // les éclats ne survivent pas au visuel qu'ils décorent
     if (fxFond) fxFond.hidden = true;
@@ -11004,10 +11034,10 @@ const model3d = (() => {
   zoneSouris.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') dedans = false; });
   /* ---- prise à la main ----
      D'abord pour la tête seule : on la MANIPULE — il faut la prendre, la
-     tenir, et elle part alors où on la pousse, sans butée et sans retour.
-     Depuis le 25 sept. 2026, les vêtements se prennent de la même main, dans
-     toutes les directions ; ils ne diffèrent de la tête qu'au lâcher (voir
-     manipuler) : ils finissent par revenir de face, elle jamais.
+     tenir, et elle part alors où on la pousse, sans butée. Depuis le 25 sept.
+     2026, les vêtements se prennent de la même main, dans toutes les
+     directions, et reviennent à leur balancement une fois lâchés (voir
+     manipuler) ; la tête aussi depuis le 26, qui n'y revenait jamais.
      La capture du pointeur est ce qui rend la prise sûre : le geste continue
      hors du cadre et se termine proprement, même relâché ailleurs — sans elle,
      sortir du visuel en tirant laisse le modèle accroché à la main. */
@@ -11018,14 +11048,13 @@ const model3d = (() => {
     saisi = true; prise = e.pointerId; prisX = e.clientX; prisY = e.clientY; prisT = e.timeStamp; parcouru = 0;
     // le buste de la page Info : appuyer, c'est tirer sur la cigarette (voir « il fume »)
     if (current.buste) fumeur.appuyer(performance.now());
-    /* Un vêtement déjà en main — encore lancé, ou en plein retour — est
-       RATTRAPÉ là où il est : la main l'arrête (voir manipuler). Un vêtement
+    /* Un modèle déjà en main — encore lancé, ou en plein retour — est
+       RATTRAPÉ là où il est : la main l'arrête (voir manipuler). Un modèle
        qui se balance, lui, n'est pris qu'au premier mouvement (pointermove) :
-       un simple clic, qui déplie la fiche, ne doit pas le figer. */
-    if (!current.saisir){
-      if (enMain) retourT = 0;
-      lacheSouris = e.pointerType === 'mouse';
-    }
+       un simple clic, qui déplie la fiche ou tire sur la cigarette, ne doit
+       pas le figer. */
+    if (enMain) retourT = 0;
+    lacheSouris = e.pointerType === 'mouse';
     swatchBox = swatch.getBoundingClientRect();
     swatch.classList.add('tenu');
     try { swatch.setPointerCapture(e.pointerId); } catch (err) {}
@@ -11050,14 +11079,13 @@ const model3d = (() => {
     }
     const w = swatchBox.width || 1, h = swatchBox.height || w;   // même vitesse angulaire sur les deux axes
     const ax = dy / h * Math.PI * 2, ay = dx / w * Math.PI * 2;  // traverser le cadre = un tour
-    /* Un vêtement quitte son balancement pour l'orientation libre LÀ OÙ IL EN
+    /* Un modèle quitte son balancement pour l'orientation libre LÀ OÙ IL EN
        EST : son angle du moment devient une orientation, rien ne saute sous la
        main. */
-    if (current && !current.saisir && !enMain){ orient = rotY(angle); enMain = true; retourT = 0; vX = 0; vY = 0; }
+    if (current && !enMain){ orient = rotY(angle); enMain = true; retourT = 0; vX = 0; vY = 0; }
     pivoter(ax, ay);
-    if (current && current.saisir) compter(Math.abs(ax) + Math.abs(ay));   // l'œuf de Pâques est celui de la tête
     /* Relevé de l'élan, pour qu'il survive au lâcher. Il est LISSÉ : une
-       secousse isolée de la main ne doit pas lancer la tête. Et il est mesuré
+       secousse isolée de la main ne doit pas lancer le modèle. Et il est mesuré
        sur le temps réel entre deux événements, borné des deux côtés — un
        intervalle très court donnerait une vitesse absurde, un très long (une
        image sautée) l'écraserait à zéro. */
@@ -11070,7 +11098,7 @@ const model3d = (() => {
     if (!saisi || (e && e.pointerId !== prise)) return;
     saisi = false; swatch.classList.remove('tenu');   // l'élan relevé pendant le geste prend le relais
     fumeur.relacher(performance.now());               // il cesse de tirer, et recrache
-    lacheT = performance.now();                       // le vêtement compte d'ici son attente avant de revenir (voir manipuler)
+    lacheT = performance.now();                       // le modèle compte d'ici son attente avant de revenir (voir manipuler)
     if (parcouru > 6) avaleClic = true;   // un geste n'est pas un clic : la fiche ne doit pas s'ouvrir derrière
     try { if (e) swatch.releasePointerCapture(e.pointerId); } catch (err) {}
   };
@@ -11078,8 +11106,8 @@ const model3d = (() => {
   swatch.addEventListener('pointercancel', lacher);
   /* Filet : si la capture du pointeur n'a pas pris (elle jette dans quelques
      cas, un pointeur déjà relâché par exemple), le relâché se produit hors du
-     visuel et n'arriverait jamais — la tête resterait tenue par personne,
-     figée dans sa pose, sans plus jamais reprendre son tour. */
+     visuel et n'arriverait jamais — le modèle resterait tenu par personne,
+     figé dans sa pose, sans plus jamais reprendre son balancement. */
   window.addEventListener('pointerup', lacher);
   window.addEventListener('pointercancel', lacher);
   // avant le gestionnaire du diaporama (même élément, inscrit plus tard) : le clic qui clôt une prise est avalé
@@ -11090,11 +11118,10 @@ const model3d = (() => {
   // onglet quitté en pleine bouffée : l'image s'arrête, le souffle en boucle doit s'arrêter avec elle
   document.addEventListener('visibilitychange', () => { if (document.hidden) fumeur.annuler(performance.now()); });
   const debug = () => ({ active, ready: !!current, tris: current && current.mesh.tris, relief: current && current.mesh.relief, zmax: current && +current.mesh.zmax.toFixed(4), angle: Math.round(angle * 180 / Math.PI) % 360, saisi, enMain, dedans, retour: !!retourT, canvas: canvas.width,
-    /* vX, vY : l'élan de la tête en radians par seconde ; `haut` est la
+    /* vX, vY : l'élan du modèle en main, en radians par seconde ; `haut` est la
        composante verticale de son axe vertical — +1 à l'endroit, −1 à l'envers. */
     vX: +(vX * 1000).toFixed(3), vY: +(vY * 1000).toFixed(3),
-    haut: current && current.saisir ? +orient[5].toFixed(3) : null,
-    cumul: Math.round(cumul * 180 / Math.PI),   // degrés tournés par la main depuis le chargement
+    haut: enMain ? +orient[5].toFixed(3) : null,
     meshes: meshes.size, images: images.size, rows: rows.length, fading: fading.length, list: !!list, fps });
   // contrôle : part de la photo reconnue comme vêtement (tests)
   // contrôle : l'atlas d'une tête, tel qu'il part au GPU
@@ -12115,7 +12142,7 @@ const model3d = (() => {
      onglet en arrière-plan n'en donne presque plus). Bruitages coupés le temps
      de la séance : ses sons partiraient tous au même instant. */
   const debugFumer = (gestes, duree, photos, lacet) => {
-    if (lacet != null){ orient = rotY(lacet); vX = 0; vY = 0; }   // de face (0), de profil (±π/2)…
+    if (lacet != null){ orient = rotY(lacet); angle = lacet; vX = 0; vY = 0; }   // de face (0), de profil (±π/2)…
     const P = projecteur(current, angle, orient), t0 = performance.now(), trace = [], images = [];
     const son = sfx.bruitages; sfx.bruitages = false;
     let k = 0, avant = '';
@@ -13853,7 +13880,10 @@ function mesurerInfo(){
   majInfoH();
 }
 function majInfoH(){
-  previewEl.style.setProperty('--info-h', (infoBase + (descOuvert && descMax ? descMax + 14 : 0)) + 'px');
+  const h = (infoBase + (descOuvert && descMax ? descMax + 14 : 0)) + 'px';
+  // une autre hauteur : le bloc va bouger, il rogne le temps du mouvement (voir .preview-info.libre)
+  if (previewEl.style.getPropertyValue('--info-h') !== h){ previewInfo.classList.remove('libre'); libreSiImmobile(); }
+  previewEl.style.setProperty('--info-h', h);
   reserverTailles();                     // la hauteur de la fiche a changé : elle doit toujours tenir
 }
 
@@ -13920,11 +13950,17 @@ function reserverTailles(){
 }
 window.addEventListener('resize', reserverTailles);  // après measureDescHeight, qui repose le descriptif
 function appliquerFiche(){
-  previewEl.classList.remove('libre');   // le bloc va bouger : il rogne de nouveau
-  previewInfo.classList.remove('libre');
-  libreSiImmobile();                     // ... et s'il ne bouge pas, il se libère tout de suite
   const choisi = DATA[activeCat].kind === 'shop' && ficheOuverte;
-  previewEl.classList.toggle('gallery', !choisi && DATA[activeCat].kind === 'shop');
+  const replie = !choisi && DATA[activeCat].kind === 'shop';
+  /* La fiche se plie ou se déplie : le bloc va bouger, il rogne de nouveau —
+     et s'il ne bouge pas, il se libère tout de suite. Un autre article dans
+     la même fiche ne le fait pas bouger, sauf à changer sa hauteur, ce que
+     surveille majInfoH (voir libreSiImmobile). */
+  if (previewEl.classList.contains('gallery') !== replie || previewEl.classList.contains('choisi') !== choisi){
+    previewInfo.classList.remove('libre');
+    libreSiImmobile();
+  }
+  previewEl.classList.toggle('gallery', replie);
   previewEl.classList.toggle('choisi', choisi);  // même cadre d'accent qu'en mode panneau
   ongletPret();                          // la languette « panier » sort avec la fiche dépliée
   reserverTailles();                     // dépliée : qu'elle tienne entre les barres ; repliée : rien à caser
@@ -13932,11 +13968,17 @@ function appliquerFiche(){
 /* Clic sur le fond (demande du 15 sept. 2026) : la fiche revient à son état de
    repos, la galerie seule. On épargne ce qui a sa propre logique de clic — la
    fiche elle-même, les icônes et leurs listes (cliquer un article l'ouvre,
-   justement), les barres et les fenêtres modales. */
+   justement), les barres et les fenêtres modales.
+   Ce qui a été cliqué se lit sur le CHEMIN du clic, fixé au moment du clic, et
+   non en remontant les parents de sa cible une fois arrivé ici : « Ajouter au
+   panier » récrit son libellé (« Added · M ») pendant le clic, et le libellé
+   cliqué, sorti du document, n'avait plus de parents. Le clic passait pour un
+   clic sur le fond, et chaque ajout repliait la fiche (26 sept. 2026). */
+const HORS_FOND = '.preview, .category, .topbar, .hintbar, .legalbar, .brand,'
+                + ' .cart-overlay, .info-overlay, .legal-overlay, .arena-overlay';
 document.addEventListener('click', (e) => {
   if (!ficheOuverte) return;
-  if (e.target.closest('.preview, .category, .topbar, .hintbar, .legalbar, .brand,'
-                     + ' .cart-overlay, .info-overlay, .legal-overlay, .arena-overlay')) return;
+  if (e.composedPath().some(n => n instanceof Element && n.matches(HORS_FOND))) return;
   ficheOuverte = false;
   descOuvert = false; appliquerDesc(); majInfoH();   // au repos, le descriptif est replié
   quitterTailles();
